@@ -370,7 +370,7 @@ export default function AdminPage() {
   if (isAdmin === null) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--ink-500)]" />
       </div>
     );
   }
@@ -378,9 +378,9 @@ export default function AdminPage() {
   if (isAdmin === false) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
-        <Shield className="h-12 w-12 text-slate-300" />
-        <h1 className="text-xl font-semibold text-slate-900">Admin access only</h1>
-        <p className="max-w-md text-sm text-slate-600">
+        <Shield className="h-12 w-12 text-[var(--ink-500)]" />
+        <h1 className="text-xl font-semibold text-[var(--ink-950)]">Admin access only</h1>
+        <p className="max-w-md text-sm text-[var(--ink-700)]">
           This dashboard is available to authorized administrators. If you believe you should have access, contact the platform owner.
         </p>
       </div>
@@ -402,19 +402,19 @@ export default function AdminPage() {
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Admin</h1>
-          <p className="mt-1 text-sm text-slate-600">Platform overview, moderation, and system health.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--ink-950)]">Admin</h1>
+          <p className="mt-1 text-sm text-[var(--ink-700)]">Platform overview, moderation, and system health.</p>
         </div>
       </div>
 
-      <div className="flex gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1">
+      <div className="flex gap-1 rounded-2xl border-[var(--surface-border)] bg-[var(--surface-soft)] p-1">
         {(Object.keys(TAB_LABELS) as TabId[]).map((tab) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
             className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
-              activeTab === tab ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+              activeTab === tab ? "bg-[var(--surface-elevated)] text-[var(--ink-950)] shadow-sm" : "text-[var(--ink-700)] hover:text-[var(--ink-950)]"
             }`}
           >
             {TAB_LABELS[tab]}
@@ -462,11 +462,11 @@ export default function AdminPage() {
 
       {activeTab === "reports" ? (
         <div className="space-y-3">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-[var(--ink-700)]">
             {reports.length > 0 ? `${reports.length} reported item${reports.length === 1 ? "" : "s"}.` : "No reports to review."}
           </p>
           {reports.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] p-8 text-center text-sm text-[var(--ink-500)]">
               All clear — no reported content.
             </div>
           ) : (
@@ -479,17 +479,17 @@ export default function AdminPage() {
                 ? report.reason.charAt(0).toUpperCase() + report.reason.slice(1)
                 : "Unknown";
               const reasonBadgeColor =
-                report.reason === "spam" ? "bg-slate-100 text-slate-700" :
+                report.reason === "spam" ? "bg-[var(--surface-soft)] text-[var(--ink-700)]" :
                 report.reason === "harassment" ? "bg-rose-100 text-rose-700" :
                 report.reason === "scam" || report.reason === "fake" ? "bg-amber-100 text-amber-700" :
-                "bg-slate-50 text-slate-600";
+                "bg-[var(--surface-soft)] text-[var(--ink-700)]";
 
               return (
-              <div key={report.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div key={report.id} className="rounded-2xl border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className="text-sm font-semibold text-[var(--ink-950)]">
                         {targetType ? `${targetType.replace(/_/g, " ")} report` : report.card_type ? `${report.card_type} card` : "Report"}
                       </p>
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${reasonBadgeColor}`}>
@@ -497,11 +497,11 @@ export default function AdminPage() {
                       </span>
                     </div>
                     {description ? (
-                      <p className="text-sm leading-5 text-slate-600">
+                      <p className="text-sm leading-5 text-[var(--ink-700)]">
                         {description.length > 120 ? `${description.slice(0, 120)}…` : description}
                       </p>
                     ) : null}
-                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-400">
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-[var(--ink-500)]">
                       <span>Reporter: {report.user_id}</span>
                       <span>Target: {targetId ?? report.focus_id ?? report.card_id ?? "—"}</span>
                       <span>{formatDate(report.created_at)}</span>
@@ -512,7 +512,7 @@ export default function AdminPage() {
                       type="button"
                       disabled={busyId === report.id}
                       onClick={() => void handleDismiss(report.id)}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--surface-border)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
                     >
                       {busyId === report.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
                       Dismiss
@@ -547,7 +547,7 @@ export default function AdminPage() {
       {activeTab === "users" ? (
         <div className="space-y-4">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ink-500)]" />
             <input
               value={userQuery}
               onChange={(e) => {
@@ -555,45 +555,45 @@ export default function AdminPage() {
                 void fetchUsers(e.target.value);
               }}
               placeholder="Search by name, email, or phone..."
-              className="w-full rounded-2xl border border-slate-200 py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-[#0a66c2]"
+              className="w-full rounded-2xl border border-[var(--surface-border)] py-3 pl-11 pr-4 text-sm text-[var(--ink-950)] outline-none transition focus:border-[#0a66c2]"
             />
           </div>
 
           {users.length === 0 && userQuery.trim() ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] p-8 text-center text-sm text-[var(--ink-500)]">
               No users match your search.
             </div>
           ) : null}
 
           {users.length > 0 ? (
-            <div className="overflow-hidden rounded-2xl border border-slate-200">
+            <div className="overflow-hidden rounded-2xl border border-[var(--surface-border)]">
               <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="px-4 py-3 font-semibold text-slate-700">Name</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Email</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Role</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Location</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Trust</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Reports</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Joined</th>
+                  <tr className="border-b border-[var(--surface-border)] bg-[var(--surface-soft)]">
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Name</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Email</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Role</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Location</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Trust</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Reports</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Joined</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((user) => (
                     <tr key={user.id} className="border-b border-slate-100 last:border-0">
-                      <td className="px-4 py-3 font-medium text-slate-900">
+                      <td className="px-4 py-3 font-medium text-[var(--ink-950)]">
                         {user.full_name || user.name || "—"}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{user.email || "—"}</td>
+                      <td className="px-4 py-3 text-[var(--ink-700)]">{user.email || "—"}</td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                        <span className="inline-flex rounded-full bg-[var(--surface-soft)] px-2.5 py-0.5 text-xs font-medium text-[var(--ink-700)]">
                           {user.role || "seeker"}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{user.location || "—"}</td>
-                      <td className="px-4 py-3 text-slate-600">{user.trust_score ?? "—"}</td>
+                      <td className="px-4 py-3 text-[var(--ink-700)]">{user.location || "—"}</td>
+                      <td className="px-4 py-3 text-[var(--ink-700)]">{user.trust_score ?? "—"}</td>
                       <td className="px-4 py-3">
                         {user.abuse_reports && user.abuse_reports > 0 ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-medium text-rose-700">
@@ -601,10 +601,10 @@ export default function AdminPage() {
                             {user.abuse_reports}
                           </span>
                         ) : (
-                          <span className="text-slate-400">0</span>
+                          <span className="text-[var(--ink-500)]">0</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-500">{formatDate(user.created_at)}</td>
+                      <td className="px-4 py-3 text-[var(--ink-500)]">{formatDate(user.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -618,7 +618,7 @@ export default function AdminPage() {
       {activeTab === "providers" ? (
         <div className="space-y-4">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ink-500)]" />
             <input
               value={providerQuery}
               onChange={(e) => {
@@ -626,32 +626,32 @@ export default function AdminPage() {
                 void fetchProviders(e.target.value);
               }}
               placeholder="Search providers by name, email, or phone..."
-              className="w-full rounded-2xl border border-slate-200 py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-[#0a66c2]"
+              className="w-full rounded-2xl border border-[var(--surface-border)] py-3 pl-11 pr-4 text-sm text-[var(--ink-950)] outline-none transition focus:border-[#0a66c2]"
             />
           </div>
           {providerRows.length > 0 ? (
-            <div className="overflow-hidden rounded-2xl border border-slate-200">
+            <div className="overflow-hidden rounded-2xl border border-[var(--surface-border)]">
               <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
 
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="px-4 py-3 font-semibold text-slate-700">Name</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Email</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Location</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Verification</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Trust</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Joined</th>
+                  <tr className="border-b border-[var(--surface-border)] bg-[var(--surface-soft)]">
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Name</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Email</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Location</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Verification</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Trust</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Joined</th>
                   </tr>
                 </thead>
                 <tbody>
                   {providerRows.map((p) => (
                     <tr key={p.id as string} className="border-b border-slate-100 last:border-0">
-                      <td className="px-4 py-3 font-medium text-slate-900">
+                      <td className="px-4 py-3 font-medium text-[var(--ink-950)]">
                         {(p.full_name as string) || (p.name as string) || "—"}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{(p.email as string) || "—"}</td>
-                      <td className="px-4 py-3 text-slate-600">{(p.location as string) || "—"}</td>
+                      <td className="px-4 py-3 text-[var(--ink-700)]">{(p.email as string) || "—"}</td>
+                      <td className="px-4 py-3 text-[var(--ink-700)]">{(p.location as string) || "—"}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                           (p.verification_status as string) === "verified"
@@ -661,8 +661,8 @@ export default function AdminPage() {
                           {(p.verification_status as string) || "unverified"}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{p.trust_score != null ? `${p.trust_score}` : "—"}</td>
-                      <td className="px-4 py-3 text-slate-500">{formatDate(p.created_at as string | null)}</td>
+                      <td className="px-4 py-3 text-[var(--ink-700)]">{p.trust_score != null ? `${p.trust_score}` : "—"}</td>
+                      <td className="px-4 py-3 text-[var(--ink-500)]">{formatDate(p.created_at as string | null)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -670,7 +670,7 @@ export default function AdminPage() {
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] p-8 text-center text-sm text-[var(--ink-500)]">
               {providerQuery.trim() ? "No providers match your search." : "No providers found."}
             </div>
           )}
@@ -679,11 +679,11 @@ export default function AdminPage() {
 
       {activeTab === "disputes" ? (
         <div className="space-y-3">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-[var(--ink-700)]">
             {disputes.length > 0 ? `${disputes.length} open dispute${disputes.length === 1 ? "" : "s"}.` : "No disputes to review."}
           </p>
           {disputes.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] p-8 text-center text-sm text-[var(--ink-500)]">
               No disputes filed.
             </div>
           ) : (
@@ -693,26 +693,26 @@ export default function AdminPage() {
               const status = dispute.status ?? "open";
 
               return (
-                <div key={dispute.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div key={dispute.id} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 space-y-1">
-                      <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                        <Gavel className="h-4 w-4 text-slate-500" />
+                      <p className="flex items-center gap-2 text-sm font-semibold text-[var(--ink-950)]">
+                        <Gavel className="h-4 w-4 text-[var(--ink-500)]" />
                         Dispute
                       </p>
-                      <p className="text-sm text-slate-600">Order: {orderId}</p>
-                      <p className="text-sm text-slate-600">Reason: {dispute.reason}</p>
+                      <p className="text-sm text-[var(--ink-700)]">Order: {orderId}</p>
+                      <p className="text-sm text-[var(--ink-700)]">Reason: {dispute.reason}</p>
                       {dispute.description ? (
-                        <p className="text-sm text-slate-500">{dispute.description}</p>
+                        <p className="text-sm text-[var(--ink-500)]">{dispute.description}</p>
                       ) : null}
-                      <p className="text-xs text-slate-400">Filed by: {dispute.filed_by}</p>
-                      <p className="text-xs text-slate-400">
-                        Status: <span className={`font-medium ${status === "open" ? "text-amber-600" : status === "resolved_for_consumer" ? "text-emerald-600" : "text-slate-600"}`}>{status}</span>
+                      <p className="text-xs text-[var(--ink-500)]">Filed by: {dispute.filed_by}</p>
+                      <p className="text-xs text-[var(--ink-500)]">
+                        Status: <span className={`font-medium ${status === "open" ? "text-amber-600" : status === "resolved_for_consumer" ? "text-emerald-600" : "text-[var(--ink-700)]"}`}>{status}</span>
                       </p>
                       {order.price != null ? (
-                        <p className="text-xs text-slate-400">Order value: ₹{Number(order.price)}</p>
+                        <p className="text-xs text-[var(--ink-500)]">Order value: ₹{Number(order.price)}</p>
                       ) : null}
-                      <p className="text-xs text-slate-400">{formatDate(dispute.created_at)}</p>
+                      <p className="text-xs text-[var(--ink-500)]">{formatDate(dispute.created_at)}</p>
                     </div>
                     {status === "open" ? (
                       <div className="flex shrink-0 flex-col gap-1.5">
@@ -720,7 +720,7 @@ export default function AdminPage() {
                           type="button"
                           disabled={busyId === `${dispute.id}_dismiss`}
                           onClick={() => void handleResolveDispute(dispute.id, "dismiss")}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--surface-border)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
                         >
                           {busyId === `${dispute.id}_dismiss` ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
                           Dismiss
@@ -745,7 +745,7 @@ export default function AdminPage() {
                         </button>
                       </div>
                     ) : (
-                      <div className="text-xs text-slate-400 italic">Resolved</div>
+                      <div className="text-xs text-[var(--ink-500)] italic">Resolved</div>
                     )}
                   </div>
                 </div>
@@ -757,32 +757,32 @@ export default function AdminPage() {
 
       {activeTab === "verifications" ? (
         <div className="space-y-3">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-[var(--ink-700)]">
             {verifications.length > 0 ? `${verifications.length} pending verification${verifications.length === 1 ? "" : "s"}.` : "No pending verifications."}
           </p>
           {verifications.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] p-8 text-center text-sm text-[var(--ink-500)]">
               All caught up — no pending verifications.
             </div>
           ) : (
             verifications.map((v) => {
               const doc = v as Record<string, unknown>;
               return (
-                <div key={doc.id as string} className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div key={doc.id as string} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 space-y-1">
-                      <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                      <p className="flex items-center gap-2 text-sm font-semibold text-[var(--ink-950)]">
                         <BadgeCheck className="h-4 w-4 text-sky-500" />
                         {doc.applicantName as string}
                       </p>
-                      <p className="text-sm text-slate-600">
+                      <p className="text-sm text-[var(--ink-700)]">
                         Document: <span className="font-medium">{doc.document_type as string}</span>
                       </p>
                       {doc.applicantEmail ? (
-                        <p className="text-xs text-slate-500">Email: {doc.applicantEmail as string}</p>
+                        <p className="text-xs text-[var(--ink-500)]">Email: {doc.applicantEmail as string}</p>
                       ) : null}
                       {doc.applicantPhone ? (
-                        <p className="text-xs text-slate-500">Phone: {doc.applicantPhone as string}</p>
+                        <p className="text-xs text-[var(--ink-500)]">Phone: {doc.applicantPhone as string}</p>
                       ) : null}
                       {doc.file_url ? (
                         <a
@@ -794,7 +794,7 @@ export default function AdminPage() {
                           View document →
                         </a>
                       ) : null}
-                      <p className="text-xs text-slate-400">{formatDate(doc.created_at as string | null)}</p>
+                      <p className="text-xs text-[var(--ink-500)]">{formatDate(doc.created_at as string | null)}</p>
                     </div>
                     <div className="flex shrink-0 flex-col gap-1.5">
                       <button
@@ -828,12 +828,12 @@ export default function AdminPage() {
         <div className="space-y-3">
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-slate-600">
+            <span className="text-sm text-[var(--ink-700)]">
               {orders.length > 0 ? `${orders.length} orders` : "No orders found."}
             </span>
             <select value={orderStatusFilter}
               onChange={(e) => { setOrderStatusFilter(e.target.value); void fetchOrders({ status: e.target.value }); }}
-              className="ml-auto rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700"
+              className="ml-auto rounded-lg border border-[var(--surface-border)] px-3 py-1.5 text-xs font-medium text-[var(--ink-700)]"
             >
               <option value="">All statuses</option>
               <option value="new_lead">New lead</option>
@@ -845,7 +845,7 @@ export default function AdminPage() {
             </select>
             <select value={orderDeliveryFilter}
               onChange={(e) => { setOrderDeliveryFilter(e.target.value); void fetchOrders({ deliveryStatus: e.target.value }); }}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700"
+              className="rounded-lg border border-[var(--surface-border)] px-3 py-1.5 text-xs font-medium text-[var(--ink-700)]"
             >
               <option value="">All delivery</option>
               <option value="pending">Pending</option>
@@ -860,36 +860,36 @@ export default function AdminPage() {
               onChange={(e) => setOrderProviderFilter(e.target.value)}
               onBlur={() => void fetchOrders({})}
               onKeyDown={(e) => { if (e.key === "Enter") void fetchOrders({}); }}
-              className="w-40 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-700 placeholder:text-slate-400"
+              className="w-40 rounded-lg border border-[var(--surface-border)] px-3 py-1.5 text-xs text-[var(--ink-700)] placeholder:text-[var(--ink-500)]"
             />
             <input type="date" value={orderDateFrom}
               onChange={(e) => { setOrderDateFrom(e.target.value); void fetchOrders({ from: e.target.value }); }}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-700"
+              className="rounded-lg border border-[var(--surface-border)] px-3 py-1.5 text-xs text-[var(--ink-700)]"
             />
-            <span className="text-xs text-slate-400">—</span>
+            <span className="text-xs text-[var(--ink-500)]">—</span>
             <input type="date" value={orderDateTo}
               onChange={(e) => { setOrderDateTo(e.target.value); void fetchOrders({ to: e.target.value }); }}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-700"
+              className="rounded-lg border border-[var(--surface-border)] px-3 py-1.5 text-xs text-[var(--ink-700)]"
             />
           </div>
           {error && <p className="text-xs text-rose-600">{error}</p>}
           {orders.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] p-8 text-center text-sm text-[var(--ink-500)]">
               No orders to display.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-slate-200">
+            <div className="overflow-x-auto rounded-2xl border border-[var(--surface-border)]">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="px-4 py-3 font-semibold text-slate-700">Order ID</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Status</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Delivery</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Price</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Fee</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Payment</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Date</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Actions</th>
+                  <tr className="border-b border-[var(--surface-border)] bg-[var(--surface-soft)]">
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Order ID</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Status</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Delivery</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Price</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Fee</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Payment</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Date</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -907,7 +907,7 @@ export default function AdminPage() {
                     const canCreatePayout = completed && paid && !fee;
                     return (
                       <tr key={order.id as string} className="border-b border-slate-100 last:border-0">
-                        <td className="max-w-[100px] truncate px-4 py-3 font-mono text-xs text-slate-900">
+                        <td className="max-w-[100px] truncate px-4 py-3 font-mono text-xs text-[var(--ink-950)]">
                           {order.id as string}
                         </td>
                         <td className="px-4 py-3">
@@ -915,7 +915,7 @@ export default function AdminPage() {
                             orderStatus === "completed" ? "bg-emerald-100 text-emerald-800" :
                             orderStatus === "cancelled" ? "bg-rose-100 text-rose-800" :
                             orderStatus === "in_progress" ? "bg-blue-100 text-blue-800" :
-                            "bg-slate-100 text-slate-800"
+                            "bg-[var(--surface-soft)] text-[var(--ink-950)]"
                           }`}>
                             {orderStatus.replace(/_/g, " ") || "—"}
                           </span>
@@ -926,22 +926,22 @@ export default function AdminPage() {
                               deliveryStatus === "delivered" ? "bg-emerald-100 text-emerald-800" :
                               deliveryStatus === "failed" ? "bg-rose-100 text-rose-800" :
                               deliveryStatus === "in_transit" ? "bg-blue-100 text-blue-800" :
-                              "bg-slate-100 text-slate-800"
+                              "bg-[var(--surface-soft)] text-[var(--ink-950)]"
                             }`}>
                               {deliveryStatus.replace(/_/g, " ")}
                             </span>
-                          ) : <span className="text-xs text-slate-300">—</span>}
+                          ) : <span className="text-xs text-[var(--ink-500)]">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-slate-900">₹{price.toFixed(0)}</td>
-                        <td className="px-4 py-3 text-xs text-slate-500">₹{(fee / 100).toFixed(2)}</td>
-                        <td className="px-4 py-3 text-xs text-slate-600">
+                        <td className="px-4 py-3 text-[var(--ink-950)]">₹{price.toFixed(0)}</td>
+                        <td className="px-4 py-3 text-xs text-[var(--ink-500)]">₹{(fee / 100).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-xs text-[var(--ink-700)]">
                           <span className={`font-medium ${
                             paid ? "text-emerald-700" :
                             paymentStatus === "refunded" ? "text-rose-700" :
-                            "text-slate-500"
+                            "text-[var(--ink-500)]"
                           }`}>{paymentStatus}</span>
                         </td>
-                        <td className="px-4 py-3 text-xs text-slate-500">{formatDate(order.created_at as string | null)}</td>
+                        <td className="px-4 py-3 text-xs text-[var(--ink-500)]">{formatDate(order.created_at as string | null)}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
                             {canRefund ? (
@@ -966,7 +966,7 @@ export default function AdminPage() {
                               <select
                                 disabled={busyId === `override_${order.id}`}
                                 onChange={(e) => { if (e.target.value) void handleStatusOverride(order.id as string, e.target.value); }}
-                                className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600"
+                                className="rounded-lg border border-[var(--surface-border)] px-2 py-1 text-xs text-[var(--ink-700)]"
                                 defaultValue=""
                               >
                                 <option value="" disabled>Override</option>
@@ -993,40 +993,40 @@ export default function AdminPage() {
 
       {activeTab === "system" ? (
         <div className="space-y-4">
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4">
+          <div className="flex items-center gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-4">
             {systemHealth?.healthy ? (
               <>
                 <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                <span className="text-sm font-semibold text-slate-900">All systems healthy</span>
+                <span className="text-sm font-semibold text-[var(--ink-950)]">All systems healthy</span>
               </>
             ) : (
               <>
                 <AlertTriangle className="h-5 w-5 text-amber-600" />
-                <span className="text-sm font-semibold text-slate-900">
+                <span className="text-sm font-semibold text-[var(--ink-950)]">
                   {systemHealth?.summary.missing ?? 0} table{systemHealth?.summary.missing !== 1 ? "s" : ""} missing
                 </span>
               </>
             )}
-            <span className="ml-auto text-xs text-slate-500">
+            <span className="ml-auto text-xs text-[var(--ink-500)]">
               {systemHealth?.summary.present ?? "—"} / {systemHealth?.summary.total ?? "—"} tables present
             </span>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-slate-200">
+          <div className="overflow-hidden rounded-2xl border border-[var(--surface-border)]">
             <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="px-4 py-3 font-semibold text-slate-700">Table</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700">Status</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700">Rows</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700">Error</th>
+                <tr className="border-b border-[var(--surface-border)] bg-[var(--surface-soft)]">
+                  <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Table</th>
+                  <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Status</th>
+                  <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Rows</th>
+                  <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Error</th>
                 </tr>
               </thead>
               <tbody>
                 {systemHealth?.tables.map((t) => (
                   <tr key={t.table} className="border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-3 font-medium text-slate-900">{t.table}</td>
+                    <td className="px-4 py-3 font-medium text-[var(--ink-950)]">{t.table}</td>
                     <td className="px-4 py-3">
                       {t.exists ? (
                         <span className="inline-flex items-center gap-1 text-emerald-700">
@@ -1038,7 +1038,7 @@ export default function AdminPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{t.rowCount ?? "—"}</td>
+                    <td className="px-4 py-3 text-[var(--ink-700)]">{t.rowCount ?? "—"}</td>
                     <td className="px-4 py-3 text-rose-600">{t.error || "—"}</td>
                   </tr>
                 ))}
@@ -1054,12 +1054,12 @@ export default function AdminPage() {
 
 function StatCard({ label, value, icon }: { label: string; value: string | number; icon?: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+    <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-500)]">{label}</p>
         {icon ? <span className="opacity-60">{icon}</span> : null}
       </div>
-      <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+      <p className="mt-1 text-2xl font-bold tracking-tight text-[var(--ink-950)]">{value}</p>
     </div>
   );
 }
@@ -1067,11 +1067,11 @@ function StatCard({ label, value, icon }: { label: string; value: string | numbe
 function TrendChart({ title, data, icon, barColor }: { title: string; data: DayBucket[]; icon: React.ReactNode; barColor: string }) {
   const maxVal = Math.max(...data.map((d) => d.count), 1);
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
       <div className="flex items-center gap-2 mb-4">
         {icon}
-        <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
-        <span className="ml-auto text-xs text-slate-400">{data.length} days</span>
+        <h3 className="text-sm font-semibold text-[var(--ink-700)]">{title}</h3>
+        <span className="ml-auto text-xs text-[var(--ink-500)]">{data.length} days</span>
       </div>
       <div className="flex items-end gap-[2px] h-24">
         {data.map((d) => (
@@ -1085,7 +1085,7 @@ function TrendChart({ title, data, icon, barColor }: { title: string; data: DayB
         ))}
       </div>
       {data.length > 0 ? (
-        <div className="flex justify-between mt-2 text-[10px] text-slate-400">
+        <div className="flex justify-between mt-2 text-[10px] text-[var(--ink-500)]">
           <span>{data[0]?.date}</span>
           <span>{data[data.length - 1]?.date}</span>
         </div>
@@ -1100,7 +1100,7 @@ const PAYOUT_STATUS_STYLES: Record<string, string> = {
   processing: "bg-indigo-50 text-indigo-700 border-indigo-200",
   completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
   failed: "bg-rose-50 text-rose-700 border-rose-200",
-  cancelled: "bg-slate-50 text-slate-500 border-slate-200",
+  cancelled: "bg-[var(--surface-soft)] text-[var(--ink-500)] border-[var(--surface-border)]",
 };
 
 function AdminPayoutsTab() {
@@ -1154,7 +1154,7 @@ function AdminPayoutsTab() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-          className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none">
+          className="rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm outline-none">
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
           <option value="processing">Processing</option>
@@ -1162,7 +1162,7 @@ function AdminPayoutsTab() {
           <option value="failed">Failed</option>
           <option value="cancelled">Cancelled</option>
         </select>
-        <span className="text-sm text-slate-500">{payouts.length} payout{payouts.length !== 1 ? "s" : ""}</span>
+        <span className="text-sm text-[var(--ink-500)]">{payouts.length} payout{payouts.length !== 1 ? "s" : ""}</span>
         <button
           type="button"
           disabled={batchRunning}
@@ -1196,20 +1196,20 @@ function AdminPayoutsTab() {
       ) : null}
 
       {loading ? (
-        <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
+        <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-[var(--ink-500)]" /></div>
       ) : payouts.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+        <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] p-8 text-center text-sm text-[var(--ink-500)]">
           No {filterStatus} payouts.
         </div>
       ) : (
         payouts.map((p: Record<string, unknown>) => (
-          <div key={p.id as string} className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div key={p.id as string} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 space-y-1">
-                <p className="text-sm font-semibold text-slate-900">{INR(p.net_amount_paise)}</p>
-                <p className="text-xs text-slate-500">{p.payout_method as string} — {p.payout_detail as string || "No details"}</p>
-                <p className="text-xs text-slate-400">{(p as Record<string, { full_name: string }>).profiles?.full_name || (p as Record<string, string>).provider_id}</p>
-                <p className="text-xs text-slate-400">{new Date(p.created_at as string).toLocaleDateString("en-IN")}</p>
+                <p className="text-sm font-semibold text-[var(--ink-950)]">{INR(p.net_amount_paise)}</p>
+                <p className="text-xs text-[var(--ink-500)]">{p.payout_method as string} — {p.payout_detail as string || "No details"}</p>
+                <p className="text-xs text-[var(--ink-500)]">{(p as Record<string, { full_name: string }>).profiles?.full_name || (p as Record<string, string>).provider_id}</p>
+                <p className="text-xs text-[var(--ink-500)]">{new Date(p.created_at as string).toLocaleDateString("en-IN")}</p>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1.5">
                 <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${PAYOUT_STATUS_STYLES[p.status as string] ?? ""}`}>

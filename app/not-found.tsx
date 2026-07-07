@@ -8,7 +8,7 @@ export default function NotFound() {
         <span className="text-[8rem] font-black leading-none tracking-tighter text-[var(--brand-300)] sm:text-[10rem]">
           404
         </span>
-        <h1 className="text-2xl font-bold text-[var(--ink-950)] sm:text-3xl">
+        <h1 className="text-2xl font-extrabold text-[var(--ink-950)] sm:text-3xl">
           Page not found
         </h1>
         <p className="max-w-md text-sm text-[var(--ink-500)] sm:text-base">

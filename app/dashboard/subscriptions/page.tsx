@@ -156,7 +156,7 @@ export default function SubscriptionsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--ink-500)]" />
       </div>
     );
   }
@@ -169,8 +169,8 @@ export default function SubscriptionsPage() {
           <Crown className="h-3.5 w-3.5" />
           Grow Your Business
         </div>
-        <h1 className="mt-4 text-2xl font-bold text-slate-900 sm:text-3xl">Choose your plan</h1>
-        <p className="mt-2 text-sm text-slate-500">Unlock more visibility, trust signals, and growth tools for your business.</p>
+        <h1 className="mt-4 text-2xl font-extrabold text-[var(--ink-950)] sm:text-3xl">Choose your plan</h1>
+        <p className="mt-2 text-sm text-[var(--ink-500)]">Unlock more visibility, trust signals, and growth tools for your business.</p>
       </div>
 
       {/* Current subscription banner */}
@@ -206,8 +206,8 @@ export default function SubscriptionsPage() {
           return (
             <div
               key={plan.id}
-              className={`relative rounded-2xl border bg-white p-6 shadow-sm transition ${
-                plan.highlighted ? "border-blue-300 ring-2 ring-blue-100" : "border-slate-200"
+              className={`relative rounded-2xl border bg-[var(--surface-elevated)] p-6 shadow-sm transition ${
+                plan.highlighted ? "border-blue-300 ring-2 ring-blue-100" : "border-[var(--surface-border)]"
               } ${isCurrentPlan ? "border-emerald-300 ring-2 ring-emerald-100" : ""}`}
             >
               {plan.highlighted && !isCurrentPlan && (
@@ -225,28 +225,28 @@ export default function SubscriptionsPage() {
               <div className={`mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl ${
                 color === "blue" ? "bg-blue-50 text-blue-600" :
                 color === "amber" ? "bg-amber-50 text-amber-600" :
-                "bg-slate-50 text-slate-600"
+                "bg-[var(--surface-soft)] text-[var(--ink-700)]"
               }`}>
                 <PlanIcon className="h-5 w-5" />
               </div>
 
-              <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
-              <p className="mt-1 text-xs text-slate-500">{plan.description}</p>
+              <h3 className="text-lg font-extrabold text-[var(--ink-950)]">{plan.name}</h3>
+              <p className="mt-1 text-xs text-[var(--ink-500)]">{plan.description}</p>
 
               <div className="mt-4 flex items-baseline gap-1">
                 {isFree ? (
-                  <span className="text-3xl font-bold text-slate-900">Free</span>
+                  <span className="text-3xl font-bold text-[var(--ink-950)]">Free</span>
                 ) : (
                   <>
-                    <span className="text-3xl font-bold text-slate-900">{INR(plan.price_paise)}</span>
-                    <span className="text-sm text-slate-500">/{plan.interval}</span>
+                    <span className="text-3xl font-bold text-[var(--ink-950)]">{INR(plan.price_paise)}</span>
+                    <span className="text-sm text-[var(--ink-500)]">/{plan.interval}</span>
                   </>
                 )}
               </div>
 
               <ul className="mt-5 space-y-2.5">
                 {(plan.features as string[]).map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-xs text-slate-600">
+                  <li key={feature} className="flex items-start gap-2 text-xs text-[var(--ink-700)]">
                     <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
                     <span>{feature}</span>
                   </li>
@@ -259,10 +259,10 @@ export default function SubscriptionsPage() {
                 onClick={() => void handleSubscribe(plan)}
                 className={`mt-6 w-full rounded-xl py-3 text-sm font-semibold transition disabled:opacity-50 ${
                   isCurrentPlan
-                    ? "border border-slate-200 bg-slate-50 text-slate-400 cursor-default"
+                    ? "border border-[var(--surface-border)] bg-[var(--surface-soft)] text-[var(--ink-500)] cursor-default"
                     : plan.highlighted
                     ? "bg-blue-600 text-white hover:bg-blue-700"
-                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    : "border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                 }`}
               >
                 {busy ? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Processing...</> :
@@ -275,7 +275,7 @@ export default function SubscriptionsPage() {
       </div>
 
       {/* Feature comparison note */}
-      <div className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+      <div className="mt-10 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] p-6 text-center text-sm text-[var(--ink-500)]">
         All plans include access to the {appName} marketplace, community feed, and real-time chat.
         Prices are inclusive of all taxes. Subscriptions auto-renew monthly. Cancel anytime.
       </div>

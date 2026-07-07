@@ -24,6 +24,8 @@ class AuthStateController extends ChangeNotifier {
       _currentSession = data.session;
       _sessionController.add(_currentSession);
       notifyListeners();
+    }, onError: (e) {
+      debugPrint('ServiQ auth_state_controller.onAuthStateChange error: $e');
     });
   }
 
@@ -44,7 +46,12 @@ class AuthStateController extends ChangeNotifier {
       return;
     }
 
-    await client.auth.signOut();
+    try {
+      await client.auth.signOut();
+    } catch (e) {
+      debugPrint('ServiQ auth_state_controller.signOut failed: $e');
+      rethrow;
+    }
   }
 
   @override

@@ -1,26 +1,39 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../features/notifications/domain/notification_models.dart';
+import 'app_firebase.dart';
 
-const _notifIcon = 'drawable/ic_notification';
+const _notifIcon = 'ic_notification';
 
 final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+bool _initialized = false;
 
 Future<void> initializeLocalNotifications() async {
-  const androidSettings = AndroidInitializationSettings(_notifIcon);
-  const iosSettings = DarwinInitializationSettings(
-    requestAlertPermission: false,
-    requestBadgePermission: false,
-    requestSoundPermission: false,
-  );
-  const settings = InitializationSettings(
-    android: androidSettings,
-    iOS: iosSettings,
-  );
-  await flutterLocalNotificationsPlugin.initialize(
-    settings: settings,
-    onDidReceiveNotificationResponse: _onNotificationTap,
-  );
+  if (_initialized) return;
+
+  try {
+    const androidSettings = AndroidInitializationSettings(_notifIcon);
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    const settings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+    await flutterLocalNotificationsPlugin.initialize(
+      settings: settings,
+      onDidReceiveNotificationResponse: _onNotificationTap,
+    );
+    _initialized = true;
+  } catch (e, stack) {
+    debugPrint('ServiQ: Failed to initialize local notifications: $e');
+    unawaited(AppFirebase.recordError(e, stack, fatal: false));
+  }
 }
 
 void _onNotificationTap(NotificationResponse response) {
@@ -34,51 +47,61 @@ Future<void> showLocalNotification({
   required MobileNotificationKind kind,
   String? route,
 }) async {
-  final channelId = _channelIdForKind(kind);
-  final androidDetails = AndroidNotificationDetails(
-    channelId,
-    _channelNameForKind(kind),
-    channelDescription: _channelDescriptionForKind(kind),
-    importance: _importanceForKind(kind),
-    priority: _priorityForKind(kind),
-    icon: _notifIcon,
-  );
-  final iosDetails = DarwinNotificationDetails(
-    presentAlert: true,
-    presentBadge: true,
-    presentSound: true,
-  );
-  final details = NotificationDetails(
-    android: androidDetails,
-    iOS: iosDetails,
-  );
-  await flutterLocalNotificationsPlugin.show(
-    id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-    title: title,
-    body: body,
-    notificationDetails: details,
-    payload: route,
-  );
+  try {
+    final channelId = _channelIdForKind(kind);
+    final androidDetails = AndroidNotificationDetails(
+      channelId,
+      _channelNameForKind(kind),
+      channelDescription: _channelDescriptionForKind(kind),
+      importance: _importanceForKind(kind),
+      priority: _priorityForKind(kind),
+      icon: _notifIcon,
+    );
+    final iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+    await flutterLocalNotificationsPlugin.show(
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: title,
+      body: body,
+      notificationDetails: details,
+      payload: route,
+    );
+  } catch (e, stack) {
+    debugPrint('ServiQ: Failed to show local notification: $e');
+    unawaited(AppFirebase.recordError(e, stack, fatal: false));
+  }
 }
 
 Future<void> createNotificationChannels() async {
-  final androidPlugin = flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin
-      >();
-  if (androidPlugin == null) return;
+  try {
+    final androidPlugin = flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (androidPlugin == null) return;
 
-  for (final kind in MobileNotificationKind.values) {
-    await androidPlugin.createNotificationChannel(
-      AndroidNotificationChannel(
-        _channelIdForKind(kind),
-        _channelNameForKind(kind),
-        description: _channelDescriptionForKind(kind),
-        importance: _importanceForKind(kind),
-        playSound: true,
-        enableVibration: true,
-      ),
-    );
+    for (final kind in MobileNotificationKind.values) {
+      await androidPlugin.createNotificationChannel(
+        AndroidNotificationChannel(
+          _channelIdForKind(kind),
+          _channelNameForKind(kind),
+          description: _channelDescriptionForKind(kind),
+          importance: _importanceForKind(kind),
+          playSound: true,
+          enableVibration: true,
+        ),
+      );
+    }
+  } catch (e, stack) {
+    debugPrint('ServiQ: Failed to create notification channels: $e');
+    unawaited(AppFirebase.recordError(e, stack, fatal: false));
   }
 }
 

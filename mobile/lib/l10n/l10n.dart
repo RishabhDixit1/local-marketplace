@@ -43,14 +43,21 @@ abstract class AppLocalizations {
   String get continueWithGoogle;
   String get continueWithEmail;
   String get sendMagicLink;
+  String get sendEmailCode;
   String get createAccount;
   String get signIn;
+  String get signInWithPassword;
+  String get signInWithEmail;
   String get signOut;
+  String get sending;
 
   // Navigation
   String get home;
   String get explore;
   String get people;
+  String get work;
+  String get inbox;
+  String get youTab;
   String get tasks;
   String get chat;
   String get profile;
@@ -70,6 +77,8 @@ abstract class AppLocalizations {
   String get done;
   String get submit;
   String get report;
+  String get update;
+  String get later;
 
   // States
   String get loading;
@@ -80,6 +89,11 @@ abstract class AppLocalizations {
   String get emptyInbox;
   String get noTasks;
   String get noNotifications;
+  String get couldNotConnect;
+  String get updateRequired;
+  String get updateAvailable;
+  String newVersionAvailable(String version);
+  String get whatsNew;
 
   // Marketplace
   String get postNeed;

@@ -227,7 +227,7 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
     }
     _autosaveTimer = Timer(const Duration(milliseconds: 1200), () {
       if (mounted && _hasDraftContent && !_saving && !_publishing) {
-        unawaited(_saveDraft(quiet: true, validate: false));
+        unawaited(_saveDraft(quiet: true, validate: false).catchError((e, st) { debugPrint('ServiQ launchpad._saveDraft failed: $e\n$st'); return null; }));
       }
     });
   }
@@ -479,7 +479,7 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       case _LaunchpadStep.aiDraft:
         _goToStep(_LaunchpadStep.publish);
       case _LaunchpadStep.publish:
-        unawaited(_publish());
+        unawaited(_publish().catchError((e, st) => debugPrint('ServiQ launchpad._publish failed: $e\n$st')));
     }
   }
 

@@ -70,7 +70,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
     try {
       _client = ref.read(appBootstrapProvider).client;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('ServiQ chat_page._client init failed: $e');
       _client = null;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -113,7 +114,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       ref.invalidate(chatConversationsProvider);
       _bindMessageStream(conversationId);
       await _markConversationReadSafely(conversationId);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('ServiQ chat_page._ensureDirectConversationIfNeeded failed: $e');
       if (mounted) {
         setState(() => _openingConversation = false);
       }
@@ -163,8 +165,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       await ref
           .read(chatRepositoryProvider)
           .markConversationRead(conversationId);
-    } catch (_) {
-      // Tests and preview states may not have a live Supabase client yet.
+    } catch (e) {
+      debugPrint('ServiQ chat_page._markConversationReadSafely failed: $e');
     }
   }
 

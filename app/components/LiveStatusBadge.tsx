@@ -48,11 +48,11 @@ export default function LiveStatusBadge({ className = "" }: { className?: string
   return (
     <span
       title={`Local time ${timeLabel}. ${coordinates ? `Current location ${locationLabel}.` : locationLabel}`}
-      className={`inline-flex max-w-[15rem] items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm ${className}`}
+      className={`inline-flex max-w-[15rem] items-center gap-1.5 rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-700)] shadow-sm ${className}`}
     >
       <Clock3 className="h-3.5 w-3.5 shrink-0 text-[var(--brand-700)]" />
       <span className="truncate">{timeLabel}</span>
-      <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+      <MapPin className="h-3.5 w-3.5 shrink-0 text-[var(--ink-500)]" />
       <span className="truncate">{locationLabel}</span>
     </span>
   );

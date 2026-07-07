@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
 import 'core/config/app_config.dart';
@@ -11,7 +10,6 @@ import 'core/firebase/local_notification_service.dart';
 import 'core/firebase/mobile_push_notifications.dart';
 import 'core/supabase/app_bootstrap.dart';
 import 'core/theme/app_theme.dart';
-import 'features/auth/data/onboarding_handoff.dart';
 
 Future<void> main() async {
   FlutterError.onError = (details) {
@@ -28,20 +26,14 @@ Future<void> main() async {
       WidgetsFlutterBinding.ensureInitialized();
 
       final appConfig = await AppConfig.load();
-      final firebaseState = await AppFirebase.initialize(config: appConfig);
-      final onboardingStore = SharedPreferencesOnboardingHandoffStore(
-        await SharedPreferences.getInstance(),
-      );
-      await initializeLocalNotifications();
-      if (firebaseState.initialized) {
-        MobilePushNotificationService.registerBackgroundHandler();
-      }
+      final firebaseFuture = AppFirebase.initialize(config: appConfig);
+      MobilePushNotificationService.registerBackgroundHandler();
+      initializeLocalNotifications();
 
       runApp(
         _BootstrapHost(
           appConfig: appConfig,
-          firebaseState: firebaseState,
-          onboardingStore: onboardingStore,
+          firebaseFuture: firebaseFuture,
         ),
       );
     },
@@ -55,22 +47,21 @@ Future<void> main() async {
 class _BootstrapHost extends StatefulWidget {
   const _BootstrapHost({
     required this.appConfig,
-    required this.firebaseState,
-    required this.onboardingStore,
+    required this.firebaseFuture,
   });
 
   final AppConfig appConfig;
-  final AppFirebaseState firebaseState;
-  final OnboardingHandoffStore onboardingStore;
+  final Future<AppFirebaseState> firebaseFuture;
 
   @override
   State<_BootstrapHost> createState() => _BootstrapHostState();
 }
 
 class _BootstrapHostState extends State<_BootstrapHost> {
-  late Future<AppBootstrap> _bootstrapFuture;
+  AppBootstrap? _bootstrap;
+  AppFirebaseState? _firebaseState;
+  String? _bootstrapError;
   bool _timedOut = false;
-  bool _bootstrapDone = false;
   Timer? _timeoutTimer;
 
   @override
@@ -85,10 +76,37 @@ class _BootstrapHostState extends State<_BootstrapHost> {
     super.dispose();
   }
 
+  void _retry() {
+    _timeoutTimer?.cancel();
+    setState(() {
+      _bootstrap = null;
+      _firebaseState = null;
+      _bootstrapError = null;
+      _timedOut = false;
+    });
+    _startBootstrap();
+  }
+
   void _startBootstrap() {
-    _bootstrapFuture = AppBootstrap.initialize(config: widget.appConfig);
-    _bootstrapFuture.then((_) {
-      if (mounted) setState(() => _bootstrapDone = true);
+    Future.wait([
+      AppBootstrap.initialize(config: widget.appConfig),
+      widget.firebaseFuture.catchError(
+        (_) => const AppFirebaseState.disabled(),
+      ),
+    ]).then((results) {
+      if (!mounted) return;
+      final bootstrap = results[0] as AppBootstrap;
+      _firebaseState = results[1] as AppFirebaseState;
+      if (bootstrap.initializationError != null) {
+        _bootstrapError = bootstrap.initializationError;
+      } else {
+        _bootstrap = bootstrap;
+      }
+      setState(() {});
+    }).catchError((e) {
+      if (!mounted) return;
+      _bootstrapError = e.toString();
+      setState(() {});
     });
     _scheduleTimeout();
   }
@@ -96,8 +114,9 @@ class _BootstrapHostState extends State<_BootstrapHost> {
   void _scheduleTimeout() {
     _timeoutTimer?.cancel();
     _timeoutTimer = Timer(const Duration(seconds: 8), () {
-      if (mounted && !_timedOut && !_bootstrapDone) {
-        setState(() => _timedOut = true);
+      if (mounted && _bootstrap == null && _bootstrapError == null) {
+        _timedOut = true;
+        setState(() {});
       }
     });
   }
@@ -107,51 +126,28 @@ class _BootstrapHostState extends State<_BootstrapHost> {
     if (_timedOut) {
       return _BootstrapErrorApp(
         message: 'Taking longer than expected. Check your connection and restart.',
-        onRetry: () {
-          _timeoutTimer?.cancel();
-          setState(() {
-            _timedOut = false;
-            _bootstrapDone = false;
-          });
-          _startBootstrap();
-        },
+        onRetry: _retry,
       );
     }
 
-    return FutureBuilder<AppBootstrap>(
-      future: _bootstrapFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const _BootstrapLoadingApp();
-        }
+    if (_bootstrapError != null) {
+      return _BootstrapErrorApp(
+        message: _bootstrapError!,
+        onRetry: _retry,
+      );
+    }
 
-        final hasError = snapshot.hasError || snapshot.data?.initializationError != null;
-        if (hasError) {
-          final msg = snapshot.error?.toString() ??
-              snapshot.data?.initializationError ??
-              'Could not start ServiQ.';
-          return _BootstrapErrorApp(message: msg, onRetry: () {
-            _timeoutTimer?.cancel();
-            setState(() {
-              _bootstrapDone = false;
-            });
-            _startBootstrap();
-          });
-        }
+    if (_bootstrap == null) {
+      return const _BootstrapLoadingApp();
+    }
 
-        final bootstrap = snapshot.data!;
-
-        return ProviderScope(
-          overrides: [
-            appBootstrapProvider.overrideWithValue(bootstrap),
-            appFirebaseProvider.overrideWithValue(widget.firebaseState),
-            onboardingHandoffStoreProvider.overrideWithValue(
-              widget.onboardingStore,
-            ),
-          ],
-          child: const ServiQApp(),
-        );
-      },
+    return ProviderScope(
+      overrides: [
+        appBootstrapProvider.overrideWithValue(_bootstrap!),
+        if (_firebaseState != null)
+          appFirebaseProvider.overrideWithValue(_firebaseState!),
+      ],
+      child: const ServiQApp(),
     );
   }
 }

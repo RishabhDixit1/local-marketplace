@@ -34,10 +34,10 @@ const cookieCategories = [
 export default function CookiePolicyPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
-      <h1 className="text-3xl font-bold text-slate-900">Cookie Policy</h1>
-      <p className="mt-2 text-sm text-slate-500">Last updated: June 2026</p>
+      <h1 className="text-3xl font-extrabold text-[var(--ink-950)]">Cookie Policy</h1>
+      <p className="mt-2 text-sm text-[var(--ink-500)]">Last updated: June 2026</p>
 
-      <div className="mt-8 space-y-6 text-sm leading-relaxed text-slate-600">
+      <div className="mt-8 space-y-6 text-sm leading-relaxed text-[var(--ink-700)]">
         <p>
           ServiQ uses cookies and similar technologies to provide, secure, and
           improve our platform. This policy explains what we use and how you can
@@ -45,7 +45,7 @@ export default function CookiePolicyPage() {
         </p>
 
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">
+          <h2 className="mb-3 text-lg font-semibold text-[var(--ink-950)]">
             What Are Cookies?
           </h2>
           <p>
@@ -56,33 +56,33 @@ export default function CookiePolicyPage() {
         </section>
 
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">
+          <h2 className="mb-3 text-lg font-semibold text-[var(--ink-950)]">
             Cookies We Use
           </h2>
           <div className="space-y-4">
             {cookieCategories.map((cat) => (
               <div
                 key={cat.title}
-                className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)] p-4"
               >
-                <h3 className="font-semibold text-slate-900">{cat.title}</h3>
-                <p className="mt-1 text-slate-600">{cat.description}</p>
+                <h3 className="font-semibold text-[var(--ink-950)]">{cat.title}</h3>
+                <p className="mt-1 text-[var(--ink-700)]">{cat.description}</p>
                 <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
                   <div>
-                    <span className="font-medium text-slate-500">
+                    <span className="font-medium text-[var(--ink-500)]">
                       Examples:
                     </span>
-                    <ul className="mt-1 list-inside list-disc text-slate-500">
+                    <ul className="mt-1 list-inside list-disc text-[var(--ink-500)]">
                       {cat.examples.map((ex) => (
                         <li key={ex}>{ex}</li>
                       ))}
                     </ul>
                   </div>
                   <div>
-                    <span className="font-medium text-slate-500">
+                    <span className="font-medium text-[var(--ink-500)]">
                       Duration:
                     </span>
-                    <p className="mt-1 text-slate-500">{cat.duration}</p>
+                    <p className="mt-1 text-[var(--ink-500)]">{cat.duration}</p>
                   </div>
                 </div>
               </div>
@@ -91,7 +91,7 @@ export default function CookiePolicyPage() {
         </section>
 
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">
+          <h2 className="mb-3 text-lg font-semibold text-[var(--ink-950)]">
             Your Choices
           </h2>
           <p>
@@ -107,7 +107,7 @@ export default function CookiePolicyPage() {
         </section>
 
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">
+          <h2 className="mb-3 text-lg font-semibold text-[var(--ink-950)]">
             Third-Party Services
           </h2>
           <p>
@@ -118,7 +118,7 @@ export default function CookiePolicyPage() {
         </section>
 
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">
+          <h2 className="mb-3 text-lg font-semibold text-[var(--ink-950)]">
             Contact
           </h2>
           <p>

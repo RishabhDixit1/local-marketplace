@@ -198,13 +198,13 @@ function SearchPageContent() {
   const activeFilterCount = [category, minRating, onlineOnly, sortBy !== "distance"].filter(Boolean).length;
 
   return (
-    <div className="min-h-screen bg-white pb-24 lg:pb-0">
-      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+    <div className="min-h-screen bg-[var(--surface-elevated)] pb-24 lg:pb-0">
+      <header className="sticky top-0 z-30 border-b border-[var(--surface-border)]/80 bg-[var(--surface-elevated)]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 sm:px-6">
           <Link href="/" className="shrink-0 text-sm font-bold text-[var(--brand-700)]">ServiQ</Link>
           <form onSubmit={handleSubmit} className="flex flex-1 items-center gap-2">
             <div ref={suggestRef} className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ink-500)]" />
               <input
                 ref={searchInputRef}
                 type="search"
@@ -237,7 +237,7 @@ function SearchPageContent() {
                   }
                 }}
                 placeholder="Search services, providers..."
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-sm outline-none transition focus:border-[var(--brand-400)] focus:bg-white focus:ring-2 focus:ring-[var(--brand-ring)]"
+                className="w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)] py-2 pl-9 pr-4 text-sm outline-none transition focus:border-[var(--brand-400)] focus:bg-[var(--surface-elevated)] focus:ring-2 focus:ring-[var(--brand-ring)]"
                 role="combobox"
                 aria-expanded={suggestOpen}
                 aria-controls={listboxId}
@@ -247,13 +247,13 @@ function SearchPageContent() {
                 ? SEARCH_SUGGESTIONS.filter((s) => s.toLowerCase().includes(query.toLowerCase())).length > 0
                 : loadRecent().length > 0) && (
                 <div id={listboxId}
-                  className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
+                  className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-lg"
                   role="listbox">
                   {query.trim() ? (
                     <>
-                      <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2">
-                        <TrendingUp size={14} className="text-slate-400" />
-                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Suggestions</span>
+                      <div className="flex items-center gap-2 border-b border-[var(--surface-border)] px-4 py-2">
+                        <TrendingUp size={14} className="text-[var(--ink-500)]" />
+                        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-500)]">Suggestions</span>
                       </div>
                       {SEARCH_SUGGESTIONS.filter((s) => s.toLowerCase().includes(query.toLowerCase())).map((s, i) => (
                         <button
@@ -271,19 +271,19 @@ function SearchPageContent() {
                           className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition ${
                             activeIndex === i
                               ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
-                              : "text-slate-700 hover:bg-slate-50"
+                              : "text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                           }`}
                         >
-                          <Search size={14} className="shrink-0 text-slate-400" />
+                          <Search size={14} className="shrink-0 text-[var(--ink-500)]" />
                           <span className="font-medium">{s}</span>
                         </button>
                       ))}
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2">
-                        <Clock size={14} className="text-slate-400" />
-                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Recent</span>
+                      <div className="flex items-center gap-2 border-b border-[var(--surface-border)] px-4 py-2">
+                        <Clock size={14} className="text-[var(--ink-500)]" />
+                        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-500)]">Recent</span>
                       </div>
                       {loadRecent().map((s, i) => (
                         <button
@@ -300,10 +300,10 @@ function SearchPageContent() {
                           className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition ${
                             activeIndex === i
                               ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
-                              : "text-slate-700 hover:bg-slate-50"
+                              : "text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                           }`}
                         >
-                          <Clock size={14} className="shrink-0 text-slate-400" />
+                          <Clock size={14} className="shrink-0 text-[var(--ink-500)]" />
                           <span className="font-medium">{s}</span>
                         </button>
                       ))}
@@ -318,7 +318,7 @@ function SearchPageContent() {
               className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
                 showFilters || activeFilterCount > 0
                   ? "border-[var(--brand-300)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--border-strong)]"
               }`}
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -333,12 +333,12 @@ function SearchPageContent() {
           </form>
         </div>
         {showFilters && (
-          <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 sm:px-6">
+          <div className="border-t border-[var(--surface-border)] bg-[var(--surface-soft)] px-4 py-3 sm:px-6">
             <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3">
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 outline-none"
+                className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--ink-700)] outline-none"
               >
                 <option value="">All Categories</option>
                 {CATEGORIES.map((c) => (
@@ -349,7 +349,7 @@ function SearchPageContent() {
               <select
                 value={minRating ?? ""}
                 onChange={(e) => setMinRating(e.target.value ? parseFloat(e.target.value) : null)}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 outline-none"
+                className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--ink-700)] outline-none"
               >
                 <option value="">Any Rating</option>
                 <option value="4">4+ Stars</option>
@@ -360,14 +360,14 @@ function SearchPageContent() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 outline-none"
+                className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--ink-700)] outline-none"
               >
                 {SORT_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
 
-              <label className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
+              <label className="flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--ink-700)]">
                 <input
                   type="checkbox"
                   checked={onlineOnly}
@@ -380,7 +380,7 @@ function SearchPageContent() {
               {activeFilterCount > 0 && (
                 <button
                   onClick={clearFilters}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--ink-500)] hover:text-[var(--ink-700)]"
                 >
                   <X className="h-3 w-3" />
                   Clear all
@@ -393,7 +393,7 @@ function SearchPageContent() {
 
       <main className="mx-auto max-w-5xl px-4 pb-16 pt-6 sm:px-6">
         {facets && !loading && (
-          <div className="mb-4 flex items-center justify-between text-xs text-slate-500">
+          <div className="mb-4 flex items-center justify-between text-xs text-[var(--ink-500)]">
             <span>{pagination?.total ?? facets.totalProviders} provider{(pagination?.total ?? facets.totalProviders) !== 1 ? "s" : ""} found</span>
             {facets.onlineCount > 0 && (
               <span className="text-emerald-600">{facets.onlineCount} online now</span>
@@ -407,15 +407,15 @@ function SearchPageContent() {
 
         {loading && allProviders.length === 0 && (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-[var(--ink-500)]" />
           </div>
         )}
 
         {!loading && allProviders.length === 0 && !error && (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center">
-            <Search className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-            <p className="text-sm font-semibold text-slate-600">No providers found</p>
-            <p className="mt-1 text-xs text-slate-400">Try different search terms or filters</p>
+          <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)]/50 p-12 text-center">
+            <Search className="mx-auto mb-3 h-10 w-10 text-[var(--ink-500)]" />
+            <p className="text-sm font-semibold text-[var(--ink-700)]">No providers found</p>
+            <p className="mt-1 text-xs text-[var(--ink-500)]">Try different search terms or filters</p>
             {activeFilterCount > 0 && (
               <button onClick={clearFilters} className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-4 py-2 text-xs font-semibold text-white">
                 Clear Filters
@@ -429,7 +429,7 @@ function SearchPageContent() {
             <Link
               key={provider.id}
               href={`/profile/${provider.id}`}
-              className="group rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[var(--brand-500)]/30 hover:shadow-md"
+              className="group rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 transition hover:border-[var(--brand-500)]/30 hover:shadow-md"
             >
               <div className="flex items-start gap-3">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-50)] text-lg font-bold text-[var(--brand-700)]">
@@ -438,14 +438,14 @@ function SearchPageContent() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">{provider.name}</h3>
-                      <p className="mt-0.5 text-xs text-slate-500">{provider.location || "Crossings Republik"}</p>
+                      <h3 className="text-sm font-bold text-[var(--ink-950)]">{provider.name}</h3>
+                      <p className="mt-0.5 text-xs text-[var(--ink-500)]">{provider.location || "Crossings Republik"}</p>
                     </div>
                     {provider.verified && (
                       <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 border border-emerald-200">Verified</span>
                     )}
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--ink-500)]">
                     {provider.avgRating ? (
                       <span className="flex items-center gap-1">
                         <Star className="h-3 w-3 text-amber-400" fill="currentColor" />
@@ -460,19 +460,19 @@ function SearchPageContent() {
                     ) : null}
                     {provider.completedJobs > 0 && (
                       <span className="flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3 text-slate-400" />
+                        <CheckCircle2 className="h-3 w-3 text-[var(--ink-500)]" />
                         {provider.completedJobs} jobs
                       </span>
                     )}
                     {provider.distanceKm != null && (
                       <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3 text-slate-400" />
+                        <MapPin className="h-3 w-3 text-[var(--ink-500)]" />
                         {provider.distanceKm} km
                       </span>
                     )}
                   </div>
                   {provider.bio && (
-                    <p className="mt-1.5 text-xs leading-relaxed text-slate-500 line-clamp-2">{provider.bio}</p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-[var(--ink-500)] line-clamp-2">{provider.bio}</p>
                   )}
                   <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[var(--brand-700)] opacity-0 transition group-hover:opacity-100">
                     View Profile <ArrowRight className="h-3 w-3" />
@@ -488,7 +488,7 @@ function SearchPageContent() {
             <button
               onClick={() => doSearch(offset + 50, true)}
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-6 py-3 text-sm font-semibold text-[var(--ink-700)] transition hover:border-[var(--border-strong)] disabled:opacity-50"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Load More ({pagination.total - offset - 50 > 0 ? pagination.total - offset - 50 : 0} remaining)
@@ -511,12 +511,12 @@ function SearchPageFallback() {
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div key={i} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 animate-pulse rounded-full bg-slate-200" />
               <div className="flex-1 space-y-2">
                 <div className="h-4 w-3/5 animate-pulse rounded bg-slate-200" />
-                <div className="h-3 w-2/5 animate-pulse rounded bg-slate-100" />
+                <div className="h-3 w-2/5 animate-pulse rounded bg-[var(--surface-soft)]" />
               </div>
             </div>
             <div className="mt-3 h-3 w-full animate-pulse rounded bg-slate-200" />

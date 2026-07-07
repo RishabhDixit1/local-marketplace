@@ -28,7 +28,7 @@ export function PageHeader({
           {backHref ? (
             <Link
               href={backHref}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink-950)]"
               aria-label="Back"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -37,7 +37,7 @@ export function PageHeader({
             <button
               type="button"
               onClick={onBack}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink-950)]"
               aria-label="Back"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -46,9 +46,9 @@ export function PageHeader({
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <h1 className="text-lg font-bold text-slate-900 sm:text-xl">{title}</h1>
+        <h1 className="text-lg font-extrabold text-[var(--ink-950)] sm:text-xl">{title}</h1>
         {subtitle && (
-          <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>
+          <p className="mt-0.5 text-xs text-[var(--ink-500)]">{subtitle}</p>
         )}
       </div>
       {rightSlot && <div className="ml-auto">{rightSlot}</div>}

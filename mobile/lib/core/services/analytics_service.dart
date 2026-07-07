@@ -13,8 +13,8 @@ class AnalyticsService {
     if (_analytics == null) {
       try {
         _analytics = FirebaseAnalytics.instance;
-      } catch (_) {
-        // Firebase not initialized — analytics will no-op.
+      } catch (e) {
+        debugPrint('ServiQ analytics_service FirebaseAnalytics.instance failed: $e');
       }
     }
     return _analytics;

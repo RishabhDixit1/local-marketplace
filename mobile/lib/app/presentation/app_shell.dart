@@ -11,6 +11,7 @@ import '../../core/realtime/mobile_live_hub.dart';
 import '../../core/services/analytics_service.dart';
 import '../../features/chat/data/chat_repository.dart';
 import '../../features/tasks/data/task_repository.dart';
+import '../../l10n/l10n.dart';
 import 'main_bottom_nav.dart';
 
 @visibleForTesting
@@ -103,7 +104,7 @@ class AppShell extends ConsumerWidget {
                         context.push(AppRoutes.createNeed);
                       },
                       icon: const Icon(Icons.add_rounded),
-                      label: const Text('Post Need'),
+                      label: Text(AppLocalizations.of(context).postNeed),
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Theme.of(context).colorScheme.onPrimary,
                       elevation: 3,

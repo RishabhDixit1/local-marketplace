@@ -186,9 +186,9 @@ class MobilePushNotificationService {
   }
 
   void dispose() {
-    unawaited(_tokenRefreshSubscription?.cancel());
-    unawaited(_tapSubscription?.cancel());
-    unawaited(_foregroundSubscription?.cancel());
+    unawaited(_tokenRefreshSubscription?.cancel().catchError((e, st) => debugPrint('ServiQ push._tokenRefreshSubscription cancel failed: $e\n$st')));
+    unawaited(_tapSubscription?.cancel().catchError((e, st) => debugPrint('ServiQ push._tapSubscription cancel failed: $e\n$st')));
+    unawaited(_foregroundSubscription?.cancel().catchError((e, st) => debugPrint('ServiQ push._foregroundSubscription cancel failed: $e\n$st')));
   }
 }
 
@@ -205,6 +205,6 @@ class NotificationTapRouteController {
   }
 
   void dispose() {
-    unawaited(_controller.close());
+    unawaited(_controller.close().catchError((e, st) => debugPrint('ServiQ push._controller close failed: $e\n$st')));
   }
 }

@@ -278,7 +278,7 @@ export default function QuoteRoom({
   const panelToneClassName =
     surface === "chat"
       ? "border-sky-200 bg-white/95 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]"
-      : "border-slate-200 bg-white shadow-[0_18px_48px_-38px_rgba(15,23,42,0.28)]";
+      : "border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-[0_18px_48px_-38px_rgba(15,23,42,0.28)]";
 
   if (!orderId && !helpRequestId) {
     return null;
@@ -287,7 +287,7 @@ export default function QuoteRoom({
   if (loading) {
     return (
       <div className={`rounded-[1.6rem] border p-6 ${panelToneClassName}`}>
-        <div className="flex items-center justify-center gap-3 py-8 text-sm text-slate-600">
+        <div className="flex items-center justify-center gap-3 py-8 text-sm text-[var(--ink-700)]">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span>Loading deal room...</span>
         </div>
@@ -300,13 +300,13 @@ export default function QuoteRoom({
       <div className={`rounded-[1.6rem] border p-6 ${panelToneClassName}`}>
         <div className="flex flex-col items-center gap-3 text-center py-6">
           <XCircle className="h-8 w-8 text-rose-500" />
-          <p className="text-sm font-semibold text-slate-900">Something went wrong</p>
-          <p className="text-sm text-slate-600">{error}</p>
+          <p className="text-sm font-semibold text-[var(--ink-950)]">Something went wrong</p>
+          <p className="text-sm text-[var(--ink-700)]">{error}</p>
            {(onBack || onClose) && (
              <button
                type="button"
                onClick={handleClose}
-               className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+               className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--surface-soft)] px-4 py-2 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-slate-200"
              >
                <ArrowLeft className="h-4 w-4" />
                Go back
@@ -324,14 +324,14 @@ export default function QuoteRoom({
   return (
     <section className={`rounded-[1.6rem] border p-5 sm:p-6 ${panelToneClassName}`}>
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-slate-200">
+      <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-[var(--surface-border)]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
            {(onBack || onClose) && (
                <button
                  type="button"
                  onClick={handleClose}
-                 className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-200"
+                 className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--surface-soft)] px-2.5 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:bg-slate-200"
                >
                  <ArrowLeft className="h-3.5 w-3.5" />
                  Back
@@ -346,13 +346,13 @@ export default function QuoteRoom({
             </span>
           </div>
 
-          <h3 className="mt-3 text-lg font-semibold text-slate-950">
+          <h3 className="mt-3 text-lg font-semibold text-[var(--ink-950)]">
             {dealRoomContext.scope.taskTitle || "Job details"}
           </h3>
-          <p className="mt-1 text-sm text-slate-600">
-            With <span className="font-semibold text-slate-900">{dealRoomContext.counterpartyName}</span>
+          <p className="mt-1 text-sm text-[var(--ink-700)]">
+            With <span className="font-semibold text-[var(--ink-950)]">{dealRoomContext.counterpartyName}</span>
             {dealRoomContext.scope.locationLabel && (
-              <span className="ml-1 inline-flex items-center gap-1 text-slate-500">
+              <span className="ml-1 inline-flex items-center gap-1 text-[var(--ink-500)]">
                 <MapPin className="h-3.5 w-3.5" />
                 {dealRoomContext.scope.locationLabel}
               </span>
@@ -365,7 +365,7 @@ export default function QuoteRoom({
             <button
               type="button"
               onClick={onOpenChat}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-sky-300 hover:text-sky-700"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:border-sky-300 hover:text-sky-700"
             >
               <MessageCircle className="h-3.5 w-3.5" />
               Open Chat
@@ -385,8 +385,8 @@ export default function QuoteRoom({
       </div>
 
       {/* Timeline */}
-      <div className="py-4 border-b border-slate-200">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500 mb-3">Progress</p>
+      <div className="py-4 border-b border-[var(--surface-border)]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-500)] mb-3">Progress</p>
         <div className="flex flex-wrap items-center gap-2">
           {stageOrder.map((step, idx) => {
             const isComplete = timelineSteps.includes(step);
@@ -400,7 +400,7 @@ export default function QuoteRoom({
                         ? "bg-[var(--brand-900)] text-white"
                         : isComplete
                           ? "bg-emerald-100 text-emerald-700"
-                          : "bg-slate-100 text-slate-400"
+                          : "bg-[var(--surface-soft)] text-[var(--ink-500)]"
                     }`}
                   >
                     {isComplete && !isCurrent ? <CheckCircle2 className="h-3 w-3" /> : idx + 1}
@@ -408,10 +408,10 @@ export default function QuoteRoom({
                   <span
                     className={`text-xs font-semibold ${
                       isCurrent
-                        ? "text-slate-900"
+                        ? "text-[var(--ink-950)]"
                         : isComplete
-                          ? "text-slate-600"
-                          : "text-slate-400"
+                          ? "text-[var(--ink-700)]"
+                          : "text-[var(--ink-500)]"
                     }`}
                   >
                     {getOrderStatusLabel(step)}
@@ -430,9 +430,9 @@ export default function QuoteRoom({
 
       {/* Scope Summary */}
       {dealRoomContext.scope.taskDescription && (
-        <div className="py-4 border-b border-slate-200">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500 mb-2">Scope</p>
-          <p className="text-sm text-slate-700 leading-relaxed">
+        <div className="py-4 border-b border-[var(--surface-border)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-500)] mb-2">Scope</p>
+          <p className="text-sm text-[var(--ink-700)] leading-relaxed">
             {dealRoomContext.scope.taskDescription}
           </p>
           {(dealRoomContext.scope.budgetMin != null || dealRoomContext.scope.budgetMax != null) && (
@@ -456,7 +456,7 @@ export default function QuoteRoom({
 
        {/* Timeline */}
       {timeline.length > 0 && (
-        <div className="py-4 border-t border-slate-200">
+        <div className="py-4 border-t border-[var(--surface-border)]">
           <button
             type="button"
             onClick={() => setShowTimeline((prev) => !prev)}
@@ -466,13 +466,13 @@ export default function QuoteRoom({
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100">
                 <FileText className="h-3.5 w-3.5 text-amber-700" />
               </span>
-              <span className="font-semibold text-slate-700">Activity</span>
-              <span className="text-xs text-slate-400">({timeline.length} events)</span>
+              <span className="font-semibold text-[var(--ink-700)]">Activity</span>
+              <span className="text-xs text-[var(--ink-500)]">({timeline.length} events)</span>
             </div>
             {showTimeline ? (
-              <ChevronUp className="h-4 w-4 text-slate-400" />
+              <ChevronUp className="h-4 w-4 text-[var(--ink-500)]" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-slate-400" />
+              <ChevronDown className="h-4 w-4 text-[var(--ink-500)]" />
             )}
           </button>
 
@@ -488,7 +488,7 @@ export default function QuoteRoom({
                           ? "bg-sky-100 text-sky-700"
                           : event.kind === "attachment"
                             ? "bg-teal-100 text-teal-700"
-                            : "bg-slate-100 text-slate-500"
+                            : "bg-[var(--surface-soft)] text-[var(--ink-500)]"
                     }`}>
                       {event.kind === "quote_accepted" ? (
                         <CheckCircle2 className="h-3.5 w-3.5" />
@@ -505,11 +505,11 @@ export default function QuoteRoom({
                     )}
                   </div>
                   <div className="min-w-0 pb-4">
-                    <p className="text-sm font-semibold text-slate-900">{event.title}</p>
+                    <p className="text-sm font-semibold text-[var(--ink-950)]">{event.title}</p>
                     {event.description && (
-                      <p className="text-xs text-slate-500 mt-0.5">{event.description}</p>
+                      <p className="text-xs text-[var(--ink-500)] mt-0.5">{event.description}</p>
                     )}
-                    <p className="text-xs text-slate-400 mt-0.5">{formatAgo(event.timestamp)}</p>
+                    <p className="text-xs text-[var(--ink-500)] mt-0.5">{formatAgo(event.timestamp)}</p>
                   </div>
                 </div>
               ))}
@@ -526,7 +526,7 @@ export default function QuoteRoom({
                <AlertTriangle className="h-4 w-4 text-amber-700" />
              </span>
              <div className="min-w-0 flex-1">
-               <h4 className="text-sm font-bold text-amber-900">Customer requested changes</h4>
+                <h4 className="text-sm font-extrabold text-amber-900">Customer requested changes</h4>
                 {!!quoteDraft.metadata?.rejected_reason && (
                  <p className="mt-1 text-xs text-amber-700 leading-relaxed">
                    {String(quoteDraft.metadata.rejected_reason)}
@@ -577,7 +577,7 @@ export default function QuoteRoom({
 
       {/* Catalog Quick-Add (for providers) */}
       {dealRoomContext.canEditQuote && catalogItems.length > 0 && (
-        <div className="py-4 border-t border-slate-200">
+        <div className="py-4 border-t border-[var(--surface-border)]">
           <button
             type="button"
             onClick={() => setShowCatalog((prev) => !prev)}
@@ -587,13 +587,13 @@ export default function QuoteRoom({
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--brand-50)]">
                 <FileText className="h-3.5 w-3.5 text-[var(--brand-700)]" />
               </span>
-              <span className="font-semibold text-slate-700">Quick-add from your service catalog</span>
-              <span className="text-xs text-slate-400">({catalogItems.length} services)</span>
+              <span className="font-semibold text-[var(--ink-700)]">Quick-add from your service catalog</span>
+              <span className="text-xs text-[var(--ink-500)]">({catalogItems.length} services)</span>
             </div>
             {showCatalog ? (
-              <ChevronUp className="h-4 w-4 text-slate-400" />
+              <ChevronUp className="h-4 w-4 text-[var(--ink-500)]" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-slate-400" />
+              <ChevronDown className="h-4 w-4 text-[var(--ink-500)]" />
             )}
           </button>
 
@@ -602,21 +602,21 @@ export default function QuoteRoom({
               {catalogItems.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5"
+                  className="flex items-start justify-between gap-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-2.5"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{item.title}</p>
+                    <p className="text-sm font-semibold text-[var(--ink-950)] truncate">{item.title}</p>
                     {item.price && item.price > 0 && (
                       <p className="text-xs font-semibold text-[var(--brand-700)]">{formatCurrency(item.price)}</p>
                     )}
                     {item.description && (
-                      <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">{item.description}</p>
+                      <p className="mt-0.5 text-xs text-[var(--ink-500)] line-clamp-2">{item.description}</p>
                     )}
                   </div>
                   <button
                     type="button"
                     onClick={() => draftEditorRef.current?.addLineItem(item.title, item.description || "", item.price ?? 0)}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-700"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2 py-1 text-xs font-semibold text-[var(--ink-700)] transition hover:border-sky-300 hover:text-sky-700"
                     title="Add to quote line items"
                   >
                     <Plus className="h-3.5 w-3.5" />
@@ -631,7 +631,7 @@ export default function QuoteRoom({
 
       {/* Version History */}
       {versions.length > 0 && (
-        <div className="py-4 border-t border-slate-200">
+        <div className="py-4 border-t border-[var(--surface-border)]">
           <button
             type="button"
             onClick={() => setShowVersions((prev) => !prev)}
@@ -641,13 +641,13 @@ export default function QuoteRoom({
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-purple-100">
                 <PenTool className="h-3.5 w-3.5 text-purple-700" />
               </span>
-              <span className="font-semibold text-slate-700">Version history</span>
-              <span className="text-xs text-slate-400">({versions.length} versions)</span>
+              <span className="font-semibold text-[var(--ink-700)]">Version history</span>
+              <span className="text-xs text-[var(--ink-500)]">({versions.length} versions)</span>
             </div>
             {showVersions ? (
-              <ChevronUp className="h-4 w-4 text-slate-400" />
+              <ChevronUp className="h-4 w-4 text-[var(--ink-500)]" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-slate-400" />
+              <ChevronDown className="h-4 w-4 text-[var(--ink-500)]" />
             )}
           </button>
 
@@ -656,22 +656,22 @@ export default function QuoteRoom({
               {versions.map((version, idx) => (
                 <div
                   key={version.id}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5"
+                  className="flex items-start justify-between gap-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2.5"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-900">v{version.versionNumber}</span>
+                      <span className="text-xs font-bold text-[var(--ink-950)]">v{version.versionNumber}</span>
                       {idx === 0 && (
                         <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
                           Current
                         </span>
                       )}
-                      <span className="text-xs text-slate-400">{formatAgo(version.createdAt)}</span>
+                      <span className="text-xs text-[var(--ink-500)]">{formatAgo(version.createdAt)}</span>
                     </div>
-                    <p className="mt-0.5 text-xs text-slate-600">
+                    <p className="mt-0.5 text-xs text-[var(--ink-700)]">
                       {version.summary || "Quote draft"} · {formatCurrency(version.total)}
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <p className="mt-0.5 text-xs text-[var(--ink-500)]">
                       {version.lineItems.length} line item{version.lineItems.length !== 1 ? "s" : ""}
                     </p>
                   </div>
@@ -684,19 +684,19 @@ export default function QuoteRoom({
 
       {/* Attachments */}
       {(dealRoomContext?.canAddAttachment || attachments.length > 0) && (
-        <div className="py-4 border-t border-slate-200">
+        <div className="py-4 border-t border-[var(--surface-border)]">
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-teal-100">
                 <Paperclip className="h-3.5 w-3.5 text-teal-700" />
               </span>
-              <span className="text-sm font-semibold text-slate-700">
+              <span className="text-sm font-semibold text-[var(--ink-700)]">
                 Attachments
                 {attachments.length > 0 && ` (${attachments.length})`}
               </span>
             </div>
             {dealRoomContext?.canAddAttachment && quoteDraft && (
-              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-700">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:border-sky-300 hover:text-sky-700">
                 {uploadingAttachment ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
@@ -721,9 +721,9 @@ export default function QuoteRoom({
           </div>
 
           {attachments.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
-              <Paperclip className="mx-auto h-8 w-8 text-slate-300" />
-              <p className="mt-2 text-xs text-slate-500">
+            <div className="rounded-xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)]/50 p-4 text-center">
+              <Paperclip className="mx-auto h-8 w-8 text-[var(--ink-500)]" />
+              <p className="mt-2 text-xs text-[var(--ink-500)]">
                 No attachments yet. Add photos, PDFs, receipts, or proof of work.
               </p>
             </div>
@@ -732,7 +732,7 @@ export default function QuoteRoom({
               {attachments.map((attachment) => (
                 <div
                   key={attachment.id}
-                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-2.5"
                 >
                   <a
                     href={attachment.fileUrl}
@@ -740,18 +740,18 @@ export default function QuoteRoom({
                     rel="noopener noreferrer"
                     className="flex min-w-0 flex-1 items-center gap-3"
                   >
-                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white">
+                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-elevated)]">
                       {attachment.mimeType?.startsWith("image/") ? (
                         <ImageIcon className="h-4.5 w-4.5 text-sky-600" />
                       ) : (
-                        <FileText className="h-4.5 w-4.5 text-slate-600" />
+                        <FileText className="h-4.5 w-4.5 text-[var(--ink-700)]" />
                       )}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-900 truncate">
+                      <p className="text-sm font-semibold text-[var(--ink-950)] truncate">
                         {attachment.fileName}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-[var(--ink-500)]">
                         {formatAgo(attachment.createdAt)}
                         {attachment.fileSizeBytes != null &&
                           attachment.fileSizeBytes > 0 &&
@@ -763,7 +763,7 @@ export default function QuoteRoom({
                     <button
                       type="button"
                       onClick={() => void handleRemoveAttachment(attachment.id)}
-                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--ink-500)] transition hover:bg-rose-50 hover:text-rose-600"
                       title="Remove attachment"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -783,14 +783,14 @@ export default function QuoteRoom({
       {/* Reject Modal */}
       {showRejectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-xl">
             <div className="flex items-start gap-3">
               <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-100">
                 <XCircle className="h-5 w-5 text-rose-600" />
               </span>
               <div className="min-w-0">
-                <h3 className="text-base font-bold text-slate-900">Reject or request changes</h3>
-                <p className="mt-1 text-xs text-slate-500">
+                <h3 className="text-base font-extrabold text-[var(--ink-950)]">Reject or request changes</h3>
+                <p className="mt-1 text-xs text-[var(--ink-500)]">
                   Let the provider know what you&apos;d like to adjust.
                 </p>
               </div>
@@ -798,7 +798,7 @@ export default function QuoteRoom({
 
             <div className="mt-4 space-y-4">
               <label className="space-y-2 text-sm">
-                <span className="block font-semibold text-slate-800">
+                <span className="block font-semibold text-[var(--ink-950)]">
                   What would you like to change?
                 </span>
                 <textarea
@@ -806,11 +806,11 @@ export default function QuoteRoom({
                   onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="Price too high? Need different scope? Add your feedback here..."
                   rows={3}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400"
+                  className="w-full rounded-xl border border-slate-300 bg-[var(--surface-elevated)] px-3 py-2.5 text-sm text-[var(--ink-950)] outline-none transition focus:border-sky-400"
                 />
               </label>
 
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/50 p-3 transition hover:bg-slate-50">
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)]/50 p-3 transition hover:bg-[var(--surface-soft)]">
                 <div className="mt-0.5">
                   <input
                     type="checkbox"
@@ -820,10 +820,10 @@ export default function QuoteRoom({
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-800">
+                  <p className="text-sm font-semibold text-[var(--ink-950)]">
                     Request a revised quote
                   </p>
-                  <p className="mt-0.5 text-xs text-slate-500">
+                  <p className="mt-0.5 text-xs text-[var(--ink-500)]">
                     Check this if you want the provider to send a different quote based on your
                     feedback, instead of declining entirely.
                   </p>
@@ -832,11 +832,11 @@ export default function QuoteRoom({
 
               {requestCounterOffer && (
                 <label className="space-y-2 text-sm">
-                  <span className="block font-semibold text-slate-800">
+                  <span className="block font-semibold text-[var(--ink-950)]">
                     Your desired amount
                   </span>
                   <div className="relative">
-                    <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ink-500)]" />
                     <input
                       type="number"
                       min={0}
@@ -844,10 +844,10 @@ export default function QuoteRoom({
                       value={counterAmount ?? ""}
                       onChange={(e) => setCounterAmount(e.target.value ? Number(e.target.value) : null)}
                       placeholder="0.00"
-                      className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-sky-400"
+                      className="w-full rounded-xl border border-slate-300 bg-[var(--surface-elevated)] py-2.5 pl-9 pr-3 text-sm text-[var(--ink-950)] outline-none transition focus:border-sky-400"
                     />
                   </div>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-[var(--ink-500)]">
                     Suggest a price you&apos;d be comfortable paying for this job.
                   </p>
                 </label>
@@ -859,7 +859,7 @@ export default function QuoteRoom({
                 type="button"
                 onClick={handleCloseRejectModal}
                 disabled={rejecting}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2 text-sm font-semibold text-[var(--ink-700)] transition hover:border-[var(--border-strong)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>

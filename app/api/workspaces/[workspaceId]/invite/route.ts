@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
-import { FROM_EMAIL } from "@/lib/emailConfig";
+import { sendEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
@@ -99,30 +99,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
   const inviterName = auth.auth.email || "A workspace owner";
   const inviteLink = `${APP_URL}/signup?ref=workspace&workspace=${workspaceId}`;
 
-  const emailRes = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: FROM_EMAIL,
-      to: body.email.trim(),
-      subject: `${inviterName} invited you to join ${workspace.name} on ServiQ`,
-      html: [
-        `<div style="font-family:Inter,-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#0f172a">`,
-        `<h2 style="font-size:18px;font-weight:700;margin:0 0 12px">You're invited to join ${workspace.name} 👋</h2>`,
-        `<p style="color:#475569">${inviterName} has invited you to join their workspace on ServiQ. Accept the invitation to start collaborating.</p>`,
-        `<a href="${inviteLink}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#2563eb;color:#fff;font-size:14px;font-weight:600;border-radius:12px;text-decoration:none">Accept Invitation</a>`,
-        `<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8">This invitation was sent by ${inviterName} via ServiQ.</div>`,
-        `</div>`,
-      ].join(""),
-    }),
+  const emailResult = await sendEmail({
+    to: body.email.trim(),
+    subject: `${inviterName} invited you to join ${workspace.name} on ServiQ`,
+    html: [
+      `<div style="font-family:Inter,-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#0f172a">`,
+      `<h2 style="font-size:18px;font-weight:700;margin:0 0 12px">You're invited to join ${workspace.name} 👋</h2>`,
+      `<p style="color:#475569">${inviterName} has invited you to join their workspace on ServiQ. Accept the invitation to start collaborating.</p>`,
+      `<a href="${inviteLink}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#2563eb;color:#fff;font-size:14px;font-weight:600;border-radius:12px;text-decoration:none">Accept Invitation</a>`,
+      `<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8">This invitation was sent by ${inviterName} via ServiQ.</div>`,
+      `</div>`,
+    ].join(""),
   });
 
-  if (!emailRes.ok) {
-    const errText = await emailRes.text().catch(() => "unknown");
-    return toError(502, "EMAIL_FAILED", `Failed to send invite: ${errText}`);
+  if (!emailResult.ok) {
+    return toError(502, "EMAIL_FAILED", `Failed to send invite: ${emailResult.error}`);
   }
 
   // Log activity

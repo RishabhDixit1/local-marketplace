@@ -26,7 +26,7 @@ type Document = {
 };
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
-  unverified: { label: "Not Submitted", className: "bg-slate-100 text-slate-600" },
+  unverified: { label: "Not Submitted", className: "bg-[var(--surface-soft)] text-[var(--ink-700)]" },
   pending: { label: "Under Review", className: "bg-amber-50 text-amber-700" },
   verified: { label: "Verified", className: "bg-emerald-50 text-emerald-700" },
   rejected: { label: "Rejected", className: "bg-rose-50 text-rose-700" },
@@ -133,8 +133,8 @@ export default function VerificationPage() {
     <div className="mx-auto max-w-3xl space-y-6 px-3 pb-8 pt-5 sm:px-6 sm:pt-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Verification</h1>
-          <p className="text-sm text-slate-500">Get verified to build trust with customers.</p>
+          <h1 className="text-xl font-bold text-[var(--ink-950)]">Verification</h1>
+          <p className="text-sm text-[var(--ink-500)]">Get verified to build trust with customers.</p>
         </div>
         <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${badge.className}`}>
           <ShieldCheck className="h-3.5 w-3.5" />
@@ -143,29 +143,29 @@ export default function VerificationPage() {
       </div>
 
       {/* Badge progression */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-bold text-slate-900 mb-1">Verification Progress</h2>
-        <p className="text-xs text-slate-500 mb-4">
+      <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
+        <h2 className="text-sm font-bold text-[var(--ink-950)] mb-1">Verification Progress</h2>
+        <p className="text-xs text-[var(--ink-500)] mb-4">
           {status === "verified" ? "Your profile is verified. Great job!" : "Complete these steps to get verified."}
         </p>
         <div className="space-y-3">
           {progression.map((step) => (
-            <div key={step.label} className={`flex items-start gap-3 rounded-xl p-3 ${step.met ? "bg-emerald-50" : "bg-slate-50"}`}>
+            <div key={step.label} className={`flex items-start gap-3 rounded-xl p-3 ${step.met ? "bg-emerald-50" : "bg-[var(--surface-soft)]"}`}>
               <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${step.met ? "bg-emerald-500" : "bg-slate-300"}`}>
                 {step.met ? <CheckCircle2 className="h-4 w-4 text-white" /> : <div className="h-2 w-2 rounded-full bg-white" />}
               </div>
               <div>
-                <p className={`text-sm font-semibold ${step.met ? "text-emerald-800" : "text-slate-700"}`}>{step.label}</p>
-                <p className="text-xs text-slate-500">{step.detail}</p>
+                <p className={`text-sm font-semibold ${step.met ? "text-emerald-800" : "text-[var(--ink-700)]"}`}>{step.label}</p>
+                <p className="text-xs text-[var(--ink-500)]">{step.detail}</p>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-bold text-slate-900 mb-3">Upload Documents</h2>
-        <p className="text-xs text-slate-500 mb-4">
+      <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
+        <h2 className="text-sm font-bold text-[var(--ink-950)] mb-3">Upload Documents</h2>
+        <p className="text-xs text-[var(--ink-500)] mb-4">
           Upload at least one government-issued ID or business document. We&apos;ll review and verify your profile.
         </p>
 
@@ -173,19 +173,19 @@ export default function VerificationPage() {
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-400)]"
+            className="w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-400)]"
           >
             {DOCUMENT_TYPES.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
 
-          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 transition hover:border-[var(--brand-400)] hover:bg-[var(--brand-50)]">
+          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] px-4 py-3 text-sm text-[var(--ink-700)] transition hover:border-[var(--brand-400)] hover:bg-[var(--brand-50)]">
             <Upload className="h-4 w-4" />
             {file ? file.name : "Choose file (PNG, JPG, PDF, max 10MB)"}
             <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             {file && (
-              <button type="button" onClick={() => setFile(null)} className="ml-auto text-slate-400 hover:text-rose-500">
+              <button type="button" onClick={() => setFile(null)} className="ml-auto text-[var(--ink-500)] hover:text-rose-500">
                 <X className="h-4 w-4" />
               </button>
             )}
@@ -214,40 +214,40 @@ export default function VerificationPage() {
           </div>
 
           {message && (
-            <p className="text-xs text-slate-600 bg-slate-50 rounded-xl px-3 py-2">{message}</p>
+            <p className="text-xs text-[var(--ink-700)] bg-[var(--surface-soft)] rounded-xl px-3 py-2">{message}</p>
           )}
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-bold text-slate-900 mb-3">
+      <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
+        <h2 className="text-sm font-bold text-[var(--ink-950)] mb-3">
           <span className="inline-flex items-center gap-1.5">
             <Scan className="h-4 w-4 text-[var(--brand-700)]" />
             Instant KYC (Aadhaar / PAN)
           </span>
         </h2>
-        <p className="text-xs text-slate-500 mb-4">
+        <p className="text-xs text-[var(--ink-500)] mb-4">
           Verify instantly via government databases — no manual review needed.
         </p>
         <InstantKycForm />
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-bold text-slate-900 mb-3">Document History</h2>
+      <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
+        <h2 className="text-sm font-bold text-[var(--ink-950)] mb-3">Document History</h2>
         {loading ? (
-          <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
+          <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-[var(--ink-500)]" /></div>
         ) : documents.length === 0 ? (
-          <p className="text-center text-sm text-slate-400 py-6">No documents uploaded yet.</p>
+          <p className="text-center text-sm text-[var(--ink-500)] py-6">No documents uploaded yet.</p>
         ) : (
           <div className="space-y-2">
             {documents.map((doc) => {
               const typeLabel = DOCUMENT_TYPES.find((t) => t.value === doc.document_type)?.label || doc.document_type;
               const statusBadge = STATUS_BADGES[doc.status] || STATUS_BADGES.unverified;
               return (
-                <div key={doc.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+                <div key={doc.id} className="flex items-center justify-between rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-2.5">
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">{typeLabel}</p>
-                    <p className="text-[10px] text-slate-400">{new Date(doc.submitted_at).toLocaleDateString()}</p>
+                    <p className="text-sm font-semibold text-[var(--ink-950)]">{typeLabel}</p>
+                    <p className="text-[10px] text-[var(--ink-500)]">{new Date(doc.submitted_at).toLocaleDateString()}</p>
                     {doc.reviewer_notes && (
                       <p className="text-[10px] text-rose-500 mt-0.5">{doc.reviewer_notes}</p>
                     )}
@@ -312,7 +312,7 @@ function InstantKycForm() {
             className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
               docType === t.value
                 ? "border-[var(--brand-400)] bg-[var(--brand-50)] text-[var(--brand-800)]"
-                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--surface-border)]"
             }`}
           >
             {t.label}
@@ -326,7 +326,7 @@ function InstantKycForm() {
         onChange={(e) => setDocNumber(e.target.value)}
         placeholder={selected.placeholder}
         maxLength={docType === "aadhaar" ? 14 : 10}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-400)]"
+        className="w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-400)]"
       />
 
       <input
@@ -334,7 +334,7 @@ function InstantKycForm() {
         value={fullName}
         onChange={(e) => setFullName(e.target.value)}
         placeholder="Full name (optional, for name matching)"
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-400)]"
+        className="w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-400)]"
       />
 
       <button

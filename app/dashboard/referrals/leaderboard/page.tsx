@@ -25,7 +25,7 @@ type LeaderboardData = {
 
 const RANK_ICONS: Record<number, { icon: typeof Crown; className: string }> = {
   1: { icon: Trophy, className: "text-yellow-500" },
-  2: { icon: Medal, className: "text-slate-400" },
+  2: { icon: Medal, className: "text-[var(--ink-500)]" },
   3: { icon: Medal, className: "text-amber-600" },
 };
 
@@ -56,31 +56,31 @@ export default function ReferralLeaderboardPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/dashboard/referrals"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] transition hover:border-[var(--border-strong)]"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Referral Leaderboard</h1>
-          <p className="text-sm text-slate-500">Top referrers in the community</p>
+          <h1 className="text-xl font-extrabold text-[var(--ink-950)]">Referral Leaderboard</h1>
+          <p className="text-sm text-[var(--ink-500)]">Top referrers in the community</p>
         </div>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--ink-500)]" />
         </div>
       ) : !data ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
-          <p className="text-sm text-slate-500">Could not load leaderboard.</p>
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-8 text-center">
+          <p className="text-sm text-[var(--ink-500)]">Could not load leaderboard.</p>
         </div>
       ) : (
         <>
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-white">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-[var(--surface-border)] bg-[var(--surface-soft)] text-left text-xs font-semibold uppercase tracking-wider text-[var(--ink-500)]">
                     <th className="px-4 py-3 w-12 text-center">#</th>
                     <th className="px-4 py-3">User</th>
                     <th className="px-4 py-3 text-right">Referrals</th>
@@ -93,7 +93,7 @@ export default function ReferralLeaderboardPage() {
                     return (
                       <tr
                         key={entry.userId}
-                        className={`transition hover:bg-slate-50 ${
+                        className={`transition hover:bg-[var(--surface-soft)] ${
                           entry.userId === data.currentUserRank?.userId
                             ? "bg-[var(--brand-50)]"
                             : ""
@@ -103,7 +103,7 @@ export default function ReferralLeaderboardPage() {
                           {RankIcon ? (
                             <RankIcon.icon className={`mx-auto h-4 w-4 ${RankIcon.className}`} />
                           ) : (
-                            <span className="text-slate-400 font-medium">{entry.rank}</span>
+                            <span className="text-[var(--ink-500)] font-medium">{entry.rank}</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
@@ -118,7 +118,7 @@ export default function ReferralLeaderboardPage() {
                                 className="h-full w-full rounded-full object-cover"
                               />
                             </div>
-                            <span className="font-semibold text-slate-900 truncate max-w-[180px]">
+                            <span className="font-semibold text-[var(--ink-950)] truncate max-w-[180px]">
                               {entry.fullName}
                               {entry.userId === data.currentUserRank?.userId && (
                                 <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-[var(--brand-100)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--brand-700)]">
@@ -128,10 +128,10 @@ export default function ReferralLeaderboardPage() {
                             </span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-slate-900">
+                        <td className="px-4 py-3 text-right font-bold text-[var(--ink-950)]">
                           {entry.referralCount}
                         </td>
-                        <td className="px-4 py-3 text-right text-slate-600 hidden sm:table-cell">
+                        <td className="px-4 py-3 text-right text-[var(--ink-700)] hidden sm:table-cell">
                           {entry.totalPoints}
                         </td>
                       </tr>
@@ -143,16 +143,16 @@ export default function ReferralLeaderboardPage() {
           </div>
 
           {data.currentUserRank && data.currentUserRank.rank > 20 && (
-            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-white">
               <div className="px-4 py-3">
-                <h2 className="text-sm font-bold text-slate-900">Your Rank</h2>
+                <h2 className="text-sm font-extrabold text-[var(--ink-950)]">Your Rank</h2>
               </div>
-              <div className="border-t border-slate-100">
+              <div className="border-t border-[var(--surface-border)]">
                 <table className="w-full text-sm">
                   <tbody>
                     <tr className="bg-[var(--brand-50)]">
                       <td className="px-4 py-3 text-center w-12">
-                        <span className="text-slate-400 font-medium">{data.currentUserRank.rank}</span>
+                        <span className="text-[var(--ink-500)] font-medium">{data.currentUserRank.rank}</span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
@@ -166,7 +166,7 @@ export default function ReferralLeaderboardPage() {
                               className="h-full w-full rounded-full object-cover"
                             />
                           </div>
-                          <span className="font-semibold text-slate-900">
+                          <span className="font-semibold text-[var(--ink-950)]">
                             {data.currentUserRank.fullName}
                             <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-[var(--brand-100)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--brand-700)]">
                               <User className="h-2.5 w-2.5" /> You
@@ -174,10 +174,10 @@ export default function ReferralLeaderboardPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right font-bold text-slate-900">
+                      <td className="px-4 py-3 text-right font-bold text-[var(--ink-950)]">
                         {data.currentUserRank.referralCount}
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-600 hidden sm:table-cell">
+                      <td className="px-4 py-3 text-right text-[var(--ink-700)] hidden sm:table-cell">
                         {data.currentUserRank.totalPoints}
                       </td>
                     </tr>
@@ -187,7 +187,7 @@ export default function ReferralLeaderboardPage() {
             </div>
           )}
 
-          <p className="text-center text-xs text-slate-400">
+          <p className="text-center text-xs text-[var(--ink-500)]">
             {data.totalReferrers} referrers total · Rankings based on approved referrals
           </p>
         </>

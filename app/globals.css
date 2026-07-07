@@ -1,22 +1,36 @@
 @import "tailwindcss";
 :root {
-  --surface-app: #f3f6fb;
+  --font-sans: var(--font-manrope), "Aptos", "Manrope", "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  --font-display: var(--font-sora), "Sora", "Aptos Display", "Bahnschrift", "Segoe UI Semibold", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  --surface-app: #f6f7f9;
   --surface-elevated: #ffffff;
-  --surface-soft: #f8fafc;
-  --ink-950: #0f172a;
-  --ink-700: #334155;
-  --ink-500: #64748b;
+  --surface-soft: #f0f3f7;
+  --ink-950: #090f17;
+  --ink: #141a22;
+  --ink-700: #55616b;
+  --ink-500: #7a858e;
   --brand-900: #0b1f33;
-  --brand-700: #11466a;
+  --brand-700: #115e57;
   --brand-600: #0d9488;
-  --brand-500: #0ea5a4;
+  --brand-500: #0f766e;
   --brand-400: #22c7c5;
   --brand-300: #67e8f9;
-  --brand-50: #ecfeff;
-  --brand-ring: rgba(14, 165, 164, 0.24);
-  --surface-border: #e2e8f0;
+  --brand-50: #ccfbf1;
+  --brand-ring: rgba(15, 118, 110, 0.24);
+  --surface-border: #d8dee6;
+  --border-strong: #c2cbd6;
   --surface-overlay: rgba(255, 255, 255, 0.8);
   --ink-50: #f8fafc;
+  --accent: #3557d5;
+  --accent-soft: #eef2ff;
+  --color-warm: #b66b1e;
+  --color-warning: #ad6b00;
+  --color-danger: #c2415a;
+  --color-success: #158463;
+  --color-verified: #2563eb;
+  --shimmer-base: #e7ebf1;
 
   --radius-xs: 0.5rem;
   --radius-sm: 0.625rem;
@@ -29,17 +43,17 @@
   --radius-card: var(--radius-lg);
   --radius-card-lg: var(--radius-xl);
 
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08);
-  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1);
-  --shadow-soft: 0 10px 26px -22px rgba(15, 23, 42, 0.52);
-  --shadow-card: 0 18px 46px -36px rgba(15, 23, 42, 0.38);
+  --shadow-sm: 0 1px 2px rgba(20, 26, 34, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(20, 26, 34, 0.08);
+  --shadow-lg: 0 10px 15px -3px rgba(20, 26, 34, 0.08);
+  --shadow-xl: 0 20px 25px -5px rgba(20, 26, 34, 0.1);
+  --shadow-soft: 0 10px 26px -22px rgba(20, 26, 34, 0.52);
+  --shadow-card: 0 18px 46px -36px rgba(20, 26, 34, 0.38);
   --shadow-card-hover: 0 26px 42px -28px rgba(14, 165, 164, 0.32);
-  --shadow-nav: 0 -14px 36px -28px rgba(15, 23, 42, 0.42);
-  --shadow-popover: 0 20px 46px -42px rgba(15, 23, 42, 0.65);
-  --shadow-header: 0 16px 30px -28px rgba(15, 23, 42, 0.55);
-  --shadow-elevated: 0 24px 80px -58px rgba(15, 23, 42, 0.38);
+  --shadow-nav: 0 -14px 36px -28px rgba(20, 26, 34, 0.42);
+  --shadow-popover: 0 20px 46px -42px rgba(20, 26, 34, 0.65);
+  --shadow-header: 0 16px 30px -28px rgba(20, 26, 34, 0.55);
+  --shadow-elevated: 0 24px 80px -58px rgba(20, 26, 34, 0.38);
 
   --layer-mobile-nav: 40;
   --layer-floating-action: 50;
@@ -52,18 +66,16 @@
   --layer-modal: 90;
   --layer-toast: 100;
   --layer-fullscreen: 110;
-  --font-sans: "Aptos", "Manrope", "Segoe UI Variable Text", "Segoe UI", sans-serif;
-  --font-display: "Sora", "Aptos Display", "Bahnschrift", "Segoe UI Semibold", "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
 }
 
 .dark {
-  --surface-app: #0b1120;
+  --surface-app: #0e1217;
   --surface-elevated: #131c2e;
-  --surface-soft: #0f1729;
-  --ink-950: #f1f5f9;
-  --ink-700: #cbd5e1;
-  --ink-500: #94a3b8;
+  --surface-soft: #161c23;
+  --ink-950: #e6edf5;
+  --ink: #e6edf5;
+  --ink-700: #9caab8;
+  --ink-500: #6f7e8c;
   --brand-900: #e0f2fe;
   --brand-700: #7dd3fc;
   --brand-500: #22c7c5;
@@ -71,15 +83,29 @@
   --brand-300: #0ea5a4;
   --brand-50: #042f2e;
   --brand-ring: rgba(34, 199, 197, 0.35);
-  --surface-border: #1e293b;
-  --surface-overlay: rgba(15, 23, 42, 0.85);
+  --surface-border: #2e3a47;
+  --border-strong: #3e4b59;
+  --surface-overlay: rgba(20, 26, 34, 0.85);
   --ink-50: #020617;
+  --accent: #3557d5;
+  --accent-soft: #0e1225;
+  --color-warm: #b66b1e;
+  --color-warning: #ad6b00;
+  --color-danger: #c2415a;
+  --color-success: #158463;
+  --color-verified: #2563eb;
+  --shimmer-base: #222b35;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.28);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.28);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
   --shadow-soft: 0 10px 26px -22px rgba(0, 0, 0, 0.7);
   --shadow-card: 0 18px 46px -36px rgba(0, 0, 0, 0.6);
+  --shadow-card-hover: 0 26px 42px -28px rgba(0, 0, 0, 0.6);
+  --shadow-nav: 0 -14px 36px -28px rgba(0, 0, 0, 0.6);
+  --shadow-popover: 0 20px 46px -42px rgba(0, 0, 0, 0.7);
+  --shadow-header: 0 16px 30px -28px rgba(0, 0, 0, 0.6);
+  --shadow-elevated: 0 24px 80px -58px rgba(0, 0, 0, 0.6);
 }
 
 body {
@@ -171,7 +197,7 @@ h3,
   background: rgba(2, 6, 23, 0.48);
   color: rgba(248, 250, 252, 0.82);
   backdrop-filter: blur(16px);
-  box-shadow: 0 16px 30px -22px rgba(15, 23, 42, 0.55);
+  box-shadow: 0 16px 30px -22px rgba(20, 26, 34, 0.55);
   font-size: 10px;
   line-height: 1.15;
   padding: 4px 8px;

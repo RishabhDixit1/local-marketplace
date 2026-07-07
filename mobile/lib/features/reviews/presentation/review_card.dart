@@ -46,7 +46,9 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
         _helpfulCount = (status['helpful_count'] as num?)?.toInt() ?? _helpfulCount;
         _notHelpfulCount = (status['not_helpful_count'] as num?)?.toInt() ?? _notHelpfulCount;
       });
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('ServiQ review_card._loadVoteStatus failed: $e');
+    }
   }
 
   Future<void> _toggleVote(String vote) async {
@@ -81,7 +83,8 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
           _userVote = vote;
         }
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('ServiQ review_card._toggleVote failed: $e');
       if (mounted) setState(() => _loadingVote = false);
     }
   }

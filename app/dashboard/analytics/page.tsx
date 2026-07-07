@@ -138,7 +138,7 @@ export default function AnalyticsPage() {
   if (loading && !data) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--ink-500)]" />
       </div>
     );
   }
@@ -156,11 +156,11 @@ export default function AnalyticsPage() {
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Analytics</h1>
-          <p className="mt-1 text-sm text-slate-600">Your performance, earnings, and AI-powered insights.</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--ink-950)]">Analytics</h1>
+          <p className="mt-1 text-sm text-[var(--ink-700)]">Your performance, earnings, and AI-powered insights.</p>
         </div>
         <select value={year} onChange={(e) => setYear(parseInt(e.target.value))}
-          className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none">
+          className="rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm outline-none">
           {[2024, 2025, 2026, 2027].map((y) => (
             <option key={y} value={y}>{y}</option>
           ))}
@@ -188,8 +188,8 @@ export default function AnalyticsPage() {
 
       {/* Conversion funnel */}
       {data && data.funnelData && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-          <h2 className="mb-4 text-base font-semibold text-slate-900">Conversion funnel</h2>
+        <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 sm:p-6">
+          <h2 className="mb-4 text-base font-semibold text-[var(--ink-950)]">Conversion funnel</h2>
           <div className="space-y-2">
             {data.funnelData.map((step, i) => {
               const maxCount = data.funnelData[0]?.count ?? 1;
@@ -199,14 +199,14 @@ export default function AnalyticsPage() {
                 : 0;
               return (
                 <div key={step.stage} className="flex items-center gap-3">
-                  <span className="w-20 text-xs font-medium text-slate-600">{FUNNEL_LABELS[step.stage] ?? step.stage}</span>
+                  <span className="w-20 text-xs font-medium text-[var(--ink-700)]">{FUNNEL_LABELS[step.stage] ?? step.stage}</span>
                   <div className="flex-1">
-                    <div className="h-6 rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-6 rounded-full bg-[var(--surface-soft)] overflow-hidden">
                       <div className="h-full rounded-full bg-slate-800 transition-all"
                         style={{ width: `${pct}%` }} />
                     </div>
                   </div>
-                  <span className="w-16 text-right text-xs font-semibold text-slate-700">{step.count}</span>
+                  <span className="w-16 text-right text-xs font-semibold text-[var(--ink-700)]">{step.count}</span>
                   {drop > 0 && (
                     <span className="w-12 text-right text-[10px] font-medium text-rose-500">-{drop}%</span>
                   )}
@@ -214,7 +214,7 @@ export default function AnalyticsPage() {
               );
             })}
           </div>
-          <p className="mt-3 text-xs text-slate-500">
+          <p className="mt-3 text-xs text-[var(--ink-500)]">
             {data.conversionRate}% of leads convert to completed orders
           </p>
         </section>
@@ -232,9 +232,9 @@ export default function AnalyticsPage() {
       )}
 
       {/* Earnings chart */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+      <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-slate-900">Earnings <span className="text-xs font-normal text-slate-500">({year})</span></h2>
+          <h2 className="text-base font-semibold text-[var(--ink-950)]">Earnings <span className="text-xs font-normal text-[var(--ink-500)]">({year})</span></h2>
           {data && (
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
               <ArrowUpRight className="h-3 w-3" />
@@ -258,8 +258,8 @@ export default function AnalyticsPage() {
 
       {/* Status breakdown pie + orders line */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-          <h2 className="mb-4 text-base font-semibold text-slate-900">Order status breakdown</h2>
+        <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 sm:p-6">
+          <h2 className="mb-4 text-base font-semibold text-[var(--ink-950)]">Order status breakdown</h2>
           {statusData.length > 0 ? (
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
@@ -274,7 +274,7 @@ export default function AnalyticsPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">No orders yet this year.</p>
+            <p className="text-sm text-[var(--ink-500)]">No orders yet this year.</p>
           )}
           <div className="mt-3 flex flex-wrap gap-2">
             {statusData.map((s, i) => (
@@ -287,8 +287,8 @@ export default function AnalyticsPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-          <h2 className="mb-4 text-base font-semibold text-slate-900">Orders by month <span className="text-xs font-normal text-slate-500">({year})</span></h2>
+        <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 sm:p-6">
+          <h2 className="mb-4 text-base font-semibold text-[var(--ink-950)]">Orders by month <span className="text-xs font-normal text-[var(--ink-500)]">({year})</span></h2>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data?.earningsChartData ?? []}>
@@ -306,24 +306,24 @@ export default function AnalyticsPage() {
       {/* AI-powered insights */}
       {aiLoading && listingScores.length === 0 ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-          <span className="ml-2 text-sm text-slate-500">Loading AI insights...</span>
+          <Loader2 className="h-5 w-5 animate-spin text-[var(--ink-500)]" />
+          <span className="ml-2 text-sm text-[var(--ink-500)]">Loading AI insights...</span>
         </div>
       ) : (
         <>
           {/* Pricing insights */}
           {pricingInsights.length > 0 && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+            <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Lightbulb className="h-5 w-5 text-amber-500" />
-                <h2 className="text-base font-semibold text-slate-900">Pricing insights</h2>
+                <h2 className="text-base font-semibold text-[var(--ink-950)]">Pricing insights</h2>
                 <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">AI</span>
               </div>
               <div className="space-y-3">
                 {pricingInsights.map((insight) => (
-                  <div key={insight.category} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <div key={insight.category} className="rounded-xl border border-slate-100 bg-[var(--surface-soft)] p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold text-slate-900 capitalize">{insight.category}</span>
+                      <span className="text-sm font-semibold text-[var(--ink-950)] capitalize">{insight.category}</span>
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                         insight.pricePosition === "competitive" ? "bg-emerald-50 text-emerald-700" :
                         insight.pricePosition === "above" ? "bg-rose-50 text-rose-700" :
@@ -334,11 +334,11 @@ export default function AnalyticsPage() {
                       </span>
                     </div>
                     <div className="grid grid-cols-3 gap-3 mb-2 text-xs">
-                      <div><span className="text-slate-500">Your price</span><p className="font-semibold text-slate-900">{INR(insight.myPrice * 100)}</p></div>
-                      <div><span className="text-slate-500">Market avg</span><p className="font-semibold text-slate-900">{INR(insight.avgPrice * 100)}</p></div>
-                      <div><span className="text-slate-500">Suggested</span><p className="font-semibold text-emerald-700">{INR(insight.suggestedPrice * 100)}</p></div>
+                      <div><span className="text-[var(--ink-500)]">Your price</span><p className="font-semibold text-[var(--ink-950)]">{INR(insight.myPrice * 100)}</p></div>
+                      <div><span className="text-[var(--ink-500)]">Market avg</span><p className="font-semibold text-[var(--ink-950)]">{INR(insight.avgPrice * 100)}</p></div>
+                      <div><span className="text-[var(--ink-500)]">Suggested</span><p className="font-semibold text-emerald-700">{INR(insight.suggestedPrice * 100)}</p></div>
                     </div>
-                    <p className="text-xs text-slate-600">{insight.rationale}</p>
+                    <p className="text-xs text-[var(--ink-700)]">{insight.rationale}</p>
                   </div>
                 ))}
               </div>
@@ -347,20 +347,20 @@ export default function AnalyticsPage() {
 
           {/* Listing optimization scores */}
           {listingScores.length > 0 && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+            <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Zap className="h-5 w-5 text-purple-500" />
-                <h2 className="text-base font-semibold text-slate-900">Listing optimization</h2>
+                <h2 className="text-base font-semibold text-[var(--ink-950)]">Listing optimization</h2>
                 <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">AI</span>
-                <span className="ml-auto text-xs text-slate-500">Avg score: {avgScore}/100</span>
+                <span className="ml-auto text-xs text-[var(--ink-500)]">Avg score: {avgScore}/100</span>
               </div>
               <div className="space-y-3">
                 {listingScores.slice(0, 5).map((listing) => (
                   <div key={listing.listingId} className="rounded-xl border border-slate-100 p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-900 truncate">{listing.title}</p>
-                        <p className="text-[10px] text-slate-500 capitalize">{listing.category}</p>
+                        <p className="text-sm font-semibold text-[var(--ink-950)] truncate">{listing.title}</p>
+                        <p className="text-[10px] text-[var(--ink-500)] capitalize">{listing.category}</p>
                       </div>
                       <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                         listing.score >= 70 ? "bg-emerald-50 text-emerald-700" :
@@ -378,7 +378,7 @@ export default function AnalyticsPage() {
                               s.severity === "high" ? "bg-rose-400" :
                               s.severity === "medium" ? "bg-amber-400" : "bg-slate-300"
                             }`} />
-                            <span className="text-slate-600">{s.message}</span>
+                            <span className="text-[var(--ink-700)]">{s.message}</span>
                           </li>
                         ))}
                       </ul>
@@ -393,21 +393,21 @@ export default function AnalyticsPage() {
 
       {/* Top customers */}
       {data && data.topCustomers.length > 0 && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-          <h2 className="mb-4 text-base font-semibold text-slate-900">Top customers</h2>
+        <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 sm:p-6">
+          <h2 className="mb-4 text-base font-semibold text-[var(--ink-950)]">Top customers</h2>
           <div className="space-y-2">
             {data.topCustomers.map((c, i) => (
               <div key={c.id} className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-xs font-bold text-[var(--ink-700)]">
                     {i + 1}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">{c.name}</p>
-                    <p className="text-xs text-slate-500">{c.orders} order{c.orders !== 1 ? "s" : ""}</p>
+                    <p className="text-sm font-medium text-[var(--ink-950)] truncate">{c.name}</p>
+                    <p className="text-xs text-[var(--ink-500)]">{c.orders} order{c.orders !== 1 ? "s" : ""}</p>
                   </div>
                 </div>
-                <span className="text-sm font-semibold text-slate-900">{INR(c.spentPaise)}</span>
+                <span className="text-sm font-semibold text-[var(--ink-950)]">{INR(c.spentPaise)}</span>
               </div>
             ))}
           </div>
@@ -419,23 +419,23 @@ export default function AnalyticsPage() {
 
 function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-      <div className="flex items-center gap-2 text-slate-500">{icon}<span className="text-xs font-medium">{label}</span></div>
-      <p className="mt-1.5 text-lg font-bold tracking-tight text-slate-900">{value}</p>
+    <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-4">
+      <div className="flex items-center gap-2 text-[var(--ink-500)]">{icon}<span className="text-xs font-medium">{label}</span></div>
+      <p className="mt-1.5 text-lg font-bold tracking-tight text-[var(--ink-950)]">{value}</p>
     </div>
   );
 }
 
 function KpiCard({ label, value, trend }: { label: string; value: string; trend?: "up" | "down" | "neutral" }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-      <div className="flex items-center gap-1 text-slate-500">
+    <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3">
+      <div className="flex items-center gap-1 text-[var(--ink-500)]">
         {trend === "up" && <ArrowUpRight className="h-3 w-3 text-emerald-500" />}
         {trend === "down" && <ArrowDownRight className="h-3 w-3 text-rose-500" />}
         <span className="text-[10px] font-medium">{label}</span>
       </div>
       <p className={`mt-1 text-base font-bold tracking-tight ${
-        trend === "up" ? "text-emerald-700" : trend === "down" ? "text-rose-700" : "text-slate-900"
+        trend === "up" ? "text-emerald-700" : trend === "down" ? "text-rose-700" : "text-[var(--ink-950)]"
       }`}>{value}</p>
     </div>
   );

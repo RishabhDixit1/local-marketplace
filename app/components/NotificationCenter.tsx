@@ -611,11 +611,11 @@ export default function NotificationCenter({
     // Derive matching bg color from the badge class, e.g. "bg-violet-100 …" → "bg-violet-100"
     const iconBg =
       style.badgeClassName.split(" ").find((c) => c.startsWith("bg-")) ??
-      "bg-slate-100";
+      "bg-[var(--surface-soft)]";
 
     return (
       <li key={item.id} className="border-b border-slate-100 last:border-b-0">
-        <div className="flex items-start gap-2 px-3 py-2.5 hover:bg-slate-50 transition-colors">
+        <div className="flex items-start gap-2 px-3 py-2.5 hover:bg-[var(--surface-soft)] transition-colors">
           <button
             type="button"
             onClick={() => void openNotification(item)}
@@ -628,14 +628,14 @@ export default function NotificationCenter({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-semibold text-slate-900 leading-5">
+                <p className="text-sm font-semibold text-[var(--ink-950)] leading-5">
                   {item.title}
                 </p>
-                <span className="shrink-0 text-[11px] text-slate-400">
+                <span className="shrink-0 text-[11px] text-[var(--ink-500)]">
                   {item.timeLabel}
                 </span>
               </div>
-              <p className="mt-0.5 text-xs text-slate-500 leading-4 line-clamp-2">
+              <p className="mt-0.5 text-xs text-[var(--ink-500)] leading-4 line-clamp-2">
                 {item.message}
               </p>
               <span
@@ -649,7 +649,7 @@ export default function NotificationCenter({
           <button
             type="button"
             onClick={() => void clearNotification(item.id)}
-            className="mt-1 rounded-lg p-1.5 text-slate-300 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+            className="mt-1 rounded-lg p-1.5 text-[var(--ink-500)] hover:bg-slate-200 hover:text-[var(--ink-700)] transition-colors"
             aria-label="Clear notification"
             title="Clear"
           >
@@ -665,8 +665,8 @@ export default function NotificationCenter({
       {/* Header */}
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-100">
         <div className="flex items-center gap-2">
-          <Bell className="h-4 w-4 text-slate-600" />
-          <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
+          <Bell className="h-4 w-4 text-[var(--ink-700)]" />
+          <h3 className="text-sm font-extrabold text-[var(--ink-950)]">Notifications</h3>
           {unreadCount > 0 && (
             <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">
               {unreadCount > 9 ? "9+" : unreadCount}
@@ -689,7 +689,7 @@ export default function NotificationCenter({
 
       {/* Body */}
       {loading ? (
-        <div className="flex flex-1 items-center justify-center gap-2 py-10 text-sm text-slate-400">
+        <div className="flex flex-1 items-center justify-center gap-2 py-10 text-sm text-[var(--ink-500)]">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading…
         </div>
@@ -699,7 +699,7 @@ export default function NotificationCenter({
           {unreadItems.length > 0 && (
             <>
               <li className="sticky top-0 z-10 flex items-center gap-2 bg-sky-50 px-3 py-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-sky-600">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-sky-600">
                   Unread
                 </span>
               </li>
@@ -710,8 +710,8 @@ export default function NotificationCenter({
           {/* Earlier group */}
           {readItems.length > 0 && (
             <>
-              <li className="sticky top-0 z-10 flex items-center gap-2 bg-slate-50 px-3 py-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+              <li className="sticky top-0 z-10 flex items-center gap-2 bg-[var(--surface-soft)] px-3 py-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--ink-500)]">
                   Earlier
                 </span>
               </li>
@@ -722,13 +722,13 @@ export default function NotificationCenter({
           {/* Empty state */}
           {visibleNotifications.length === 0 && (
             <li className="flex flex-col items-center justify-center gap-2 px-4 py-10 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
-                <Bell className="h-5 w-5 text-slate-400" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--surface-soft)]">
+                <Bell className="h-5 w-5 text-[var(--ink-500)]" />
               </div>
-              <p className="text-sm font-semibold text-slate-700">
+              <p className="text-sm font-semibold text-[var(--ink-700)]">
                 {normalizedFilterQuery ? "No notifications match this search" : "You&apos;re all caught up"}
               </p>
-              <p className="text-xs text-slate-400 max-w-[18rem]">
+              <p className="text-xs text-[var(--ink-500)] max-w-[18rem]">
                 {normalizedFilterQuery
                   ? "Try a different title, message keyword, or notification type."
                   : "New alerts appear here for chats, orders, reviews, connection requests, and Live Talk updates."}
@@ -752,12 +752,12 @@ export default function NotificationCenter({
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-[var(--surface-soft)] px-3 py-2.5">
         <button
           type="button"
           onClick={() => void markAllAsRead()}
           disabled={unreadCount === 0 || loading}
-          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-white hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-elevated)] hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-40"
         >
           <CheckCheck className="h-3.5 w-3.5" />
           Mark all read
@@ -799,7 +799,7 @@ export default function NotificationCenter({
             />
             <div
               ref={panelRef}
-              className="fixed inset-x-3 top-[4.25rem] bottom-3 z-[var(--layer-drawer)] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-4 sm:top-[4.5rem] sm:bottom-4"
+              className="fixed inset-x-3 top-[4.25rem] bottom-3 z-[var(--layer-drawer)] flex flex-col overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-2xl sm:inset-x-4 sm:top-[4.5rem] sm:bottom-4"
               role="dialog"
               aria-label="Notifications panel"
             >
@@ -812,7 +812,7 @@ export default function NotificationCenter({
 
   if (isStandalonePage) {
     return (
-      <div className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_24px_70px_-50px_rgba(15,23,42,0.24)]">
+      <div className="overflow-hidden rounded-[1.6rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-[0_24px_70px_-50px_rgba(15,23,42,0.24)]">
         {panelContent}
       </div>
     );
@@ -824,7 +824,7 @@ export default function NotificationCenter({
         ref={triggerRef}
         onClick={togglePanel}
         disabled={!enabled}
-        className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] disabled:cursor-wait disabled:opacity-70 md:h-9 md:w-9 md:rounded-xl"
+        className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] disabled:cursor-wait disabled:opacity-70 md:h-9 md:w-9 md:rounded-xl"
         aria-label="Open notifications"
         aria-expanded={isOpen}
         aria-haspopup="dialog"
@@ -840,7 +840,7 @@ export default function NotificationCenter({
       {isOpen && !useMobileSheet && (
         <div
           ref={panelRef}
-          className="absolute right-0 top-full z-[var(--layer-popover)] mt-2 flex w-[24rem] max-h-[36rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          className="absolute right-0 top-full z-[var(--layer-popover)] mt-2 flex w-[24rem] max-h-[36rem] flex-col overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-2xl"
           role="dialog"
           aria-label="Notifications panel"
         >
@@ -856,10 +856,10 @@ export default function NotificationCenter({
           <div
             role="alert"
             aria-live="polite"
-            className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[var(--layer-toast)] flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-2xl transition-all animate-in fade-in slide-in-from-bottom-3 duration-300 sm:bottom-5 sm:right-5 sm:w-80"
+            className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[var(--layer-toast)] flex items-start gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3 shadow-2xl transition-all animate-in fade-in slide-in-from-bottom-3 duration-300 sm:bottom-5 sm:right-5 sm:w-80"
           >
             <div
-              className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100`}
+              className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-soft)]`}
             >
               {(() => {
                 const style = kindStyles[toast.kind];
@@ -868,10 +868,10 @@ export default function NotificationCenter({
               })()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-slate-500">
+              <p className="text-xs font-semibold text-[var(--ink-500)]">
                 New notification
               </p>
-              <p className="mt-0.5 line-clamp-2 text-sm font-medium text-slate-900">
+              <p className="mt-0.5 line-clamp-2 text-sm font-medium text-[var(--ink-950)]">
                 {toast.title}
               </p>
             </div>
@@ -881,7 +881,7 @@ export default function NotificationCenter({
                 setToast(null);
                 if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
               }}
-              className="mt-0.5 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="mt-0.5 rounded-lg p-1 text-[var(--ink-500)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink-700)]"
               aria-label="Dismiss notification toast"
             >
               <X className="h-3.5 w-3.5" />

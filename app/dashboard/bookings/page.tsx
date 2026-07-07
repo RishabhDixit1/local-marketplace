@@ -54,7 +54,7 @@ export default function BookingsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--ink-500)]" />
       </div>
     );
   }
@@ -70,12 +70,12 @@ export default function BookingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6">
       <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-slate-100 p-2.5">
-          <CalendarCheck className="h-5 w-5 text-slate-600" />
+        <div className="rounded-xl bg-[var(--surface-soft)] p-2.5">
+          <CalendarCheck className="h-5 w-5 text-[var(--ink-700)]" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Bookings</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--ink-950)]">Bookings</h1>
+          <p className="mt-1 text-sm text-[var(--ink-500)]">
             View and manage your scheduled appointments.
           </p>
         </div>
@@ -86,10 +86,10 @@ export default function BookingsPage() {
       )}
 
       {bookings.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">
-          <CalendarCheck className="mx-auto h-8 w-8 text-slate-300" />
-          <p className="mt-3 text-sm font-medium text-slate-600">No bookings yet</p>
-          <p className="mt-1 text-xs text-slate-400">
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-12 text-center">
+          <CalendarCheck className="mx-auto h-8 w-8 text-[var(--ink-500)]" />
+          <p className="mt-3 text-sm font-medium text-[var(--ink-700)]">No bookings yet</p>
+          <p className="mt-1 text-xs text-[var(--ink-500)]">
             When someone books your time, it will show up here.
           </p>
         </div>
@@ -97,7 +97,7 @@ export default function BookingsPage() {
         <>
           {upcoming.length > 0 && (
             <section>
-              <h2 className="mb-3 text-sm font-semibold text-slate-700">Upcoming</h2>
+              <h2 className="mb-3 text-sm font-semibold text-[var(--ink-700)]">Upcoming</h2>
               <div className="space-y-3">
                 {upcoming.map((b) => (
                   <BookingCard key={b.id} booking={b} />
@@ -108,7 +108,7 @@ export default function BookingsPage() {
 
           {past.length > 0 && (
             <section>
-              <h2 className="mb-3 text-sm font-semibold text-slate-700">Past</h2>
+              <h2 className="mb-3 text-sm font-semibold text-[var(--ink-700)]">Past</h2>
               <div className="space-y-3">
                 {past.map((b) => (
                   <BookingCard key={b.id} booking={b} />
@@ -137,40 +137,40 @@ function BookingCard({ booking }: { booking: Booking }) {
   return (
     <Link
       href={`/orders/${booking.order_id}`}
-      className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm sm:p-5"
+      className="block rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 transition hover:border-[var(--border-strong)] hover:shadow-sm sm:p-5"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="truncate text-sm font-semibold text-slate-900">
+            <h3 className="truncate text-sm font-semibold text-[var(--ink-950)]">
               {booking.order_title || `Order #${booking.order_id.slice(0, 8)}`}
             </h3>
             <span
               className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${
-                STATUS_COLORS[booking.status] ?? "border-slate-200 bg-slate-50 text-slate-600"
+                STATUS_COLORS[booking.status] ?? "border-[var(--surface-border)] bg-[var(--surface-soft)] text-[var(--ink-700)]"
               }`}
             >
               {statusIcon}
               {booking.status}
             </span>
           </div>
-          <p className="mt-1.5 text-xs text-slate-500">
-            with <span className="font-medium text-slate-700">{booking.consumer_name}</span>
+          <p className="mt-1.5 text-xs text-[var(--ink-500)]">
+            with <span className="font-medium text-[var(--ink-700)]">{booking.consumer_name}</span>
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-sm font-bold text-slate-900">{dayName}</p>
-          <p className="text-xs text-slate-500">{monthDay}</p>
+          <p className="text-sm font-bold text-[var(--ink-950)]">{dayName}</p>
+          <p className="text-xs text-[var(--ink-500)]">{monthDay}</p>
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-4 text-xs text-slate-500">
+      <div className="mt-3 flex items-center gap-4 text-xs text-[var(--ink-500)]">
         <span className="inline-flex items-center gap-1">
           <Clock className="h-3 w-3" />
           {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)}
         </span>
       </div>
       {booking.notes && (
-        <p className="mt-2 text-xs text-slate-400 italic">{booking.notes}</p>
+        <p className="mt-2 text-xs text-[var(--ink-500)] italic">{booking.notes}</p>
       )}
     </Link>
   );

@@ -118,20 +118,49 @@ class AppDurations {
 class AppShadows {
   const AppShadows._();
 
+  static const soft = <BoxShadow>[
+    BoxShadow(color: AppColors.shadow, blurRadius: 12, offset: Offset(0, 4)),
+  ];
+
   static const card = <BoxShadow>[
     BoxShadow(color: AppColors.shadow, blurRadius: 18, offset: Offset(0, 8)),
   ];
 
+  static const md = <BoxShadow>[
+    BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: Offset(0, 4)),
+  ];
+
+  static const lg = <BoxShadow>[
+    BoxShadow(color: AppColors.shadow, blurRadius: 15, offset: Offset(0, 10)),
+  ];
+
+  static const xl = <BoxShadow>[
+    BoxShadow(color: AppColors.shadow, blurRadius: 25, offset: Offset(0, 20)),
+  ];
+
+  /// Elevated / floating action elements (FABs, floating panels).
   static const floating = <BoxShadow>[
     BoxShadow(color: AppColors.shadow, blurRadius: 30, offset: Offset(0, 16)),
   ];
 
-  static const glow = <BoxShadow>[
-    BoxShadow(color: AppColors.glow, blurRadius: 28, offset: Offset(0, 10)),
+  /// Top / bottom navigation bars (thin bar-level shadow).
+  static const nav = <BoxShadow>[
+    BoxShadow(color: AppColors.shadow, blurRadius: 22, offset: Offset(0, -8)),
   ];
 
-  static const soft = <BoxShadow>[
-    BoxShadow(color: AppColors.shadow, blurRadius: 12, offset: Offset(0, 4)),
+  /// Header / sticky top bar.
+  static const header = <BoxShadow>[
+    BoxShadow(color: AppColors.shadow, blurRadius: 18, offset: Offset(0, 8)),
+  ];
+
+  /// Popovers, dropdowns, tooltips (float above all content).
+  static const popover = <BoxShadow>[
+    BoxShadow(color: AppColors.shadow, blurRadius: 46, offset: Offset(0, 20)),
+  ];
+
+  /// Brand glow / hover highlight.
+  static const glow = <BoxShadow>[
+    BoxShadow(color: AppColors.glow, blurRadius: 28, offset: Offset(0, 10)),
   ];
 }
 

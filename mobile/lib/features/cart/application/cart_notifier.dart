@@ -52,7 +52,8 @@ class CartNotifier extends AsyncNotifier<List<MobileCartItem>> {
           .map(MobileCartItem.fromJson)
           .where((e) => e.quantity > 0)
           .toList();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('ServiQ cart_notifier._load deserialization failed: $e');
       await prefs.remove(_storageKey);
       return [];
     }
@@ -215,7 +216,9 @@ class CartNotifier extends AsyncNotifier<List<MobileCartItem>> {
           final repo = ref.read(cartRepositoryProvider);
           await repo.clearCart();
         }
-      } catch (_) {}
+      } catch (e2) {
+        debugPrint('ServiQ cart_notifier.clear server-clear failed: $e2');
+      }
     } catch (e) {
       debugPrint('CartNotifier.clear: failed to persist — $e');
     }

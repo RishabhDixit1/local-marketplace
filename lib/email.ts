@@ -6,7 +6,6 @@
 
 import { FROM_EMAIL } from "@/lib/emailConfig";
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
 const APP_NAME = "ServiQ";
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://serviqapp.com";
 
@@ -151,8 +150,44 @@ function buildSubjectAndBody(opts: OrderEmailOptions): { subject: string; html: 
   }
 }
 
+export async function sendEmail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+  from?: string;
+  headers?: Record<string, string>;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const resendKey = process.env.RESEND_API_KEY?.trim();
+  if (!resendKey) return { ok: false, error: "Resend not configured" };
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY?.trim() || ""}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: opts.from || FROM_EMAIL,
+        to: opts.to,
+        subject: opts.subject,
+        html: opts.html,
+        ...(opts.headers ? { headers: opts.headers } : {}),
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      console.error("[sendEmail] Resend error:", res.status, body);
+      return { ok: false, error: `Resend error: ${res.status}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error("[sendEmail] fetch error:", e);
+    return { ok: false, error: "Network error" };
+  }
+}
+
 export async function sendOrderEmail(opts: OrderEmailOptions): Promise<void> {
-  if (!RESEND_API_KEY) return; // Silently skip if not configured
+  if (!process.env.RESEND_API_KEY?.trim()) return; // Silently skip if not configured
 
   const { subject, html } = buildSubjectAndBody(opts);
 
@@ -160,7 +195,7 @@ export async function sendOrderEmail(opts: OrderEmailOptions): Promise<void> {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
+        Authorization: `Bearer ${process.env.RESEND_API_KEY?.trim() || ""}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ from: FROM_EMAIL, to: opts.to, subject, html }),

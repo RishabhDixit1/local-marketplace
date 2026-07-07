@@ -108,7 +108,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       if (!authState.isAuthenticated && location.startsWith('/app')) {
         scheduleMicrotask(() {
-          unawaited(onboardingHandoff.rememberRoute(state.uri.toString()));
+          unawaited(onboardingHandoff.rememberRoute(state.uri.toString()).catchError((e, st) => debugPrint('ServiQ app_router.rememberRoute failed: $e\n$st')));
         });
       }
 

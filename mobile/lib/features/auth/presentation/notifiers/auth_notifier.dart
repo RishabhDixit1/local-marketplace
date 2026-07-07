@@ -148,7 +148,7 @@ class AuthNotifier extends Notifier<AuthFormState> {
           fallbackPrefix: 'Unable to send code',
         ),
       );
-      unawaited(_handoffController.completeAuthHandoff(clearStoredRoute: false));
+      unawaited(_handoffController.completeAuthHandoff(clearStoredRoute: false).catchError((e, st) => debugPrint('ServiQ auth_notifier.handoff failed: $e\n$st')));
     }
   }
 
@@ -219,7 +219,7 @@ class AuthNotifier extends Notifier<AuthFormState> {
           fallbackPrefix: 'Unable to send code',
         ),
       );
-      unawaited(_handoffController.completeAuthHandoff(clearStoredRoute: false));
+      unawaited(_handoffController.completeAuthHandoff(clearStoredRoute: false).catchError((e, st) => debugPrint('ServiQ auth_notifier.handoff failed: $e\n$st')));
     }
   }
 
@@ -276,7 +276,7 @@ class AuthNotifier extends Notifier<AuthFormState> {
           fallbackPrefix: 'Unable to start Google sign-in',
         ),
       );
-      unawaited(_handoffController.completeAuthHandoff(clearStoredRoute: false));
+      unawaited(_handoffController.completeAuthHandoff(clearStoredRoute: false).catchError((e, st) => debugPrint('ServiQ auth_notifier.handoff failed: $e\n$st')));
     }
   }
 
@@ -303,7 +303,7 @@ class AuthNotifier extends Notifier<AuthFormState> {
           fallbackPrefix: 'Unable to start Apple sign-in',
         ),
       );
-      unawaited(_handoffController.completeAuthHandoff(clearStoredRoute: false));
+      unawaited(_handoffController.completeAuthHandoff(clearStoredRoute: false).catchError((e, st) => debugPrint('ServiQ auth_notifier.handoff failed: $e\n$st')));
     }
   }
 
@@ -335,7 +335,7 @@ class AuthNotifier extends Notifier<AuthFormState> {
           fallbackPrefix: 'Unable to sign in',
         ),
       );
-      unawaited(_handoffController.completeAuthHandoff(clearStoredRoute: false));
+      unawaited(_handoffController.completeAuthHandoff(clearStoredRoute: false).catchError((e, st) => debugPrint('ServiQ auth_notifier.handoff failed: $e\n$st')));
     }
   }
 
@@ -385,7 +385,7 @@ class AuthNotifier extends Notifier<AuthFormState> {
         isSubmitting: false,
         errorMessage: _authService.friendlyErrorMessage(error, fallbackPrefix: 'Unable to create account'),
       );
-      unawaited(_handoffController.completeAuthHandoff(clearStoredRoute: false));
+      unawaited(_handoffController.completeAuthHandoff(clearStoredRoute: false).catchError((e, st) => debugPrint('ServiQ auth_notifier.handoff failed: $e\n$st')));
     }
   }
 

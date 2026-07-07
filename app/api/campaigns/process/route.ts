@@ -5,7 +5,7 @@ import { sendSms } from "@/lib/server/twilioClient";
 import { CronExpressionParser } from "cron-parser";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { appName } from "@/lib/branding";
-import { FROM_EMAIL } from "@/lib/emailConfig";
+import { sendEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
@@ -111,21 +111,11 @@ async function postHandler() {
           const htmlContent = template.includes("<")
             ? brandedEmailHtml(title, template)
             : brandedEmailHtml(title, `<p>${template.replace(/\n/g, "<br/>")}</p>`);
-          await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${RESEND_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: FROM_EMAIL,
-              to: email,
-              subject: title,
-              html: htmlContent,
-              headers: {
-                "List-Unsubscribe": `<mailto:${UNSUBSCRIBE_EMAIL}>`,
-              },
-            }),
+          await sendEmail({
+            to: email,
+            subject: title,
+            html: htmlContent,
+            headers: { "List-Unsubscribe": `<mailto:${UNSUBSCRIBE_EMAIL}>` },
           });
         }
       }

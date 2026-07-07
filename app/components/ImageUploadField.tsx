@@ -50,7 +50,7 @@ export default function ImageUploadField({ value, onChange, className }: Props) 
   return (
     <div className={className}>
       {value ? (
-        <div className="relative w-full aspect-video overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+        <div className="relative w-full aspect-video overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={value} alt="Listing preview" className="h-full w-full object-cover" />
           <button
@@ -67,7 +67,7 @@ export default function ImageUploadField({ value, onChange, className }: Props) 
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 py-8 text-sm text-slate-500 transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-60"
+          className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] py-8 text-sm text-[var(--ink-500)] transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-60"
         >
           {uploading ? (
             <><Loader2 className="h-5 w-5 animate-spin" /> Uploading…</>

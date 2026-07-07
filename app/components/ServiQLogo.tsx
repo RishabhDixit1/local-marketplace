@@ -38,7 +38,7 @@ export default function ServiQLogo({
     "relative inline-flex items-center justify-center rounded-xl border shadow-sm",
     compact ? "h-9 w-9 text-base" : "h-11 w-11 text-lg",
     markClassName ||
-      "border-slate-200 bg-[radial-gradient(circle_at_top_left,#ffffff_12%,#ecfeff_58%,#dbeafe_100%)] text-slate-900 shadow-slate-900/10"
+      "border-[var(--surface-border)] bg-[radial-gradient(circle_at_top_left,#ffffff_12%,#ecfeff_58%,#dbeafe_100%)] text-[var(--ink-950)] shadow-slate-900/10"
   );
   const rootClasses = joinClasses(
     "inline-flex items-center",
@@ -95,7 +95,7 @@ export default function ServiQLogo({
           className={joinClasses(
             "brand-display inline-flex items-baseline font-semibold leading-none tracking-[-0.07em]",
             compact ? "text-lg" : "text-2xl",
-            wordmarkClassName || "text-slate-900"
+            wordmarkClassName || "text-[var(--ink-950)]"
           )}
         >
           <span className="relative pr-1 after:absolute after:-bottom-1 after:left-0 after:h-[3px] after:w-full after:rounded-full after:bg-current/15">
@@ -123,7 +123,7 @@ export default function ServiQLogo({
             className={joinClasses(
               "block truncate",
               compact ? "mt-0.5 text-[10px]" : "mt-1 text-xs",
-              taglineClassName || "text-slate-500"
+              taglineClassName || "text-[var(--ink-500)]"
             )}
           >
             {appTagline}

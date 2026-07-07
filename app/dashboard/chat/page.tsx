@@ -1346,7 +1346,7 @@ export default function ChatPage() {
       : null;
 
   return (
-    <div className="relative -mx-3 h-[calc(100dvh-12rem-env(safe-area-inset-top,0px))] min-h-[24rem] overflow-hidden border-y border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] sm:mx-0 sm:h-[calc(100dvh-10rem-env(safe-area-inset-top,0px))] sm:rounded-3xl sm:border sm:shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] lg:h-[calc(100dvh-8rem)]">
+    <div className="relative -mx-3 h-[calc(100dvh-12rem-env(safe-area-inset-top,0px))] min-h-[24rem] overflow-hidden border-y border-[var(--surface-border)]/80 bg-[var(--surface-elevated)] shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] sm:mx-0 sm:h-[calc(100dvh-10rem-env(safe-area-inset-top,0px))] sm:rounded-3xl sm:border sm:shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] lg:h-[calc(100dvh-8rem)]">
       <RouteObservability route="chat" />
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -right-20 -top-16 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />
@@ -1355,21 +1355,21 @@ export default function ChatPage() {
 
       <div className="relative flex h-full">
         <aside
-          className={`w-full border-r border-slate-200/80 bg-white/90 backdrop-blur-xl md:w-[23rem] lg:w-[25rem] ${
+          className={`w-full border-r border-[var(--surface-border)]/80 bg-white/90 backdrop-blur-xl md:w-[23rem] lg:w-[25rem] ${
             selectedChat ? "hidden md:flex" : "flex"
           } flex-col`}
         >
-          <div className="border-b border-slate-200/80 px-3 pb-3 pt-3 sm:px-5 sm:pb-5 sm:pt-5">
+          <div className="border-b border-[var(--surface-border)]/80 px-3 pb-3 pt-3 sm:px-5 sm:pb-5 sm:pt-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-600 sm:block sm:text-xs">Local Inbox</p>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">Messages</h2>
-                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600 sm:hidden">
+                  <h2 className="text-lg font-semibold text-[var(--ink-950)] sm:text-xl">Messages</h2>
+                  <span className="inline-flex items-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--ink-700)] sm:hidden">
                     {conversations.length} chats
                   </span>
                 </div>
-                <p className="mt-1 hidden text-xs text-slate-500 sm:block">Hyperlocal chats with live sync, unread state, and presence.</p>
+                <p className="mt-1 hidden text-xs text-[var(--ink-500)] sm:block">Hyperlocal chats with live sync, unread state, and presence.</p>
               </div>
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold sm:text-[11px] ${
@@ -1384,21 +1384,21 @@ export default function ChatPage() {
             </div>
 
             <div className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">
-              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+              <span className="inline-flex items-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-700)]">
                 {totalUnread} unread
               </span>
-              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+              <span className="inline-flex items-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
                 {onlineContacts} online
               </span>
             </div>
 
-            <div className="mt-4 hidden items-center gap-2 rounded-2xl border border-slate-300 bg-slate-50 px-3 py-2.5 sm:flex">
-              <Search size={16} className="text-slate-500" />
+            <div className="mt-4 hidden items-center gap-2 rounded-2xl border border-slate-300 bg-[var(--surface-soft)] px-3 py-2.5 sm:flex">
+              <Search size={16} className="text-[var(--ink-500)]" />
               <input
                 placeholder="Search people or messages"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--ink-500)]"
               />
             </div>
 
@@ -1409,7 +1409,7 @@ export default function ChatPage() {
                 className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${
                   inboxFilter === "all"
                     ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                    : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                    : "border-slate-300 bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                 }`}
               >
                 All Chats ({conversations.length})
@@ -1420,7 +1420,7 @@ export default function ChatPage() {
                 className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${
                   inboxFilter === "unread"
                     ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                    : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                    : "border-slate-300 bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                 }`}
               >
                 Unread ({totalUnread})
@@ -1428,16 +1428,16 @@ export default function ChatPage() {
             </div>
 
             <div className="mt-3 hidden grid-cols-3 gap-2 sm:grid">
-              <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
-                <p className="text-[10px] uppercase tracking-wide text-slate-500">Chats</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{conversations.length}</p>
+              <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-2">
+                <p className="text-[10px] uppercase tracking-wide text-[var(--ink-500)]">Chats</p>
+                <p className="mt-1 text-sm font-semibold text-[var(--ink-950)]">{conversations.length}</p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
-                <p className="text-[10px] uppercase tracking-wide text-slate-500">Online</p>
+              <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-2">
+                <p className="text-[10px] uppercase tracking-wide text-[var(--ink-500)]">Online</p>
                 <p className="mt-1 text-sm font-semibold text-emerald-600">{onlineContacts}</p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
-                <p className="text-[10px] uppercase tracking-wide text-slate-500">Unread</p>
+              <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-2">
+                <p className="text-[10px] uppercase tracking-wide text-[var(--ink-500)]">Unread</p>
                 <p className="mt-1 text-sm font-semibold text-indigo-600">{totalUnread}</p>
               </div>
             </div>
@@ -1453,21 +1453,21 @@ export default function ChatPage() {
             {loadingConversations && (
               <div className="space-y-2">
                 {Array.from({ length: 6 }).map((_, index) => (
-                  <div key={index} className="rounded-2xl border border-slate-200 bg-white p-3">
+                  <div key={index} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-3">
                     <div className="h-4 w-2/3 animate-pulse rounded bg-slate-200" />
-                    <div className="mt-2 h-3 w-full animate-pulse rounded bg-slate-100" />
+                    <div className="mt-2 h-3 w-full animate-pulse rounded bg-[var(--surface-soft)]" />
                   </div>
                 ))}
               </div>
             )}
 
             {!loadingConversations && filteredConversations.length === 0 && (
-              <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+              <div className="space-y-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] p-4 text-sm text-[var(--ink-700)]">
                 <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
                   <Users className="h-3.5 w-3.5" />
                   Inbox is empty for now
                 </div>
-                <p className="text-sm text-slate-700">Start a conversation from posts or people and it will appear here instantly.</p>
+                <p className="text-sm text-[var(--ink-700)]">Start a conversation from posts or people and it will appear here instantly.</p>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => router.push("/dashboard")}
@@ -1477,7 +1477,7 @@ export default function ChatPage() {
                   </button>
                   <button
                     onClick={() => router.push("/dashboard/people")}
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    className="rounded-xl border border-slate-300 bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                   >
                     Browse People
                   </button>
@@ -1500,7 +1500,7 @@ export default function ChatPage() {
                     className={`w-full rounded-[1.15rem] border px-3 py-3 text-left transition-all duration-200 sm:rounded-2xl ${
                       isSelected
                         ? "border-indigo-300 bg-gradient-to-r from-indigo-50 via-sky-50 to-white shadow-sm"
-                        : "border-transparent bg-white hover:border-slate-200 hover:bg-slate-50"
+                        : "border-transparent bg-[var(--surface-elevated)] hover:border-[var(--surface-border)] hover:bg-[var(--surface-soft)]"
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -1510,7 +1510,7 @@ export default function ChatPage() {
                           alt={`${chat.name} avatar`}
                           width={44}
                           height={44}
-                          className="h-11 w-11 rounded-full border border-slate-200 object-cover"
+                          className="h-11 w-11 rounded-full border border-[var(--surface-border)] object-cover"
                         />
                         <span
                           className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${
@@ -1521,10 +1521,10 @@ export default function ChatPage() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-sm font-semibold text-slate-900">{chat.name}</p>
-                          <p className="shrink-0 text-[11px] text-slate-500">{formatTimeAgo(chat.lastMessageAt)}</p>
+                          <p className="truncate text-sm font-semibold text-[var(--ink-950)]">{chat.name}</p>
+                          <p className="shrink-0 text-[11px] text-[var(--ink-500)]">{formatTimeAgo(chat.lastMessageAt)}</p>
                         </div>
-                        <p className="mt-1 truncate text-xs text-slate-600">
+                        <p className="mt-1 truncate text-xs text-[var(--ink-700)]">
                           {isFromMe ? "You: " : ""}
                           {chat.lastMessage}
                         </p>
@@ -1566,8 +1566,8 @@ export default function ChatPage() {
                   <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-700">
                     Linked listing
                   </p>
-                  <p className="truncate text-sm font-semibold text-slate-900">{activeFeedContext.title}</p>
-                  <p className="truncate text-xs text-slate-600">
+                  <p className="truncate text-sm font-semibold text-[var(--ink-950)]">{activeFeedContext.title}</p>
+                  <p className="truncate text-xs text-[var(--ink-700)]">
                     {activeFeedContext.audience}
                     {draftMessage ? " • we prepared a context-aware first message for you" : ""}
                   </p>
@@ -1579,14 +1579,14 @@ export default function ChatPage() {
                       if (!feedContextPath) return;
                       router.push(feedContextPath);
                     }}
-                    className="rounded-lg border border-indigo-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                    className="rounded-lg border border-indigo-300 bg-[var(--surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
                   >
                     Open post
                   </button>
                   <button
                     type="button"
                     onClick={() => setFeedContextDismissed(true)}
-                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                    className="rounded-lg border border-slate-300 bg-[var(--surface-elevated)] px-2.5 py-1.5 text-xs font-medium text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                   >
                     Hide
                   </button>
@@ -1597,34 +1597,34 @@ export default function ChatPage() {
 
           {!selectedChat ? (
             <div className="relative flex h-full items-center justify-center overflow-y-auto p-6 md:p-10">
-              <div className="w-full max-w-3xl rounded-3xl border border-slate-200/80 bg-white/85 p-6 shadow-sm backdrop-blur-xl md:p-8">
+              <div className="w-full max-w-3xl rounded-3xl border border-[var(--surface-border)]/80 bg-white/85 p-6 shadow-sm backdrop-blur-xl md:p-8">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
                     <Activity className="h-3.5 w-3.5" />
                     Live Messaging Hub
                   </span>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold text-[var(--ink-700)]">
                     <MessageCircle className="h-3.5 w-3.5" />
                     {lastRealtimeLabel}
                   </span>
                 </div>
 
-                <h3 className="mt-4 text-2xl font-semibold text-slate-900">Select a conversation to launch the realtime workspace.</h3>
-                <p className="mt-2 text-sm text-slate-600">
+                <h3 className="mt-4 text-2xl font-semibold text-[var(--ink-950)]">Select a conversation to launch the realtime workspace.</h3>
+                <p className="mt-2 text-sm text-[var(--ink-700)]">
                   Presence, unread counters, and typing indicators are already wired. Open a chat to start sending instantly.
                 </p>
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">Conversations</p>
-                    <p className="mt-1 text-xl font-semibold text-slate-900">{conversations.length}</p>
+                  <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] p-4">
+                    <p className="text-xs uppercase tracking-wide text-[var(--ink-500)]">Conversations</p>
+                    <p className="mt-1 text-xl font-semibold text-[var(--ink-950)]">{conversations.length}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">Unread</p>
+                  <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] p-4">
+                    <p className="text-xs uppercase tracking-wide text-[var(--ink-500)]">Unread</p>
                     <p className="mt-1 text-xl font-semibold text-indigo-600">{totalUnread}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">Channels Up</p>
+                  <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] p-4">
+                    <p className="text-xs uppercase tracking-wide text-[var(--ink-500)]">Channels Up</p>
                     <p className="mt-1 text-xl font-semibold text-emerald-600">{connectedChannels}/3</p>
                   </div>
                 </div>
@@ -1635,10 +1635,10 @@ export default function ChatPage() {
                       key={conversation.id}
                       type="button"
                       onClick={() => selectConversation(conversation.id, true)}
-                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50/40"
+                      className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50/40"
                     >
-                      <p className="truncate text-sm font-semibold text-slate-900">{conversation.name}</p>
-                      <p className="mt-1 truncate text-xs text-slate-600">{conversation.lastMessage}</p>
+                      <p className="truncate text-sm font-semibold text-[var(--ink-950)]">{conversation.name}</p>
+                      <p className="mt-1 truncate text-xs text-[var(--ink-700)]">{conversation.lastMessage}</p>
                     </button>
                   ))}
                 </div>
@@ -1646,13 +1646,13 @@ export default function ChatPage() {
             </div>
           ) : (
             <>
-              <header className="border-b border-slate-200/80 bg-white/90 px-3 py-2.5 backdrop-blur-xl sm:px-6 sm:py-4">
+              <header className="border-b border-[var(--surface-border)]/80 bg-white/90 px-3 py-2.5 backdrop-blur-xl sm:px-6 sm:py-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <button
                       type="button"
                       onClick={() => setSelectedChat(null)}
-                      className="rounded-xl border border-slate-300 bg-white p-2 text-slate-600 transition hover:bg-slate-50 md:hidden"
+                      className="rounded-xl border border-slate-300 bg-[var(--surface-elevated)] p-2 text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] md:hidden"
                     >
                       <ArrowLeft size={18} />
                     </button>
@@ -1665,7 +1665,7 @@ export default function ChatPage() {
                             alt={`${selectedConversation.name} avatar`}
                             width={42}
                             height={42}
-                            className="h-11 w-11 rounded-full border border-slate-200 object-cover"
+                            className="h-11 w-11 rounded-full border border-[var(--surface-border)] object-cover"
                           />
                           <span
                             className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${
@@ -1674,14 +1674,14 @@ export default function ChatPage() {
                           />
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-900">{selectedConversation.name}</p>
+                          <p className="truncate text-sm font-semibold text-[var(--ink-950)]">{selectedConversation.name}</p>
                           <p
                             className={`text-xs ${
                               selectedUserTyping
                                 ? "text-indigo-600"
                                 : selectedUserOnline
                                 ? "text-emerald-600"
-                                : "text-slate-500"
+                                : "text-[var(--ink-500)]"
                             }`}
                           >
                             {selectedUserTyping
@@ -1829,12 +1829,12 @@ export default function ChatPage() {
                 )}
 
                 {liveTalkRequest && (
-                  <div className="mb-4 rounded-2xl border border-cyan-200 bg-cyan-50/90 p-4 text-sm text-slate-700 shadow-sm">
+                  <div className="mb-4 rounded-2xl border border-cyan-200 bg-cyan-50/90 p-4 text-sm text-[var(--ink-700)] shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">Live Talk</p>
-                        <p className="mt-1 font-semibold text-slate-900">{liveTalkStatusLabel}</p>
-                        <p className="mt-1 text-xs text-slate-600">
+                        <p className="mt-1 font-semibold text-[var(--ink-950)]">{liveTalkStatusLabel}</p>
+                        <p className="mt-1 text-xs text-[var(--ink-700)]">
                           {liveTalkRequest.status === "pending"
                             ? liveTalkRole === "recipient"
                               ? "This member wants to launch the live audio/video workspace for this chat."
@@ -1872,7 +1872,7 @@ export default function ChatPage() {
                             type="button"
                             onClick={() => void updateLiveTalk(liveTalkRequest.id, "cancelled")}
                             disabled={liveTalkBusy}
-                            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-70"
+                            className="rounded-xl border border-slate-300 bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-70"
                           >
                             Cancel request
                           </button>
@@ -1891,7 +1891,7 @@ export default function ChatPage() {
                               type="button"
                               onClick={() => { void updateLiveTalk(liveTalkRequest.id, "ended"); setCallActive(false); }}
                               disabled={liveTalkBusy}
-                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-70"
+                              className="rounded-xl border border-slate-300 bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-70"
                             >
                               End session
                             </button>
@@ -1914,24 +1914,24 @@ export default function ChatPage() {
                   />
                 )}
                 {loadingMessages ? (
-                  <p className="inline-flex items-center gap-2 text-sm text-slate-600">
+                  <p className="inline-flex items-center gap-2 text-sm text-[var(--ink-700)]">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading conversation...
                   </p>
                 ) : messages.length === 0 ? (
-                  <div className="mx-auto mt-10 max-w-xl rounded-[2rem] border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
+                  <div className="mx-auto mt-10 max-w-xl rounded-[2rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6 text-sm text-[var(--ink-700)] shadow-sm">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
                         <MessageCircle className="h-3.5 w-3.5" />
                         Ready to start
                       </span>
                       {activeFeedContext ? (
-                        <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold text-[var(--ink-700)]">
                           {activeFeedContext.audience}
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-4 text-lg font-semibold text-slate-900">No messages yet</p>
+                    <p className="mt-4 text-lg font-semibold text-[var(--ink-950)]">No messages yet</p>
                     <p className="mt-1">
                       {activeFeedContext
                         ? "Use the prepared opener below or start with your own message. This thread is already linked to the post you came from."
@@ -1942,11 +1942,11 @@ export default function ChatPage() {
                         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
                           Suggested opener
                         </p>
-                        <p className="mt-2 text-sm leading-6 text-slate-800">{draftMessage}</p>
+                        <p className="mt-2 text-sm leading-6 text-[var(--ink-950)]">{draftMessage}</p>
                         <button
                           type="button"
                           onClick={() => applyComposerSuggestion(draftMessage)}
-                          className="mt-3 inline-flex items-center rounded-full border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                          className="mt-3 inline-flex items-center rounded-full border border-emerald-300 bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
                         >
                           Use this opener
                         </button>
@@ -1959,7 +1959,7 @@ export default function ChatPage() {
                             key={suggestion}
                             type="button"
                             onClick={() => applyComposerSuggestion(suggestion)}
-                            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-left text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                            className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-1.5 text-left text-xs font-semibold text-[var(--ink-700)] transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                           >
                             {suggestion}
                           </button>
@@ -1972,7 +1972,7 @@ export default function ChatPage() {
                     {groupedMessages.map((group) => (
                       <div key={group.key} className="space-y-3">
                         <div className="flex justify-center">
-                          <span className="rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600">
+                          <span className="rounded-full border border-slate-300 bg-[var(--surface-elevated)] px-3 py-1 text-[11px] font-semibold text-[var(--ink-700)]">
                             {group.label}
                           </span>
                         </div>
@@ -1992,13 +1992,13 @@ export default function ChatPage() {
                                 className={`max-w-[84%] rounded-2xl px-4 py-2.5 text-sm shadow-sm sm:max-w-[75%] ${
                                   mine
                                     ? "rounded-br-md bg-gradient-to-r from-indigo-600 to-blue-500 text-white"
-                                    : "rounded-bl-md border border-slate-200 bg-white text-slate-800"
+                                    : "rounded-bl-md border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-950)]"
                                 } ${failed ? "opacity-70" : ""}`}
                               >
                                 <p className="whitespace-pre-wrap break-words">{message.content}</p>
                                 <p
                                   className={`mt-1 inline-flex items-center gap-1 text-[10px] ${
-                                    mine ? "text-indigo-100" : "text-slate-400"
+                                    mine ? "text-indigo-100" : "text-[var(--ink-500)]"
                                   }`}
                                 >
                                   {formatTime(message.created_at)}
@@ -2026,7 +2026,7 @@ export default function ChatPage() {
 
                     {selectedUserTyping && selectedConversation && (
                       <div className="flex justify-start">
-                        <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
+                        <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-md border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2 text-xs text-[var(--ink-700)] shadow-sm">
                           <span className="flex items-center gap-0.5">
                             {[0, 0.15, 0.3].map((delay) => (
                               <span
@@ -2051,14 +2051,14 @@ export default function ChatPage() {
                   <button
                     type="button"
                     onClick={scrollToBottom}
-                    className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 shadow-md transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
+                    className="flex items-center gap-1.5 rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-[11px] font-semibold text-[var(--ink-700)] shadow-md transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink-950)]"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                     Jump to latest
                   </button>
                 </div>
               ) : null}
-              <footer className="border-t border-slate-200/80 bg-white px-3 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)] pt-3 sm:px-6 sm:pt-4">
+              <footer className="border-t border-[var(--surface-border)]/80 bg-[var(--surface-elevated)] px-3 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)] pt-3 sm:px-6 sm:pt-4">
                 {showEmoticonPicker && (
                   <button
                     type="button"
@@ -2074,7 +2074,7 @@ export default function ChatPage() {
                         key={`composer:${suggestion}`}
                         type="button"
                         onClick={() => applyComposerSuggestion(suggestion)}
-                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                        className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                       >
                         {suggestion}
                       </button>
@@ -2083,15 +2083,15 @@ export default function ChatPage() {
                 ) : null}
                 <div className="relative rounded-[1.65rem] border border-slate-300 bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] p-2.5 shadow-[0_18px_32px_-28px_rgba(15,23,42,0.45)]">
                   {showEmoticonPicker && (
-                    <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+6.25rem)] z-20 rounded-[1.6rem] border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/15 sm:absolute sm:bottom-full sm:left-2 sm:right-2 sm:mb-2 sm:rounded-2xl">
+                    <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+6.25rem)] z-20 rounded-[1.6rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-3 shadow-xl shadow-slate-900/15 sm:absolute sm:bottom-full sm:left-2 sm:right-2 sm:mb-2 sm:rounded-2xl">
                       <div className="mb-2 flex items-center justify-between gap-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-500)]">
                           Add emoji
                         </p>
                         <button
                           type="button"
                           onClick={() => setShowEmoticonPicker(false)}
-                          className="text-xs font-semibold text-slate-500 transition hover:text-slate-700"
+                          className="text-xs font-semibold text-[var(--ink-500)] transition hover:text-[var(--ink-700)]"
                         >
                           Close
                         </button>
@@ -2103,7 +2103,7 @@ export default function ChatPage() {
                               key={option.label}
                               type="button"
                               onClick={() => insertEmoticon(option.value)}
-                              className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 text-center text-base font-semibold leading-none text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                              className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-2 py-2 text-center text-base font-semibold leading-none text-[var(--ink-700)] transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                               aria-label={`Insert ${option.label}`}
                               title={option.label}
                             >
@@ -2116,7 +2116,7 @@ export default function ChatPage() {
                   )}
                   <div className="mb-2 flex items-center justify-between gap-2 px-1">
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                      <span className="inline-flex items-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-700)]">
                         {selectedConversation ? `Replying to ${selectedConversation.name}` : "New message"}
                       </span>
                       {draftMessage && input === draftMessage ? (
@@ -2125,7 +2125,7 @@ export default function ChatPage() {
                         </span>
                       ) : null}
                     </div>
-                    <span className="text-[11px] font-medium text-slate-400">{input.length}/1200</span>
+                    <span className="text-[11px] font-medium text-[var(--ink-500)]">{input.length}/1200</span>
                   </div>
                   <div className="flex items-end gap-2">
                     <button
@@ -2134,7 +2134,7 @@ export default function ChatPage() {
                       className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-sm font-bold transition ${
                         showEmoticonPicker
                           ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                          : "border-slate-300 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
+                          : "border-slate-300 bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-indigo-200 hover:text-indigo-700"
                       }`}
                       aria-label="Open emoji picker"
                       aria-expanded={showEmoticonPicker}
@@ -2167,7 +2167,7 @@ export default function ChatPage() {
                       rows={1}
                       maxLength={1200}
                       enterKeyHint="send"
-                      className="h-11 max-h-36 min-h-11 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                      className="h-11 max-h-36 min-h-11 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-[var(--ink-950)] outline-none placeholder:text-[var(--ink-500)]"
                     />
                     <button
                       onClick={() => void sendMessage()}
@@ -2180,7 +2180,7 @@ export default function ChatPage() {
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                  <p className="inline-flex items-center gap-1.5 text-slate-500">
+                  <p className="inline-flex items-center gap-1.5 text-[var(--ink-500)]">
                     {connectedChannels >= 2 ? (
                       <Wifi className="h-3.5 w-3.5 text-emerald-600" />
                     ) : (
@@ -2188,7 +2188,7 @@ export default function ChatPage() {
                     )}
                     {lastRealtimeLabel}
                   </p>
-                  <p className="hidden text-slate-400 sm:block">
+                  <p className="hidden text-[var(--ink-500)] sm:block">
                     Press Enter to send, Shift + Enter for newline, or use the emoji picker.
                   </p>
                 </div>

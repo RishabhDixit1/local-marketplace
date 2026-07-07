@@ -96,7 +96,7 @@ export default function ProviderAvailabilityOnboarding() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--ink-500)]" />
       </div>
     );
   }
@@ -113,8 +113,8 @@ export default function ProviderAvailabilityOnboarding() {
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--brand-100)]">
           <Clock className="h-6 w-6 text-[var(--brand-700)]" />
         </div>
-        <h1 className="text-center text-xl font-bold text-slate-900">Set your availability</h1>
-        <p className="mt-1 text-center text-sm text-slate-500">
+        <h1 className="text-center text-xl font-extrabold text-[var(--ink-950)]">Set your availability</h1>
+        <p className="mt-1 text-center text-sm text-[var(--ink-500)]">
           Let customers know when they can book your services
         </p>
       </div>
@@ -125,19 +125,19 @@ export default function ProviderAvailabilityOnboarding() {
 
       <div className="space-y-4">
         {daysWithSlots.map(({ day, dayIdx, daySlots }) => (
-          <div key={dayIdx} className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div key={dayIdx} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
             <div className="mb-2 flex items-center justify-between">
-              <label className="text-sm font-semibold text-slate-700">{day}</label>
+              <label className="text-sm font-semibold text-[var(--ink-700)]">{day}</label>
               <button
                 type="button"
                 onClick={() => addSlot(dayIdx)}
-                className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-500 transition hover:border-[var(--brand-300)] hover:text-[var(--brand-700)]"
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--surface-border)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-500)] transition hover:border-[var(--brand-300)] hover:text-[var(--brand-700)]"
               >
                 <Plus className="h-3 w-3" /> Add slot
               </button>
             </div>
             {daySlots.length === 0 ? (
-              <p className="text-xs text-slate-400">No availability set</p>
+              <p className="text-xs text-[var(--ink-500)]">No availability set</p>
             ) : (
               <div className="space-y-2">
                 {daySlots.map((slot, slotIdx) => {
@@ -149,7 +149,7 @@ export default function ProviderAvailabilityOnboarding() {
                         value={slot.start_time}
                         onChange={(e) => updateSlot(globalIdx, "start_time", e.target.value)}
                       />
-                      <span className="text-xs text-slate-400">to</span>
+                      <span className="text-xs text-[var(--ink-500)]">to</span>
                       <Input
                         type="time"
                         value={slot.end_time}
@@ -158,7 +158,7 @@ export default function ProviderAvailabilityOnboarding() {
                       <button
                         type="button"
                         onClick={() => removeSlot(globalIdx)}
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--ink-500)] hover:bg-rose-50 hover:text-rose-500 transition"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -189,7 +189,7 @@ export default function ProviderAvailabilityOnboarding() {
         <button
           type="button"
           onClick={() => router.push("/onboarding/provider/profile")}
-          className="w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+          className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] py-3 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]"
         >
           Skip for now
         </button>

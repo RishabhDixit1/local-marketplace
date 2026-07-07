@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import dynamic from "next/dynamic";
 import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
+import { manrope, sora } from "@/lib/fonts";
 
 const CookieConsentBanner = dynamic(
   () => import("@/app/components/CookieConsentBanner"),
@@ -71,7 +72,7 @@ export default async function RootLayout({
           {`(function(){try{var l=localStorage.getItem("serviq-locale");if(l){document.documentElement.lang=l}}catch(e){}})();`}
         </Script>
       </head>
-      <body className="flex min-h-screen flex-col bg-[var(--surface-app)] text-[var(--ink-950)] antialiased">
+      <body className={`${manrope.variable} ${sora.variable} flex min-h-screen flex-col bg-[var(--surface-app)] text-[var(--ink-950)] antialiased`}>
         <NavigationProgress />
         <OfflineBanner />
         <LocaleProvider defaultLocale={locale}>

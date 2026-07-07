@@ -28,7 +28,7 @@ export function WhatsAppShareButton({
     primary:
       "bg-[#25D366] text-white hover:bg-[#20BD5A] border border-transparent",
     outline:
-      "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300",
+      "border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:bg-[var(--surface-soft)] hover:border-[var(--border-strong)]",
   };
 
   const handleClick = () => {
@@ -48,7 +48,7 @@ export function WhatsAppShareButton({
   };
 
   return (
-    <div className="inline-flex overflow-hidden rounded-xl border border-slate-200">
+    <div className="inline-flex overflow-hidden rounded-xl border border-[var(--surface-border)]">
       <button
         type="button"
         onClick={handleClick}
@@ -60,7 +60,7 @@ export function WhatsAppShareButton({
       <button
         type="button"
         onClick={handleCopyLink}
-        className="inline-flex items-center border-l border-slate-200 px-2.5 text-slate-400 transition hover:bg-slate-50 hover:text-slate-600"
+        className="inline-flex items-center border-l border-[var(--surface-border)] px-2.5 text-[var(--ink-500)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink-700)]"
         aria-label="Copy share text"
         title="Copy share text"
       >

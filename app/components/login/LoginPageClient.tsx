@@ -256,7 +256,7 @@ function BrandPanel() {
             </StaggerItem>
 
             <StaggerItem>
-              <h1 className="mt-8 text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl lg:text-4xl xl:text-5xl">
+              <h1 className="mt-8 text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl lg:text-4xl xl:text-5xl">
                 Your Local Marketplace<br />
                 <span className="text-[var(--brand-300)]">&amp; Help App</span>
               </h1>
@@ -472,7 +472,7 @@ function AuthForm() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-700)]">
               Secure Access
             </p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-[var(--ink-950)]">
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-[var(--ink-950)]">
               Welcome to {appName}
             </h2>
             <p className="mt-2 text-sm leading-[1.6] text-[var(--ink-500)]">

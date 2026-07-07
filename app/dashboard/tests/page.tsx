@@ -74,31 +74,31 @@ export default function TestsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-3 pb-8 pt-5 sm:px-6 sm:pt-6">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">A/B Tests</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-xl font-bold text-[var(--ink-950)]">A/B Tests</h1>
+        <p className="text-sm text-[var(--ink-500)]">
           Manage and monitor your experiment variants.
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 text-center">
           <FlaskConical className="mx-auto mb-2 h-7 w-7 text-[var(--brand-500)]" />
-          <p className="text-xs font-semibold text-slate-500">Active Tests</p>
-          <p className="text-2xl font-bold text-slate-900">
+          <p className="text-xs font-semibold text-[var(--ink-500)]">Active Tests</p>
+          <p className="text-2xl font-bold text-[var(--ink-950)]">
             {mockTests.filter((t) => t.status === "active").length}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 text-center">
           <BarChart3 className="mx-auto mb-2 h-7 w-7 text-[var(--brand-500)]" />
-          <p className="text-xs font-semibold text-slate-500">Impressions</p>
-          <p className="text-2xl font-bold text-slate-900">
+          <p className="text-xs font-semibold text-[var(--ink-500)]">Impressions</p>
+          <p className="text-2xl font-bold text-[var(--ink-950)]">
             {totalImpressions.toLocaleString()}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 text-center">
           <TrendingUp className="mx-auto mb-2 h-7 w-7 text-[var(--brand-500)]" />
-          <p className="text-xs font-semibold text-slate-500">Conversions</p>
-          <p className="text-2xl font-bold text-slate-900">
+          <p className="text-xs font-semibold text-[var(--ink-500)]">Conversions</p>
+          <p className="text-2xl font-bold text-[var(--ink-950)]">
             {totalConversions.toLocaleString()}
           </p>
         </div>
@@ -115,19 +115,19 @@ export default function TestsPage() {
           return (
             <div
               key={test.id}
-              className="rounded-2xl border border-slate-200 bg-white p-5"
+              className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5"
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <code className="rounded-md bg-slate-100 px-2 py-0.5 text-sm font-mono font-bold text-slate-800">
+                    <code className="rounded-md bg-[var(--surface-soft)] px-2 py-0.5 text-sm font-mono font-bold text-[var(--ink-700)]">
                       {test.name}
                     </code>
                     <span
                       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
                         test.status === "active"
                           ? "bg-emerald-50 text-emerald-700"
-                          : "bg-slate-100 text-slate-600"
+                          : "bg-[var(--surface-soft)] text-[var(--ink-700)]"
                       }`}
                     >
                       {test.status === "active" ? (
@@ -138,16 +138,16 @@ export default function TestsPage() {
                       {test.status}
                     </span>
                   </div>
-                  <p className="text-sm text-slate-500 mt-1">
+                  <p className="text-sm text-[var(--ink-500)] mt-1">
                     {test.description}
                   </p>
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-xl border border-slate-100">
+              <div className="overflow-hidden rounded-xl border border-[var(--surface-border)]">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <tr className="bg-[var(--surface-soft)] text-left text-xs font-semibold uppercase tracking-wider text-[var(--ink-500)]">
                       <th className="px-4 py-2.5">Variant</th>
                       <th className="px-4 py-2.5 text-right">Impressions</th>
                       <th className="px-4 py-2.5 text-right">Conversions</th>
@@ -167,7 +167,7 @@ export default function TestsPage() {
                           }`}
                         >
                           <td className="px-4 py-2.5">
-                            <span className="font-semibold text-slate-800">
+                            <span className="font-semibold text-[var(--ink-700)]">
                               {v.name}
                             </span>
                             {isWinner && (
@@ -177,13 +177,13 @@ export default function TestsPage() {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-2.5 text-right font-medium tabular-nums text-slate-700">
+                          <td className="px-4 py-2.5 text-right font-medium tabular-nums text-[var(--ink-700)]">
                             {v.impressions.toLocaleString()}
                           </td>
-                          <td className="px-4 py-2.5 text-right font-medium tabular-nums text-slate-700">
+                          <td className="px-4 py-2.5 text-right font-medium tabular-nums text-[var(--ink-700)]">
                             {v.conversions.toLocaleString()}
                           </td>
-                          <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-slate-800">
+                          <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-[var(--ink-700)]">
                             {getConversionRate(v.impressions, v.conversions)}
                           </td>
                         </tr>

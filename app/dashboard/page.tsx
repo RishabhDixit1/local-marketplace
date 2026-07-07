@@ -430,7 +430,7 @@ export default function MarketplacePage() {
   );
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] pt-5 text-slate-900 sm:pt-6">
+    <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] pt-5 text-[var(--ink-950)] sm:pt-6">
       <RouteObservability route="dashboard" />
 
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
@@ -509,7 +509,7 @@ export default function MarketplacePage() {
                   ),
                 )
               }
-              className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+              className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-2xl border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2.5 text-sm font-semibold text-[var(--ink-700)] shadow-sm transition hover:border-[var(--border-strong)] hover:text-[var(--ink-950)]"
             >
               Show more posts
             </button>

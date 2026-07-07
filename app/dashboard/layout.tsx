@@ -246,7 +246,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/dashboard/create") ||
     (desktopNavAutoCollapsed && isFeedLandingRoute);
   const shellIconButtonClassName =
-    "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:h-9 md:w-9 md:rounded-xl";
+    "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:h-9 md:w-9 md:rounded-xl";
 
   const updateUserMenuPosition = useCallback((anchor?: HTMLElement | null) => {
     if (typeof window === "undefined") return;
@@ -591,7 +591,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   if (!authReady) {
     return (
       <div className="min-h-screen grid place-items-center bg-[var(--surface-app)]">
-        <div className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-600 shadow-sm">
+        <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-3 text-sm font-medium text-[var(--ink-700)] shadow-sm">
           Loading dashboard...
         </div>
       </div>
@@ -618,7 +618,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             ) : null}
             <div
               ref={userMenuPanelRef}
-              className={`z-[var(--layer-popover)] overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 ${
+              className={`z-[var(--layer-popover)] overflow-hidden rounded-[1.6rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-2xl shadow-slate-900/15 ${
                 isDesktopUserMenu
                   ? "fixed rounded-2xl"
                   : "fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.75rem)]"
@@ -626,10 +626,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               style={isDesktopUserMenu ? userMenuDesktopStyle : undefined}
             >
               <div className="border-b border-slate-100 px-4 py-3.5">
-                <p className="truncate text-sm font-bold text-slate-900">
+                <p className="truncate text-sm font-bold text-[var(--ink-950)]">
                   {profile?.full_name || profile?.name || appName}
                 </p>
-                <p className="mt-0.5 truncate text-xs text-slate-500">
+                <p className="mt-0.5 truncate text-xs text-[var(--ink-500)]">
                   ServiQ account
                 </p>
               </div>
@@ -640,9 +640,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                     setShowUserMenu(false);
                     router.push(myProfileHref);
                   }}
-                  className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                  className="flex w-full items-center gap-3 rounded-2xl bg-[var(--surface-soft)] px-3 py-3 text-sm font-semibold text-[var(--ink-950)] transition hover:bg-[var(--surface-soft)]"
                 >
-                  <User className="h-4 w-4 shrink-0 text-slate-400" />
+                  <User className="h-4 w-4 shrink-0 text-[var(--ink-500)]" />
                   {publicProfileMenuLabel}
                 </button>
                 {isAdmin ? (
@@ -652,9 +652,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                       setShowUserMenu(false);
                       router.push("/dashboard/admin");
                     }}
-                    className="mt-1 flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                    className="mt-1 flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[var(--ink-950)] transition hover:bg-[var(--surface-soft)]"
                   >
-                    <Shield className="h-4 w-4 shrink-0 text-slate-400" />
+                    <Shield className="h-4 w-4 shrink-0 text-[var(--ink-500)]" />
                     Admin
                   </button>
                 ) : null}
@@ -678,15 +678,15 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       : null;
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] text-slate-900">
+    <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] text-[var(--ink-950)]">
       <div className="flex min-h-screen">
         <aside
-          className={`hidden md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-slate-200 md:bg-white md:shadow-[0_20px_46px_-42px_rgba(15,23,42,0.65)] transition-all duration-300 ${
+          className={`hidden md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-[var(--surface-border)] md:bg-white md:shadow-[0_20px_46px_-42px_rgba(15,23,42,0.65)] transition-all duration-300 ${
             desktopNavCollapsed ? "w-24" : "w-72"
           }`}
         >
           <div
-            className={`border-b border-slate-200 transition-all duration-300 ${desktopNavCollapsed ? "px-3 py-5" : "px-6 py-6"}`}
+            className={`border-b border-[var(--surface-border)] transition-all duration-300 ${desktopNavCollapsed ? "px-3 py-5" : "px-6 py-6"}`}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -711,7 +711,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   onClick={() =>
                     setDesktopNavManuallyCollapsed((current) => !current)
                   }
-                  className="hidden md:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                  className="hidden md:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] text-[var(--ink-700)] transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
                   aria-label={
                     desktopNavCollapsed
                       ? "Expand navigation"
@@ -751,7 +751,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   } ${
                     isActive
                       ? "bg-[var(--brand-900)] text-white shadow-[0_12px_26px_-18px_rgba(15,23,42,0.85)]"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      : "text-[var(--ink-700)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink-950)]"
                   }`}
                 >
                   <span
@@ -773,7 +773,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => setShowDesktopMore((v) => !v)}
-                  className="flex w-full items-center justify-between mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600"
+                  className="flex w-full items-center justify-between mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-500)] hover:text-[var(--ink-700)]"
                 >
                   More
                   <ChevronDown className={`h-3 w-3 transition ${showDesktopMore ? "" : "-rotate-90"}`} />
@@ -789,8 +789,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                         href={item.path}
                         className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
                           isActive
-                            ? "bg-slate-100 text-slate-900"
-                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                            ? "bg-[var(--surface-soft)] text-[var(--ink-950)]"
+                            : "text-[var(--ink-500)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink-950)]"
                         }`}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
@@ -809,10 +809,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div
-            className={`border-t border-slate-200 ${desktopNavCollapsed ? "px-2 py-4" : "px-4 py-4"}`}
+            className={`border-t border-[var(--surface-border)] ${desktopNavCollapsed ? "px-2 py-4" : "px-4 py-4"}`}
           >
             <div
-              className={`rounded-[1.65rem] border border-slate-200 bg-slate-50/85 shadow-[0_18px_36px_-34px_rgba(15,23,42,0.55)] ${
+              className={`rounded-[1.65rem] border border-[var(--surface-border)] bg-slate-50/85 shadow-[0_18px_36px_-34px_rgba(15,23,42,0.55)] ${
                 desktopNavCollapsed
                   ? "space-y-2 px-2 py-2.5"
                   : "space-y-2.5 px-3 py-3"
@@ -836,7 +836,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <div className="flex-1 flex min-w-0 flex-col overflow-x-clip">
-          <header className="sticky top-0 z-40 overflow-x-clip border-b border-slate-200/80 bg-white/96 shadow-[0_10px_24px_-22px_rgba(15,23,42,0.45)] backdrop-blur-none md:bg-white/92 md:shadow-[0_16px_30px_-28px_rgba(15,23,42,0.55)] md:backdrop-blur-xl">
+          <header className="sticky top-0 z-40 overflow-x-clip border-b border-[var(--surface-border)]/80 bg-white/96 shadow-[0_10px_24px_-22px_rgba(15,23,42,0.45)] backdrop-blur-none md:bg-white/92 md:shadow-[0_16px_30px_-28px_rgba(15,23,42,0.55)] md:backdrop-blur-xl">
             <div
               className="flex min-h-16 items-center gap-2.5 px-3 sm:px-6 sm:gap-3 md:px-8"
               style={{ paddingTop: "env(safe-area-inset-top)" }}
@@ -912,7 +912,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             {showPrompt ? (
-              <div className="border-t border-slate-200/80 px-3 pb-3 pt-2.5 sm:px-4 md:hidden">
+              <div className="border-t border-[var(--surface-border)]/80 px-3 pb-3 pt-2.5 sm:px-4 md:hidden">
                 <DashboardPromptBar placement="header" />
               </div>
             ) : null}
@@ -1012,7 +1012,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             className="fixed inset-0 z-[var(--layer-popover-backdrop)] md:hidden"
             onClick={() => setShowMobileMoreMenu(false)}
           />
-          <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[var(--layer-popover)] mx-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 md:hidden">
+          <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[var(--layer-popover)] mx-3 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-2xl shadow-slate-900/15 md:hidden">
           <div className="max-h-[60vh] overflow-y-auto p-3">
             <div className="grid grid-cols-2 gap-1">
               {secondaryNavItems.map((item) => {
@@ -1026,7 +1026,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                     className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${
                       isActive
                         ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        : "text-[var(--ink-700)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink-950)]"
                     }`}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
@@ -1042,16 +1042,16 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {showLogoutConfirm ? (
         <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-900/20">
+          <div className="w-full max-w-md rounded-[28px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6 shadow-2xl shadow-slate-900/20">
             <div className="flex items-start gap-3">
               <div className="rounded-2xl bg-amber-100 p-2 text-amber-700">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-lg font-semibold text-[var(--ink-950)]">
                   Log out of {appName}?
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
+                <p className="mt-2 text-sm leading-6 text-[var(--ink-700)]">
                   You can always sign back in with a magic link sent to your
                   email. Any unsaved local changes on open pages will be
                   lost.
@@ -1062,7 +1062,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => setShowLogoutConfirm(false)}
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                className="inline-flex items-center justify-center rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2.5 text-sm font-semibold text-[var(--ink-700)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink-950)]"
               >
                 Cancel
               </button>

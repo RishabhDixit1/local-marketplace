@@ -181,7 +181,7 @@ export default function EditProfilePage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-7 w-7 animate-spin text-slate-400" />
+        <Loader2 className="h-7 w-7 animate-spin text-[var(--ink-500)]" />
       </div>
     );
   }
@@ -193,8 +193,8 @@ export default function EditProfilePage() {
 
       {/* page title */}
       <div className="mb-6 px-4 sm:px-0">
-        <h1 className="text-2xl font-bold text-slate-900">Edit Profile</h1>
-        <p className="mt-1 text-sm text-slate-500">Step 1 of provider setup: identity.</p>
+        <h1 className="text-2xl font-bold text-[var(--ink-950)]">Edit Profile</h1>
+        <p className="mt-1 text-sm text-[var(--ink-500)]">Step 1 of provider setup: identity.</p>
       </div>
 
       <div className="mx-4 sm:mx-0 mb-5">
@@ -228,7 +228,7 @@ export default function EditProfilePage() {
             className={`rounded-[var(--radius-card)] border px-3 py-3 text-sm font-semibold transition ${
               step.active
                 ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                : "border-slate-200 bg-white text-slate-600 hover:border-[var(--brand-500)]/35"
+                : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--brand-500)]/35"
             }`}
           >
             <step.icon className="mb-2 h-4 w-4" />
@@ -278,7 +278,7 @@ export default function EditProfilePage() {
 
         {/* Full name */}
         <div>
-          <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="edit-full-name">
+          <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="edit-full-name">
             Full Name
           </label>
           <input
@@ -288,15 +288,15 @@ export default function EditProfilePage() {
             onChange={(e) => setFullName(e.target.value)}
             placeholder="Your name"
             maxLength={80}
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/30"
+            className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] shadow-sm outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/30"
           />
         </div>
 
         {/* Bio */}
         <div>
-          <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-slate-700" htmlFor="edit-bio">
+          <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-[var(--ink-700)]" htmlFor="edit-bio">
             <span>Bio</span>
-            <span className={`text-xs font-normal ${bio.length >= BIO_MAX ? "text-rose-500" : "text-slate-400"}`}>
+            <span className={`text-xs font-normal ${bio.length >= BIO_MAX ? "text-rose-500" : "text-[var(--ink-500)]"}`}>
               {bio.length}/{BIO_MAX}
             </span>
           </label>
@@ -306,20 +306,20 @@ export default function EditProfilePage() {
             onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
             placeholder="A short line about you..."
             rows={3}
-            className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/30"
+            className="w-full resize-none rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] shadow-sm outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/30"
           />
         </div>
 
         {/* Role */}
         <div>
-          <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="edit-role">
+          <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="edit-role">
             Role
           </label>
           <select
             id="edit-role"
             value={role}
             onChange={(e) => setRole(e.target.value as StoredProfileRole)}
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/30"
+            className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] shadow-sm outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/30"
           >
             {roleOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -331,7 +331,7 @@ export default function EditProfilePage() {
 
         {/* Location */}
         <div>
-          <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="edit-location">
+          <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="edit-location">
             Location
           </label>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -341,20 +341,20 @@ export default function EditProfilePage() {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Area, city, or neighbourhood"
-              className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/30"
+              className="min-w-0 flex-1 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] shadow-sm outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/30"
             />
             <button
               type="button"
               onClick={() => void handleGps()}
               disabled={locating}
-              className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60 sm:min-h-0"
+              className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-sm font-semibold text-[var(--ink-700)] shadow-sm transition hover:bg-[var(--surface-soft)] disabled:opacity-60 sm:min-h-0"
               aria-label="Use current GPS location"
             >
               {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
               GPS
             </button>
           </div>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-[var(--ink-500)]">
             Keep this label human-readable for nearby discovery. GPS saves precise coordinates separately.
           </p>
           {lat !== null && lng !== null ? (
@@ -366,11 +366,11 @@ export default function EditProfilePage() {
 
         {/* Phone  read-only */}
         <div>
-          <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-            Phone <span className="font-normal text-slate-400">(read only)</span>
+          <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]">
+            Phone <span className="font-normal text-[var(--ink-500)]">(read only)</span>
           </label>
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-base text-slate-500 shadow-sm">
-            <Phone className="h-4 w-4 shrink-0 text-slate-400" />
+          <div className="flex items-center gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-4 py-3.5 text-base text-[var(--ink-500)] shadow-sm">
+            <Phone className="h-4 w-4 shrink-0 text-[var(--ink-500)]" />
             <span>{profile?.phone ?? user?.phone ?? ""}</span>
           </div>
         </div>

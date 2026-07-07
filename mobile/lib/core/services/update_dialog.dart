@@ -71,7 +71,7 @@ Future<void> showUpdateDialog(BuildContext context, {
       await launchUrl(uri, mode: LaunchMode.externalApplication)
           .timeout(const Duration(seconds: 5));
     }
-  } catch (_) {
-    // URL launch failed — non-blocking
+  } catch (e) {
+    debugPrint('ServiQ update_dialog URL launch failed: $e');
   }
 }

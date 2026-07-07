@@ -22,17 +22,31 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sendMagicLink => 'Send magic link';
   @override
+  String get sendEmailCode => 'Send email code';
+  @override
   String get createAccount => 'Create account';
   @override
   String get signIn => 'Sign in';
   @override
+  String get signInWithPassword => 'Sign in with password';
+  @override
+  String get signInWithEmail => 'Sign in with email';
+  @override
   String get signOut => 'Sign out';
+  @override
+  String get sending => 'Sending...';
   @override
   String get home => 'Home';
   @override
   String get explore => 'Explore';
   @override
   String get people => 'People';
+  @override
+  String get work => 'Work';
+  @override
+  String get inbox => 'Inbox';
+  @override
+  String get youTab => 'You';
   @override
   String get tasks => 'Tasks';
   @override
@@ -68,6 +82,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get report => 'Report';
   @override
+  String get update => 'Update';
+  @override
+  String get later => 'Later';
+  @override
   String get loading => 'Loading...';
   @override
   String get errorOccurred => 'Something went wrong.';
@@ -84,7 +102,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get noNotifications => 'No notifications yet.';
   @override
-  String get postNeed => 'Post a Need';
+  String get couldNotConnect => 'Could not connect';
+  @override
+  String get updateRequired => 'Update required';
+  @override
+  String get updateAvailable => 'Update available';
+  @override
+  String newVersionAvailable(String version) => 'Version $version is now available.';
+  @override
+  String get whatsNew => "What's new:";
+  @override
+  String get postNeed => 'Post Need';
   @override
   String get findPeople => 'Find People';
   @override

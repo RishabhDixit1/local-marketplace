@@ -178,8 +178,8 @@ export default function CampaignsPage() {
     <div className="mx-auto max-w-5xl space-y-6 px-3 pb-8 pt-5 sm:px-6 sm:pt-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Campaigns</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-xl font-bold text-[var(--ink-950)]">Campaigns</h1>
+          <p className="text-sm text-[var(--ink-500)]">
             Manage marketing campaigns across channels.
           </p>
         </div>
@@ -194,13 +194,13 @@ export default function CampaignsPage() {
       </div>
 
       {showForm && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-4 text-sm font-bold text-slate-900">
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
+          <h2 className="mb-4 text-sm font-bold text-[var(--ink-950)]">
             Create Campaign
           </h2>
           <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-600">
+              <label className="mb-1 block text-xs font-semibold text-[var(--ink-700)]">
                 Title
               </label>
               <Input
@@ -213,13 +213,13 @@ export default function CampaignsPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">
+                <label className="mb-1 block text-xs font-semibold text-[var(--ink-700)]">
                   Campaign Type
                 </label>
                 <select
                   value={form.campaign_type}
                   onChange={(e) => setForm((p) => ({ ...p, campaign_type: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
+                  className="w-full rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
                 >
                   {CAMPAIGN_TYPE_OPTIONS.map((t) => (
                     <option key={t} value={t}>
@@ -230,13 +230,13 @@ export default function CampaignsPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">
+                <label className="mb-1 block text-xs font-semibold text-[var(--ink-700)]">
                   Schedule Type
                 </label>
                 <select
                   value={form.schedule_type}
                   onChange={(e) => setForm((p) => ({ ...p, schedule_type: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
+                  className="w-full rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
                 >
                   {SCHEDULE_TYPE_OPTIONS.map((t) => (
                     <option key={t} value={t}>
@@ -249,7 +249,7 @@ export default function CampaignsPage() {
 
             {form.schedule_type === "delay" && (
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">
+                <label className="mb-1 block text-xs font-semibold text-[var(--ink-700)]">
                   Delay (minutes)
                 </label>
                 <Input
@@ -263,7 +263,7 @@ export default function CampaignsPage() {
 
             {form.schedule_type === "cron" && (
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">
+                <label className="mb-1 block text-xs font-semibold text-[var(--ink-700)]">
                   Cron Expression
                 </label>
                 <Input
@@ -276,7 +276,7 @@ export default function CampaignsPage() {
             )}
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-600">
+              <label className="mb-1 block text-xs font-semibold text-[var(--ink-700)]">
                 Channels
               </label>
               <div className="flex flex-wrap gap-2">
@@ -288,7 +288,7 @@ export default function CampaignsPage() {
                     className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
                       form.channel.includes(ch)
                         ? "border-[var(--brand-400)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                        : "border-slate-200 text-slate-500 hover:border-slate-300"
+                        : "border-[var(--surface-border)] text-[var(--ink-500)] hover:border-[var(--border-strong)]"
                     }`}
                   >
                     {ch}
@@ -298,27 +298,27 @@ export default function CampaignsPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-600">
+              <label className="mb-1 block text-xs font-semibold text-[var(--ink-700)]">
                 Message Template
               </label>
               <textarea
                 value={form.message_template}
                 onChange={(e) => setForm((p) => ({ ...p, message_template: e.target.value }))}
                 rows={3}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
+                className="w-full rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
                 placeholder="Your message here..."
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-600">
+              <label className="mb-1 block text-xs font-semibold text-[var(--ink-700)]">
                 Target Segment (JSON)
               </label>
               <textarea
                 value={form.target_segment}
                 onChange={(e) => setForm((p) => ({ ...p, target_segment: e.target.value }))}
                 rows={2}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono text-xs outline-none focus:border-[var(--brand-400)]"
+                className="w-full rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm font-mono text-xs outline-none focus:border-[var(--brand-400)]"
                 placeholder='{"tags": ["premium"]}'
               />
             </div>
@@ -341,7 +341,7 @@ export default function CampaignsPage() {
                   setShowForm(false);
                   setForm(EMPTY_FORM);
                 }}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                className="rounded-xl border border-[var(--surface-border)] px-4 py-2 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]"
               >
                 Cancel
               </button>
@@ -350,16 +350,16 @@ export default function CampaignsPage() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-slate-200 bg-white">
+      <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)]">
         {loading ? (
           <div className="flex justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+            <Loader2 className="h-5 w-5 animate-spin text-[var(--ink-500)]" />
           </div>
         ) : campaigns.length === 0 ? (
           <div className="flex flex-col items-center py-10 text-center">
-            <Megaphone className="mb-2 h-8 w-8 text-slate-300" />
-            <p className="text-sm text-slate-400">No campaigns yet.</p>
-            <p className="text-xs text-slate-300">
+            <Megaphone className="mb-2 h-8 w-8 text-[var(--ink-500)]" />
+            <p className="text-sm text-[var(--ink-500)]">No campaigns yet.</p>
+            <p className="text-xs text-[var(--ink-500)]">
               Create your first marketing campaign.
             </p>
           </div>
@@ -367,7 +367,7 @@ export default function CampaignsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-xs font-semibold uppercase text-slate-400">
+                <tr className="border-b border-slate-100 text-xs font-semibold uppercase text-[var(--ink-500)]">
                   <th className="px-4 py-3">Title</th>
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Channel</th>
@@ -382,20 +382,20 @@ export default function CampaignsPage() {
                 {campaigns.map((c) => (
                   <tr
                     key={c.id}
-                    className="border-b border-slate-50 transition hover:bg-slate-50/50"
+                    className="border-b border-slate-50 transition hover:bg-[var(--surface-soft)]/50"
                   >
-                    <td className="max-w-[200px] truncate px-4 py-3 font-semibold text-slate-900">
+                    <td className="max-w-[200px] truncate px-4 py-3 font-semibold text-[var(--ink-950)]">
                       {c.title}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                      <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--ink-700)]">
                         {TYPE_LABELS[c.campaign_type] || c.campaign_type}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          CHANNEL_BADGES[c.channel] || "bg-slate-100 text-slate-600"
+                          CHANNEL_BADGES[c.channel] || "bg-[var(--surface-soft)] text-[var(--ink-700)]"
                         }`}
                       >
                         {c.channel}
@@ -404,16 +404,16 @@ export default function CampaignsPage() {
                     <td className="px-4 py-3">
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          SCHEDULE_BADGES[c.schedule_type] || "bg-slate-100 text-slate-600"
+                          SCHEDULE_BADGES[c.schedule_type] || "bg-[var(--surface-soft)] text-[var(--ink-700)]"
                         }`}
                       >
                         {c.schedule_type}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 text-[var(--ink-700)]">
                       {c.executions_count}
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-400">
+                    <td className="px-4 py-3 text-xs text-[var(--ink-500)]">
                       {formatDate(c.last_executed_at)}
                     </td>
                     <td className="px-4 py-3">
@@ -424,7 +424,7 @@ export default function CampaignsPage() {
                         className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold transition ${
                           c.is_active
                             ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                            : "bg-[var(--surface-soft)] text-[var(--ink-500)] hover:bg-slate-200"
                         }`}
                         title={c.is_active ? "Deactivate" : "Activate"}
                       >
@@ -443,7 +443,7 @@ export default function CampaignsPage() {
                         type="button"
                         onClick={() => handleDelete(c.id)}
                         disabled={deletingId === c.id}
-                        className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                        className="inline-flex items-center justify-center rounded-lg p-1.5 text-[var(--ink-500)] transition hover:bg-rose-50 hover:text-rose-600"
                         title="Delete campaign"
                       >
                         {deletingId === c.id ? (

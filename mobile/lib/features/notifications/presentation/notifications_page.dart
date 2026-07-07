@@ -90,7 +90,8 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     super.initState();
     try {
       _client = ref.read(appBootstrapProvider).client;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('ServiQ notifications_page._client init failed: $e');
       _client = null;
     }
     _bindRealtime();
@@ -177,7 +178,8 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       if (item.unread) {
         await ref.read(notificationRepositoryProvider).markAsRead(item.id);
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('ServiQ notifications_page._openNotification markAsRead failed: $e');
     }
 
     ref.invalidate(notificationListProvider);

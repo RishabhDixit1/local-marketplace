@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum OfflineOperationType {
@@ -78,6 +79,8 @@ class OfflineQueue {
       _operations.addAll(list
           .whereType<Map<String, dynamic>>()
           .map(OfflineOperation.fromJson));
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('ServiQ offline_queue.load failed: $e');
+    }
   }
 }

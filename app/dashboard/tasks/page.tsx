@@ -1857,7 +1857,7 @@ export default function TasksPage() {
 
   const actionButtonClassName =
     "inline-flex min-h-[44px] sm:min-h-9 items-center justify-center gap-2 rounded-full px-3 py-2 text-center text-[12px] leading-5 font-semibold transition sm:text-[13px] disabled:cursor-not-allowed disabled:opacity-60";
-  const subtleActionClassName = `${actionButtonClassName} border border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]`;
+  const subtleActionClassName = `${actionButtonClassName} border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]`;
   const darkActionClassName = `${actionButtonClassName} bg-slate-900 text-white hover:bg-slate-800`;
   const successActionClassName = `${actionButtonClassName} border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`;
   const destructiveActionClassName = `${actionButtonClassName} border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100`;
@@ -2262,12 +2262,12 @@ export default function TasksPage() {
                 ) : null}
 
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Task tracking</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ink-500)]">Task tracking</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {flowLabels.map((label) => (
                       <span
                         key={`${task.orderId}-detail-${label}`}
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+                        className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)]"
                       >
                         {label}
                       </span>
@@ -2285,14 +2285,14 @@ export default function TasksPage() {
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className={`h-2.5 w-2.5 rounded-full ${toneClasses.dot}`} />
-                              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--ink-500)]">
                                 {event.statusLabel || event.eventType.replace(/_/g, " ")}
                               </p>
                             </div>
-                            <p className="mt-2 text-sm font-semibold text-slate-900">{event.title}</p>
-                            <p className="mt-1.5 text-sm leading-6 text-slate-700">{event.description}</p>
+                            <p className="mt-2 text-sm font-semibold text-[var(--ink-950)]">{event.title}</p>
+                            <p className="mt-1.5 text-sm leading-6 text-[var(--ink-700)]">{event.description}</p>
                           </div>
-                          <span className="shrink-0 text-[11px] font-semibold text-slate-500">{formatAgo(event.createdAtRaw, clockMs)}</span>
+                          <span className="shrink-0 text-[11px] font-semibold text-[var(--ink-500)]">{formatAgo(event.createdAtRaw, clockMs)}</span>
                         </div>
                       </div>
                     );
@@ -2404,7 +2404,7 @@ export default function TasksPage() {
         ref={(node) => {
           taskCardRefs.current.set(task.orderId, node);
         }}
-        className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-[0_14px_40px_-32px_rgba(15,23,42,0.28)] transition hover:border-slate-300"
+        className="rounded-[1.35rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-[0_14px_40px_-32px_rgba(15,23,42,0.28)] transition hover:border-[var(--surface-border-hover)]"
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:justify-between">
           <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -2419,7 +2419,7 @@ export default function TasksPage() {
                 <img
                   src={creatorAvatar}
                   alt={creatorName}
-                  className="h-14 w-14 rounded-2xl border border-slate-200 object-cover"
+                  className="h-14 w-14 rounded-2xl border border-[var(--surface-border)] object-cover"
                 />
               </button>
             ) : (
@@ -2427,7 +2427,7 @@ export default function TasksPage() {
               <img
                 src={creatorAvatar}
                 alt={creatorName}
-                className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 object-cover"
+                className="h-14 w-14 shrink-0 rounded-2xl border border-[var(--surface-border)] object-cover"
               />
             )}
 
@@ -2437,15 +2437,15 @@ export default function TasksPage() {
                   type="button"
                   onClick={() => router.push(buildPublicProfilePath({ id: creatorProfileId, name: creatorName }))}
                   aria-label={`Open ${creatorName} profile`}
-                  className="truncate text-left text-sm font-semibold text-slate-900 transition hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+                  className="truncate text-left text-sm font-semibold text-[var(--ink-950)] transition hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
                 >
                   {creatorName}
                 </button>
               ) : (
-                <p className="text-sm font-semibold text-slate-900">{creatorName}</p>
+                <p className="text-sm font-semibold text-[var(--ink-950)]">{creatorName}</p>
               )}
               <h3 className="mt-1 break-words text-lg font-semibold leading-tight text-slate-950">{task.title}</h3>
-              <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-slate-600">
+              <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-[var(--ink-700)]">
                 {task.description || "No additional details"}
               </p>
             </div>
@@ -2469,7 +2469,7 @@ export default function TasksPage() {
                 disabled
                 title="Phone number is not available for this task yet."
                 aria-label="Call unavailable"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-500)] transition disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Phone className="h-4 w-4" />
               </button>
@@ -2493,7 +2493,7 @@ export default function TasksPage() {
               onClick={() => setExpandedTaskId((current) => (current === task.orderId ? null : task.orderId))}
               aria-label={isExpanded ? "Collapse task status" : "Expand task status"}
               title={isExpanded ? "Hide tracking" : "Show tracking"}
-              className="inline-flex items-center justify-center p-0 text-slate-500 transition hover:text-[var(--brand-700)]"
+              className="inline-flex items-center justify-center p-0 text-[var(--ink-500)] transition hover:text-[var(--brand-700)]"
             >
               {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
@@ -2501,11 +2501,11 @@ export default function TasksPage() {
         </div>
 
         {isExpanded ? (
-          <div className="mt-4 border-t border-slate-200 pt-4">
+          <div className="mt-4 border-t border-[var(--surface-border)] pt-4">
             <div className="space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className="text-sm font-semibold text-[var(--ink-950)]">
                     {latestEvent?.title ||
                       (isCancelledHistory
                         ? "Task cancelled"
@@ -2513,14 +2513,14 @@ export default function TasksPage() {
                           ? "Work is in progress"
                           : "Task accepted")}
                   </p>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-[var(--ink-500)]">
                     {latestEvent?.description ||
                       (isCancelledHistory
                         ? describeCancelledTrackerStage(progressStage)
                         : "Open this tracker to follow updates and move the task to the next stage.")}
                   </p>
                 </div>
-                <span className="shrink-0 text-xs font-semibold text-slate-500">{latestUpdateAt}</span>
+                <span className="shrink-0 text-xs font-semibold text-[var(--ink-500)]">{latestUpdateAt}</span>
               </div>
 
               <div className="mt-5 space-y-4">
@@ -2542,7 +2542,7 @@ export default function TasksPage() {
                                   ? "border-emerald-200 bg-emerald-100 text-emerald-700"
                                   : isActiveStep
                                     ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                                    : "border-slate-200 bg-white text-slate-400"
+                                    : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-500)]"
                             }`}
                           >
                             {isCancelledStep ? <X className="h-3.5 w-3.5" /> : isDone ? "✓" : ""}
@@ -2559,7 +2559,7 @@ export default function TasksPage() {
                         <div className="min-w-0 pt-0.5">
                           <p
                             className={`text-sm font-semibold ${
-                              isCancelledStep ? "text-rose-700" : isActiveStep ? "text-slate-950" : "text-slate-700"
+                              isCancelledStep ? "text-rose-700" : isActiveStep ? "text-slate-950" : "text-[var(--ink-700)]"
                             }`}
                           >
                             {step.label}
@@ -2607,7 +2607,7 @@ export default function TasksPage() {
         ref={(node) => {
           taskCardRefs.current.set(task.orderId, node);
         }}
-        className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-[0_14px_40px_-32px_rgba(15,23,42,0.28)] transition hover:border-slate-300"
+        className="rounded-[1.35rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-[0_14px_40px_-32px_rgba(15,23,42,0.28)] transition hover:border-[var(--surface-border-hover)]"
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:justify-between">
           <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -2622,7 +2622,7 @@ export default function TasksPage() {
                 <img
                   src={creatorAvatar}
                   alt={creatorName}
-                  className="h-14 w-14 rounded-2xl border border-slate-200 object-cover"
+                  className="h-14 w-14 rounded-2xl border border-[var(--surface-border)] object-cover"
                 />
               </button>
             ) : (
@@ -2630,7 +2630,7 @@ export default function TasksPage() {
               <img
                 src={creatorAvatar}
                 alt={creatorName}
-                className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 object-cover"
+                className="h-14 w-14 shrink-0 rounded-2xl border border-[var(--surface-border)] object-cover"
               />
             )}
 
@@ -2640,19 +2640,19 @@ export default function TasksPage() {
                   type="button"
                   onClick={() => router.push(buildPublicProfilePath({ id: creatorProfileId, name: creatorName }))}
                   aria-label={`Open ${creatorName} profile`}
-                  className="truncate text-left text-sm font-semibold text-slate-900 transition hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+                  className="truncate text-left text-sm font-semibold text-[var(--ink-950)] transition hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
                 >
                   {creatorName}
                 </button>
               ) : (
-                <p className="text-sm font-semibold text-slate-900">{creatorName}</p>
+                <p className="text-sm font-semibold text-[var(--ink-950)]">{creatorName}</p>
               )}
-              <p className="mt-0.5 truncate text-[11px] text-slate-400">{task.location}</p>
+              <p className="mt-0.5 truncate text-[11px] text-[var(--ink-500)]">{task.location}</p>
               <h3 className="mt-1 break-words text-lg font-semibold leading-tight text-slate-950">{task.title}</h3>
-              <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-slate-600">
+              <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-[var(--ink-700)]">
                 {task.description || "No additional details"}
               </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--ink-500)]">
                 <span>{latestUpdateAt}</span>
               </div>
             </div>
@@ -2681,18 +2681,18 @@ export default function TasksPage() {
               <button
                 type="button"
                 onClick={() => setCommentComposerTaskId((current) => (current === task.orderId ? null : task.orderId))}
-                className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-[var(--brand-700)] transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-800)]"
+                className="shrink-0 rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-1.5 text-sm font-semibold text-[var(--brand-700)] transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-800)]"
               >
                 {isReviewExpanded ? "Hide review" : "Add review"}
               </button>
             ) : (
-              <span className="text-xs font-medium text-slate-400">Review unavailable</span>
+              <span className="text-xs font-medium text-[var(--ink-500)]">Review unavailable</span>
             )}
           </div>
         </div>
 
         {isReviewExpanded && canReviewTask && !reviewSubmitted ? (
-          <div className="mt-4 rounded-[1.15rem] border border-slate-200 bg-slate-50 p-3">
+          <div className="mt-4 rounded-[1.15rem] border border-[var(--surface-border)] bg-[var(--surface-soft)] p-3">
             <div className="flex items-center gap-1">
               {Array.from({ length: 5 }, (_, index) => {
                 const starValue = index + 1;
@@ -2735,13 +2735,13 @@ export default function TasksPage() {
               }
               rows={3}
               placeholder="Write a quick comment about the completed task"
-              className="mt-3 w-full resize-none rounded-[1rem] border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[var(--brand-500)]/45"
+              className="mt-3 w-full resize-none rounded-[1rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2.5 text-sm text-[var(--ink-700)] outline-none transition placeholder:text-[var(--ink-500)] focus:border-[var(--brand-500)]/45"
             />
             <div className="mt-3 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setCommentComposerTaskId(null)}
-                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300"
+                className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2 text-sm font-semibold text-[var(--ink-700)] transition hover:border-[var(--surface-border-hover)]"
               >
                 Cancel
               </button>
@@ -2874,28 +2874,28 @@ export default function TasksPage() {
       >
         {isExpanded && deliveryInfo ? (
           <div className="space-y-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Delivery tracking</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ink-500)]">Delivery tracking</p>
             {deliveryInfo.driverName ? (
-              <div className="flex items-center gap-2 text-sm text-slate-700">
+              <div className="flex items-center gap-2 text-sm text-[var(--ink-700)]">
                 <span className="font-semibold">Driver:</span>
                 <span>{deliveryInfo.driverName}</span>
               </div>
             ) : null}
             {deliveryInfo.trackingNumber ? (
-              <div className="flex items-center gap-2 text-sm text-slate-700">
+              <div className="flex items-center gap-2 text-sm text-[var(--ink-700)]">
                 <span className="font-semibold">Tracking:</span>
                 <span>{deliveryInfo.trackingNumber}</span>
               </div>
             ) : null}
             {deliveryInfo.address ? (
-              <div className="flex items-center gap-2 text-sm text-slate-700">
-                <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+              <div className="flex items-center gap-2 text-sm text-[var(--ink-700)]">
+                <MapPin className="h-4 w-4 shrink-0 text-[var(--ink-500)]" />
                 <span>{deliveryInfo.address}</span>
               </div>
             ) : null}
             {deliveryInfo.estimatedAt ? (
-              <div className="flex items-center gap-2 text-sm text-slate-700">
-                <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
+              <div className="flex items-center gap-2 text-sm text-[var(--ink-700)]">
+                <Calendar className="h-4 w-4 shrink-0 text-[var(--ink-500)]" />
                 <span>Estimated: {formatAgo(deliveryInfo.estimatedAt, clockMs)}</span>
               </div>
             ) : null}
@@ -2941,20 +2941,20 @@ export default function TasksPage() {
 
               <div>
                 <h1 className="brand-display text-[1.35rem] font-semibold leading-tight text-slate-950 sm:text-[1.8rem]">Tasks Workspace</h1>
-                <p className="mt-1 text-sm leading-6 text-slate-600 sm:hidden">
+                <p className="mt-1 text-sm leading-6 text-[var(--ink-700)] sm:hidden">
                   Track requests, accepted work, and the next actions that need your attention.
                 </p>
-                <p className="mt-1 hidden max-w-3xl text-sm leading-6 text-slate-600 sm:block">
+                <p className="mt-1 hidden max-w-3xl text-sm leading-6 text-[var(--ink-700)] sm:block">
                   Live queue for posted requests, accepted work, support follow-up, and history.
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">{tasks.length} tracked</span>
-                <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                <span className="rounded-full border border-[var(--surface-border)] bg-white/90 px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)]">{tasks.length} tracked</span>
+                <span className="rounded-full border border-[var(--surface-border)] bg-white/90 px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)]">
                   {actionRequiredCount} need attention
                 </span>
-                <span className="hidden rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 sm:inline-flex">
+                <span className="hidden rounded-full border border-[var(--surface-border)] bg-white/90 px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)] sm:inline-flex">
                   Last sync {lastSyncAt ? formatAgo(lastSyncAt, clockMs) : "waiting"}
                 </span>
               </div>
@@ -2975,31 +2975,31 @@ export default function TasksPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:hidden">
-            <div className="rounded-[1rem] border border-slate-200 bg-white/92 px-3 py-2.5">
-              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">Tracked</p>
+            <div className="rounded-[1rem] border border-[var(--surface-border)] bg-white/92 px-3 py-2.5">
+              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--ink-500)]">Tracked</p>
               <p className="mt-0.5 text-base font-bold leading-tight text-slate-950">{tasks.length}</p>
-              <p className="mt-1 text-[11px] leading-tight text-slate-500">Open task records</p>
+              <p className="mt-1 text-[11px] leading-tight text-[var(--ink-500)]">Open task records</p>
             </div>
-            <div className="rounded-[1rem] border border-slate-200 bg-white/92 px-3 py-2.5">
-              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">Attention</p>
+            <div className="rounded-[1rem] border border-[var(--surface-border)] bg-white/92 px-3 py-2.5">
+              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--ink-500)]">Attention</p>
               <p className="mt-0.5 text-base font-bold leading-tight text-slate-950">{actionRequiredCount}</p>
-              <p className="mt-1 text-[11px] leading-tight text-slate-500">Actionable work now</p>
+              <p className="mt-1 text-[11px] leading-tight text-[var(--ink-500)]">Actionable work now</p>
             </div>
           </div>
 
           <div className="hidden grid-cols-2 gap-2 sm:grid sm:grid-cols-4">
             {compactStats.map((stat) => (
-              <div key={stat.label} className="rounded-[1rem] border border-slate-200 bg-white/92 px-3 py-2.5">
+              <div key={stat.label} className="rounded-[1rem] border border-[var(--surface-border)] bg-white/92 px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">{stat.label}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--ink-500)]">{stat.label}</p>
                     <p className="mt-0.5 text-base font-bold text-slate-950 leading-tight">{stat.value}</p>
                   </div>
                   <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${stat.tone}`}>
                     <stat.icon className="h-3.5 w-3.5" />
                   </span>
                 </div>
-                <p className="mt-1 text-[11px] text-slate-500 leading-tight">{stat.helper}</p>
+                <p className="mt-1 text-[11px] text-[var(--ink-500)] leading-tight">{stat.helper}</p>
               </div>
             ))}
           </div>
@@ -3027,7 +3027,7 @@ export default function TasksPage() {
             ref={liveOrdersSectionRef}
             className="space-y-4 rounded-[1.55rem] border border-white/70 bg-white/90 p-3.5 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.44)] backdrop-blur sm:space-y-5 sm:rounded-[1.9rem] sm:p-5"
           >
-            <div className="space-y-3 border-b border-slate-200 pb-3 sm:space-y-4 sm:pb-4">
+            <div className="space-y-3 border-b border-[var(--surface-border)] pb-3 sm:space-y-4 sm:pb-4">
               <TaskStatusTabs tabs={taskTabs} selected={selectedTaskView} onSelect={setSelectedTaskView} />
 
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -3036,25 +3036,25 @@ export default function TasksPage() {
                   <h2 className="mt-1 text-base font-semibold text-slate-950 sm:text-xl">Find the next action</h2>
                 </div>
 
-                <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)]">
                   <BarChart3 className="h-3.5 w-3.5" />
                   {filteredTasks.length} visible
                 </span>
               </div>
 
               <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[minmax(0,1fr)_180px]">
-                <label className="hidden items-center gap-3 rounded-[1.35rem] border border-slate-200 bg-white px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-[var(--brand-500)]/45 focus-within:shadow-[0_0_0_4px_var(--brand-ring)] sm:flex">
-                  <Search className="h-4 w-4 shrink-0 text-slate-400" />
+                <label className="hidden items-center gap-3 rounded-[1.35rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-[var(--brand-500)]/45 focus-within:shadow-[0_0_0_4px_var(--brand-ring)] sm:flex">
+                  <Search className="h-4 w-4 shrink-0 text-[var(--ink-500)]" />
                   <input
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Search by title, status, person…"
-                    className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+                    className="w-full bg-transparent text-sm text-[var(--ink-700)] outline-none placeholder:text-[var(--ink-500)]"
                   />
                 </label>
 
-                <label className="flex items-center gap-2 rounded-[1.2rem] border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
-                  <span className="shrink-0 text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Sort</span>
+                <label className="flex items-center gap-2 rounded-[1.2rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-3 text-sm text-[var(--ink-700)]">
+                  <span className="shrink-0 text-xs font-medium uppercase tracking-[0.14em] text-[var(--ink-500)]">Sort</span>
                   <select value={sortBy} onChange={(event) => setSortBy(event.target.value as TaskSortOption)} className="w-full bg-transparent text-sm font-medium outline-none">
                     <option value="updated">Recently updated</option>
                     <option value="newest">Newest first</option>
@@ -3077,7 +3077,7 @@ export default function TasksPage() {
                           ? "Delivery"
                           : "Active"}
                 </h2>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-[var(--ink-500)]">
                   {selectedTaskView === "inbox"
                     ? "Send interest to join the shortlist."
                     : selectedTaskView === "done"
@@ -3089,7 +3089,7 @@ export default function TasksPage() {
                           : "Open requests, quotes, and accepted work."}
                 </p>
               </div>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-[var(--ink-500)]">
                 {selectedTaskView === "inbox" ? inboxMatches.length : visibleTasks.length} visible
               </p>
             </div>
@@ -3098,10 +3098,10 @@ export default function TasksPage() {
               inboxLoading ? (
                 <div className="space-y-3">
                   {[0, 1, 2].map((index) => (
-                    <div key={index} className="rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
+                    <div key={index} className="rounded-[1.8rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-sm">
                       <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
-                      <div className="mt-3 h-3 w-3/4 animate-pulse rounded bg-slate-100" />
-                      <div className="mt-4 h-10 animate-pulse rounded-[1.2rem] bg-slate-100" />
+                      <div className="mt-3 h-3 w-3/4 animate-pulse rounded bg-[var(--surface-soft)]" />
+                      <div className="mt-4 h-10 animate-pulse rounded-[1.2rem] bg-[var(--surface-soft)]" />
                     </div>
                   ))}
                 </div>
@@ -3129,7 +3129,7 @@ export default function TasksPage() {
                         className={`relative overflow-hidden rounded-[1.25rem] border p-4 transition ${
                           isFocused
                             ? "border-[var(--brand-500)] bg-[var(--brand-50)] shadow-[0_0_0_3px_var(--brand-ring)]"
-                            : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-[0_8px_32px_-20px_rgba(15,23,42,0.2)]"
+                            : "border-[var(--surface-border)] bg-[var(--surface-elevated)] hover:border-[var(--surface-border-hover)] hover:shadow-[0_8px_32px_-20px_rgba(15,23,42,0.2)]"
                         }`}
                       >
                         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[var(--brand-500)] to-[var(--brand-700)]" />
@@ -3143,7 +3143,7 @@ export default function TasksPage() {
                                 </span>
                               ) : null}
                               {distanceLabel ? (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-700)]">
                                   <MapPin className="h-3 w-3" />
                                   {distanceLabel}
                                 </span>
@@ -3159,7 +3159,7 @@ export default function TasksPage() {
                               {req?.title || req?.category || "Service request"}
                             </h3>
 
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--ink-500)]">
                               {req?.location_label ? (
                                 <span className="flex items-center gap-1">
                                   <MapPin className="h-3 w-3 shrink-0" />
@@ -3211,13 +3211,13 @@ export default function TasksPage() {
             ) : loading ? (
               <div className="space-y-3">
                 {[0, 1, 2].map((index) => (
-                  <div key={index} className="rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
+                  <div key={index} className="rounded-[1.8rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-sm">
                     <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
-                    <div className="mt-3 h-3 w-3/4 animate-pulse rounded bg-slate-100" />
-                    <div className="mt-4 h-10 animate-pulse rounded-[1.2rem] bg-slate-100" />
+                    <div className="mt-3 h-3 w-3/4 animate-pulse rounded bg-[var(--surface-soft)]" />
+                    <div className="mt-4 h-10 animate-pulse rounded-[1.2rem] bg-[var(--surface-soft)]" />
                   </div>
                 ))}
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-sm text-[var(--ink-700)]">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading tasks...
                 </div>
@@ -3253,14 +3253,14 @@ export default function TasksPage() {
           </section>
 
           {!loading && (selectedTaskView === "inbox" ? inboxMatches.length === 0 && !inboxLoading : visibleTasks.length === 0) ? (
-            <div className="rounded-[1.9rem] border border-slate-200 bg-white px-6 py-16 text-center shadow-[0_24px_70px_-46px_rgba(15,23,42,0.36)]">
+            <div className="rounded-[1.9rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-6 py-16 text-center shadow-[0_24px_70px_-46px_rgba(15,23,42,0.36)]">
               {selectedTaskView === "inbox" ? (
-                <Inbox className="mx-auto h-14 w-14 text-slate-400" />
+                <Inbox className="mx-auto h-14 w-14 text-[var(--ink-500)]" />
               ) : (
-                <Package className="mx-auto h-14 w-14 text-slate-400" />
+                <Package className="mx-auto h-14 w-14 text-[var(--ink-500)]" />
               )}
               <h3 className="mt-5 text-xl font-semibold text-slate-950">{emptyState.title}</h3>
-              <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-600">{emptyState.copy}</p>
+              <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-[var(--ink-700)]">{emptyState.copy}</p>
               <button type="button" onClick={emptyState.onAction} className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-[var(--brand-900)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]">
                 <Sparkles className="h-4 w-4" />
                 {emptyState.actionLabel}

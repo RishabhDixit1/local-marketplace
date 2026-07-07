@@ -69,13 +69,13 @@ function getUrgencyLabel(category: string): string {
 function getScoreColor(score: number): string {
   if (score >= 70) return "text-emerald-600";
   if (score >= 40) return "text-amber-600";
-  return "text-slate-500";
+  return "text-[var(--ink-500)]";
 }
 
 function getScoreBg(score: number): string {
   if (score >= 70) return "bg-emerald-50 border-emerald-200";
   if (score >= 40) return "bg-amber-50 border-amber-200";
-  return "bg-slate-50 border-slate-200";
+  return "bg-[var(--surface-soft)] border-[var(--surface-border)]";
 }
 
 function getStatusBadge(status: string): { label: string; className: string } {
@@ -83,7 +83,7 @@ function getStatusBadge(status: string): { label: string; className: string } {
     case "assigned":
       return { label: "New", className: "bg-blue-50 text-blue-700 border-blue-200" };
     case "viewed":
-      return { label: "Viewed", className: "bg-slate-50 text-slate-600 border-slate-200" };
+      return { label: "Viewed", className: "bg-[var(--surface-soft)] text-[var(--ink-700)] border-[var(--surface-border)]" };
     case "responded":
       return { label: "Responded", className: "bg-emerald-50 text-emerald-700 border-emerald-200" };
     case "expired":
@@ -93,7 +93,7 @@ function getStatusBadge(status: string): { label: string; className: string } {
     case "lost":
       return { label: "Lost", className: "bg-rose-50 text-rose-600 border-rose-200" };
     default:
-      return { label: status, className: "bg-slate-50 text-slate-600 border-slate-200" };
+      return { label: status, className: "bg-[var(--surface-soft)] text-[var(--ink-700)] border-[var(--surface-border)]" };
   }
 }
 
@@ -154,14 +154,14 @@ function LeadCard({
 
   return (
     <div
-      className={`rounded-2xl border bg-white p-5 shadow-sm transition-all hover:shadow-md ${
-        highlighted ? "ring-2 ring-[var(--brand-500)] border-[var(--brand-300)]" : "border-slate-200"
+      className={`rounded-2xl border bg-[var(--surface-elevated)] p-5 shadow-sm transition-all hover:shadow-md ${
+        highlighted ? "ring-2 ring-[var(--brand-500)] border-[var(--brand-300)]" : "border-[var(--surface-border)]"
       } ${hasAiScore ? "ring-1 ring-purple-200" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-base font-bold text-slate-900">
+            <h3 className="truncate text-base font-bold text-[var(--ink-950)]">
               {lead.help_requests.title}
             </h3>
             {hasAiScore && (
@@ -175,7 +175,7 @@ function LeadCard({
             </span>
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--ink-500)]">
             <span className="inline-flex items-center gap-1">
               <TrendingUp className="h-3 w-3" />
               {lead.help_requests.category}
@@ -193,7 +193,7 @@ function LeadCard({
           </div>
 
           {(lead.help_requests.budget_min != null || lead.help_requests.budget_max != null) && (
-            <p className="mt-2 text-sm font-semibold text-slate-700">
+            <p className="mt-2 text-sm font-semibold text-[var(--ink-700)]">
               {lead.help_requests.budget_min != null
                 ? `$${lead.help_requests.budget_min.toLocaleString()}`
                 : ""}
@@ -211,7 +211,7 @@ function LeadCard({
           <span className={`text-lg font-bold ${getScoreColor(lead.score)}`}>
             {Math.round(lead.score)}
           </span>
-          <span className="text-[10px] font-medium text-slate-500">Score</span>
+          <span className="text-[10px] font-medium text-[var(--ink-500)]">Score</span>
         </div>
       </div>
 
@@ -222,7 +222,7 @@ function LeadCard({
             className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium ${
               key === "aiMatchScore"
                 ? "bg-purple-50 text-purple-700"
-                : "bg-slate-50 text-slate-600"
+                : "bg-[var(--surface-soft)] text-[var(--ink-700)]"
             }`}
           >
             {key === "aiMatchScore" ? <Sparkles className="h-3 w-3" /> : null}
@@ -253,7 +253,7 @@ function LeadCard({
                 type="button"
                 onClick={() => void updateStatus("dismiss")}
                 disabled={updating}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3.5 py-2 text-xs font-semibold text-[var(--ink-500)] transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {updating ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -279,13 +279,13 @@ function LeadCard({
           )}
           <Link
             href={`/dashboard/market?helpRequestId=${lead.help_request_id}`}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3.5 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--border-strong)]"
           >
             <Eye className="h-3.5 w-3.5" />
             View Request
           </Link>
         </div>
-        <span className="text-[10px] text-slate-400">
+        <span className="text-[10px] text-[var(--ink-500)]">
           {daysAgo === 0 ? "Today" : daysAgo === 1 ? "1 day ago" : `${daysAgo} days ago`}
         </span>
       </div>
@@ -295,29 +295,29 @@ function LeadCard({
 
 function LeadCardSkeleton() {
   return (
-    <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="space-y-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="h-5 w-48 animate-pulse rounded-full bg-slate-200" />
           <div className="flex gap-2">
-            <div className="h-3 w-20 animate-pulse rounded-full bg-slate-100" />
-            <div className="h-3 w-24 animate-pulse rounded-full bg-slate-100" />
+            <div className="h-3 w-20 animate-pulse rounded-full bg-[var(--surface-soft)]" />
+            <div className="h-3 w-24 animate-pulse rounded-full bg-[var(--surface-soft)]" />
           </div>
-          <div className="h-4 w-32 animate-pulse rounded bg-slate-100" />
+          <div className="h-4 w-32 animate-pulse rounded bg-[var(--surface-soft)]" />
         </div>
         <div className="h-14 w-14 animate-pulse rounded-xl bg-slate-200" />
       </div>
       <div className="flex gap-1.5">
-        <div className="h-5 w-16 animate-pulse rounded-lg bg-slate-100" />
-        <div className="h-5 w-16 animate-pulse rounded-lg bg-slate-100" />
-        <div className="h-5 w-16 animate-pulse rounded-lg bg-slate-100" />
+        <div className="h-5 w-16 animate-pulse rounded-lg bg-[var(--surface-soft)]" />
+        <div className="h-5 w-16 animate-pulse rounded-lg bg-[var(--surface-soft)]" />
+        <div className="h-5 w-16 animate-pulse rounded-lg bg-[var(--surface-soft)]" />
       </div>
       <div className="flex items-center justify-between border-t border-slate-100 pt-3">
         <div className="flex gap-2">
-          <div className="h-8 w-24 animate-pulse rounded-xl bg-slate-100" />
-          <div className="h-8 w-28 animate-pulse rounded-xl bg-slate-100" />
+          <div className="h-8 w-24 animate-pulse rounded-xl bg-[var(--surface-soft)]" />
+          <div className="h-8 w-28 animate-pulse rounded-xl bg-[var(--surface-soft)]" />
         </div>
-        <div className="h-3 w-16 animate-pulse rounded bg-slate-100" />
+        <div className="h-3 w-16 animate-pulse rounded bg-[var(--surface-soft)]" />
       </div>
     </div>
   );
@@ -399,16 +399,16 @@ export default function LeadsPage() {
       <div className="flex items-start gap-3">
         <Link
           href="/dashboard"
-          className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+          className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-500)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink-700)]"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+          <h1 className="flex items-center gap-2 text-xl font-bold text-[var(--ink-950)]">
             <Zap className="h-5 w-5 text-amber-500" />
             Leads
           </h1>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <p className="mt-0.5 text-sm text-[var(--ink-500)]">
             Service opportunities matched to your skills
             {unreadLeads > 0 && (
               <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
@@ -421,7 +421,7 @@ export default function LeadsPage() {
 
       {!loading && leads.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-xl border border-slate-200 bg-white p-0.5">
+          <div className="flex rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-0.5">
             {STATUS_FILTERS.map((f) => (
               <button
                 key={f.value}
@@ -430,7 +430,7 @@ export default function LeadsPage() {
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                   statusFilter === f.value
                     ? "bg-[var(--brand-900)] text-white"
-                    : "text-slate-500 hover:text-slate-800"
+                    : "text-[var(--ink-500)] hover:text-[var(--ink-950)]"
                 }`}
               >
                 {f.label}
@@ -440,7 +440,7 @@ export default function LeadsPage() {
           <select
             value={minScore}
             onChange={(e) => setMinScore(Number(e.target.value))}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 outline-none transition focus:border-sky-400"
+            className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)] outline-none transition focus:border-sky-400"
           >
             <option value={0}>All scores</option>
             <option value={70}>70+ (hot)</option>
@@ -458,11 +458,11 @@ export default function LeadsPage() {
       )}
 
       {error && !loading && (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-6 py-12 text-center shadow-sm">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50">
             <TrendingUp className="h-6 w-6 text-red-400" />
           </div>
-          <p className="text-sm font-medium text-slate-600">{error}</p>
+          <p className="text-sm font-medium text-[var(--ink-700)]">{error}</p>
           <button
             type="button"
             onClick={fetchLeads}
@@ -475,12 +475,12 @@ export default function LeadsPage() {
       )}
 
       {!loading && !error && leads.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-6 py-16 text-center shadow-sm">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50">
             <Zap className="h-7 w-7 text-amber-400" />
           </div>
-          <h3 className="text-lg font-bold text-slate-900">No leads yet</h3>
-          <p className="max-w-sm text-sm text-slate-500">
+          <h3 className="text-lg font-bold text-[var(--ink-950)]">No leads yet</h3>
+          <p className="max-w-sm text-sm text-[var(--ink-500)]">
             When customers post requests that match your services, they&apos;ll appear here.
           </p>
           <Link
@@ -494,8 +494,8 @@ export default function LeadsPage() {
       )}
 
       {!loading && !error && leads.length > 0 && filteredLeads.length === 0 && (
-        <div className="flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
-          <p className="text-sm text-slate-500">No leads match the current filters.</p>
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-6 py-12 text-center shadow-sm">
+          <p className="text-sm text-[var(--ink-500)]">No leads match the current filters.</p>
           <button
             type="button"
             onClick={() => { setStatusFilter("all"); setMinScore(0); }}

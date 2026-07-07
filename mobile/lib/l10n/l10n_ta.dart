@@ -2,99 +2,127 @@ import 'l10n.dart';
 
 class AppLocalizationsTa extends AppLocalizations {
   @override
-  String get signInTitle => 'Sign in to ServiQ';
+  String get signInTitle => 'சர்விக்யூவில் உள்நுழைக';
   @override
-  String get signInSubtitle => 'Access your local marketplace account.';
+  String get signInSubtitle => 'உங்கள் உள்ளூர் சந்தை கணக்கை அணுகவும்.';
   @override
-  String get emailLabel => 'Email address';
+  String get emailLabel => 'மின்னஞ்சல் முகவரி';
   @override
-  String get passwordLabel => 'Password';
+  String get passwordLabel => 'கடவுச்சொல்';
   @override
-  String get forgotPassword => 'Forgot password?';
+  String get forgotPassword => 'கடவுச்சொல் மறந்துவிட்டதா?';
   @override
-  String get sendResetLink => 'Send reset link';
+  String get sendResetLink => 'மீட்டமை இணைப்பை அனுப்பு';
   @override
-  String get resetLinkSent => 'Check your email for the password reset link.';
+  String get resetLinkSent => 'கடவுச்சொல் மீட்டமை இணைப்புக்கு உங்கள் மின்னஞ்சலைப் பார்க்கவும்.';
   @override
-  String get continueWithGoogle => 'Continue with Google';
+  String get continueWithGoogle => 'Google உடன் தொடர்க';
   @override
-  String get continueWithEmail => 'Continue with email code';
+  String get continueWithEmail => 'மின்னஞ்சல் குறியீட்டுடன் தொடர்க';
   @override
-  String get sendMagicLink => 'Send magic link';
+  String get sendMagicLink => 'மேஜிக் இணைப்பை அனுப்பு';
   @override
-  String get createAccount => 'Create account';
+  String get sendEmailCode => 'மின்னஞ்சல் குறியீட்டை அனுப்பு';
   @override
-  String get signIn => 'Sign in';
+  String get createAccount => 'கணக்கை உருவாக்கு';
   @override
-  String get signOut => 'Sign out';
+  String get signIn => 'உள்நுழைக';
   @override
-  String get home => 'Home';
+  String get signInWithPassword => 'கடவுச்சொல்லுடன் உள்நுழைக';
   @override
-  String get explore => 'Explore';
+  String get signInWithEmail => 'மின்னஞ்சலுடன் உள்நுழைக';
   @override
-  String get people => 'People';
+  String get signOut => 'வெளியேறு';
   @override
-  String get tasks => 'Tasks';
+  String get sending => 'அனுப்புகிறது...';
   @override
-  String get chat => 'Chat';
+  String get home => 'முகப்பு';
   @override
-  String get profile => 'Profile';
+  String get explore => 'ஆராய்க';
   @override
-  String get search => 'Search';
+  String get people => 'மக்கள்';
   @override
-  String get notifications => 'Notifications';
+  String get work => 'வேலை';
   @override
-  String get saved => 'Saved';
+  String get inbox => 'இன்பாக்ஸ்';
   @override
-  String get orders => 'Orders';
+  String get youTab => 'நீங்கள்';
   @override
-  String get save => 'Save';
+  String get tasks => 'பணிகள்';
   @override
-  String get share => 'Share';
+  String get chat => 'அரட்டை';
   @override
-  String get message => 'Message';
+  String get profile => 'சுயவிவரம்';
   @override
-  String get book => 'Book';
+  String get search => 'தேடுக';
   @override
-  String get cancel => 'Cancel';
+  String get notifications => 'அறிவிப்புகள்';
   @override
-  String get retry => 'Retry';
+  String get saved => 'சேமித்தவை';
   @override
-  String get refresh => 'Refresh';
+  String get orders => 'ஆர்டர்கள்';
   @override
-  String get done => 'Done';
+  String get save => 'சேமி';
   @override
-  String get submit => 'Submit';
+  String get share => 'பகிர்';
   @override
-  String get report => 'Report';
+  String get message => 'செய்தி';
   @override
-  String get loading => 'Loading...';
+  String get book => 'பதிவு';
   @override
-  String get errorOccurred => 'Something went wrong.';
+  String get cancel => 'ரத்து';
   @override
-  String get offline => 'You are offline. Some features may be limited.';
+  String get retry => 'மீண்டும் முயற்சி';
   @override
-  String get noInternet => 'No internet connection.';
+  String get refresh => 'புதுப்பி';
   @override
-  String get emptyFeed => 'No items to show right now.';
+  String get done => 'முடிந்தது';
   @override
-  String get emptyInbox => 'Inbox is ready.';
+  String get submit => 'சமர்ப்பி';
   @override
-  String get noTasks => 'No tasks yet.';
+  String get report => 'அறிக்கை';
   @override
-  String get noNotifications => 'No notifications yet.';
+  String get update => 'புதுப்பி';
   @override
-  String get postNeed => 'Post a Need';
+  String get later => 'பின்னர்';
   @override
-  String get findPeople => 'Find People';
+  String get loading => 'ஏற்றுகிறது...';
   @override
-  String get businessControl => 'Business Control';
+  String get errorOccurred => 'ஏதோ தவறு ஏற்பட்டது.';
   @override
-  String get editProfile => 'Edit Profile';
+  String get offline => 'நீங்கள் ஆஃப்லைனில் உள்ளீர்கள். சில அம்சங்கள் வரையறுக்கப்படலாம்.';
   @override
-  String get trustScore => 'Trust score';
+  String get noInternet => 'இணைய இணைப்பு இல்லை.';
   @override
-  String get reviews => 'Reviews';
+  String get emptyFeed => 'இப்போது காண்பிக்க எதுவும் இல்லை.';
   @override
-  String get listings => 'Listings';
+  String get emptyInbox => 'இன்பாக்ஸ் தயார்.';
+  @override
+  String get noTasks => 'இதுவரை பணிகள் இல்லை.';
+  @override
+  String get noNotifications => 'இதுவரை அறிவிப்புகள் இல்லை.';
+  @override
+  String get couldNotConnect => 'இணைக்க முடியவில்லை';
+  @override
+  String get updateRequired => 'புதுப்பிப்பு தேவை';
+  @override
+  String get updateAvailable => 'புதுப்பிப்பு கிடைக்கிறது';
+  @override
+  String newVersionAvailable(String version) => 'பதிப்பு $version இப்போது கிடைக்கிறது.';
+  @override
+  String get whatsNew => 'புதியது என்ன:';
+  @override
+  String get postNeed => 'தேவையை பதிவிடு';
+  @override
+  String get findPeople => 'மக்களைக் கண்டுபிடி';
+  @override
+  String get businessControl => 'வணிக கட்டுப்பாடு';
+  @override
+  String get editProfile => 'சுயவிவரத்தைத் திருத்து';
+  @override
+  String get trustScore => 'நம்பிக்கை மதிப்பெண்';
+  @override
+  String get reviews => 'மதிப்புரைகள்';
+  @override
+  String get listings => 'பட்டியல்கள்';
 }

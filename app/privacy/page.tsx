@@ -10,12 +10,12 @@ export const metadata: Metadata = buildPageMetadata({
 export default function PrivacyPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-900">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-slate-500">Last updated: June 6, 2026</p>
+      <h1 className="text-3xl font-extrabold tracking-tight text-[var(--ink-950)]">Privacy Policy</h1>
+      <p className="mt-2 text-sm text-[var(--ink-500)]">Last updated: June 6, 2026</p>
 
-      <div className="mt-8 space-y-6 text-sm leading-7 text-slate-700">
+      <div className="mt-8 space-y-6 text-sm leading-7 text-[var(--ink-700)]">
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">1. Information We Collect</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">1. Information We Collect</h2>
           <p className="mt-2">
             When you use ServiQ, we collect information you provide directly: your name, email address,
             phone number, and any content you submit (profile information, service listings, messages,
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">2. How We Use Your Information</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">2. How We Use Your Information</h2>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>To provide, maintain, and improve our platform</li>
             <li>To connect you with service providers or customers</li>
@@ -41,7 +41,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">3. Data Sharing</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">3. Data Sharing</h2>
           <p className="mt-2">
             We share your information only as necessary to provide our services:
           </p>
@@ -57,7 +57,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">4. Data Retention</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">4. Data Retention</h2>
           <p className="mt-2">
             We retain your information for as long as your account is active. If you delete your account,
             we delete or anonymize your data within 30 days, except where retention is required by law
@@ -66,7 +66,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">5. Your Rights</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">5. Your Rights</h2>
           <p className="mt-2">
             You have the right to:
           </p>
@@ -83,7 +83,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">6. Security</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">6. Security</h2>
           <p className="mt-2">
             We implement appropriate technical and organizational measures to protect your data,
             including encryption in transit (TLS), encrypted storage, and regular security audits.
@@ -92,7 +92,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">7. Third-Party Services</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">7. Third-Party Services</h2>
           <p className="mt-2">
             Our platform integrates with third-party services for essential functionality. Each
             service provider processes data according to their own privacy policies. We recommend
@@ -101,7 +101,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">8. Changes to This Policy</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">8. Changes to This Policy</h2>
           <p className="mt-2">
             We may update this privacy policy from time to time. Material changes will be notified
             via email or through the platform. Continued use after changes constitutes acceptance
@@ -110,7 +110,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">9. Contact</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">9. Contact</h2>
           <p className="mt-2">
             For privacy-related inquiries, contact us at privacy@serviqapp.com or write to:
             ServiQ, Crossing Republik, Ghaziabad, Uttar Pradesh, India.

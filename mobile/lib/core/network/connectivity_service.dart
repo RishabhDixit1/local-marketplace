@@ -1,4 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum AppConnectivityStatus { online, offline }
@@ -23,5 +24,8 @@ final initialConnectivityProvider = Provider<Future<AppConnectivityStatus>>((ref
       result == ConnectivityResult.ethernet
     );
     return hasConnection ? AppConnectivityStatus.online : AppConnectivityStatus.offline;
+  }).catchError((e, st) {
+    debugPrint('ServiQ connectivity.initialConnectivity failed: $e\n$st');
+    return AppConnectivityStatus.offline;
   });
 });

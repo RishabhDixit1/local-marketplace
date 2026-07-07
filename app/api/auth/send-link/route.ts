@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { applyRateLimit, AUTH_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { createOtp } from "@/lib/server/otpStore";
-import { FROM_EMAIL } from "@/lib/emailConfig";
+import { sendEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -106,7 +106,6 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, error: "Unable to generate verification code." }, { status: 500 });
   }
 
-  const fromEmail = FROM_EMAIL;
   const appUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
   const html = `<div style="font-family:Inter,-apple-system,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#0f172a">
@@ -120,23 +119,9 @@ async function postHandler(request: Request) {
     </div>
   </div>`;
 
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ from: fromEmail, to: email, subject: "Your ServiQ verification code", html }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      console.error("[send-link] Resend error:", res.status, body);
-      return NextResponse.json({ ok: false, error: "Unable to send verification code via email." }, { status: 502 });
-    }
-  } catch (sendError) {
-    console.error("[send-link] Resend fetch error:", sendError);
-    return NextResponse.json({ ok: false, error: "Unable to send verification code. Check your network connection." }, { status: 502 });
+  const emailResult = await sendEmail({ to: email, subject: "Your ServiQ verification code", html });
+  if (!emailResult.ok) {
+    return NextResponse.json({ ok: false, error: "Unable to send verification code via email." }, { status: 502 });
   }
 
   return NextResponse.json({ ok: true, emailSent: true });

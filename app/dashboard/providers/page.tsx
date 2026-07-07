@@ -108,7 +108,7 @@ const formatCurrency = (value: number | null) => {
 
 function ProviderCardSkeleton() {
   return (
-    <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="space-y-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className="h-14 w-14 animate-pulse rounded-2xl bg-slate-200" />
@@ -117,26 +117,26 @@ function ProviderCardSkeleton() {
               <div className="h-5 w-28 animate-pulse rounded-full bg-slate-200" />
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-3 w-20 animate-pulse rounded-full bg-slate-100" />
-              <div className="h-3 w-16 animate-pulse rounded-full bg-slate-100" />
+              <div className="h-3 w-20 animate-pulse rounded-full bg-[var(--surface-soft)]" />
+              <div className="h-3 w-16 animate-pulse rounded-full bg-[var(--surface-soft)]" />
             </div>
           </div>
         </div>
         <div className="space-y-1">
-          <div className="h-4 w-16 animate-pulse rounded bg-slate-100" />
-          <div className="h-3 w-12 animate-pulse rounded bg-slate-100" />
+          <div className="h-4 w-16 animate-pulse rounded bg-[var(--surface-soft)]" />
+          <div className="h-3 w-12 animate-pulse rounded bg-[var(--surface-soft)]" />
         </div>
       </div>
-      <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
-      <div className="h-3 w-2/3 animate-pulse rounded bg-slate-100" />
+      <div className="h-3 w-full animate-pulse rounded bg-[var(--surface-soft)]" />
+      <div className="h-3 w-2/3 animate-pulse rounded bg-[var(--surface-soft)]" />
       <div className="flex gap-2">
-        <div className="h-6 w-24 animate-pulse rounded-lg bg-slate-100" />
-        <div className="h-6 w-20 animate-pulse rounded-lg bg-slate-100" />
+        <div className="h-6 w-24 animate-pulse rounded-lg bg-[var(--surface-soft)]" />
+        <div className="h-6 w-20 animate-pulse rounded-lg bg-[var(--surface-soft)]" />
       </div>
-      <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
-        <div className="h-8 w-16 animate-pulse rounded-xl bg-slate-100" />
-        <div className="h-8 w-28 animate-pulse rounded-xl bg-slate-100" />
-        <div className="h-8 w-20 animate-pulse rounded-xl bg-slate-100" />
+      <div className="flex items-center gap-2 border-t border-[var(--surface-border)] pt-3">
+        <div className="h-8 w-16 animate-pulse rounded-xl bg-[var(--surface-soft)]" />
+        <div className="h-8 w-28 animate-pulse rounded-xl bg-[var(--surface-soft)]" />
+        <div className="h-8 w-20 animate-pulse rounded-xl bg-[var(--surface-soft)]" />
       </div>
     </div>
   );
@@ -177,13 +177,13 @@ function ProviderQuickViewModal({
       <div className="absolute inset-0" onClick={onClose} ref={backdropRef} />
 
       <div
-        className="relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl"
+        className="relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         aria-modal="true"
         role="dialog"
       >
-        <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4">
-          <h3 className="text-base font-bold text-slate-900">Provider Details</h3>
+        <div className="sticky top-0 flex items-center justify-between border-b border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-4">
+          <h3 className="text-base font-bold text-[var(--ink-950)]">Provider Details</h3>
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -191,7 +191,7 @@ function ProviderQuickViewModal({
               className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border transition ${
                 isFavorite
                   ? "border-rose-200 bg-rose-50 text-rose-600"
-                  : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                  : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-500)] hover:border-[var(--surface-border-hover)] hover:text-[var(--ink-700)]"
               }`}
             >
               <Heart className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
@@ -199,7 +199,7 @@ function ProviderQuickViewModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-500)] transition hover:border-[var(--surface-border-hover)] hover:text-[var(--ink-700)]"
             >
               <X className="h-4 w-4" />
             </button>
@@ -229,7 +229,7 @@ function ProviderQuickViewModal({
 
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
-                <h4 className="text-lg font-bold text-slate-900">{provider.name}</h4>
+                <h4 className="text-lg font-bold text-[var(--ink-950)]">{provider.name}</h4>
                 {provider.verified && (
                   <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
                     <TrendingUp className="h-3 w-3" />
@@ -239,7 +239,7 @@ function ProviderQuickViewModal({
               </div>
 
               {provider.location && (
-                <p className="mt-1 flex items-center gap-1 text-sm text-slate-500">
+                <p className="mt-1 flex items-center gap-1 text-sm text-[var(--ink-500)]">
                   <MapPin className="h-3.5 w-3.5" />
                   {provider.location}
                 </p>
@@ -257,28 +257,28 @@ function ProviderQuickViewModal({
                     )}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-xs text-slate-500">
-                    <Star className="h-3.5 w-3.5 text-slate-300" />
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-xs text-[var(--ink-500)]">
+                    <Star className="h-3.5 w-3.5 text-[var(--ink-500)]" />
                     No reviews yet
                   </span>
                 )}
 
                 {provider.completedJobs > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--ink-700)]">
                     <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
                     {provider.completedJobs} job{provider.completedJobs === 1 ? "" : "s"}
                   </span>
                 )}
 
                 {provider.responseMinutes != null && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-xs text-[var(--ink-700)]">
                     <Clock className="h-3.5 w-3.5" />
                     ~{provider.responseMinutes} min response
                   </span>
                 )}
 
                 {provider.distanceKm != null && (
-                  <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                  <span className="inline-flex items-center rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-xs text-[var(--ink-700)]">
                     {provider.distanceKm} km away
                   </span>
                 )}
@@ -288,25 +288,25 @@ function ProviderQuickViewModal({
 
           {provider.bio && (
             <div className="mt-5">
-              <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">About</h5>
-              <p className="mt-1.5 text-sm leading-relaxed text-slate-700">{provider.bio}</p>
+              <h5 className="text-xs font-semibold text-[var(--ink-500)] uppercase tracking-wide">About</h5>
+              <p className="mt-1.5 text-sm leading-relaxed text-[var(--ink-700)]">{provider.bio}</p>
             </div>
           )}
 
           {provider.listings.length > 0 && (
             <div className="mt-5">
-              <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              <h5 className="text-xs font-semibold text-[var(--ink-500)] uppercase tracking-wide">
                 Services ({provider.listings.length})
               </h5>
               <div className="mt-2 grid gap-2">
                 {provider.listings.map((listing) => (
                   <div
                     key={listing.id}
-                    className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5"
+                    className="flex items-center justify-between rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-2.5"
                   >
                     <div className="flex items-center gap-2">
-                      <Store className="h-4 w-4 text-slate-400" />
-                      <span className="text-sm font-medium text-slate-700">{listing.title}</span>
+                      <Store className="h-4 w-4 text-[var(--ink-500)]" />
+                      <span className="text-sm font-medium text-[var(--ink-700)]">{listing.title}</span>
                     </div>
                     {listing.price != null && (
                       <span className="text-sm font-bold text-[var(--brand-700)]">
@@ -321,7 +321,7 @@ function ProviderQuickViewModal({
 
           {provider.services.length > 0 && (
             <div className="mt-5">
-              <h5 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Categories</h5>
+              <h5 className="text-xs font-semibold text-[var(--ink-500)] uppercase tracking-wide">Categories</h5>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {provider.services.map((s) => (
                   <span
@@ -336,7 +336,7 @@ function ProviderQuickViewModal({
           )}
         </div>
 
-        <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/90 px-5 py-4 backdrop-blur-sm">
+        <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--surface-border)] bg-[var(--surface-soft)]/90 px-5 py-4 backdrop-blur-sm">
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href={`/dashboard/chat/${encodeURIComponent(provider.id)}`}
@@ -357,7 +357,7 @@ function ProviderQuickViewModal({
             {buildPublicProfilePath(provider) && (
               <Link
                 href={buildPublicProfilePath(provider)!}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--surface-border-hover)] hover:bg-[var(--surface-soft)]"
               >
                 <Store className="h-4 w-4" />
                 Full Profile
@@ -367,7 +367,7 @@ function ProviderQuickViewModal({
             <button
               type="button"
               onClick={() => setShowTrustPanel(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--surface-border-hover)] hover:bg-[var(--surface-soft)]"
             >
               <TrendingUp className="h-4 w-4" />
               Trust & Reviews
@@ -378,7 +378,7 @@ function ProviderQuickViewModal({
             type="button"
             onClick={() => onConnect(provider.id, provider.name)}
             disabled={connecting}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--surface-border-hover)] hover:bg-[var(--surface-soft)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {connecting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -670,7 +670,7 @@ export default function ProvidersPage() {
         backHref="/dashboard"
         rightSlot={
           pagination.total > 0 ? (
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold text-[var(--ink-700)]">
               <Users className="h-3.5 w-3.5" />
               {pagination.total} total
             </div>
@@ -686,7 +686,7 @@ export default function ProvidersPage() {
             className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
               !filters.category
                 ? "border-[var(--brand-300)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--surface-border-hover)] hover:text-[var(--ink-950)]"
             }`}
           >
             All
@@ -704,7 +704,7 @@ export default function ProvidersPage() {
               className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
                 filters.category === category
                   ? "border-[var(--brand-300)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                  : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--surface-border-hover)] hover:text-[var(--ink-950)]"
               }`}
             >
               {category}
@@ -715,7 +715,7 @@ export default function ProvidersPage() {
             <button
               type="button"
               onClick={() => setShowFilters((prev) => !prev)}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+              className="inline-flex items-center gap-1 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--surface-border-hover)] hover:text-[var(--ink-950)]"
             >
               +{categoryOptions.length - 8} more
               {showFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -725,7 +725,7 @@ export default function ProvidersPage() {
       )}
 
       {categoryOptions.length > 8 && showFilters && (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/50 p-3">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)]/50 p-3">
           {categoryOptions.slice(8).map(({ category, count }) => (
             <button
               key={category}
@@ -739,7 +739,7 @@ export default function ProvidersPage() {
               className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1 text-xs font-semibold transition ${
                 filters.category === category
                   ? "border-[var(--brand-300)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                  : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--surface-border-hover)] hover:text-[var(--ink-950)]"
               }`}
             >
               {category}
@@ -750,14 +750,14 @@ export default function ProvidersPage() {
       )}
 
       <div className="flex flex-wrap gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition focus-within:border-[var(--brand-400)] focus-within:ring-1 focus-within:ring-[var(--brand-400)]">
-          <Search className="h-4 w-4 shrink-0 text-slate-400" />
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2 shadow-sm transition focus-within:border-[var(--brand-400)] focus-within:ring-1 focus-within:ring-[var(--brand-400)]">
+          <Search className="h-4 w-4 shrink-0 text-[var(--ink-500)]" />
           <input
             type="text"
             placeholder="Search by name, service, or location..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+            className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--ink-500)]"
           />
         </div>
 
@@ -767,7 +767,7 @@ export default function ProvidersPage() {
           className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition ${
             showFavoritesOnly
               ? "border-rose-200 bg-rose-50 text-rose-700"
-              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+              : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--surface-border-hover)] hover:text-[var(--ink-950)]"
           }`}
         >
           <Heart className={`h-3.5 w-3.5 ${showFavoritesOnly ? "fill-current" : ""}`} />
@@ -785,7 +785,7 @@ export default function ProvidersPage() {
           className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition ${
             showFilters || activeFilterCount > 0
               ? "border-[var(--brand-300)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+              : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--surface-border-hover)] hover:text-[var(--ink-950)]"
           }`}
         >
           <Filter className="h-3.5 w-3.5" />
@@ -808,14 +808,14 @@ export default function ProvidersPage() {
       </div>
 
       {showFilters && (
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="space-y-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-sm">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Category</label>
+              <label className="mb-1.5 block text-xs font-semibold text-[var(--ink-700)]">Category</label>
               <select
                 value={filters.category}
                 onChange={(e) => setFilters((prev) => ({ ...prev, category: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[var(--brand-400)] focus:ring-1 focus:ring-[var(--brand-400)]"
+                className="w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2 text-sm text-[var(--ink-700)] outline-none focus:border-[var(--brand-400)] focus:ring-1 focus:ring-[var(--brand-400)]"
               >
                 <option value="">All categories</option>
                 {categoryOptions.map(({ category, count }) => (
@@ -827,7 +827,7 @@ export default function ProvidersPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Minimum Rating</label>
+              <label className="mb-1.5 block text-xs font-semibold text-[var(--ink-700)]">Minimum Rating</label>
               <div className="flex flex-wrap gap-2">
                 {[
                   { value: null as number | null, label: "All" },
@@ -846,7 +846,7 @@ export default function ProvidersPage() {
                     className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
                       filters.minRating === option.value
                         ? "border-[var(--brand-300)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                        : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--surface-border-hover)] hover:text-[var(--ink-950)]"
                     }`}
                   >
                     {option.label}
@@ -856,7 +856,7 @@ export default function ProvidersPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Sort By</label>
+              <label className="mb-1.5 block text-xs font-semibold text-[var(--ink-700)]">Sort By</label>
               <div className="flex flex-wrap gap-2">
                 {[
                   { key: "distance" as const, label: "Nearest" },
@@ -871,7 +871,7 @@ export default function ProvidersPage() {
                     className={`inline-flex items-center rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition ${
                       filters.sortBy === option.key
                         ? "border-[var(--brand-300)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                        : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--surface-border-hover)] hover:text-[var(--ink-950)]"
                     }`}
                   >
                     {option.label}
@@ -881,14 +881,14 @@ export default function ProvidersPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Availability</label>
+              <label className="mb-1.5 block text-xs font-semibold text-[var(--ink-700)]">Availability</label>
               <button
                 type="button"
                 onClick={() => setFilters((prev) => ({ ...prev, showOnlineOnly: !prev.showOnlineOnly }))}
                 className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
                   filters.showOnlineOnly
                     ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                    : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--surface-border-hover)] hover:text-[var(--ink-950)]"
                 }`}
               >
                 <div
@@ -913,7 +913,7 @@ export default function ProvidersPage() {
                 });
                 setSearchQuery("");
               }}
-              className="text-xs text-slate-500 hover:text-slate-700"
+              className="text-xs text-[var(--ink-500)] hover:text-[var(--ink-700)]"
             >
               Clear all filters
             </button>
@@ -922,7 +922,7 @@ export default function ProvidersPage() {
       )}
 
       {!loading && !error && (
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 shadow-sm">
+        <div className="flex items-center justify-between rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2 text-xs text-[var(--ink-500)] shadow-sm">
           <span className="flex items-center gap-1">
             <Users className="h-3.5 w-3.5" />
             {pagination.total > filteredProviders.length
@@ -958,7 +958,7 @@ export default function ProvidersPage() {
           <button
             type="button"
             onClick={() => loadProviders()}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--surface-border-hover)] hover:text-[var(--ink-950)]"
           >
             Retry
           </button>
@@ -966,14 +966,14 @@ export default function ProvidersPage() {
       )}
 
       {!loading && !error && filteredProviders.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 to-white p-10 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
-            <Users className="h-8 w-8 text-slate-400" />
+        <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-gradient-to-br from-slate-50 to-white p-10 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface-soft)]">
+            <Users className="h-8 w-8 text-[var(--ink-500)]" />
           </div>
-          <p className="mt-4 text-base font-bold text-slate-800">
+          <p className="mt-4 text-base font-bold text-[var(--ink-950)]">
             {showFavoritesOnly ? "No favorite providers yet" : "No providers found"}
           </p>
-          <p className="mt-1.5 text-sm text-slate-500">
+          <p className="mt-1.5 text-sm text-[var(--ink-500)]">
             {showFavoritesOnly
               ? "Heart some providers to save them to your favorites"
               : "Try adjusting your search or filters to find providers nearby"}
@@ -999,7 +999,7 @@ export default function ProvidersPage() {
             )}
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--surface-border-hover)]"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Back to Market
@@ -1016,7 +1016,7 @@ export default function ProvidersPage() {
             return (
               <div
                 key={provider.id}
-                className={`min-w-0 space-y-3 rounded-2xl border border-slate-200 bg-white p-4 transition shadow-sm hover:border-[var(--brand-300)] hover:shadow-lg hover:shadow-slate-200/50 ${
+                className={`min-w-0 space-y-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 transition shadow-sm hover:border-[var(--brand-300)] hover:shadow-lg hover:shadow-slate-200/50 ${
                   quickViewProvider?.id === provider.id ? "border-[var(--brand-400)] ring-2 ring-[var(--brand-100)]" : ""
                 }`}
               >
@@ -1050,7 +1050,7 @@ export default function ProvidersPage() {
                         <button
                           type="button"
                           onClick={() => setQuickViewProvider(provider)}
-                          className="min-w-0 max-w-full truncate text-sm font-bold text-slate-900 hover:text-[var(--brand-700)] transition"
+                          className="min-w-0 max-w-full truncate text-sm font-bold text-[var(--ink-950)] hover:text-[var(--brand-700)] transition"
                         >
                           {provider.name}
                         </button>
@@ -1068,7 +1068,7 @@ export default function ProvidersPage() {
                         )}
                       </div>
 
-                      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-[var(--ink-500)]">
                         {provider.location && (
                           <span className="flex items-center gap-1">
                             <MapPin className="h-3 w-3" />
@@ -1076,7 +1076,7 @@ export default function ProvidersPage() {
                           </span>
                         )}
                         {provider.distanceKm != null && (
-                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                          <span className="inline-flex items-center rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[var(--ink-700)]">
                             {provider.distanceKm} km away
                           </span>
                         )}
@@ -1094,19 +1094,19 @@ export default function ProvidersPage() {
                             )}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-xs text-slate-500">
-                            <Star className="h-3.5 w-3.5 text-slate-300" />
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-xs text-[var(--ink-500)]">
+                            <Star className="h-3.5 w-3.5 text-[var(--ink-500)]" />
                             No reviews
                           </span>
                         )}
                         {provider.completedJobs > 0 && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-xs font-medium text-[var(--ink-700)]">
                             <TrendingUp className="h-3 w-3 text-emerald-600" />
                             {provider.completedJobs} jobs
                           </span>
                         )}
                         {provider.responseMinutes != null && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-xs text-[var(--ink-700)]">
                             <Clock className="h-3 w-3" />
                             ~{provider.responseMinutes}m
                           </span>
@@ -1122,14 +1122,14 @@ export default function ProvidersPage() {
                       className={`inline-flex h-8 w-8 items-center justify-center rounded-xl border transition ${
                         isFavorite
                           ? "border-rose-200 bg-rose-50 text-rose-600"
-                          : "border-slate-100 bg-white text-slate-400 hover:border-slate-200 hover:text-slate-600"
+                          : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-500)] hover:border-[var(--surface-border)] hover:text-[var(--ink-700)]"
                       }`}
                     >
                       <Heart className={`h-3.5 w-3.5 ${isFavorite ? "fill-current" : ""}`} />
                     </button>
                     {provider.priceMin != null && (
                       <div className="text-right">
-                        <p className="text-xs font-bold text-slate-700">
+                        <p className="text-xs font-bold text-[var(--ink-700)]">
                           from {formatCurrency(provider.priceMin)}
                         </p>
                       </div>
@@ -1138,7 +1138,7 @@ export default function ProvidersPage() {
                 </div>
 
                 {provider.bio && (
-                  <p className="line-clamp-2 text-xs leading-relaxed text-slate-600">{provider.bio}</p>
+                  <p className="line-clamp-2 text-xs leading-relaxed text-[var(--ink-700)]">{provider.bio}</p>
                 )}
 
                 {provider.listings.length > 0 && (
@@ -1146,9 +1146,9 @@ export default function ProvidersPage() {
                     {provider.listings.slice(0, 4).map((listing) => (
                       <span
                         key={listing.id}
-                        className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700"
+                        className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--ink-700)]"
                       >
-                        <Store className="h-3 w-3 text-slate-400" />
+                        <Store className="h-3 w-3 text-[var(--ink-500)]" />
                         {listing.title}
                         {listing.price != null && (
                           <span className="font-semibold text-[var(--brand-700)]">
@@ -1161,7 +1161,7 @@ export default function ProvidersPage() {
                       <button
                         type="button"
                         onClick={() => setQuickViewProvider(provider)}
-                        className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-200 transition"
+                        className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--ink-500)] hover:bg-slate-200 transition"
                       >
                         +{provider.listings.length - 4} more
                       </button>
@@ -1169,7 +1169,7 @@ export default function ProvidersPage() {
                   </div>
                 )}
 
-                 <div className="mt-1.5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                 <div className="mt-1.5 flex flex-wrap items-center gap-2 border-t border-[var(--surface-border)] pt-3">
                     <Link
                       href={`/dashboard/chat/${encodeURIComponent(provider.id)}`}
                       className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--brand-800)] hover:shadow-md"
@@ -1189,7 +1189,7 @@ export default function ProvidersPage() {
                    {buildPublicProfilePath(provider) && (
                      <Link
                        href={buildPublicProfilePath(provider)!}
-                       className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                       className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--surface-border-hover)] hover:bg-[var(--surface-soft)]"
                      >
                        <Store className="h-3.5 w-3.5" />
                        View Profile
@@ -1199,7 +1199,7 @@ export default function ProvidersPage() {
                    <button
                      type="button"
                      onClick={() => setQuickViewProvider(provider)}
-                     className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                     className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--surface-border-hover)] hover:bg-[var(--surface-soft)]"
                    >
                      Quick View
                    </button>
@@ -1217,7 +1217,7 @@ export default function ProvidersPage() {
                       className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                         connectionError?.providerId === provider.id
                           ? "border-rose-200 bg-rose-50 text-rose-700"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                          : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--surface-border-hover)] hover:bg-[var(--surface-soft)]"
                       }`}
                     >
                       {connectingProviderId === provider.id ? (
@@ -1242,13 +1242,13 @@ export default function ProvidersPage() {
       {!loading && !error && filteredProviders.length > 0 && (
         <div ref={sentinelRefCallback} className="flex justify-center pt-6 pb-2">
           {loadingMore && (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-[var(--ink-500)]">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading more providers...
             </div>
           )}
           {!loadingMore && !pagination.hasMore && (
-            <div className="flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 rounded-full bg-[var(--surface-soft)] px-4 py-2 text-xs text-[var(--ink-500)]">
               <Users className="h-3.5 w-3.5" />
               All {pagination.total} providers loaded
             </div>

@@ -20,17 +20,17 @@ export default function SeekerOnboardingLayout({
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f8fafc]">
-      <header className="border-b border-slate-200 bg-white px-4 py-4">
+      <header className="border-b border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-4">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
-          <Link href="/" className="text-lg font-bold tracking-tight text-slate-900">
+          <Link href="/" className="text-lg font-bold tracking-tight text-[var(--ink-950)]">
             ServiQ
           </Link>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-[var(--ink-500)]">
             Step {currentStep + 1} of {STEPS.length}
           </span>
         </div>
         <div className="mx-auto mt-3 max-w-2xl">
-          <div className="h-1.5 rounded-full bg-slate-100">
+          <div className="h-1.5 rounded-full bg-[var(--surface-soft)]">
             <div
               className="h-1.5 rounded-full bg-slate-900 transition-all duration-500"
               style={{ width: `${progress}%` }}
@@ -41,7 +41,7 @@ export default function SeekerOnboardingLayout({
               <span
                 key={step.number}
                 className={`text-xs font-medium ${
-                  i <= currentStep ? "text-slate-900" : "text-slate-300"
+                  i <= currentStep ? "text-[var(--ink-950)]" : "text-[var(--ink-500)]"
                 }`}
               >
                 {step.label}

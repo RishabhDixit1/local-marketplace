@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/mobile_api_provider.dart';
@@ -39,7 +40,8 @@ class OfflineSyncManager {
       for (final op in operations) {
         try {
           await _execute(op);
-        } catch (_) {
+        } catch (e) {
+          debugPrint('ServiQ offline_sync_manager._execute failed: $e');
           await _queue.enqueueFront(op);
           break;
         }

@@ -49,38 +49,38 @@ function ProfileSection({
 
   if (editing) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-sm font-bold text-slate-900">Edit Profile</h2>
+      <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-sm">
+        <h2 className="mb-4 text-sm font-bold text-[var(--ink-950)]">Edit Profile</h2>
         <div className="space-y-3">
           <div>
-            <label className="mb-1 text-xs font-semibold text-slate-600">Business Name</label>
+            <label className="mb-1 text-xs font-semibold text-[var(--ink-700)]">Business Name</label>
             <input
               type="text"
               value={local?.fullName || ""}
               onChange={(e) => setLocal((prev) => (prev ? { ...prev, fullName: e.target.value } : prev))}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 text-xs font-semibold text-slate-600">Location</label>
+            <label className="mb-1 text-xs font-semibold text-[var(--ink-700)]">Location</label>
             <input
               type="text"
               value={local?.location || ""}
               onChange={(e) => setLocal((prev) => (prev ? { ...prev, location: e.target.value } : prev))}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 text-xs font-semibold text-slate-600">Bio</label>
+            <label className="mb-1 text-xs font-semibold text-[var(--ink-700)]">Bio</label>
             <textarea
               value={local?.bio || ""}
               onChange={(e) => setLocal((prev) => (prev ? { ...prev, bio: e.target.value } : prev))}
               rows={4}
-              className="w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="w-full resize-none rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 text-xs font-semibold text-slate-600">Tags (comma-separated)</label>
+            <label className="mb-1 text-xs font-semibold text-[var(--ink-700)]">Tags (comma-separated)</label>
             <input
               type="text"
               value={(local?.interests || []).join(", ")}
@@ -94,14 +94,14 @@ function ProfileSection({
                     : prev
                 )
               }
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm"
             />
           </div>
           <div className="flex gap-2 pt-2">
             <button
               type="button"
               onClick={onCancelEdit}
-              className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"
+              className="flex-1 rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm font-semibold text-[var(--ink-700)]"
             >
               Cancel
             </button>
@@ -119,19 +119,19 @@ function ProfileSection({
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-sm">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
           <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--brand-50)] text-[var(--brand-700)]">
             <Star className="h-4 w-4" />
           </div>
-          <h2 className="text-sm font-bold text-slate-900">Profile</h2>
+          <h2 className="text-sm font-bold text-[var(--ink-950)]">Profile</h2>
         </div>
         <div className="flex gap-1">
           <button
             type="button"
             onClick={onEdit}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            className="inline-flex items-center gap-1 rounded-lg border border-[var(--surface-border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]"
             title="Edit profile"
           >
             <Pencil className="h-3 w-3" /> Edit
@@ -139,24 +139,24 @@ function ProfileSection({
           <button
             type="button"
             onClick={onRegenerate}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50"
+            className="inline-flex items-center gap-1 rounded-lg border border-[var(--surface-border)] px-2.5 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50"
             title="Regenerate with AI"
           >
             <RotateCcw className="h-3 w-3" /> Regenerate
           </button>
         </div>
       </div>
-      <p className="mb-1 mt-3 text-base font-semibold text-slate-900">{gp.fullName}</p>
+      <p className="mb-1 mt-3 text-base font-semibold text-[var(--ink-950)]">{gp.fullName}</p>
       {gp.location ? (
-        <p className="mb-2 flex items-center gap-1 text-sm text-slate-500">
+        <p className="mb-2 flex items-center gap-1 text-sm text-[var(--ink-500)]">
           <MapPin className="h-3.5 w-3.5 shrink-0" /> {gp.location}
         </p>
       ) : null}
-      <p className="text-sm leading-relaxed text-slate-700">{gp.bio}</p>
+      <p className="text-sm leading-relaxed text-[var(--ink-700)]">{gp.bio}</p>
       {gp.interests.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {gp.interests.slice(0, 8).map((tag) => (
-            <span key={tag} className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+            <span key={tag} className="rounded-full bg-[var(--surface-soft)] px-2.5 py-0.5 text-xs font-medium text-[var(--ink-700)]">
               {tag}
             </span>
           ))}
@@ -197,11 +197,11 @@ function OfferingsSection({
 
   if (editing) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-sm font-bold text-slate-900">Edit Services & Products</h2>
+      <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-sm">
+        <h2 className="mb-4 text-sm font-bold text-[var(--ink-950)]">Edit Services & Products</h2>
         <div className="space-y-3">
           {local.map((item, i) => (
-            <div key={i} className="rounded-xl border border-slate-200 p-3">
+            <div key={i} className="rounded-xl border border-[var(--surface-border)] p-3">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -211,7 +211,7 @@ function OfferingsSection({
                     updated[i] = { ...updated[i], title: e.target.value };
                     setLocal(updated);
                   }}
-                  className="flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                  className="flex-1 rounded-lg border border-[var(--surface-border)] px-2 py-1.5 text-sm"
                   placeholder="Title"
                 />
                 <input
@@ -222,7 +222,7 @@ function OfferingsSection({
                     updated[i] = { ...updated[i], price: e.target.value ? Number(e.target.value) : null };
                     setLocal(updated);
                   }}
-                  className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                  className="w-24 rounded-lg border border-[var(--surface-border)] px-2 py-1.5 text-sm"
                   placeholder="Price"
                 />
               </div>
@@ -234,7 +234,7 @@ function OfferingsSection({
                   setLocal(updated);
                 }}
                 rows={2}
-                className="mt-2 w-full resize-none rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
+                className="mt-2 w-full resize-none rounded-lg border border-[var(--surface-border)] px-2 py-1.5 text-xs"
                 placeholder="Description"
               />
             </div>
@@ -244,7 +244,7 @@ function OfferingsSection({
           <button
             type="button"
             onClick={onCancelEdit}
-            className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"
+            className="flex-1 rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm font-semibold text-[var(--ink-700)]"
           >
             Cancel
           </button>
@@ -261,13 +261,13 @@ function OfferingsSection({
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-sm">
       <div className="flex items-center justify-between px-5 py-4">
         <div className="flex items-center gap-2">
           <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--brand-50)] text-[var(--brand-700)]">
             <Wrench className="h-4 w-4" />
           </div>
-          <h2 className="text-sm font-bold text-slate-900">
+          <h2 className="text-sm font-bold text-[var(--ink-950)]">
             {services.length > 0 && products.length === 0
               ? `${services.length} Service${services.length === 1 ? "" : "s"}`
               : products.length > 0 && services.length === 0
@@ -284,21 +284,21 @@ function OfferingsSection({
           <button
             type="button"
             onClick={onEdit}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            className="inline-flex items-center gap-1 rounded-lg border border-[var(--surface-border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]"
           >
             <Pencil className="h-3 w-3" /> Edit
           </button>
           <button
             type="button"
             onClick={onRegenerate}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50"
+            className="inline-flex items-center gap-1 rounded-lg border border-[var(--surface-border)] px-2.5 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50"
           >
             <RotateCcw className="h-3 w-3" /> Regenerate
           </button>
           <button
             type="button"
             onClick={() => setCollapsed((p) => !p)}
-            className="text-slate-400"
+            className="text-[var(--ink-500)]"
           >
             {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </button>
@@ -309,7 +309,7 @@ function OfferingsSection({
           {[...services, ...products].map((item, i) => (
             <div key={i} className="py-3">
               <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                <p className="text-sm font-semibold text-[var(--ink-950)]">{item.title}</p>
                 {item.price && item.price > 0 ? (
                   <span className="shrink-0 text-sm font-bold text-[var(--brand-700)]">
                     ₹{item.price.toLocaleString("en-IN")}
@@ -317,7 +317,7 @@ function OfferingsSection({
                 ) : null}
               </div>
               {item.description ? (
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-500 line-clamp-2">{item.description}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-[var(--ink-500)] line-clamp-2">{item.description}</p>
               ) : null}
             </div>
           ))}
@@ -353,11 +353,11 @@ function FaqSection({
 
   if (editing) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-sm font-bold text-slate-900">Edit FAQ</h2>
+      <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-sm">
+        <h2 className="mb-4 text-sm font-bold text-[var(--ink-950)]">Edit FAQ</h2>
         <div className="space-y-3">
           {local.map((item, i) => (
-            <div key={i} className="rounded-xl border border-slate-200 p-3">
+            <div key={i} className="rounded-xl border border-[var(--surface-border)] p-3">
               <input
                 type="text"
                 value={item.question}
@@ -366,7 +366,7 @@ function FaqSection({
                   updated[i] = { ...updated[i], question: e.target.value };
                   setLocal(updated);
                 }}
-                className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm font-semibold"
+                className="w-full rounded-lg border border-[var(--surface-border)] px-2 py-1.5 text-sm font-semibold"
                 placeholder="Question"
               />
               <textarea
@@ -377,7 +377,7 @@ function FaqSection({
                   setLocal(updated);
                 }}
                 rows={2}
-                className="mt-2 w-full resize-none rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
+                className="mt-2 w-full resize-none rounded-lg border border-[var(--surface-border)] px-2 py-1.5 text-xs"
                 placeholder="Answer"
               />
             </div>
@@ -387,7 +387,7 @@ function FaqSection({
           <button
             type="button"
             onClick={onCancelEdit}
-            className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"
+            className="flex-1 rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm font-semibold text-[var(--ink-700)]"
           >
             Cancel
           </button>
@@ -404,28 +404,28 @@ function FaqSection({
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-sm">
       <div className="flex items-center justify-between px-5 py-4">
-        <h2 className="text-sm font-bold text-slate-900">FAQ ({faq.length})</h2>
+        <h2 className="text-sm font-bold text-[var(--ink-950)]">FAQ ({faq.length})</h2>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onEdit}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            className="inline-flex items-center gap-1 rounded-lg border border-[var(--surface-border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]"
           >
             <Pencil className="h-3 w-3" /> Edit
           </button>
           <button
             type="button"
             onClick={onRegenerate}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50"
+            className="inline-flex items-center gap-1 rounded-lg border border-[var(--surface-border)] px-2.5 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50"
           >
             <RotateCcw className="h-3 w-3" /> Regenerate
           </button>
           <button
             type="button"
             onClick={() => setCollapsed((p) => !p)}
-            className="text-slate-400"
+            className="text-[var(--ink-500)]"
           >
             {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </button>
@@ -435,8 +435,8 @@ function FaqSection({
         <div className="divide-y divide-slate-100 border-t border-slate-100 px-5 pb-4">
           {faq.map((item, i) => (
             <div key={i} className="py-3">
-              <p className="text-sm font-semibold text-slate-900">{item.question}</p>
-              <p className="mt-0.5 text-sm text-slate-600">{item.answer}</p>
+              <p className="text-sm font-semibold text-[var(--ink-950)]">{item.question}</p>
+              <p className="mt-0.5 text-sm text-[var(--ink-700)]">{item.answer}</p>
             </div>
           ))}
         </div>
@@ -642,14 +642,14 @@ export default function LaunchpadReviewPage() {
       <button
         type="button"
         onClick={() => router.push("/dashboard/launchpad")}
-        className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-slate-900"
+        className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--ink-500)] transition hover:text-[var(--ink-950)]"
       >
         <ArrowLeft className="h-4 w-4" /> Edit answers
       </button>
 
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">Review Your Business AI Pack</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl font-bold text-[var(--ink-950)]">Review Your Business AI Pack</h1>
+        <p className="mt-1 text-sm text-[var(--ink-500)]">
           {isDraft
             ? "Your answers are saved. Generate your business content to review before publishing."
             : "Check what will be published to your profile and storefront listings."}
@@ -716,16 +716,16 @@ export default function LaunchpadReviewPage() {
 
         {/* ── Service areas ─────────────────────────────── */}
         {areas.length > 0 && (
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-sm">
             <div className="flex items-center gap-2">
               <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--brand-50)] text-[var(--brand-700)]">
                 <MapPin className="h-4 w-4" />
               </div>
-              <h2 className="text-sm font-bold text-slate-900">Service Areas</h2>
+              <h2 className="text-sm font-bold text-[var(--ink-950)]">Service Areas</h2>
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {areas.map((area) => (
-                <span key={area} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                <span key={area} className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-1 text-xs font-medium text-[var(--ink-700)]">
                   {area}
                 </span>
               ))}
@@ -768,7 +768,7 @@ export default function LaunchpadReviewPage() {
           </button>
         )}
 
-        <p className="pb-6 text-center text-xs text-slate-400">
+        <p className="pb-6 text-center text-xs text-[var(--ink-500)]">
           You can always edit your profile and listings from the profile page after publishing.
         </p>
       </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../../lib/supabase-browser";
+import { supabase } from "@/lib/supabase";
 import ServiQLogo from "@/app/components/ServiQLogo";
 import { appName, appTagline } from "@/lib/branding";
 
@@ -145,14 +145,14 @@ export default function AuthCallbackPage() {
 
   return (
     <main className="min-h-screen grid place-items-center bg-[var(--surface-app)] px-6 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-[0_24px_60px_-38px_rgba(15,23,42,0.45)] space-y-5 startup-fade">
+      <div className="w-full max-w-md rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-7 text-center shadow-[0_24px_60px_-38px_rgba(15,23,42,0.45)] space-y-5 startup-fade">
         <div className="flex justify-center">
           <ServiQLogo compact href="/" ariaLabel="Open homepage" />
         </div>
-        <h1 className="brand-display text-2xl font-semibold text-slate-900">Signing You In to {appName}</h1>
+        <h1 className="brand-display text-2xl font-semibold text-[var(--ink-950)]">Signing You In to {appName}</h1>
 
         <div className="space-y-2">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--surface-soft)]">
             <div
               className="h-full rounded-full bg-gradient-to-r from-[var(--brand-600)] to-[var(--brand-400)] transition-all duration-700 ease-out"
               style={{ width: `${progress}%` }}
@@ -163,7 +163,7 @@ export default function AuthCallbackPage() {
               <span
                 key={s.label}
                 className={`text-[10px] font-medium transition-colors duration-300 ${
-                  i <= step ? "text-[var(--brand-700)]" : "text-slate-400"
+                  i <= step ? "text-[var(--brand-700)]" : "text-[var(--ink-500)]"
                 }`}
               >
                 {s.label}
@@ -172,8 +172,8 @@ export default function AuthCallbackPage() {
           </div>
         </div>
 
-        <p className="text-sm text-slate-600">{message}</p>
-        <p className="text-xs text-slate-500">{appTagline}</p>
+        <p className="text-sm text-[var(--ink-700)]">{message}</p>
+        <p className="text-xs text-[var(--ink-500)]">{appTagline}</p>
       </div>
     </main>
   );

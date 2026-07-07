@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/widgets/chips.dart';
 
 const _navigationRailWidthBreakpoint = AppBreakpoints.expanded;
@@ -25,7 +26,9 @@ class MainBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final destinations = _mainDestinations(
+      l10n: l10n,
       chatCount: chatCount,
       taskCount: taskCount,
     );
@@ -84,7 +87,9 @@ class MainNavigationRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final extended = width >= 1040;
+    final l10n = AppLocalizations.of(context);
     final destinations = _mainDestinations(
+      l10n: l10n,
       chatCount: chatCount,
       taskCount: taskCount,
     );
@@ -146,34 +151,35 @@ class MainNavigationRail extends StatelessWidget {
 }
 
 List<_NavDestination> _mainDestinations({
+  required AppLocalizations l10n,
   required int chatCount,
   required int taskCount,
 }) {
   return [
-    const _NavDestination(
-      label: 'Home',
+    _NavDestination(
+      label: l10n.home,
       icon: Icons.home_outlined,
       selectedIcon: Icons.home_rounded,
     ),
-    const _NavDestination(
-      label: 'People',
+    _NavDestination(
+      label: l10n.people,
       icon: Icons.people_outline,
       selectedIcon: Icons.people_rounded,
     ),
     _NavDestination(
-      label: 'Work',
+      label: l10n.work,
       icon: Icons.assignment_outlined,
       selectedIcon: Icons.assignment_rounded,
       badgeCount: taskCount,
     ),
     _NavDestination(
-      label: 'Inbox',
+      label: l10n.inbox,
       icon: Icons.chat_outlined,
       selectedIcon: Icons.chat_rounded,
       badgeCount: chatCount,
     ),
-    const _NavDestination(
-      label: 'You',
+    _NavDestination(
+      label: l10n.youTab,
       icon: Icons.person_outline_rounded,
       selectedIcon: Icons.person_rounded,
     ),

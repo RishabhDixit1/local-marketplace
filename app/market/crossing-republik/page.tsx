@@ -55,23 +55,23 @@ function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCar
     : null;
 
   return (
-    <div className="group rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[var(--brand-500)]/30 hover:shadow-md hover:shadow-[var(--brand-500)]/5">
+    <div className="group rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 transition hover:border-[var(--brand-500)]/30 hover:shadow-md hover:shadow-[var(--brand-500)]/5">
       <div className="flex items-start gap-3">
-        <button type="button" onClick={() => onSelect(provider)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-50)] text-lg font-bold text-[var(--brand-700)] transition hover:ring-2 hover:ring-[var(--brand-300)]">
+        <button type="button" onClick={() => onSelect(provider)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-50)] text-lg font-semibold text-[var(--brand-700)] transition hover:ring-2 hover:ring-[var(--brand-300)]">
           {provider.name.charAt(0)}
         </button>
         <div className="min-w-0 flex-1">
           <button type="button" onClick={() => onSelect(provider)} className="w-full text-left">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">{provider.name}</h3>
-                <p className="mt-0.5 text-xs text-slate-500">{provider.location || "Crossings Republik"}</p>
+                <h3 className="text-sm font-extrabold text-[var(--ink-950)]">{provider.name}</h3>
+                <p className="mt-0.5 text-xs text-[var(--ink-500)]">{provider.location || "Crossings Republik"}</p>
               </div>
               {provider.verified && (
                 <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 border border-emerald-200">Verified</span>
               )}
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--ink-500)]">
               {provider.avgRating ? (
                 <span className="flex items-center gap-1">
                   <Star className="h-3 w-3 text-amber-400" fill="currentColor" />
@@ -86,25 +86,25 @@ function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCar
               ) : null}
               {provider.completedJobs > 0 && (
                 <span className="flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3 text-slate-400" />
+                  <CheckCircle2 className="h-3 w-3 text-[var(--ink-500)]" />
                   {provider.completedJobs} jobs
                 </span>
               )}
               {provider.distanceKm != null && (
                 <span className="flex items-center gap-1">
-                  <MapPin className="h-3 w-3 text-slate-400" />
+                  <MapPin className="h-3 w-3 text-[var(--ink-500)]" />
                   {provider.distanceKm} km
                 </span>
               )}
               {provider.serviceCount > 0 && (
                 <span className="flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3 text-slate-400" />
+                  <CheckCircle2 className="h-3 w-3 text-[var(--ink-500)]" />
                   {provider.serviceCount} service{provider.serviceCount === 1 ? "" : "s"}
                 </span>
               )}
             </div>
             {provider.bio && (
-              <p className="mt-1.5 text-xs leading-relaxed text-slate-500 line-clamp-2">{provider.bio}</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-[var(--ink-500)] line-clamp-2">{provider.bio}</p>
             )}
           </button>
           <div className="mt-3 flex items-center justify-between">
@@ -207,7 +207,7 @@ export default function CrossingRepublikPage() {
   return (
     <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-20 sm:px-6 lg:pb-20">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 -mx-4 mb-4 border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur-md sm:-mx-6 sm:px-6">
+      <header className="sticky top-0 z-30 -mx-4 mb-4 border-b border-[var(--surface-border)]/80 bg-white/95 px-4 backdrop-blur-md sm:-mx-6 sm:px-6">
         <div className="mx-auto flex max-w-5xl items-center justify-between py-3">
           <ServiQLogo href="/" ariaLabel="ServiQ home" />
           <div className="flex items-center gap-2">
@@ -229,7 +229,7 @@ export default function CrossingRepublikPage() {
             ) : (
               <Link
                 href="/?signin=true"
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                className="inline-flex items-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2 text-sm font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
               >
                 <LogIn className="h-4 w-4" />
                 Sign In
@@ -244,25 +244,25 @@ export default function CrossingRepublikPage() {
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--brand-100)]">
           <MapPin className="h-8 w-8 text-[var(--brand-700)]" />
         </div>
-        <h1 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
+        <h1 className="text-2xl font-extrabold text-[var(--ink-950)] sm:text-3xl">
           <span className="text-[var(--brand-700)]">Crossing Republik</span>, Ghaziabad
         </h1>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-[var(--ink-500)]">
           Uttar Pradesh 201016 &mdash; Hyperlocal marketplace
         </p>
 
         {/* Stats row */}
           {!localitiesLoading && (
-          <div className="mx-auto mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm sm:inline-flex sm:divide-x sm:divide-slate-200">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+          <div className="mx-auto mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-3 shadow-sm sm:inline-flex sm:divide-x sm:divide-slate-200">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-700)]">
               <Building2 className="h-3.5 w-3.5 text-[var(--brand-600)]" />
               {societies.length} Societies
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 sm:pl-4">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-700)] sm:pl-4">
               <Store className="h-3.5 w-3.5 text-[var(--brand-600)]" />
               {marketZones.length} Markets
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 sm:pl-4">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-700)] sm:pl-4">
               <Users className="h-3.5 w-3.5 text-[var(--brand-600)]" />
               {providers.length} Providers
             </div>
@@ -282,7 +282,7 @@ export default function CrossingRepublikPage() {
           <button
             type="button"
             onClick={scrollToProviders}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-300"
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-3 text-sm font-bold text-[var(--ink-700)] shadow-sm transition hover:border-[var(--border-strong)]"
           >
             <Users className="h-4 w-4" />
             Browse All Providers
@@ -312,7 +312,7 @@ export default function CrossingRepublikPage() {
         </div>
 
         {/* Coverage text */}
-        <p className="mx-auto mt-6 max-w-lg text-xs text-slate-400 leading-relaxed">
+        <p className="mx-auto mt-6 max-w-lg text-xs text-[var(--ink-500)] leading-relaxed">
           Covering: {areaList}
         </p>
       </section>
@@ -320,7 +320,7 @@ export default function CrossingRepublikPage() {
       {/* ── Zone Browser Section ── */}
       <section ref={zoneSectionRef} className="mb-10 scroll-mt-24">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">Browse Local Zones</h2>
+          <h2 className="text-lg font-extrabold text-[var(--ink-950)]">Browse Local Zones</h2>
         </div>
         <ZoneBrowser initialLocalities={localities} loading={localitiesLoading} />
       </section>
@@ -328,8 +328,8 @@ export default function CrossingRepublikPage() {
       {/* ── Services Section ── */}
       <section className="mb-10">
         <div className="mb-4">
-          <h2 className="text-lg font-bold text-slate-900">Services Available</h2>
-          <p className="text-xs text-slate-500">Browse by category — standard pricing for Crossing Republik</p>
+          <h2 className="text-lg font-extrabold text-[var(--ink-950)]">Services Available</h2>
+          <p className="text-xs text-[var(--ink-500)]">Browse by category — standard pricing for Crossing Republik</p>
         </div>
         <ServiceCategoryGrid categories={categories as never[]} />
       </section>
@@ -337,7 +337,7 @@ export default function CrossingRepublikPage() {
       {/* ── Provider Cards Section ── */}
       <section ref={providerSectionRef} className="scroll-mt-24">
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[var(--ink-500)]">
             {selectedCategory ? `Showing results for ${selectedCategory}` : "Showing results for all"}
           </p>
           {selectedCategory && (
@@ -352,7 +352,7 @@ export default function CrossingRepublikPage() {
         </div>
 
         {providersLoading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-400">
+          <div className="flex items-center justify-center gap-2 py-16 text-sm text-[var(--ink-500)]">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading providers...
           </div>
@@ -368,17 +368,17 @@ export default function CrossingRepublikPage() {
             ))}
           </div>
         ) : selectedCategory ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-10 text-center">
-            <Users className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-            <p className="text-sm font-semibold text-slate-600">No providers found nearby</p>
-            <p className="mt-1 text-xs text-slate-400">
+          <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)]/50 p-10 text-center">
+            <Users className="mx-auto mb-3 h-8 w-8 text-[var(--ink-500)]" />
+            <p className="text-sm font-semibold text-[var(--ink-700)]">No providers found nearby</p>
+            <p className="mt-1 text-xs text-[var(--ink-500)]">
               Try adjusting your filters or browse all providers
             </p>
             <div className="mt-5 flex items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={() => setSelectedCategory(null)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--border-strong)]"
               >
                 <X className="h-3 w-3" />
                 Clear Filter
@@ -391,8 +391,8 @@ export default function CrossingRepublikPage() {
       {/* ── Join CTA ── */}
       <section className="mx-auto mt-12 max-w-lg rounded-2xl border border-dashed border-[var(--brand-300)] bg-gradient-to-br from-[var(--brand-50)] to-white p-6 text-center">
         <Store className="mx-auto h-8 w-8 text-[var(--brand-500)]" />
-        <h3 className="mt-3 text-lg font-bold text-slate-900">Are you a service provider?</h3>
-        <p className="mt-1 text-sm text-slate-500">List your business on {appName} and get more customers from your neighborhood.</p>
+        <h3 className="mt-3 text-lg font-extrabold text-[var(--ink-950)]">Are you a service provider?</h3>
+        <p className="mt-1 text-sm text-[var(--ink-500)]">List your business on {appName} and get more customers from your neighborhood.</p>
         <Link
           href="/onboarding/provider/locality"
           className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[var(--brand-900)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"

@@ -577,7 +577,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     _cacheDraft();
 
     for (final item in items) {
-      unawaited(_uploadMediaItem(item.id));
+      unawaited(_uploadMediaItem(item.id).catchError((e, st) => debugPrint('ServiQ create_need.uploadMediaItem failed: $e\n$st')));
     }
 
     if (rejectedForSize > 0) {
@@ -658,7 +658,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
   }
 
   void _retryMediaUpload(String itemId) {
-    unawaited(_uploadMediaItem(itemId));
+    unawaited(_uploadMediaItem(itemId).catchError((e, st) => debugPrint('ServiQ create_need.retryUploadMediaItem failed: $e\n$st')));
   }
 
   void _removeMediaItem(String itemId) {

@@ -31,7 +31,8 @@ Future<List<String>> _loadRecent() async {
   try {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getStringList(_recentKey) ?? [];
-  } catch (_) {
+  } catch (e) {
+    debugPrint('ServiQ search_page._loadRecent failed: $e');
     return [];
   }
 }
@@ -43,7 +44,9 @@ Future<void> _saveRecent(String query) async {
       ..remove(query)
       ..insert(0, query);
     prefs.setStringList(_recentKey, recent.take(_maxRecent).toList());
-  } catch (_) {}
+  } catch (e) {
+    debugPrint('ServiQ search_page._saveRecent failed: $e');
+  }
 }
 
 enum _SortBy {
@@ -97,8 +100,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       if (mounted) {
         setState(() { _categories = cats; });
       }
-    } catch (_) {
-      // Categories failed to load — search will still work
+    } catch (e) {
+      debugPrint('ServiQ search_page._initialize categories failed: $e');
     }
     if (mounted && _query.isNotEmpty) _doSearch();
   }

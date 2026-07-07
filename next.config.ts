@@ -105,7 +105,7 @@ const csp = [
   `default-src 'self'`,
   `script-src 'self' 'unsafe-eval' 'unsafe-inline' https://checkout.razorpay.com https://maps.googleapis.com https://www.googletagmanager.com`,
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
-  `img-src 'self' data: blob: https: http:`,
+  `img-src 'self' data: blob: https://images.unsplash.com https://i.pravatar.cc https://picsum.photos https://*.supabase.co${supabasePublicUrl ? ` ${supabasePublicUrl.origin}` : supabaseUrl ? ` ${supabaseUrl.origin}` : ""}${supabaseUrl && supabasePublicUrl && supabaseUrl.origin !== supabasePublicUrl.origin ? ` ${supabaseUrl.origin}` : ""}${cdnHostname ? ` https://${cdnHostname}` : ""}`,
   `font-src 'self' https://fonts.gstatic.com data:`,
   `media-src 'self' ${supabaseApiOrigin}`,
   `connect-src 'self' ${supabaseApiOrigin}${supabaseWsOrigin ? ` ${supabaseWsOrigin}` : ""} https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://*.sentry.io https://maps.googleapis.com https://www.google-analytics.com`,

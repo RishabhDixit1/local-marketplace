@@ -9,6 +9,7 @@ import '../../../core/auth/mobile_auth_service.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/l10n.dart';
 import '../data/onboarding_handoff.dart';
 import '../../../shared/components/premium_primitives.dart';
 
@@ -188,7 +189,8 @@ class _SignInPageState extends ConsumerState<SignInPage> {
       });
       unawaited(
         ref.read(onboardingHandoffControllerProvider)
-            .completeAuthHandoff(clearStoredRoute: false),
+            .completeAuthHandoff(clearStoredRoute: false)
+            .catchError((e, st) => debugPrint('ServiQ sign_in_page.handoff failed: $e\n$st')),
       );
     } finally {
       if (mounted) setState(() => _emailCodeSubmitting = false);
@@ -231,7 +233,8 @@ class _SignInPageState extends ConsumerState<SignInPage> {
       });
       unawaited(
         ref.read(onboardingHandoffControllerProvider)
-            .completeAuthHandoff(clearStoredRoute: false),
+            .completeAuthHandoff(clearStoredRoute: false)
+            .catchError((e, st) => debugPrint('ServiQ sign_in_page.handoff failed: $e\n$st')),
       );
     } finally {
       if (mounted) setState(() => _magicLinkSubmitting = false);
@@ -304,7 +307,8 @@ class _SignInPageState extends ConsumerState<SignInPage> {
       });
       unawaited(
         ref.read(onboardingHandoffControllerProvider)
-            .completeAuthHandoff(clearStoredRoute: false),
+            .completeAuthHandoff(clearStoredRoute: false)
+            .catchError((e, st) => debugPrint('ServiQ sign_in_page.handoff failed: $e\n$st')),
       );
     } finally {
       if (mounted) setState(() => _googleSubmitting = false);
@@ -368,7 +372,8 @@ class _SignInPageState extends ConsumerState<SignInPage> {
       });
       unawaited(
         ref.read(onboardingHandoffControllerProvider)
-            .completeAuthHandoff(clearStoredRoute: false),
+            .completeAuthHandoff(clearStoredRoute: false)
+            .catchError((e, st) => debugPrint('ServiQ sign_in_page.handoff failed: $e\n$st')),
       );
     } finally {
       if (mounted) setState(() => _passwordSubmitting = false);
@@ -401,7 +406,6 @@ class _SignInPageState extends ConsumerState<SignInPage> {
   Widget build(BuildContext context) {
     final bootstrap = ref.watch(appBootstrapProvider);
     final handoff = ref.watch(onboardingHandoffControllerProvider);
-
     return Scaffold(
       body: PremiumScaffold(
         padding: EdgeInsets.zero,
@@ -523,7 +527,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
               intent: intent,
               isSelected: isSelected,
               onTap: () {
-                unawaited(handoff.selectIntent(intent));
+                unawaited(handoff.selectIntent(intent).catchError((e, st) => debugPrint('ServiQ sign_in_page.selectIntent failed: $e\n$st')));
                 setState(() {});
                 ref.read(analyticsServiceProvider).trackEvent(
                   'mobile_onboarding_intent_selected',
@@ -640,6 +644,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
     required OnboardingHandoffController handoff,
   }) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final selectedIntent = handoff.selectedIntent;
 
     return Container(
@@ -686,7 +691,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Sign in with email',
+                        l10n.signInWithEmail,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -775,9 +780,9 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                           ),
                     label: Text(
                       _emailCodeSubmitting
-                          ? 'Sending...'
+                          ? l10n.sending
                           : _otpEmail == null
-                              ? 'Send email code'
+                              ? l10n.sendEmailCode
                               : 'Resend code',
                       style: theme.textTheme.labelLarge?.copyWith(
                         color: Colors.white,
@@ -811,8 +816,8 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                         : const Icon(Icons.link_rounded, size: 20),
                     label: Text(
                       _magicLinkSubmitting
-                          ? 'Sending link...'
-                          : 'Send magic link instead',
+                          ? l10n.sending
+                          : l10n.sendMagicLink,
                     ),
                   ),
                 ),
@@ -932,6 +937,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
   }
 
   Widget _buildGoogleCard({required bool compact}) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -976,7 +982,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Continue with Google',
+                        l10n.continueWithGoogle,
                         style: Theme.of(context)
                             .textTheme
                             .titleMedium
@@ -1030,7 +1036,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                     label: Text(
                       _googleSubmitting
                           ? 'Opening Google...'
-                          : 'Continue with Google',
+                          : l10n.continueWithGoogle,
                     ),
                   ),
                 ),
@@ -1048,6 +1054,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
 
   Widget _buildPasswordCard({required bool compact}) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -1123,7 +1130,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                     runSpacing: 6,
                     children: [
                       _PasswordModeChip(
-                        label: 'Sign in',
+                        label: l10n.signIn,
                         selected: _passwordMode == _PasswordAuthMode.signIn,
                         onTap: _passwordSubmitting ? null : () {
                           setState(() {
@@ -1134,7 +1141,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                         },
                       ),
                       _PasswordModeChip(
-                        label: 'Create account',
+                        label: l10n.createAccount,
                         selected: _passwordMode == _PasswordAuthMode.signUp,
                         onTap: _passwordSubmitting ? null : () {
                           setState(() {
@@ -1157,7 +1164,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                       fontWeight: FontWeight.w600,
                     ),
                     decoration: InputDecoration(
-                      labelText: 'Email address',
+                      labelText: l10n.emailLabel,
                       hintText: 'you@example.com',
                       prefixIcon: Icon(
                         Icons.email_outlined,
@@ -1190,7 +1197,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                       fontWeight: FontWeight.w600,
                     ),
                     decoration: InputDecoration(
-                      labelText: 'Password',
+                      labelText: l10n.passwordLabel,
                       prefixIcon: Icon(
                         Icons.lock_outline_rounded,
                         color: AppColors.inkFaint,
@@ -1235,7 +1242,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                           ),
                         ),
                         child: Text(
-                          'Forgot password?',
+                          l10n.forgotPassword,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: AppColors.accentDeep,
                             fontWeight: FontWeight.w600,
@@ -1318,8 +1325,8 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                         _passwordSubmitting
                             ? 'Working...'
                             : _passwordMode == _PasswordAuthMode.signIn
-                                ? 'Sign in with password'
-                                : 'Create account',
+                                ? l10n.signInWithPassword
+                                : l10n.createAccount,
                       ),
                     ),
                   ),
@@ -1692,6 +1699,7 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -1765,8 +1773,8 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                   fontWeight: FontWeight.w600,
                 ),
                 decoration: InputDecoration(
-                  labelText: 'Email address',
-                  hintText: 'you@example.com',
+                      labelText: l10n.emailLabel,
+                      hintText: 'you@example.com',
                   prefixIcon: Icon(
                     Icons.email_outlined,
                     color: AppColors.inkFaint,
@@ -1792,7 +1800,7 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                   ),
                 ),
                 child: Text(
-                  _submitting ? 'Sending...' : 'Send reset link',
+                  _submitting ? l10n.sending : l10n.sendResetLink,
                   style: theme.textTheme.labelLarge?.copyWith(
                     color: Colors.white,
                   ),

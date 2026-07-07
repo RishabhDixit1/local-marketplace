@@ -126,7 +126,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--ink-500)]" />
       </div>
     );
   }
@@ -134,17 +134,17 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8 px-4 py-6 sm:px-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Settings</h1>
-        <p className="mt-1 text-sm text-slate-600">Manage your preferences and account.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--ink-950)]">Settings</h1>
+        <p className="mt-1 text-sm text-[var(--ink-700)]">Manage your preferences and account.</p>
       </div>
 
       {/* Notification Preferences */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+      <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 sm:p-6">
         <div className="flex items-center gap-3">
-          <Bell className="h-5 w-5 text-slate-500" />
+          <Bell className="h-5 w-5 text-[var(--ink-500)]" />
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Notifications</h2>
-            <p className="text-xs text-slate-500">Control which updates you receive.</p>
+            <h2 className="text-base font-semibold text-[var(--ink-950)]">Notifications</h2>
+            <p className="text-xs text-[var(--ink-500)]">Control which updates you receive.</p>
           </div>
         </div>
 
@@ -199,12 +199,12 @@ export default function SettingsPage() {
       </section>
 
       {/* Appearance */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+      <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 sm:p-6">
         <div className="flex items-center gap-3">
-          <Moon className="h-5 w-5 text-slate-500" />
+          <Moon className="h-5 w-5 text-[var(--ink-500)]" />
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Appearance</h2>
-            <p className="text-xs text-slate-500">Toggle between light and dark mode.</p>
+            <h2 className="text-base font-semibold text-[var(--ink-950)]">Appearance</h2>
+            <p className="text-xs text-[var(--ink-500)]">Toggle between light and dark mode.</p>
           </div>
         </div>
 
@@ -212,15 +212,15 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={toggleTheme}
-            className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-4 py-3 transition hover:bg-slate-50"
+            className="flex w-full items-center justify-between rounded-xl border border-[var(--surface-border)] px-4 py-3 transition hover:bg-[var(--surface-soft)]"
           >
             <div className="flex items-center gap-3">
               {theme === "light" ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4 text-indigo-500" />}
-              <span className="text-sm font-medium text-slate-900">
+              <span className="text-sm font-medium text-[var(--ink-950)]">
                 {theme === "light" ? "Light mode" : "Dark mode"}
               </span>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+            <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold text-[var(--ink-700)]">
               {theme === "light" ? "Light" : "Dark"}
             </span>
           </button>
@@ -228,12 +228,12 @@ export default function SettingsPage() {
       </section>
 
       {/* Account */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+      <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 sm:p-6">
         <div className="flex items-center gap-3">
-          <Shield className="h-5 w-5 text-slate-500" />
+          <Shield className="h-5 w-5 text-[var(--ink-500)]" />
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Account</h2>
-            <p className="text-xs text-slate-500">Session and account management.</p>
+            <h2 className="text-base font-semibold text-[var(--ink-950)]">Account</h2>
+            <p className="text-xs text-[var(--ink-500)]">Session and account management.</p>
           </div>
         </div>
 
@@ -241,7 +241,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => setShowLogoutConfirm(true)}
-            className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            className="flex w-full items-center gap-3 rounded-xl border border-[var(--surface-border)] px-4 py-3 text-sm font-medium text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]"
           >
             <LogOut className="h-4 w-4" />
             Sign out of all devices
@@ -261,11 +261,11 @@ export default function SettingsPage() {
       {/* Logout Confirm */}
       {showLogoutConfirm ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl">
-            <h2 className="text-lg font-semibold text-slate-900">Sign out?</h2>
-            <p className="mt-2 text-sm text-slate-600">You can sign back in anytime with a magic link.</p>
+          <div className="w-full max-w-md rounded-[28px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-[var(--ink-950)]">Sign out?</h2>
+            <p className="mt-2 text-sm text-[var(--ink-700)]">You can sign back in anytime with a magic link.</p>
             <div className="mt-6 flex gap-3 justify-end">
-              <button onClick={() => setShowLogoutConfirm(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">Cancel</button>
+              <button onClick={() => setShowLogoutConfirm(false)} className="rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm font-semibold text-[var(--ink-700)]">Cancel</button>
               <button onClick={async () => { await supabase.auth.signOut(); router.replace("/"); }} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white">Sign out</button>
             </div>
           </div>
@@ -275,14 +275,14 @@ export default function SettingsPage() {
       {/* Delete Confirm */}
       {showDeleteConfirm ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-[28px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6 shadow-2xl">
             <div className="flex items-start gap-3">
               <div className="rounded-2xl bg-rose-100 p-2 text-rose-700">
                 <AlertTriangle className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">Delete account?</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
+                <h2 className="text-lg font-semibold text-[var(--ink-950)]">Delete account?</h2>
+                <p className="mt-2 text-sm leading-6 text-[var(--ink-700)]">
                   This is permanent. Your profile, listings, and data will be removed. Type <strong>DELETE</strong> to confirm.
                 </p>
               </div>
@@ -291,10 +291,10 @@ export default function SettingsPage() {
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
               placeholder='Type "DELETE" to confirm'
-              className="mt-4 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+              className="mt-4 w-full rounded-xl border border-[var(--surface-border)] px-4 py-3 text-sm outline-none focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
             />
             <div className="mt-4 flex justify-end gap-3">
-              <button onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); }} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">Cancel</button>
+              <button onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); }} className="rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm font-semibold text-[var(--ink-700)]">Cancel</button>
               <button
                 disabled={deleteConfirmText !== "DELETE" || deleting}
                 onClick={() => void deleteAccount()}
@@ -324,19 +324,19 @@ function ToggleRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 px-4 py-3 transition hover:bg-slate-50">
+    <label className="flex items-center justify-between gap-4 rounded-xl border border-[var(--surface-border)] px-4 py-3 transition hover:bg-[var(--surface-soft)]">
       <div className="flex items-center gap-3 min-w-0">
-        <span className="shrink-0 text-slate-400">{icon}</span>
+        <span className="shrink-0 text-[var(--ink-500)]">{icon}</span>
         <div className="min-w-0">
-          <p className="text-sm font-medium text-slate-900">{label}</p>
-          <p className="text-xs text-slate-500">{description}</p>
+          <p className="text-sm font-medium text-[var(--ink-950)]">{label}</p>
+          <p className="text-xs text-[var(--ink-500)]">{description}</p>
         </div>
       </div>
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-5 w-5 shrink-0 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+        className="h-5 w-5 shrink-0 rounded border-slate-300 text-[var(--ink-950)] focus:ring-[var(--ink-500)]"
       />
     </label>
   );

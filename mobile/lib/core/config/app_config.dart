@@ -214,7 +214,8 @@ class AppConfig {
       return null;
     } on FormatException {
       return null;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('ServiQ app_config._loadLocalConfig failed: $e');
       return null;
     }
   }

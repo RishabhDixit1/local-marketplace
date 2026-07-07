@@ -10,12 +10,12 @@ export const metadata: Metadata = buildPageMetadata({
 export default function TermsPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-900">Terms of Service</h1>
-      <p className="mt-2 text-sm text-slate-500">Last updated: June 6, 2026</p>
+      <h1 className="text-3xl font-extrabold tracking-tight text-[var(--ink-950)]">Terms of Service</h1>
+      <p className="mt-2 text-sm text-[var(--ink-500)]">Last updated: June 6, 2026</p>
 
-      <div className="mt-8 space-y-6 text-sm leading-7 text-slate-700">
+      <div className="mt-8 space-y-6 text-sm leading-7 text-[var(--ink-700)]">
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">1. Acceptance of Terms</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">1. Acceptance of Terms</h2>
           <p className="mt-2">
             By accessing or using ServiQ (&quot;the Platform&quot;), you agree to be bound by these Terms of
             Service. If you do not agree, do not use the Platform.
@@ -23,7 +23,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">2. Description of Service</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">2. Description of Service</h2>
           <p className="mt-2">
             ServiQ is a marketplace platform connecting consumers with local service providers.
             We facilitate the discovery, booking, and payment for services. We are not a direct
@@ -33,7 +33,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">3. User Accounts</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">3. User Accounts</h2>
           <p className="mt-2">
             You are responsible for maintaining the confidentiality of your account credentials.
             You must be at least 18 years old to use the Platform. You agree to provide accurate
@@ -42,7 +42,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">4. Provider Obligations</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">4. Provider Obligations</h2>
           <p className="mt-2">If you list services on the Platform, you agree to:</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>Provide accurate descriptions and pricing for your services</li>
@@ -54,7 +54,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">5. Payments and Fees</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">5. Payments and Fees</h2>
           <p className="mt-2">
             All payments are processed through Razorpay. ServiQ charges a commission on each
             transaction as disclosed at the time of booking. Providers are paid after service
@@ -67,7 +67,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">6. Cancellations and Refunds</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">6. Cancellations and Refunds</h2>
           <p className="mt-2">
             Cancellation and refund policies are determined by individual providers and disclosed
             at the time of booking. If a provider fails to deliver the service as agreed, you may
@@ -76,7 +76,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">7. Prohibited Conduct</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">7. Prohibited Conduct</h2>
           <p className="mt-2">You agree not to:</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>Use the Platform for any illegal purpose</li>
@@ -89,7 +89,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">8. Limitation of Liability</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">8. Limitation of Liability</h2>
           <p className="mt-2">
             ServiQ provides the Platform on an &quot;as is&quot; basis. To the maximum extent permitted by
             law, we disclaim all warranties, express or implied. Our total liability for any claim
@@ -99,7 +99,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">9. Dispute Resolution</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">9. Dispute Resolution</h2>
           <p className="mt-2">
             Disputes between users should first be resolved through the Platform&apos;s in-app dispute
             resolution system. If a dispute cannot be resolved, it shall be settled by arbitration
@@ -109,7 +109,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">10. Governing Law</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">10. Governing Law</h2>
           <p className="mt-2">
             These Terms are governed by the laws of India. Any legal action shall be brought
             exclusively in the courts of Ghaziabad, Uttar Pradesh.
@@ -117,7 +117,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">11. Termination</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">11. Termination</h2>
           <p className="mt-2">
             We may suspend or terminate your account for violation of these Terms. You may delete
             your account at any time through your settings. Upon termination, your right to use
@@ -126,7 +126,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">12. Contact</h2>
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">12. Contact</h2>
           <p className="mt-2">
             For questions about these Terms, contact legal@serviqapp.com or write to:
             ServiQ, Crossing Republik, Ghaziabad, Uttar Pradesh, India.

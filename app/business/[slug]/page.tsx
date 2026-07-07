@@ -621,7 +621,7 @@ export default async function BusinessProfilePage({ params }: Params) {
                 </span>
               </div>
 
-              <h1 className="text-3xl font-bold sm:text-4xl">{profile.name || "Local Business"}</h1>
+              <h1 className="text-3xl font-extrabold sm:text-4xl">{profile.name || "Local Business"}</h1>
               <p className="mt-2 text-sm text-slate-200 sm:text-base">
                 {profile.bio || "Serving nearby customers with trusted local expertise."}
               </p>
@@ -642,9 +642,9 @@ export default async function BusinessProfilePage({ params }: Params) {
             </div>
 
             <div className="rounded-2xl border border-white/20 bg-black/30 p-4 text-sm">
-              <p className="text-slate-300">Business Profile Score</p>
+              <p className="text-[var(--ink-500)]">Business Profile Score</p>
               <p className="text-3xl font-bold text-white">{profileCompletion}%</p>
-              <p className="mt-2 text-slate-300">{verificationLabel(verificationStatus)}</p>
+              <p className="mt-2 text-[var(--ink-500)]">{verificationLabel(verificationStatus)}</p>
               <Link
                 href="/dashboard"
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-500"
@@ -679,7 +679,7 @@ export default async function BusinessProfilePage({ params }: Params) {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-white">Public Posts</h2>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-[var(--ink-500)]">
                     Public marketplace posts from this business and its linked public profile appear here automatically.
                   </p>
                 </div>
@@ -710,19 +710,19 @@ export default async function BusinessProfilePage({ params }: Params) {
 
                         <div className="p-4 sm:p-5">
                           <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wide">
-                            <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-slate-300">
+                            <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-[var(--ink-500)]">
                               {formatPostTypeLabel(post.type)}
                             </span>
                             <span className={`rounded-full px-3 py-1 ${getPostStatusClasses(post.status)}`}>
                               {formatPostStatusLabel(post.status)}
                             </span>
-                            <span className="text-slate-500">{formatPostDate(post.createdAt)}</span>
+                            <span className="text-[var(--ink-500)]">{formatPostDate(post.createdAt)}</span>
                           </div>
 
                           <h3 className="mt-4 text-lg font-semibold leading-7 text-white">{post.title}</h3>
-                          <p className="mt-2 line-clamp-4 text-sm leading-6 text-slate-300">{post.details}</p>
+                          <p className="mt-2 line-clamp-4 text-sm leading-6 text-[var(--ink-500)]">{post.details}</p>
 
-                          <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-300">
+                          <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-[var(--ink-500)]">
                             <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5">
                               {post.category}
                             </span>
@@ -735,14 +735,14 @@ export default async function BusinessProfilePage({ params }: Params) {
 
                             {post.locationLabel ? (
                               <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5">
-                                <MapPin size={12} className="text-slate-500" />
+                                <MapPin size={12} className="text-[var(--ink-500)]" />
                                 {post.locationLabel}
                               </span>
                             ) : null}
 
                             {timingLabel ? (
                               <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5">
-                                <Clock3 size={12} className="text-slate-500" />
+                                <Clock3 size={12} className="text-[var(--ink-500)]" />
                                 {timingLabel}
                               </span>
                             ) : null}
@@ -759,7 +759,7 @@ export default async function BusinessProfilePage({ params }: Params) {
                   })}
                 </div>
               ) : (
-                <div className="mt-4 rounded-2xl border border-dashed border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
+                <div className="mt-4 rounded-2xl border border-dashed border-slate-800 bg-slate-950 p-4 text-sm text-[var(--ink-500)]">
                   No public posts published yet.
                 </div>
               )}
@@ -778,14 +778,14 @@ export default async function BusinessProfilePage({ params }: Params) {
 
                 {launchpadMeta.pricingNotes && (
                   <div className="mt-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pricing</p>
-                    <p className="mt-2 text-sm text-slate-300">{launchpadMeta.pricingNotes}</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-500)]">Pricing</p>
+                    <p className="mt-2 text-sm text-[var(--ink-500)]">{launchpadMeta.pricingNotes}</p>
                   </div>
                 )}
 
                 {launchpadMeta.serviceAreas.length > 0 ? (
                   <div className="mt-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Service Areas</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-500)]">Service Areas</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {launchpadMeta.serviceAreas.map((area) => (
                         <span key={area} className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-xs font-semibold text-slate-200">
@@ -798,8 +798,8 @@ export default async function BusinessProfilePage({ params }: Params) {
 
                 {launchpadMeta.faq.length > 0 ? (
                   <div className="mt-5 flex items-center gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">FAQ</span>
-                    <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-500)]">FAQ</span>
+                    <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-[var(--ink-500)]">
                       {launchpadMeta.faq.length}
                     </span>
                   </div>
@@ -810,7 +810,7 @@ export default async function BusinessProfilePage({ params }: Params) {
                     {launchpadMeta.faq.map((item) => (
                       <div key={item.question} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                         <p className="text-sm font-semibold text-white">{item.question}</p>
-                        <p className="mt-2 text-sm leading-6 text-slate-300">{item.answer}</p>
+                        <p className="mt-2 text-sm leading-6 text-[var(--ink-500)]">{item.answer}</p>
                       </div>
                     ))}
                   </div>
@@ -822,13 +822,13 @@ export default async function BusinessProfilePage({ params }: Params) {
           <aside className="space-y-6">
             <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
               <h2 className="text-lg font-semibold">Contact</h2>
-              <div className="mt-3 space-y-3 text-sm text-slate-300">
+              <div className="mt-3 space-y-3 text-sm text-[var(--ink-500)]">
                 {profile.website ? (
                   <a href={profile.website} className="inline-flex items-center gap-2 text-indigo-300 hover:text-indigo-200">
                     <Globe size={14} /> {profile.website}
                   </a>
                 ) : (
-                  <p className="text-slate-400">Website not added</p>
+                  <p className="text-[var(--ink-500)]">Website not added</p>
                 )}
                 <p className="inline-flex items-center gap-2">
                   <Phone size={14} />
@@ -844,35 +844,35 @@ export default async function BusinessProfilePage({ params }: Params) {
                 <h2 className="text-lg font-semibold">Trust Summary</h2>
                 <div className="mt-3 space-y-2.5 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Trust Score</span>
+                    <span className="text-[var(--ink-500)]">Trust Score</span>
                     <span className="font-bold text-white">{Math.round(trustScore.trust_score)}/100</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Completion</span>
+                    <span className="text-[var(--ink-500)]">Completion</span>
                     <span className="font-semibold text-emerald-400">{Math.round(trustScore.completion_rate * 100)}%</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">On-Time</span>
+                    <span className="text-[var(--ink-500)]">On-Time</span>
                     <span className="font-semibold text-emerald-400">{Math.round(trustScore.on_time_rate * 100)}%</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Rating Score</span>
+                    <span className="text-[var(--ink-500)]">Rating Score</span>
                     <span className="font-semibold text-amber-400">{Math.round(trustScore.rating_score)}/100</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Response</span>
+                    <span className="text-[var(--ink-500)]">Response</span>
                     <span className="font-semibold text-cyan-400">{Math.round(trustScore.response_time_score)}/100</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Repeat Clients</span>
+                    <span className="text-[var(--ink-500)]">Repeat Clients</span>
                     <span className="font-semibold text-fuchsia-400">{Math.round(trustScore.repeat_clients_score)}/100</span>
                   </div>
                   {presence && (
                     <div className="mt-2 flex items-center gap-2 border-t border-slate-700 pt-2 text-xs">
                       <span className={`h-2 w-2 rounded-full ${presence.is_online ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-                      <span className="text-slate-400">{presence.is_online ? 'Online' : 'Offline'}</span>
-                      <span className="text-slate-600">·</span>
-                      <span className="text-slate-400">{completedJobs} jobs done</span>
+                      <span className="text-[var(--ink-500)]">{presence.is_online ? 'Online' : 'Offline'}</span>
+                      <span className="text-[var(--ink-700)]">·</span>
+                      <span className="text-[var(--ink-500)]">{completedJobs} jobs done</span>
                     </div>
                   )}
                 </div>
@@ -891,7 +891,7 @@ export default async function BusinessProfilePage({ params }: Params) {
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-200">{artifact.title}</p>
                         {artifact.description && (
-                          <p className="mt-0.5 text-xs text-slate-400 line-clamp-2">{artifact.description}</p>
+                          <p className="mt-0.5 text-xs text-[var(--ink-500)] line-clamp-2">{artifact.description}</p>
                         )}
                       </div>
                     </div>
@@ -903,11 +903,11 @@ export default async function BusinessProfilePage({ params }: Params) {
             <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
               <h2 className="text-lg font-semibold">Recent Reviews</h2>
               <div className="mt-3 space-y-3">
-                {reviews.length === 0 && <p className="text-sm text-slate-400">No reviews yet.</p>}
+                {reviews.length === 0 && <p className="text-sm text-[var(--ink-500)]">No reviews yet.</p>}
                 {reviews.slice(0, 4).map((review, index) => (
                   <div key={`review-${index}`} className="rounded-xl border border-slate-800 bg-slate-950 p-3">
                     <p className="text-amber-300 text-sm">{"★".repeat(Math.max(1, Number(review.rating || 0)))}</p>
-                    <p className="mt-1 text-sm text-slate-300">{review.comment || "Customer left a rating."}</p>
+                    <p className="mt-1 text-sm text-[var(--ink-500)]">{review.comment || "Customer left a rating."}</p>
                   </div>
                 ))}
               </div>
@@ -923,7 +923,7 @@ export default async function BusinessProfilePage({ params }: Params) {
 function StatCard({ label, value, icon }: { label: string; value: string | number; icon: ReactNode }) {
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
-      <p className="inline-flex items-center gap-2 text-xs uppercase tracking-wide text-slate-400">
+      <p className="inline-flex items-center gap-2 text-xs uppercase tracking-wide text-[var(--ink-500)]">
         {icon}
         {label}
       </p>

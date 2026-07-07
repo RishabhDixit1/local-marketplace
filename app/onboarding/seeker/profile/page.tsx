@@ -135,7 +135,7 @@ export default function SeekerOnboardingProfilePage() {
   if (!loaded) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--ink-500)]" />
       </div>
     );
   }
@@ -143,32 +143,32 @@ export default function SeekerOnboardingProfilePage() {
   return (
     <div className="mx-auto max-w-lg px-4 py-12 sm:px-6">
       <div className="text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
-          <User className="h-7 w-7 text-slate-700" />
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--surface-soft)]">
+          <User className="h-7 w-7 text-[var(--ink-700)]" />
         </div>
-        <h1 className="mt-5 text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="mt-5 text-2xl font-extrabold tracking-tight text-[var(--ink-950)]">
           Tell us about yourself
         </h1>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-[var(--ink-500)]">
           Help providers know who they&apos;re working with.
         </p>
       </div>
 
       <div className="mt-8 space-y-4">
         <div>
-          <label className="text-sm font-medium text-slate-900">Full name *</label>
+          <label className="text-sm font-medium text-[var(--ink-950)]">Full name *</label>
           <input
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             placeholder="Your full name"
-            className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+            className="mt-1.5 w-full rounded-xl border border-[var(--surface-border)] px-4 py-3 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
           />
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-900">Phone number *</label>
+          <label className="text-sm font-medium text-[var(--ink-950)]">Phone number *</label>
           <div className="relative mt-1.5">
-            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400">
+            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-[var(--ink-500)]">
               +91
             </span>
             <input
@@ -177,7 +177,7 @@ export default function SeekerOnboardingProfilePage() {
               placeholder="XXXXX XXXXX"
               maxLength={12}
               type="tel"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 pl-14 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+              className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-3 pl-14 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
             />
           </div>
           {phone.length > 0 && (
@@ -188,19 +188,19 @@ export default function SeekerOnboardingProfilePage() {
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-900">Your location *</label>
+          <label className="text-sm font-medium text-[var(--ink-950)]">Your location *</label>
           <div className="mt-1.5 flex gap-2">
             <input
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="City, area, or society name"
-              className="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
+              className="min-w-0 flex-1 rounded-xl border border-[var(--surface-border)] px-4 py-3 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100"
             />
             <button
               type="button"
               disabled={geo.locating}
               onClick={handleDetectLocation}
-              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3.5 py-3 text-xs font-medium text-[var(--ink-700)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-soft)] disabled:opacity-50"
             >
               {geo.locating ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -216,10 +216,10 @@ export default function SeekerOnboardingProfilePage() {
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-900">
+          <label className="text-sm font-medium text-[var(--ink-950)]">
             Things you&apos;re interested in
           </label>
-          <p className="text-xs text-slate-500">Select all that apply.</p>
+          <p className="text-xs text-[var(--ink-500)]">Select all that apply.</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {INTEREST_OPTIONS.map((item) => (
               <button
@@ -229,7 +229,7 @@ export default function SeekerOnboardingProfilePage() {
                 className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${
                   interests.includes(item)
                     ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                    : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--border-strong)]"
                 }`}
               >
                 {item}

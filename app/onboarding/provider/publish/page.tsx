@@ -83,7 +83,7 @@ export default function ProviderPublishOnboarding() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--ink-500)]" />
       </div>
     );
   }
@@ -94,8 +94,8 @@ export default function ProviderPublishOnboarding() {
         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
           <CheckCircle2 className="h-8 w-8 text-emerald-600" />
         </div>
-        <h2 className="text-lg font-bold text-slate-900">You&apos;re live!</h2>
-        <p className="mt-1 text-sm text-slate-500">Redirecting to your dashboard...</p>
+        <h2 className="text-lg font-extrabold text-[var(--ink-950)]">You&apos;re live!</h2>
+        <p className="mt-1 text-sm text-[var(--ink-500)]">Redirecting to your dashboard...</p>
       </div>
     );
   }
@@ -108,8 +108,8 @@ export default function ProviderPublishOnboarding() {
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--brand-100)]">
           <Rocket className="h-6 w-6 text-[var(--brand-700)]" />
         </div>
-        <h1 className="text-center text-xl font-bold text-slate-900">Review &amp; publish</h1>
-        <p className="mt-1 text-center text-sm text-slate-500">
+        <h1 className="text-center text-xl font-extrabold text-[var(--ink-950)]">Review &amp; publish</h1>
+        <p className="mt-1 text-center text-sm text-[var(--ink-500)]">
           Here&apos;s a summary of your provider profile
         </p>
       </div>
@@ -119,45 +119,45 @@ export default function ProviderPublishOnboarding() {
       )}
 
       <div className="space-y-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Business Name</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">{profile?.full_name || "Not set"}</p>
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ink-500)]">Business Name</p>
+          <p className="mt-1 text-sm font-semibold text-[var(--ink-950)]">{profile?.full_name || "Not set"}</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Headline</p>
-          <p className="mt-1 text-sm text-slate-700">{profile?.headline || "Not set"}</p>
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ink-500)]">Headline</p>
+          <p className="mt-1 text-sm text-[var(--ink-700)]">{profile?.headline || "Not set"}</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Bio</p>
-          <p className="mt-1 text-sm text-slate-700">{profile?.bio || "Not set"}</p>
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ink-500)]">Bio</p>
+          <p className="mt-1 text-sm text-[var(--ink-700)]">{profile?.bio || "Not set"}</p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Service Area</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{localityName}</p>
+          <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ink-500)]">Service Area</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--ink-950)]">{localityName}</p>
             {profile?.service_area_radius_km && (
-              <p className="text-xs text-slate-500">{profile.service_area_radius_km} km radius</p>
+              <p className="text-xs text-[var(--ink-500)]">{profile.service_area_radius_km} km radius</p>
             )}
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Availability</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">
+          <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ink-500)]">Availability</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--ink-950)]">
               {slotsCount > 0 ? `${slotsCount} time slots set` : "Not configured"}
             </p>
           </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Phone</p>
-            <p className="mt-1 text-sm text-slate-700">{profile?.phone || "Not set"}</p>
+          <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ink-500)]">Phone</p>
+            <p className="mt-1 text-sm text-[var(--ink-700)]">{profile?.phone || "Not set"}</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Website</p>
-            <p className="mt-1 text-sm text-slate-700">{profile?.website || "Not set"}</p>
+          <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ink-500)]">Website</p>
+            <p className="mt-1 text-sm text-[var(--ink-700)]">{profile?.website || "Not set"}</p>
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -159,8 +160,8 @@ class MobileAuthService {
         token: trimmedCode,
         type: OtpType.email,
       ).timeout(const Duration(seconds: 5));
-    } catch (_) {
-      // GoTrue unreachable or timeout — try custom fallback
+    } catch (e) {
+      debugPrint('ServiQ auth.verifyEmailCode timeout/GoTrue failed: $e');
     }
 
     final apiClient = MobileApiClient(
@@ -187,8 +188,8 @@ class MobileAuthService {
           return await _client.auth
               .recoverSession(jsonEncode(sessionJson))
               .timeout(const Duration(seconds: 5));
-        } catch (_) {
-          // recoverSession may also contact GoTrue or timeout
+        } catch (e) {
+          debugPrint('ServiQ auth.recoverSession failed: $e');
         }
       }
 

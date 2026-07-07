@@ -50,8 +50,8 @@ class _ServiQAppState extends ConsumerState<ServiQApp> {
                 'firebase_ready': firebase.initialized,
               },
             );
-      } catch (_) {
-        // Analytics must never block or crash startup
+      } catch (e) {
+        debugPrint('ServiQ app._ServiQAppState analytics tracking failed: $e');
       }
     });
   }
@@ -89,7 +89,7 @@ class _ServiQAppState extends ConsumerState<ServiQApp> {
             .read(analyticsServiceProvider)
             .trackEvent('mobile_onboarding_started', extras: extras);
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          unawaited(handoff.completeAuthHandoff(startedRoute: destination));
+          unawaited(handoff.completeAuthHandoff(startedRoute: destination).catchError((e, st) => debugPrint('ServiQ app.handoff failed: $e\n$st')));
         });
       });
     });
@@ -107,12 +107,15 @@ class _ServiQAppState extends ConsumerState<ServiQApp> {
       });
     });
 
+    final locale = ref.watch(localeProvider);
+
     return MaterialApp.router(
       title: bootstrap.config.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ref.watch(themeModeProvider),
+      locale: locale,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -179,8 +182,8 @@ class _UpdateCheckGateState extends State<_UpdateCheckGate> {
           .timeout(const Duration(seconds: 10));
       if (!mounted || !info.updateAvailable) return;
       _showUpdateGateDialog(info);
-    } catch (_) {
-      // Update check failed silently — non-blocking
+    } catch (e) {
+      debugPrint('ServiQ app._performUpdateCheck failed: $e');
     }
   }
 
@@ -196,6 +199,8 @@ class _UpdateCheckGateState extends State<_UpdateCheckGate> {
     ).then((shouldUpdate) {
       if (shouldUpdate != true || !mounted) return;
       _launchUpdateUrl(info.updateUrl);
+    }).catchError((e, st) {
+      debugPrint('ServiQ app._showUpdateGateDialog navigation result failed: $e\n$st');
     });
   }
 
@@ -208,7 +213,9 @@ class _UpdateCheckGateState extends State<_UpdateCheckGate> {
         await launchUrl(uri, mode: LaunchMode.externalApplication)
             .timeout(const Duration(seconds: 5));
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('ServiQ app._launchUpdateUrl failed: $e');
+    }
   }
 
   @override
@@ -222,6 +229,7 @@ class _UpdateGatePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return PopScope(
       canPop: !info.isCritical,
       child: Scaffold(
@@ -239,14 +247,14 @@ class _UpdateGatePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    info.isCritical ? 'Update required' : 'Update available',
+                    info.isCritical ? l10n.updateRequired : l10n.updateAvailable,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 16),
-                  Text('Version ${info.latestVersion} is now available.'),
+                  Text(l10n.newVersionAvailable(info.latestVersion)),
                   if (info.releaseNotes != null && info.releaseNotes!.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    Text('What\'s new:', style: Theme.of(context).textTheme.labelLarge),
+                    Text(l10n.whatsNew, style: Theme.of(context).textTheme.labelLarge),
                     const SizedBox(height: 4),
                     Text(info.releaseNotes!),
                   ],
@@ -254,13 +262,13 @@ class _UpdateGatePage extends StatelessWidget {
                   FilledButton.icon(
                     onPressed: () => Navigator.pop(context, true),
                     icon: const Icon(Icons.download_rounded),
-                    label: const Text('Update'),
+                    label: Text(l10n.update),
                   ),
                   if (!info.isCritical) ...[
                     const SizedBox(height: 12),
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Later'),
+                      child: Text(l10n.later),
                     ),
                   ],
                 ],

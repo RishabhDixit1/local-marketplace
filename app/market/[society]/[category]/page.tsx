@@ -114,20 +114,20 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--brand-100)]">
           <Store className="h-8 w-8 text-[var(--brand-700)]" />
         </div>
-        <h1 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
+        <h1 className="text-2xl font-extrabold text-[var(--ink-950)] sm:text-3xl">
           {catName} in{" "}
           <span className="text-[var(--brand-700)]">{data.locality.name}</span>
         </h1>
-        <p className="mx-auto mt-2 max-w-lg text-sm text-slate-500">
+        <p className="mx-auto mt-2 max-w-lg text-sm text-[var(--ink-500)]">
           Find trusted {catName.toLowerCase()} service providers in {data.locality.name}, Crossings Republik, Ghaziabad.
         </p>
 
-        <div className="mx-auto mt-6 inline-flex items-center gap-4 divide-x divide-slate-200 rounded-2xl border border-slate-200 bg-white px-5 py-2.5 shadow-sm">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+        <div className="mx-auto mt-6 inline-flex items-center gap-4 divide-x divide-slate-200 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-2.5 shadow-sm">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-700)]">
             <Users className="h-3.5 w-3.5 text-[var(--brand-600)]" />
             {data.providers.length} {catName} providers
           </div>
-          <div className="flex items-center gap-1.5 pl-4 text-xs font-semibold text-slate-700">
+          <div className="flex items-center gap-1.5 pl-4 text-xs font-semibold text-[var(--ink-700)]">
             <MapPin className="h-3.5 w-3.5 text-[var(--brand-600)]" />
             {data.locality.name}, Crossings Republik
           </div>
@@ -143,7 +143,7 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
           </Link>
           <Link
             href={`/market/crossing-republik?category=${category}`}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300"
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-3 text-sm font-bold text-[var(--ink-700)] transition hover:border-[var(--border-strong)]"
           >
             <ArrowRight className="h-4 w-4" />
             View All Categories
@@ -153,7 +153,7 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
 
       {data.providers.length > 0 ? (
         <section>
-          <h2 className="mb-4 text-lg font-bold text-slate-900">
+          <h2 className="mb-4 text-lg font-extrabold text-[var(--ink-950)]">
             {catName} Providers in {data.locality.name}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -161,44 +161,44 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
               <Link
                 key={p.id}
                 href={`/profile/${p.id}`}
-                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
+                className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-sm font-bold text-[var(--brand-700)]">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-sm font-semibold text-[var(--brand-700)]">
                     {(p.full_name || p.name || "?")[0]}
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900">{p.full_name || p.name}</h3>
-                    <p className="text-xs text-slate-500">{p.location || data.locality.name}</p>
+                    <h3 className="text-sm font-extrabold text-[var(--ink-950)]">{p.full_name || p.name}</h3>
+                    <p className="text-xs text-[var(--ink-500)]">{p.location || data.locality.name}</p>
                   </div>
                 </div>
-                {p.bio && <p className="mt-2 line-clamp-2 text-xs text-slate-600">{p.bio}</p>}
+                {p.bio && <p className="mt-2 line-clamp-2 text-xs text-[var(--ink-700)]">{p.bio}</p>}
               </Link>
             ))}
           </div>
         </section>
       ) : (
-        <section className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-10 text-center">
-          <Users className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-          <p className="text-sm font-semibold text-slate-600">No {catName.toLowerCase()} providers in {data.locality.name} yet</p>
-          <p className="mt-1 text-xs text-slate-400">Check back soon or browse other societies.</p>
+        <section className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)]/50 p-10 text-center">
+          <Users className="mx-auto mb-3 h-8 w-8 text-[var(--ink-500)]" />
+          <p className="text-sm font-semibold text-[var(--ink-700)]">No {catName.toLowerCase()} providers in {data.locality.name} yet</p>
+          <p className="mt-1 text-xs text-[var(--ink-500)]">Check back soon or browse other societies.</p>
         </section>
       )}
 
       <section className="mt-10">
         <div className="mb-4">
-          <h2 className="text-lg font-bold text-slate-900">Other Societies in Crossings Republik</h2>
+          <h2 className="text-lg font-extrabold text-[var(--ink-950)]">Other Societies in Crossings Republik</h2>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {data.allLocalities.filter((l) => l.id !== data.locality.id).slice(0, 6).map((l) => (
             <Link
               key={l.id}
               href={`/market/${l.slug}/${category}`}
-              className="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[var(--brand-300)]"
+              className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 transition hover:border-[var(--brand-300)]"
             >
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-slate-400" />
-                <span className="text-sm font-semibold text-slate-900">{l.name}</span>
+                <MapPin className="h-4 w-4 text-[var(--ink-500)]" />
+                <span className="text-sm font-semibold text-[var(--ink-950)]">{l.name}</span>
               </div>
               <span className="mt-1.5 inline-flex items-center text-xs text-[var(--brand-700)]">
                 Find {catName.toLowerCase()} <ArrowRight className="ml-1 h-3 w-3" />
@@ -208,8 +208,8 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
         </div>
       </section>
 
-      <footer className="mt-12 border-t border-slate-200 pt-8 text-center">
-        <p className="text-xs text-slate-400">
+      <footer className="mt-12 border-t border-[var(--surface-border)] pt-8 text-center">
+        <p className="text-xs text-[var(--ink-500)]">
           ServiQ — Crossings Republik&apos;s local marketplace &middot; {catName} in {data.locality.name}
         </p>
       </footer>

@@ -65,8 +65,8 @@ export default function WorkspacesPage() {
     <div className="mx-auto max-w-3xl space-y-6 px-3 pb-8 pt-5 sm:px-6 sm:pt-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Team Workspaces</h1>
-          <p className="text-sm text-slate-500">Manage your team, branches, and routing rules.</p>
+          <h1 className="text-xl font-extrabold text-[var(--ink-950)]">Team Workspaces</h1>
+          <p className="text-sm text-[var(--ink-500)]">Manage your team, branches, and routing rules.</p>
         </div>
         <button
           type="button"
@@ -78,7 +78,7 @@ export default function WorkspacesPage() {
       </div>
 
       {showForm && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-sm space-y-4">
           <Input
             type="text"
             value={formName}
@@ -107,7 +107,7 @@ export default function WorkspacesPage() {
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               Create
             </button>
-            <button type="button" onClick={() => setShowForm(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">
+            <button type="button" onClick={() => setShowForm(false)} className="rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm font-semibold text-[var(--ink-700)]">
               Cancel
             </button>
           </div>
@@ -115,12 +115,12 @@ export default function WorkspacesPage() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-[var(--ink-500)]" /></div>
       ) : workspaces.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-10 text-center">
-          <Building2 className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-          <p className="text-sm font-semibold text-slate-700">No workspaces yet</p>
-          <p className="mt-1 text-xs text-slate-500">Create a workspace to add team members and branches.</p>
+        <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)]/50 p-10 text-center">
+          <Building2 className="mx-auto mb-3 h-10 w-10 text-[var(--ink-500)]" />
+          <p className="text-sm font-semibold text-[var(--ink-700)]">No workspaces yet</p>
+          <p className="mt-1 text-xs text-[var(--ink-500)]">Create a workspace to add team members and branches.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -129,18 +129,18 @@ export default function WorkspacesPage() {
               key={ws.id}
               type="button"
               onClick={() => router.push(`/dashboard/workspaces/${ws.id}`)}
-              className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
+              className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 text-left shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-slate-900">{ws.name}</h3>
-                  {ws.description && <p className="mt-0.5 text-sm text-slate-500">{ws.description}</p>}
-                  <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
+                  <h3 className="font-extrabold text-[var(--ink-950)]">{ws.name}</h3>
+                  {ws.description && <p className="mt-0.5 text-sm text-[var(--ink-500)]">{ws.description}</p>}
+                  <div className="mt-2 flex items-center gap-3 text-xs text-[var(--ink-500)]">
                     <span className="flex items-center gap-1"><Users className="h-3 w-3" /> Max {ws.max_members} members</span>
                     {ws.business_type && <span>{ws.business_type}</span>}
                   </div>
                 </div>
-                <Settings className="h-5 w-5 text-slate-300" />
+                <Settings className="h-5 w-5 text-[var(--ink-500)]" />
               </div>
             </button>
           ))}

@@ -131,8 +131,8 @@ export default function ReferralsPage() {
     <div className="mx-auto max-w-3xl space-y-6 px-3 pb-8 pt-5 sm:px-6 sm:pt-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Referrals</h1>
-          <p className="text-sm text-slate-500">Invite providers, earn ₹50 per signup.</p>
+          <h1 className="text-xl font-extrabold text-[var(--ink-950)]">Referrals</h1>
+          <p className="text-sm text-[var(--ink-500)]">Invite providers, earn ₹50 per signup.</p>
         </div>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-center">
           <p className="text-xs text-amber-600">Available</p>
@@ -144,36 +144,36 @@ export default function ReferralsPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 text-center">
           <Gift className="mx-auto mb-2 h-7 w-7 text-[var(--brand-500)]" />
-          <p className="text-xs font-semibold text-slate-500">Codes</p>
-          <p className="text-2xl font-bold text-slate-900">{codes.length}</p>
+          <p className="text-xs font-semibold text-[var(--ink-500)]">Codes</p>
+          <p className="text-2xl font-bold text-[var(--ink-950)]">{codes.length}</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 text-center">
           <Users className="mx-auto mb-2 h-7 w-7 text-[var(--brand-500)]" />
-          <p className="text-xs font-semibold text-slate-500">Referred</p>
-          <p className="text-2xl font-bold text-slate-900">{referrals.length}</p>
+          <p className="text-xs font-semibold text-[var(--ink-500)]">Referred</p>
+          <p className="text-2xl font-bold text-[var(--ink-950)]">{referrals.length}</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 text-center">
           <Wallet className="mx-auto mb-2 h-7 w-7 text-[var(--brand-500)]" />
-          <p className="text-xs font-semibold text-slate-500">Earned (₹)</p>
-          <p className="text-2xl font-bold text-slate-900">{totalPoints}</p>
+          <p className="text-xs font-semibold text-[var(--ink-500)]">Earned (₹)</p>
+          <p className="text-2xl font-bold text-[var(--ink-950)]">{totalPoints}</p>
         </div>
       </div>
 
       {milestones && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-slate-900">Milestones</h2>
+            <h2 className="text-sm font-extrabold text-[var(--ink-950)]">Milestones</h2>
             <Link
               href="/dashboard/referrals/leaderboard"
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
             >
               <Trophy className="h-3 w-3" />
               Leaderboard
             </Link>
           </div>
-          <p className="text-xs text-slate-500 mb-4">
+          <p className="text-xs text-[var(--ink-500)] mb-4">
             {milestones.referralCount} approved referral{milestones.referralCount === 1 ? "" : "s"}
             {milestones.nextMilestone ? ` · ${milestones.nextMilestone.referralsRemaining} more for "${milestones.nextMilestone.label}"` : ""}
           </p>
@@ -184,7 +184,7 @@ export default function ReferralsPage() {
                 className={`rounded-xl border p-3.5 transition ${
                   m.achieved
                     ? "border-emerald-200 bg-emerald-50/50"
-                    : "border-slate-100 bg-slate-50"
+                    : "border-[var(--surface-border)] bg-[var(--surface-soft)]"
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
@@ -192,9 +192,9 @@ export default function ReferralsPage() {
                     {m.achieved ? (
                       <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                     ) : (
-                      <Lock className="h-4 w-4 text-slate-300" />
+                      <Lock className="h-4 w-4 text-[var(--ink-500)]" />
                     )}
-                    <span className={`text-sm font-bold ${m.achieved ? "text-emerald-800" : "text-slate-500"}`}>
+                    <span className={`text-sm font-semibold ${m.achieved ? "text-emerald-800" : "text-[var(--ink-500)]"}`}>
                       {m.label}
                     </span>
                   </div>
@@ -202,7 +202,7 @@ export default function ReferralsPage() {
                     <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
                   )}
                 </div>
-                <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                <div className="flex items-center justify-between text-xs text-[var(--ink-500)] mb-2">
                   <span>{m.referralsRequired} referral{m.referralsRequired === 1 ? "" : "s"}</span>
                   <span className="font-medium text-[var(--brand-700)]">+{m.bonusPoints} pts</span>
                 </div>
@@ -220,9 +220,9 @@ export default function ReferralsPage() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-bold text-slate-900 mb-3">Request Payout</h2>
-        <p className="text-xs text-slate-500 mb-4">
+      <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
+        <h2 className="text-sm font-extrabold text-[var(--ink-950)] mb-3">Request Payout</h2>
+        <p className="text-xs text-[var(--ink-500)] mb-4">
           1 point = ₹1. Minimum 50 points (₹50) to withdraw.
         </p>
         <div className="flex items-center gap-3">
@@ -234,7 +234,7 @@ export default function ReferralsPage() {
             onChange={(e) => setPayoutPoints(Math.max(50, parseInt(e.target.value) || 0))}
             className="w-28"
           />
-          <span className="text-xs text-slate-500">points = ₹{payoutPoints}</span>
+          <span className="text-xs text-[var(--ink-500)]">points = ₹{payoutPoints}</span>
           <button
             type="button"
             onClick={handlePayout}
@@ -246,13 +246,13 @@ export default function ReferralsPage() {
           </button>
         </div>
         {payoutMsg && (
-          <p className="mt-2 text-xs text-slate-600 bg-slate-50 rounded-xl px-3 py-2">{payoutMsg}</p>
+          <p className="mt-2 text-xs text-[var(--ink-700)] bg-[var(--surface-soft)] rounded-xl px-3 py-2">{payoutMsg}</p>
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-slate-900">Referral Codes</h2>
+          <h2 className="text-sm font-extrabold text-[var(--ink-950)]">Referral Codes</h2>
           <button
             type="button"
             onClick={handleCreate}
@@ -264,21 +264,21 @@ export default function ReferralsPage() {
           </button>
         </div>
         {loading ? (
-          <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
+          <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-[var(--ink-500)]" /></div>
         ) : codes.length === 0 ? (
-          <p className="text-center text-sm text-slate-400 py-6">No codes yet. Generate your first referral code.</p>
+          <p className="text-center text-sm text-[var(--ink-500)] py-6">No codes yet. Generate your first referral code.</p>
         ) : (
           <div className="space-y-2">
             {codes.map((c) => (
-              <div key={c.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+              <div key={c.id} className="flex items-center justify-between rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-2.5">
                 <div>
                   <code className="text-sm font-bold text-[var(--brand-700)]">{c.code}</code>
-                  <p className="text-[10px] text-slate-400">{c.times_used} used · ₹{c.reward_points} each</p>
+                  <p className="text-[10px] text-[var(--ink-500)]">{c.times_used} used · ₹{c.reward_points} each</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleCopy(c.code)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-1.5 text-xs font-semibold text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                 >
                   <Share2 className="h-3 w-3" />
                   {copied === c.code ? "Copied!" : "Share"}
@@ -290,14 +290,14 @@ export default function ReferralsPage() {
       </div>
 
       {referrals.length > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-bold text-slate-900">Referral History</h2>
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
+          <h2 className="mb-3 text-sm font-extrabold text-[var(--ink-950)]">Referral History</h2>
           <div className="space-y-2">
             {referrals.map((r) => (
-              <div key={r.id} className="flex items-center justify-between rounded-xl border border-slate-100 px-3 py-2">
+              <div key={r.id} className="flex items-center justify-between rounded-xl border border-[var(--surface-border)] px-3 py-2">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{r.profiles?.full_name || "Someone"} joined</p>
-                  <p className="text-xs text-slate-400">{new Date(r.created_at).toLocaleDateString()}</p>
+                  <p className="text-sm font-semibold text-[var(--ink-950)]">{r.profiles?.full_name || "Someone"} joined</p>
+                  <p className="text-xs text-[var(--ink-500)]">{new Date(r.created_at).toLocaleDateString()}</p>
                 </div>
                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
                   +₹{r.reward_points}
@@ -309,16 +309,16 @@ export default function ReferralsPage() {
       )}
 
       {payouts.length > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-bold text-slate-900">Payout History</h2>
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
+          <h2 className="mb-3 text-sm font-extrabold text-[var(--ink-950)]">Payout History</h2>
           <div className="space-y-2">
             {payouts.map((p) => (
-              <div key={p.id} className="flex items-center justify-between rounded-xl border border-slate-100 px-3 py-2">
+              <div key={p.id} className="flex items-center justify-between rounded-xl border border-[var(--surface-border)] px-3 py-2">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">₹{(p.amount_paise / 100).toFixed(0)}</p>
-                  <p className="text-xs text-slate-400">{p.points_redeemed} pts · {new Date(p.created_at).toLocaleDateString()}</p>
+                  <p className="text-sm font-semibold text-[var(--ink-950)]">₹{(p.amount_paise / 100).toFixed(0)}</p>
+                  <p className="text-xs text-[var(--ink-500)]">{p.points_redeemed} pts · {new Date(p.created_at).toLocaleDateString()}</p>
                 </div>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${PAYOUT_STATUS_BADGES[p.status] || "bg-slate-100 text-slate-600"}`}>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${PAYOUT_STATUS_BADGES[p.status] || "bg-[var(--surface-soft)] text-[var(--ink-700)]"}`}>
                   {p.status}
                 </span>
               </div>

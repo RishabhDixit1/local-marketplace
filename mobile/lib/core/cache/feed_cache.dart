@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/feed/domain/feed_snapshot.dart';
@@ -21,7 +22,8 @@ class FeedCache {
     if (raw == null) return null;
     try {
       return MobileFeedSnapshot.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('ServiQ feed_cache.getCachedFeed failed: $e');
       return null;
     }
   }

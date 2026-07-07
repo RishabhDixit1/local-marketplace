@@ -269,14 +269,14 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
     <div className="fixed inset-0 z-[var(--layer-modal)] flex">
       <div className="flex-1 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-[420px] max-w-full overflow-y-auto border-l border-slate-200 bg-slate-50 p-6 text-slate-900 shadow-xl animate-in slide-in-from-right">
-        <button type="button" onClick={onClose} className="absolute right-4 top-4 text-slate-500 hover:text-slate-800">
+      <div className="relative w-[420px] max-w-full overflow-y-auto border-l border-[var(--surface-border)] bg-[var(--surface-soft)] p-6 text-[var(--ink-950)] shadow-xl animate-in slide-in-from-right">
+        <button type="button" onClick={onClose} className="absolute right-4 top-4 text-[var(--ink-500)] hover:text-[var(--ink-950)]">
           <X />
         </button>
 
         {loading ? (
           <div className="mt-8 space-y-3">
-            <p className="text-sm text-slate-600">Loading provider profile...</p>
+            <p className="text-sm text-[var(--ink-700)]">Loading provider profile...</p>
             <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
               <div className="h-full w-1/2 animate-pulse bg-indigo-500/80" />
             </div>
@@ -288,8 +288,8 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
           </div>
         ) : !profile ? (
           <div className="mt-8 rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-sm font-semibold text-slate-900">Profile unavailable</p>
-            <p className="mt-1 text-xs text-slate-600">This member does not have a published ServiQ trust profile yet.</p>
+            <p className="text-sm font-semibold text-[var(--ink-950)]">Profile unavailable</p>
+            <p className="mt-1 text-xs text-[var(--ink-700)]">This member does not have a published ServiQ trust profile yet.</p>
           </div>
         ) : (
           <>
@@ -324,7 +324,7 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
 
             <div className="mb-6">
               <h3 className="mb-2 font-semibold">About</h3>
-              <p className="text-sm text-slate-600">{profile?.bio || "No business summary added yet."}</p>
+              <p className="text-sm text-[var(--ink-700)]">{profile?.bio || "No business summary added yet."}</p>
             </div>
 
             <div className="mb-6">
@@ -332,12 +332,12 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
               <div className="flex flex-wrap gap-2">
                 {profile?.services?.length ? (
                   profile.services.map((service) => (
-                    <span key={service} className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+                    <span key={service} className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs text-[var(--ink-700)]">
                       {service}
                     </span>
                   ))
                 ) : (
-                  <span className="text-xs text-slate-500">No services listed yet.</span>
+                  <span className="text-xs text-[var(--ink-500)]">No services listed yet.</span>
                 )}
               </div>
             </div>
@@ -345,11 +345,11 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
             <div className="mb-6">
               <h3 className="mb-2 font-semibold">Recent Reviews</h3>
               <div className="max-h-40 space-y-2 overflow-y-auto">
-                {reviews.length === 0 && <p className="text-sm text-slate-500">No reviews yet.</p>}
+                {reviews.length === 0 && <p className="text-sm text-[var(--ink-500)]">No reviews yet.</p>}
                 {reviews.map((review, index) => (
-                  <div key={`review-${index}`} className="rounded-lg bg-slate-100 p-2">
+                  <div key={`review-${index}`} className="rounded-lg bg-[var(--surface-soft)] p-2">
                     <div className="text-sm text-yellow-500">{Array.from({ length: Math.max(1, Number(review.rating || 0)) }, () => "*").join("")}</div>
-                    <p className="text-xs text-slate-600">{review.comment || "Customer left a rating without a written note."}</p>
+                    <p className="text-xs text-[var(--ink-700)]">{review.comment || "Customer left a rating without a written note."}</p>
                   </div>
                 ))}
               </div>
@@ -360,13 +360,13 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
               <div className="h-2 overflow-hidden rounded-full bg-slate-200">
                 <div className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400" style={{ width: `${profileCompletion}%` }} />
               </div>
-              <p className="mt-1 text-xs text-slate-600">{profileCompletion}% profile completion</p>
+              <p className="mt-1 text-xs text-[var(--ink-700)]">{profileCompletion}% profile completion</p>
             </div>
 
             <div className="space-y-3">
               {isUuidUserId && viewerId && viewerId !== userId && (
-                <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Connection status</p>
+                <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-500)]">Connection status</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {schemaReady ? (
                       <ConnectionActionGroup
@@ -385,7 +385,7 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
                     )}
                   </div>
                   {!schemaReady && !!schemaMessage && <p className="mt-2 text-xs text-amber-700">{schemaMessage}</p>}
-                  {connectionNotice && <p className="mt-2 text-xs text-slate-600">{connectionNotice}</p>}
+                  {connectionNotice && <p className="mt-2 text-xs text-[var(--ink-700)]">{connectionNotice}</p>}
                 </div>
               )}
 
@@ -404,12 +404,12 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
               >
                 Write Review
               </button>
-              {!publicProfilePath && <p className="text-xs text-slate-500">Reviews are available for published member profiles only.</p>}
+              {!publicProfilePath && <p className="text-xs text-[var(--ink-500)]">Reviews are available for published member profiles only.</p>}
               {!!publicProfilePath && isUuidUserId && (
                 <button
                   type="button"
                   onClick={() => window.open(publicProfilePath, "_blank")}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-200 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-300"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-200 py-2 text-sm font-semibold text-[var(--ink-950)] transition hover:bg-slate-300"
                 >
                   <ExternalLink size={14} />
                   Open Public Profile
@@ -425,10 +425,10 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
 
 function StatCard({ label, value, icon }: { label: string; value: string | number; icon: ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 text-center">
+    <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-3 text-center">
       <div className="mb-1 flex justify-center text-indigo-600">{icon}</div>
-      <div className="font-semibold text-slate-900">{value}</div>
-      <div className="text-xs text-slate-500">{label}</div>
+      <div className="font-semibold text-[var(--ink-950)]">{value}</div>
+      <div className="text-xs text-[var(--ink-500)]">{label}</div>
     </div>
   );
 }

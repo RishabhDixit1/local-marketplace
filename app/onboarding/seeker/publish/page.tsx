@@ -74,7 +74,7 @@ export default function SeekerOnboardingPublishPage() {
   if (saving) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--ink-500)]" />
       </div>
     );
   }
@@ -108,10 +108,10 @@ export default function SeekerOnboardingPublishPage() {
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100">
           <CheckCircle2 className="h-7 w-7 text-emerald-600" />
         </div>
-        <h1 className="mt-5 text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="mt-5 text-2xl font-extrabold tracking-tight text-[var(--ink-950)]">
           You&apos;re all set!
         </h1>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-[var(--ink-500)]">
           Your profile is ready. Here&apos;s where to go next.
         </p>
       </div>
@@ -122,14 +122,14 @@ export default function SeekerOnboardingPublishPage() {
             key={action.label}
             type="button"
             onClick={() => router.push(action.href)}
-            className="flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-slate-300 hover:shadow-sm"
+            className="flex w-full items-center gap-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 text-left transition hover:border-[var(--border-strong)] hover:shadow-sm"
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100">
-              <action.icon className="h-6 w-6 text-slate-600" />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-soft)]">
+              <action.icon className="h-6 w-6 text-[var(--ink-700)]" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-900">{action.label}</p>
-              <p className="text-xs text-slate-500">{action.desc}</p>
+              <p className="text-sm font-semibold text-[var(--ink-950)]">{action.label}</p>
+              <p className="text-xs text-[var(--ink-500)]">{action.desc}</p>
             </div>
           </button>
         ))}

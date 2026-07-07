@@ -93,18 +93,18 @@ export default function BookingSlotPicker({ orderId, providerId, onBooked }: Pro
   }
 
   if (loading) {
-    return <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>;
+    return <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-[var(--ink-500)]" /></div>;
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <CalendarDays className="h-4 w-4 text-slate-500" />
-        <h3 className="text-sm font-semibold text-slate-900">Book a time slot</h3>
+        <CalendarDays className="h-4 w-4 text-[var(--ink-500)]" />
+        <h3 className="text-sm font-semibold text-[var(--ink-950)]">Book a time slot</h3>
       </div>
 
       {slots.length === 0 ? (
-        <p className="text-sm text-slate-500">Provider hasn&apos;t set their availability yet.</p>
+        <p className="text-sm text-[var(--ink-500)]">Provider hasn&apos;t set their availability yet.</p>
       ) : (
         <>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-7">
@@ -131,13 +131,13 @@ export default function BookingSlotPicker({ orderId, providerId, onBooked }: Pro
                     isSelected
                       ? "border-blue-400 bg-blue-50 text-blue-700"
                       : isPast || !hasSlots
-                      ? "border-slate-100 text-slate-300 cursor-not-allowed"
-                      : "border-slate-200 text-slate-700 hover:border-blue-200 hover:bg-blue-50"
+                      ? "border-slate-100 text-[var(--ink-500)] cursor-not-allowed"
+                      : "border-[var(--surface-border)] text-[var(--ink-700)] hover:border-blue-200 hover:bg-blue-50"
                   }`}
                 >
                   <p className="font-semibold">{date.toLocaleDateString("en-IN", { weekday: "short" })}</p>
                   <p className="text-lg font-bold">{date.getDate()}</p>
-                  {hasSlots && <p className="text-[10px] text-slate-400">{daySlots.length} slot{daySlots.length > 1 ? "s" : ""}</p>}
+                  {hasSlots && <p className="text-[10px] text-[var(--ink-500)]">{daySlots.length} slot{daySlots.length > 1 ? "s" : ""}</p>}
                 </button>
               );
             })}
@@ -160,7 +160,7 @@ export default function BookingSlotPicker({ orderId, providerId, onBooked }: Pro
                     className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                       selectedStart === slot.start && selectedEnd === slot.end
                         ? "border-blue-400 bg-blue-100 text-blue-800"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-blue-200"
+                        : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-blue-200"
                     }`}
                   >
                     <Clock className="h-3 w-3" />

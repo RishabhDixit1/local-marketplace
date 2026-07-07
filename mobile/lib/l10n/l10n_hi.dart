@@ -24,17 +24,31 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get sendMagicLink => 'मैजिक लिंक भेजें';
   @override
+  String get sendEmailCode => 'ईमेल कोड भेजें';
+  @override
   String get createAccount => 'खाता बनाएं';
   @override
   String get signIn => 'साइन इन करें';
   @override
+  String get signInWithPassword => 'पासवर्ड से साइन इन करें';
+  @override
+  String get signInWithEmail => 'ईमेल से साइन इन करें';
+  @override
   String get signOut => 'साइन आउट करें';
+  @override
+  String get sending => 'भेज रहे हैं...';
   @override
   String get home => 'होम';
   @override
   String get explore => 'एक्सप्लोर करें';
   @override
   String get people => 'लोग';
+  @override
+  String get work => 'कार्य';
+  @override
+  String get inbox => 'इनबॉक्स';
+  @override
+  String get youTab => 'आप';
   @override
   String get tasks => 'कार्य';
   @override
@@ -70,6 +84,10 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get report => 'रिपोर्ट करें';
   @override
+  String get update => 'अपडेट करें';
+  @override
+  String get later => 'बाद में';
+  @override
   String get loading => 'लोड हो रहा है...';
   @override
   String get errorOccurred => 'कोई त्रुटि हुई';
@@ -85,6 +103,16 @@ class AppLocalizationsHi extends AppLocalizations {
   String get noTasks => 'अभी तक कोई कार्य नहीं।';
   @override
   String get noNotifications => 'अभी तक कोई सूचना नहीं।';
+  @override
+  String get couldNotConnect => 'कनेक्ट नहीं हो सका';
+  @override
+  String get updateRequired => 'अपडेट आवश्यक';
+  @override
+  String get updateAvailable => 'अपडेट उपलब्ध';
+  @override
+  String newVersionAvailable(String version) => 'संस्करण $version अब उपलब्ध है।';
+  @override
+  String get whatsNew => 'नया क्या है:';
   @override
   String get postNeed => 'आवश्यकता पोस्ट करें';
   @override

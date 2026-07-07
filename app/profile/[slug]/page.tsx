@@ -259,7 +259,7 @@ export default async function PublicProfilePage({ params, searchParams }: Params
 
               <div className="min-w-0 pl-[4.75rem] pt-2 sm:pl-[5.5rem] sm:pt-3">
                 <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <h1 className="max-w-full truncate text-[clamp(1rem,2.8vw,1.6rem)] font-bold tracking-tight text-white">{displayName}</h1>
+                  <h1 className="max-w-full truncate text-[clamp(1rem,2.8vw,1.6rem)] font-extrabold tracking-tight text-white">{displayName}</h1>
                   {verificationStatus === "verified" ? <BadgeCheck className="h-4.5 w-4.5 shrink-0 text-sky-200 sm:h-5 sm:w-5" /> : null}
                 </div>
 

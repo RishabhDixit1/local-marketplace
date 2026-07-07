@@ -88,7 +88,7 @@ export default function QuoteComparisonPage() {
   if (!helpRequestId) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-12 text-center">
-        <p className="text-sm text-slate-500">No help request specified.</p>
+        <p className="text-sm text-[var(--ink-500)]">No help request specified.</p>
       </div>
     );
   }
@@ -96,7 +96,7 @@ export default function QuoteComparisonPage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--ink-500)]" />
       </div>
     );
   }
@@ -112,12 +112,12 @@ export default function QuoteComparisonPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
       <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-slate-100 p-2.5">
-          <Scale className="h-5 w-5 text-slate-600" />
+        <div className="rounded-xl bg-[var(--surface-soft)] p-2.5">
+          <Scale className="h-5 w-5 text-[var(--ink-700)]" />
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Compare Quotes</h1>
-          <p className="mt-1 truncate text-sm text-slate-500">{helpRequestTitle}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--ink-950)]">Compare Quotes</h1>
+          <p className="mt-1 truncate text-sm text-[var(--ink-500)]">{helpRequestTitle}</p>
         </div>
       </div>
 
@@ -129,10 +129,10 @@ export default function QuoteComparisonPage() {
       )}
 
       {quotes.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">
-          <FileText className="mx-auto h-8 w-8 text-slate-300" />
-          <p className="mt-3 text-sm font-medium text-slate-600">No quotes yet</p>
-          <p className="mt-1 text-xs text-slate-400">
+        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-12 text-center">
+          <FileText className="mx-auto h-8 w-8 text-[var(--ink-500)]" />
+          <p className="mt-3 text-sm font-medium text-[var(--ink-700)]">No quotes yet</p>
+          <p className="mt-1 text-xs text-[var(--ink-500)]">
             When providers submit quotes for this request, they&apos;ll appear here.
           </p>
         </div>
@@ -143,10 +143,10 @@ export default function QuoteComparisonPage() {
             return (
               <div
                 key={quote.id}
-                className={`flex flex-col rounded-2xl border bg-white transition ${
+                className={`flex flex-col rounded-2xl border bg-[var(--surface-elevated)] transition ${
                   quote.is_from_accepted_provider
                     ? "border-blue-200 ring-1 ring-blue-100"
-                    : "border-slate-200"
+                    : "border-[var(--surface-border)]"
                 } ${acceptedId === quote.id ? "border-emerald-200 ring-1 ring-emerald-100" : ""}`}
               >
                 {/* Provider header */}
@@ -157,18 +157,18 @@ export default function QuoteComparisonPage() {
                         <Image src={quote.provider_avatar} alt={quote.provider_name} fill sizes="40px" className="object-cover" />
                       </div>
                     ) : (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-600">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-[var(--ink-700)]">
                         {quote.provider_name.charAt(0)}
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-1 text-sm font-semibold text-slate-900">
+                      <p className="flex items-center gap-1 text-sm font-semibold text-[var(--ink-950)]">
                         {quote.provider_name}
                         {quote.is_from_accepted_provider && (
                           <BadgeCheck className="h-3.5 w-3.5 text-blue-500" />
                         )}
                       </p>
-                      <p className="text-xs text-slate-500 capitalize">
+                      <p className="text-xs text-[var(--ink-500)] capitalize">
                         Status: <span className="font-medium">{quote.status}</span>
                       </p>
                     </div>
@@ -178,20 +178,20 @@ export default function QuoteComparisonPage() {
                 {/* Quote summary */}
                 <div className="flex-1 space-y-3 p-4">
                   {quote.summary && (
-                    <p className="text-sm leading-6 text-slate-700">{quote.summary}</p>
+                    <p className="text-sm leading-6 text-[var(--ink-700)]">{quote.summary}</p>
                   )}
 
                   {/* Line items */}
                   {quote.quote_line_items.length > 0 && (
                     <div className="space-y-1.5">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Items</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-500)]">Items</p>
                       {quote.quote_line_items.map((item) => (
                         <div key={item.id} className="flex items-center justify-between text-xs">
-                          <span className="text-slate-700">
+                          <span className="text-[var(--ink-700)]">
                             {item.label}
                             {item.quantity > 1 && ` (x${item.quantity})`}
                           </span>
-                          <span className="font-medium text-slate-900">
+                          <span className="font-medium text-[var(--ink-950)]">
                             INR {item.amount.toLocaleString("en-IN")}
                           </span>
                         </div>
@@ -201,12 +201,12 @@ export default function QuoteComparisonPage() {
 
                   {/* Total */}
                   <div className="border-t border-slate-100 pt-3">
-                    <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
+                    <div className="flex items-center justify-between text-sm font-semibold text-[var(--ink-950)]">
                       <span>Total</span>
                       <span>INR {quote.total.toLocaleString("en-IN")}</span>
                     </div>
                     {quote.tax_amount > 0 && (
-                      <p className="mt-0.5 text-right text-xs text-slate-500">
+                      <p className="mt-0.5 text-right text-xs text-[var(--ink-500)]">
                         incl. INR {quote.tax_amount.toLocaleString("en-IN")} tax
                       </p>
                     )}
@@ -214,13 +214,13 @@ export default function QuoteComparisonPage() {
 
                   {/* Notes */}
                   {quote.notes && (
-                    <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs italic text-slate-500">
+                    <p className="rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-xs italic text-[var(--ink-500)]">
                       {quote.notes}
                     </p>
                   )}
 
                   {/* Dates */}
-                  <div className="flex items-center gap-3 text-xs text-slate-400">
+                  <div className="flex items-center gap-3 text-xs text-[var(--ink-500)]">
                     {quote.sent_at && (
                       <span className="inline-flex items-center gap-1">
                         <CalendarDays className="h-3 w-3" />
@@ -258,7 +258,7 @@ export default function QuoteComparisonPage() {
                       {acceptingId === quote.id ? "Accepting..." : "Accept this quote"}
                     </button>
                   ) : (
-                    <p className="text-center text-xs text-slate-400">
+                    <p className="text-center text-xs text-[var(--ink-500)]">
                       {acceptedId ? "Another quote was accepted" : "This quote is no longer available"}
                     </p>
                   )}

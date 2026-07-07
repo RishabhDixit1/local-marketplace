@@ -40,8 +40,8 @@ export default function ServiceCategoryGrid({
 
   if (visibleCategories.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
-        <p className="text-sm font-semibold text-slate-500">No service categories available yet</p>
+      <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)]/50 p-8 text-center">
+        <p className="text-sm font-semibold text-[var(--ink-500)]">No service categories available yet</p>
       </div>
     );
   }
@@ -58,16 +58,16 @@ export default function ServiceCategoryGrid({
                 ? `/?category=${cat.slug}&locality=${localityId}`
                 : `/?category=${cat.slug}`
             }
-            className="group flex flex-col items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
+            className="group flex flex-col items-start gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand-50)] text-[var(--brand-700)]">
               <Icon className="h-5 w-5" />
             </span>
             <div>
-              <h3 className="text-sm font-bold text-slate-900 group-hover:text-[var(--brand-700)]">
+              <h3 className="text-sm font-extrabold text-[var(--ink-950)] group-hover:text-[var(--brand-700)]">
                 {cat.name}
               </h3>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <p className="mt-0.5 text-xs text-[var(--ink-500)]">
                 ₹{cat.base_price_min}–{cat.base_price_max}
               </p>
               {cat.provider_count != null && (

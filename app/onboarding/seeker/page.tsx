@@ -50,13 +50,13 @@ export default function SeekerOnboardingWelcomePage() {
   return (
     <div className="mx-auto max-w-lg px-4 py-12 sm:px-6">
       <div className="text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
-          <Search className="h-7 w-7 text-slate-700" />
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--surface-soft)]">
+          <Search className="h-7 w-7 text-[var(--ink-700)]" />
         </div>
-        <h1 className="mt-5 text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="mt-5 text-2xl font-extrabold tracking-tight text-[var(--ink-950)]">
           What do you need help with?
         </h1>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-[var(--ink-500)]">
           Pick the services you&apos;re looking for. We&apos;ll find the best providers near you.
         </p>
       </div>
@@ -64,7 +64,7 @@ export default function SeekerOnboardingWelcomePage() {
       <div className="mt-8">
         <div className="flex items-center gap-2">
           <Flame className="h-4 w-4 text-orange-500" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Popular near you</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-500)]">Popular near you</span>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2.5">
           {popular.map((cat) => (
@@ -75,7 +75,7 @@ export default function SeekerOnboardingWelcomePage() {
               className={`flex items-center gap-2.5 rounded-xl border px-4 py-3.5 text-left text-sm font-medium transition ${
                 selected.includes(cat.id)
                   ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                  : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--border-strong)]"
               }`}
             >
               <span className="text-lg">{cat.icon}</span>
@@ -89,7 +89,7 @@ export default function SeekerOnboardingWelcomePage() {
       </div>
 
       <div className="mt-6">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">More services</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-500)]">More services</span>
         <div className="mt-3 grid grid-cols-2 gap-2.5">
           {rest.map((cat) => (
             <button
@@ -99,7 +99,7 @@ export default function SeekerOnboardingWelcomePage() {
               className={`flex items-center gap-2.5 rounded-xl border px-4 py-3.5 text-left text-sm font-medium transition ${
                 selected.includes(cat.id)
                   ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                  : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--border-strong)]"
               }`}
             >
               <span className="text-lg">{cat.icon}</span>
@@ -122,7 +122,7 @@ export default function SeekerOnboardingWelcomePage() {
         <button
           type="button"
           onClick={() => router.push("/onboarding/seeker/profile")}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-3 text-sm font-medium text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]"
         >
           Skip for now
         </button>

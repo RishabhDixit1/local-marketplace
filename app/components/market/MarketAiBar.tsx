@@ -170,7 +170,7 @@ export function MarketAiFloating() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
             transition={{ duration: 0.15 }}
-            className="w-[340px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:w-[420px]"
+            className="w-[340px] overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-xl sm:w-[420px]"
           >
             <form onSubmit={handleSubmit}>
               <div className="relative">
@@ -183,7 +183,7 @@ export function MarketAiFloating() {
                       <Sparkles size={16} className="text-[var(--brand-500)]" />
                     </motion.div>
                   ) : (
-                    <Sparkles size={16} className="text-slate-400" />
+                    <Sparkles size={16} className="text-[var(--ink-500)]" />
                   )}
                 </div>
                 <input
@@ -222,7 +222,7 @@ export function MarketAiFloating() {
                     }
                   }}
                   placeholder="Ask AI to find services..."
-                  className="w-full rounded-2xl border-0 bg-transparent py-3.5 pl-10 pr-10 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                  className="w-full rounded-2xl border-0 bg-transparent py-3.5 pl-10 pr-10 text-sm text-[var(--ink-950)] outline-none placeholder:text-[var(--ink-500)]"
                 />
                 <button
                   type="button"
@@ -232,7 +232,7 @@ export function MarketAiFloating() {
                     setShowAiResult(false);
                     setAiResponse(null);
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--ink-500)] hover:text-[var(--ink-700)]"
                 >
                   <X size={15} />
                 </button>
@@ -253,7 +253,7 @@ export function MarketAiFloating() {
                         <Sparkles size={13} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-slate-800">
+                        <p className="text-sm font-medium text-[var(--ink-950)]">
                           {aiResponse.response}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -276,7 +276,7 @@ export function MarketAiFloating() {
                           <button
                             type="button"
                             onClick={() => handleSelect(query)}
-                            className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                            className="inline-flex items-center gap-1 rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                           >
                             <Search size={11} />
                             Search market
@@ -288,8 +288,8 @@ export function MarketAiFloating() {
                   {aiResponse.data?.providers && aiResponse.data.providers.length > 0 && (
                     <div className="border-t border-slate-100">
                       <div className="flex items-center gap-1.5 border-b border-slate-100 px-3.5 py-1.5">
-                        <MapPin size={12} className="text-slate-400" />
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                        <MapPin size={12} className="text-[var(--ink-500)]" />
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-500)]">
                           Nearby providers
                         </span>
                       </div>
@@ -299,14 +299,14 @@ export function MarketAiFloating() {
                             key={p.id}
                             href={`/profile/${p.id}`}
                             onClick={() => { setExpanded(false); setShowAiResult(false); }}
-                            className="flex items-center gap-3 border-b border-slate-50 px-3.5 py-2.5 text-left text-sm transition hover:bg-slate-50"
+                            className="flex items-center gap-3 border-b border-slate-50 px-3.5 py-2.5 text-left text-sm transition hover:bg-[var(--surface-soft)]"
                           >
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-[11px] font-bold text-[var(--brand-700)]">
                               {p.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
-                                <span className="truncate font-medium text-slate-800">
+                                <span className="truncate font-medium text-[var(--ink-950)]">
                                   {p.name}
                                 </span>
                                 {p.rating != null && (
@@ -316,16 +316,16 @@ export function MarketAiFloating() {
                                   </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                              <div className="flex items-center gap-2 text-[11px] text-[var(--ink-500)]">
                                 {p.location && <span className="truncate">{p.location}</span>}
                                 {p.bio && (
-                                  <span className="truncate text-slate-400">
+                                  <span className="truncate text-[var(--ink-500)]">
                                     {p.bio.slice(0, 60)}
                                   </span>
                                 )}
                               </div>
                             </div>
-                            <ArrowRight size={13} className="shrink-0 text-slate-300" />
+                            <ArrowRight size={13} className="shrink-0 text-[var(--ink-500)]" />
                           </Link>
                         ))}
                       </div>
@@ -334,8 +334,8 @@ export function MarketAiFloating() {
                   {aiResponse.suggestions.length > 0 && (
                     <>
                       <div className="flex items-center gap-1.5 border-b border-slate-100 px-3.5 py-1.5">
-                        <TrendingUp size={12} className="text-slate-400" />
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                        <TrendingUp size={12} className="text-[var(--ink-500)]" />
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-500)]">
                           Try asking
                         </span>
                       </div>
@@ -348,10 +348,10 @@ export function MarketAiFloating() {
                           className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm transition ${
                             activeIndex === i
                               ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
-                              : "text-slate-600 hover:bg-slate-50"
+                              : "text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                           }`}
                         >
-                          <TrendingUp size={13} className="shrink-0 text-slate-400" />
+                          <TrendingUp size={13} className="shrink-0 text-[var(--ink-500)]" />
                           <span className="font-medium">{s}</span>
                         </button>
                       ))}
@@ -369,7 +369,7 @@ export function MarketAiFloating() {
                 >
                   <div className="flex items-center gap-1.5 border-b border-slate-100 px-3.5 py-1.5">
                     <Sparkles size={12} className="text-[var(--brand-500)]" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-500)]">
                       Try asking
                     </span>
                   </div>
@@ -382,10 +382,10 @@ export function MarketAiFloating() {
                       className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm transition ${
                         activeIndex === i
                           ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
-                          : "text-slate-600 hover:bg-slate-50"
+                          : "text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                       }`}
                     >
-                      <Search size={13} className="shrink-0 text-slate-400" />
+                      <Search size={13} className="shrink-0 text-[var(--ink-500)]" />
                       <span className="font-medium">{item}</span>
                     </button>
                   ))}
@@ -399,7 +399,7 @@ export function MarketAiFloating() {
                   exit={{ height: 0 }}
                   className="border-t border-slate-100 p-4 text-center"
                 >
-                  <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
+                  <div className="flex items-center justify-center gap-2 text-sm text-[var(--ink-500)]">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Thinking...
                   </div>

@@ -44,7 +44,7 @@ const STATUS_STYLES: Record<string, string> = {
   processing: "bg-indigo-50 text-indigo-700 border-indigo-200",
   completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
   failed: "bg-rose-50 text-rose-700 border-rose-200",
-  cancelled: "bg-slate-50 text-slate-500 border-slate-200",
+  cancelled: "bg-[var(--surface-soft)] text-[var(--ink-500)] border-[var(--surface-border)]",
 };
 
 export default function PayoutsPage() {
@@ -166,7 +166,7 @@ export default function PayoutsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--ink-500)]" />
       </div>
     );
   }
@@ -174,53 +174,53 @@ export default function PayoutsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Payouts</h1>
-        <p className="mt-1 text-sm text-slate-600">Manage your earnings and withdrawals.</p>
+        <h1 className="text-2xl font-extrabold tracking-tight text-[var(--ink-950)]">Payouts</h1>
+        <p className="mt-1 text-sm text-[var(--ink-700)]">Manage your earnings and withdrawals.</p>
       </div>
 
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs text-slate-500">Total earned</p>
-            <p className="mt-1 text-lg font-bold text-slate-900">{INR(summary.totalEarnedPaise)}</p>
+          <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
+            <p className="text-xs text-[var(--ink-500)]">Total earned</p>
+            <p className="mt-1 text-lg font-bold text-[var(--ink-950)]">{INR(summary.totalEarnedPaise)}</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs text-slate-500">Paid out</p>
+          <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
+            <p className="text-xs text-[var(--ink-500)]">Paid out</p>
             <p className="mt-1 text-lg font-bold text-emerald-700">{INR(summary.totalPaidOutPaise)}</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs text-slate-500">Pending</p>
+          <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
+            <p className="text-xs text-[var(--ink-500)]">Pending</p>
             <p className="mt-1 text-lg font-bold text-amber-700">{INR(summary.totalPendingPaise)}</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs text-slate-500">Available</p>
+          <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
+            <p className="text-xs text-[var(--ink-500)]">Available</p>
             <p className="mt-1 text-lg font-bold text-blue-700">{INR(summary.availablePaise)}</p>
           </div>
         </div>
       )}
 
       {/* Request Withdrawal */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-        <h2 className="text-base font-semibold text-slate-900">Request withdrawal</h2>
-        <p className="mt-1 text-xs text-slate-500">Minimum ₹1. Available: {summary ? INR(summary.availablePaise) : "—"}</p>
+      <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 sm:p-6">
+        <h2 className="text-base font-semibold text-[var(--ink-950)]">Request withdrawal</h2>
+        <p className="mt-1 text-xs text-[var(--ink-500)]">Minimum ₹1. Available: {summary ? INR(summary.availablePaise) : "—"}</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1">
-            <label className="text-xs font-medium text-slate-700">Amount (paise)</label>
+            <label className="text-xs font-medium text-[var(--ink-700)]">Amount (paise)</label>
             <input
               type="number"
               value={payoutAmount}
               onChange={(e) => setPayoutAmount(e.target.value)}
               placeholder="e.g. 50000 (₹500)"
-              className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+              className="mt-1 w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
             />
           </div>
           <div className="w-full sm:w-40">
-            <label className="text-xs font-medium text-slate-700">Method</label>
+            <label className="text-xs font-medium text-[var(--ink-700)]">Method</label>
             <select
               value={payoutMethod}
               onChange={(e) => setPayoutMethod(e.target.value as "bank" | "upi")}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none"
+              className="mt-1 w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none"
             >
               <option value="bank">Bank transfer</option>
               <option value="upi">UPI</option>
@@ -240,13 +240,13 @@ export default function PayoutsPage() {
       </section>
 
       {/* Bank Accounts */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+      <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 sm:p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-900">Payout accounts</h2>
+          <h2 className="text-base font-semibold text-[var(--ink-950)]">Payout accounts</h2>
           <button
             type="button"
             onClick={() => setShowAddForm(!showAddForm)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--surface-border)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]"
           >
             <Plus className="h-3 w-3" />
             {showAddForm ? "Cancel" : "Add account"}
@@ -257,24 +257,24 @@ export default function PayoutsPage() {
           <div className="mt-4 space-y-3 rounded-2xl border border-blue-100 bg-blue-50 p-4">
             <div className="flex gap-2">
               <button type="button" onClick={() => setAcctType("bank")}
-                className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition ${acctType === "bank" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"}`}>
+                className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition ${acctType === "bank" ? "bg-[var(--surface-elevated)] text-[var(--ink-950)] shadow-sm" : "text-[var(--ink-700)]"}`}>
                 <Landmark className="mx-auto h-4 w-4" /> Bank
               </button>
               <button type="button" onClick={() => setAcctType("upi")}
-                className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition ${acctType === "upi" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"}`}>
+                className={`flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition ${acctType === "upi" ? "bg-[var(--surface-elevated)] text-[var(--ink-950)] shadow-sm" : "text-[var(--ink-700)]"}`}>
                 <Wallet className="mx-auto h-4 w-4" /> UPI
               </button>
             </div>
-            <input value={holderName} onChange={(e) => setHolderName(e.target.value)} placeholder="Account holder name" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none" />
+            <input value={holderName} onChange={(e) => setHolderName(e.target.value)} placeholder="Account holder name" className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none" />
             {acctType === "bank" && (
               <>
-                <input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="Bank name" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none" />
-                <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder="Account number" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none" />
-                <input value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} placeholder="IFSC code" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none" />
+                <input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="Bank name" className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none" />
+                <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder="Account number" className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none" />
+                <input value={ifscCode} onChange={(e) => setIfscCode(e.target.value)} placeholder="IFSC code" className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none" />
               </>
             )}
             {acctType === "upi" && (
-              <input value={upiHandle} onChange={(e) => setUpiHandle(e.target.value)} placeholder="UPI handle (e.g. name@upi)" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none" />
+              <input value={upiHandle} onChange={(e) => setUpiHandle(e.target.value)} placeholder="UPI handle (e.g. name@upi)" className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none" />
             )}
             <button type="button" disabled={savingAccount} onClick={() => void addAccount()}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50">
@@ -285,24 +285,24 @@ export default function PayoutsPage() {
         )}
 
         {accounts.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-500">No payout accounts added yet.</p>
+          <p className="mt-4 text-sm text-[var(--ink-500)]">No payout accounts added yet.</p>
         ) : (
           <div className="mt-4 space-y-2">
             {accounts.map((acc) => (
-              <div key={acc.id} className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
+              <div key={acc.id} className="flex items-center justify-between rounded-xl border border-[var(--surface-border)] px-4 py-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-900">
+                  <p className="text-sm font-medium text-[var(--ink-950)]">
                     {acc.account_type === "bank" ? acc.bank_name || "Bank" : "UPI"}
                     {acc.is_default && <span className="ml-2 text-xs text-blue-600">Default</span>}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-[var(--ink-500)]">
                     {acc.account_type === "bank"
                       ? `••••${acc.account_number?.slice(-4) ?? ""} / ${acc.ifsc_code ?? ""}`
                       : acc.upi_handle ?? ""}
                   </p>
                 </div>
                 <button type="button" onClick={() => void deleteAccount(acc.id)}
-                  className="rounded-full p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition">
+                  className="rounded-full p-2 text-[var(--ink-500)] hover:bg-rose-50 hover:text-rose-600 transition">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -312,17 +312,17 @@ export default function PayoutsPage() {
       </section>
 
       {/* Payout History */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-        <h2 className="text-base font-semibold text-slate-900">Withdrawal history</h2>
+      <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 sm:p-6">
+        <h2 className="text-base font-semibold text-[var(--ink-950)]">Withdrawal history</h2>
         {payouts.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-500">No withdrawals yet.</p>
+          <p className="mt-4 text-sm text-[var(--ink-500)]">No withdrawals yet.</p>
         ) : (
           <div className="mt-4 space-y-2">
             {payouts.map((p) => (
-              <div key={p.id} className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
+              <div key={p.id} className="flex items-center justify-between rounded-xl border border-[var(--surface-border)] px-4 py-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-900">{INR(p.net_amount_paise)}</p>
-                  <p className="text-xs text-slate-500">{p.payout_method} • {new Date(p.created_at).toLocaleDateString("en-IN")}</p>
+                  <p className="text-sm font-semibold text-[var(--ink-950)]">{INR(p.net_amount_paise)}</p>
+                  <p className="text-xs text-[var(--ink-500)]">{p.payout_method} • {new Date(p.created_at).toLocaleDateString("en-IN")}</p>
                 </div>
                 <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${STATUS_STYLES[p.status] ?? ""}`}>
                   {p.status}

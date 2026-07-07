@@ -81,7 +81,7 @@ const PAYMENT_TONE_STYLES: Record<PaymentStatusTone, string> = {
   emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
   amber: "border-amber-200 bg-amber-50 text-amber-700",
   blue: "border-blue-200 bg-blue-50 text-blue-700",
-  slate: "border-slate-200 bg-slate-50 text-slate-700",
+  slate: "border-[var(--surface-border)] bg-[var(--surface-soft)] text-[var(--ink-700)]",
 };
 
 const formatTimestamp = (value: string | undefined) => {
@@ -256,7 +256,7 @@ export default function OrderStatusPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f4f2ee]">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--ink-500)]" />
       </div>
     );
   }
@@ -265,7 +265,7 @@ export default function OrderStatusPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#f4f2ee] gap-4 px-4">
         <XCircle className="h-12 w-12 text-rose-400" />
-        <p className="font-semibold text-slate-700">Order not found or access denied.</p>
+        <p className="font-semibold text-[var(--ink-700)]">Order not found or access denied.</p>
         <Link href="/dashboard/tasks" className="text-sm font-medium text-blue-600 hover:underline">Back to tasks</Link>
       </div>
     );
@@ -306,12 +306,12 @@ export default function OrderStatusPage() {
   return (
     <div className="min-h-screen bg-[#f4f2ee]">
       {/* Top bar */}
-      <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-sm">
+      <div className="sticky top-0 z-40 border-b border-[var(--surface-border)] bg-[var(--surface-elevated)]/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
-          <button type="button" onClick={() => router.back()} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 transition">
-            <ArrowLeft className="h-4 w-4 text-slate-600" />
+          <button type="button" onClick={() => router.back()} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-[var(--surface-soft)] transition">
+            <ArrowLeft className="h-4 w-4 text-[var(--ink-700)]" />
           </button>
-          <span className="font-semibold text-slate-900">Order</span>
+          <span className="font-semibold text-[var(--ink-950)]">Order</span>
           {orderRealtimeHealth === "degraded" && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
               <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
@@ -327,15 +327,15 @@ export default function OrderStatusPage() {
       <div className="mx-auto max-w-lg px-4 py-6 space-y-4">
 
         {/* Item card */}
-        <section className="rounded-2xl bg-white p-5 shadow-sm">
+        <section className="rounded-2xl bg-[var(--surface-elevated)] p-5 shadow-sm">
           <div className="flex items-start gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100">
-              <Package className="h-5 w-5 text-slate-500" />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-soft)]">
+              <Package className="h-5 w-5 text-[var(--ink-500)]" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-slate-900">{itemTitle}</p>
-              {itemCategory && <p className="text-xs text-slate-500 capitalize">{itemCategory}</p>}
-              <p className="mt-1 text-base font-bold text-slate-900">{order.price ? INR(order.price) : "Price TBD"}</p>
+              <p className="font-semibold text-[var(--ink-950)]">{itemTitle}</p>
+              {itemCategory && <p className="text-xs text-[var(--ink-500)] capitalize">{itemCategory}</p>}
+              <p className="mt-1 text-base font-bold text-[var(--ink-950)]">{order.price ? INR(order.price) : "Price TBD"}</p>
             </div>
           </div>
           <div
@@ -348,11 +348,11 @@ export default function OrderStatusPage() {
 
         {/* Progress timeline */}
         {!["cancelled", "rejected"].includes(status) && (
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold text-slate-700">Order Progress</h2>
+          <section className="rounded-2xl bg-[var(--surface-elevated)] p-5 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold text-[var(--ink-700)]">Order Progress</h2>
             <div className="relative">
               {/* Track line */}
-              <div className="absolute left-[18px] top-0 bottom-0 w-0.5 bg-slate-100" />
+              <div className="absolute left-[18px] top-0 bottom-0 w-0.5 bg-[var(--surface-soft)]" />
               <div className="space-y-4">
                 {TIMELINE.map((step, idx) => {
                   const done = timelineIdx >= idx;
@@ -360,12 +360,12 @@ export default function OrderStatusPage() {
                   return (
                     <div key={step} className="relative flex items-start gap-3 pl-10">
                       <div className={`absolute left-0 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition ${
-                        done ? "border-blue-500 bg-blue-500 text-white" : "border-slate-200 bg-white text-slate-400"
+                        done ? "border-blue-500 bg-blue-500 text-white" : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-500)]"
                       } ${active ? "ring-4 ring-blue-100" : ""}`}>
                         {done ? <CheckCircle2 className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
                       </div>
                       <div className="pt-0.5">
-                        <p className={`text-sm font-medium ${done ? "text-slate-900" : "text-slate-400"}`}>
+                        <p className={`text-sm font-medium ${done ? "text-[var(--ink-950)]" : "text-[var(--ink-500)]"}`}>
                           {STATUS_LABEL[step]}
                         </p>
                         {active && <p className="text-xs text-blue-600">Current status</p>}
@@ -378,12 +378,12 @@ export default function OrderStatusPage() {
           </section>
         )}
 
-        <section className="rounded-2xl bg-white p-5 shadow-sm">
+        <section className="rounded-2xl bg-[var(--surface-elevated)] p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Payment</p>
-              <h2 className="mt-1 text-base font-semibold text-slate-900">{paymentSummary.heading}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{paymentSummary.detail}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ink-500)]">Payment</p>
+              <h2 className="mt-1 text-base font-semibold text-[var(--ink-950)]">{paymentSummary.heading}</h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--ink-700)]">{paymentSummary.detail}</p>
             </div>
             <span
               className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${PAYMENT_TONE_STYLES[paymentSummary.tone]}`}
@@ -393,74 +393,74 @@ export default function OrderStatusPage() {
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Method</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{paymentSummary.methodLabel}</p>
+            <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-500)]">Method</p>
+              <p className="mt-1 text-sm font-semibold text-[var(--ink-950)]">{paymentSummary.methodLabel}</p>
               {paymentSummary.rails.length > 0 ? (
-                <p className="mt-1 text-xs text-slate-500">{paymentSummary.rails.join(" • ")}</p>
+                <p className="mt-1 text-xs text-[var(--ink-500)]">{paymentSummary.rails.join(" • ")}</p>
               ) : (
-                <p className="mt-1 text-xs text-slate-500">Payment details will appear here after checkout.</p>
+                <p className="mt-1 text-xs text-[var(--ink-500)]">Payment details will appear here after checkout.</p>
               )}
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Tracking</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{formatTimestamp(paymentCollectedAt)}</p>
-              <p className="mt-1 text-xs text-slate-500">{paymentSummary.support}</p>
+            <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-500)]">Tracking</p>
+              <p className="mt-1 text-sm font-semibold text-[var(--ink-950)]">{formatTimestamp(paymentCollectedAt)}</p>
+              <p className="mt-1 text-xs text-[var(--ink-500)]">{paymentSummary.support}</p>
             </div>
           </div>
 
           {razorpayOrderId || razorpayPaymentId ? (
-            <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Payment reference</p>
+            <div className="mt-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-500)]">Payment reference</p>
               {razorpayOrderId ? (
-                <p className="mt-1 break-all font-mono text-xs text-slate-600">Order: {razorpayOrderId}</p>
+                <p className="mt-1 break-all font-mono text-xs text-[var(--ink-700)]">Order: {razorpayOrderId}</p>
               ) : null}
               {razorpayPaymentId ? (
-                <p className="mt-1 break-all font-mono text-xs text-slate-600">Payment: {razorpayPaymentId}</p>
+                <p className="mt-1 break-all font-mono text-xs text-[var(--ink-700)]">Payment: {razorpayPaymentId}</p>
               ) : null}
             </div>
           ) : null}
         </section>
 
         {/* Delivery info */}
-        <section className="rounded-2xl bg-white p-5 shadow-sm space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Fulfillment method</p>
-          <p className="text-sm font-semibold text-slate-900">{fulfillmentOption.label}</p>
-          <p className="text-xs leading-5 text-slate-600">{fulfillmentOption.description}</p>
+        <section className="rounded-2xl bg-[var(--surface-elevated)] p-5 shadow-sm space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ink-500)]">Fulfillment method</p>
+          <p className="text-sm font-semibold text-[var(--ink-950)]">{fulfillmentOption.label}</p>
+          <p className="text-xs leading-5 text-[var(--ink-700)]">{fulfillmentOption.description}</p>
         </section>
 
         {(address || notes) && (
-          <section className="rounded-2xl bg-white p-5 shadow-sm space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{fulfillmentOption.addressLabel}</p>
+          <section className="rounded-2xl bg-[var(--surface-elevated)] p-5 shadow-sm space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ink-500)]">{fulfillmentOption.addressLabel}</p>
             {address && (
-              <div className="flex items-start gap-2 text-sm text-slate-700">
-                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-slate-400" />
+              <div className="flex items-start gap-2 text-sm text-[var(--ink-700)]">
+                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-[var(--ink-500)]" />
                 <p>{address}</p>
               </div>
             )}
             {notes && (
-              <p className="text-xs text-slate-500 italic pl-6">&ldquo;{notes}&rdquo;</p>
+              <p className="text-xs text-[var(--ink-500)] italic pl-6">&ldquo;{notes}&rdquo;</p>
             )}
           </section>
         )}
 
         {/* Delivery tracking */}
         {showDelivery && deliveryInfo && (
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <section className="rounded-2xl bg-[var(--surface-elevated)] p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-slate-700">Delivery Tracking</h2>
+              <h2 className="text-sm font-semibold text-[var(--ink-700)]">Delivery Tracking</h2>
               <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${getDeliveryStatusPillClass(deliveryStatus ?? "pending")}`}>
                 {getDeliveryStatusLabel(deliveryStatus ?? "pending")}
               </span>
             </div>
 
             {deliveryInfo.trackingNumber && (
-              <div className="mb-3 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <Package className="h-4 w-4 text-slate-400" />
+              <div className="mb-3 flex items-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-4 py-3">
+                <Package className="h-4 w-4 text-[var(--ink-500)]" />
                 <div className="text-xs">
-                  <p className="font-medium text-slate-700">Tracking # {deliveryInfo.trackingNumber}</p>
-                  {deliveryInfo.carrier && <p className="text-slate-500">via {deliveryInfo.carrier}</p>}
+                  <p className="font-medium text-[var(--ink-700)]">Tracking # {deliveryInfo.trackingNumber}</p>
+                  {deliveryInfo.carrier && <p className="text-[var(--ink-500)]">via {deliveryInfo.carrier}</p>}
                 </div>
               </div>
             )}
@@ -470,7 +470,7 @@ export default function OrderStatusPage() {
               <div className="mb-3 flex flex-wrap gap-2">
                 {deliveryInfo.photoUrls.map((url, i) => (
                   <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                    className="block h-20 w-20 overflow-hidden rounded-xl border border-slate-200">
+                    className="block h-20 w-20 overflow-hidden rounded-xl border border-[var(--surface-border)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={url} alt={`Delivery photo ${i + 1}`} className="h-full w-full object-cover" />
                   </a>
@@ -515,7 +515,7 @@ export default function OrderStatusPage() {
             )}
 
             <div className="relative">
-              <div className="absolute left-[18px] top-0 bottom-0 w-0.5 bg-slate-100" />
+              <div className="absolute left-[18px] top-0 bottom-0 w-0.5 bg-[var(--surface-soft)]" />
               <div className="space-y-4">
                 {deliveryTimelineSteps.map((step, idx) => {
                   const done = deliveryStatus
@@ -528,17 +528,17 @@ export default function OrderStatusPage() {
                   return (
                     <div key={step} className="relative flex items-start gap-3 pl-10">
                       <div className={`absolute left-0 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition ${
-                        done ? "border-blue-500 bg-blue-500 text-white" : "border-slate-200 bg-white text-slate-400"
+                        done ? "border-blue-500 bg-blue-500 text-white" : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-500)]"
                       } ${active ? "ring-4 ring-blue-100" : ""}`}>
                         {done ? <CheckCircle2 className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
                       </div>
                       <div className="pt-0.5">
-                        <p className={`text-sm font-medium ${done ? "text-slate-900" : "text-slate-400"}`}>
+                        <p className={`text-sm font-medium ${done ? "text-[var(--ink-950)]" : "text-[var(--ink-500)]"}`}>
                           {getDeliveryStatusLabel(step)}
                         </p>
-                        <p className="text-xs text-slate-500">{getDeliveryStatusDescription(step)}</p>
+                        <p className="text-xs text-[var(--ink-500)]">{getDeliveryStatusDescription(step)}</p>
                         {stepTimestamp && (
-                          <p className="mt-0.5 text-[11px] text-slate-400">{formatTimestamp(stepTimestamp)}</p>
+                          <p className="mt-0.5 text-[11px] text-[var(--ink-500)]">{formatTimestamp(stepTimestamp)}</p>
                         )}
                       </div>
                     </div>
@@ -551,8 +551,8 @@ export default function OrderStatusPage() {
 
         {/* Assign delivery (provider, no delivery info yet) */}
         {showDelivery && isProvider && !deliveryInfo && !isFinal && (
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-700">Assign Delivery</h2>
+          <section className="rounded-2xl bg-[var(--surface-elevated)] p-5 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-[var(--ink-700)]">Assign Delivery</h2>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -567,10 +567,10 @@ export default function OrderStatusPage() {
               }}
               className="space-y-3"
             >
-              <input name="driverName" placeholder="Driver name" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
-              <input name="driverPhone" placeholder="Driver phone" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
-              <input name="trackingNumber" placeholder="Tracking number" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
-              <input name="carrier" placeholder="Carrier (e.g. Delhivery, Shadowfax)" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+              <input name="driverName" placeholder="Driver name" className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+              <input name="driverPhone" placeholder="Driver phone" className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+              <input name="trackingNumber" placeholder="Tracking number" className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+              <input name="carrier" placeholder="Carrier (e.g. Delhivery, Shadowfax)" className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
               <button type="submit" disabled={busy} className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2">
                 {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : <>Start Delivery</>}
               </button>
@@ -580,8 +580,8 @@ export default function OrderStatusPage() {
 
         {/* Provider delivery actions */}
         {showDelivery && isProvider && deliveryStatus && !isFinal && (
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-700">Update Delivery</h2>
+          <section className="rounded-2xl bg-[var(--surface-elevated)] p-5 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-[var(--ink-700)]">Update Delivery</h2>
             <div className="grid grid-cols-2 gap-3">
               {getAllowedDeliveryTransitions(deliveryStatus).map((nextStatus) => (
                 <button
@@ -605,7 +605,7 @@ export default function OrderStatusPage() {
 
         {/* Booking slot picker (visible when order is accepted) */}
         {status === "accepted" && order.provider_id && (
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <section className="rounded-2xl bg-[var(--surface-elevated)] p-5 shadow-sm">
             <BookingSlotPicker
               orderId={id}
               providerId={order.provider_id}
@@ -616,8 +616,8 @@ export default function OrderStatusPage() {
 
         {/* Provider actions */}
         {isProvider && !isFinal && (
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-700">Provider Actions</h2>
+          <section className="rounded-2xl bg-[var(--surface-elevated)] p-5 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-[var(--ink-700)]">Provider Actions</h2>
             <div className="grid grid-cols-2 gap-3">
               {status === "new_lead" && (
                 <>
@@ -649,7 +649,7 @@ export default function OrderStatusPage() {
 
         {/* Consumer actions */}
         {isConsumer && !isFinal && (
-          <section className="rounded-2xl bg-white p-5 shadow-sm space-y-3">
+          <section className="rounded-2xl bg-[var(--surface-elevated)] p-5 shadow-sm space-y-3">
             {paymentStatus === "pending" && (
               <button
                 type="button"
@@ -683,7 +683,7 @@ export default function OrderStatusPage() {
               type="button"
               disabled={disputeLoading}
               onClick={() => void raiseDispute()}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-50"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-[var(--surface-elevated)] px-4 py-2 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-50"
             >
               {disputeLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Gavel className="h-3.5 w-3.5" />}
               Raise Dispute
@@ -708,7 +708,7 @@ export default function OrderStatusPage() {
           onSuccess={() => setDisputeSent(true)}
         />
 
-        {busy && <div className="flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>}
+        {busy && <div className="flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-[var(--ink-500)]" /></div>}
 
         {actionError && (
           <div role="alert" className="flex items-start gap-2 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
@@ -719,7 +719,7 @@ export default function OrderStatusPage() {
 
         <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
           <Link href="/dashboard/tasks"
-            className="w-full sm:flex-1 rounded-2xl border border-slate-200 bg-white py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+            className="w-full sm:flex-1 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] py-3 text-center text-sm font-medium text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]">
             View All Orders
           </Link>
           <Link href="/"
@@ -728,7 +728,7 @@ export default function OrderStatusPage() {
           </Link>
         </div>
 
-        <p className="text-center text-xs text-slate-400">
+        <p className="text-center text-xs text-[var(--ink-500)]">
           Order ID: <span className="font-mono">{order.id}</span>
         </p>
       </div>
@@ -770,18 +770,18 @@ function InvoiceSection({ orderId }: { orderId: string }) {
   if (invoiceUrl) {
     return (
       <Link href={invoiceUrl}
-        className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
+        className="flex items-center justify-between rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 transition hover:border-[var(--border-strong)]"
       >
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-slate-100 p-2">
-            <FileText className="h-5 w-5 text-slate-600" />
+          <div className="rounded-xl bg-[var(--surface-soft)] p-2">
+            <FileText className="h-5 w-5 text-[var(--ink-700)]" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-900">Tax Invoice</p>
-            <p className="text-xs text-slate-500">View or download invoice</p>
+            <p className="text-sm font-semibold text-[var(--ink-950)]">Tax Invoice</p>
+            <p className="text-xs text-[var(--ink-500)]">View or download invoice</p>
           </div>
         </div>
-        <span className="text-xs font-semibold text-slate-900">View &rarr;</span>
+        <span className="text-xs font-semibold text-[var(--ink-950)]">View &rarr;</span>
       </Link>
     );
   }
@@ -791,7 +791,7 @@ function InvoiceSection({ orderId }: { orderId: string }) {
       type="button"
       disabled={generating}
       onClick={generate}
-      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-4 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
     >
       {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
       {generating ? "Generating invoice..." : "Generate Tax Invoice"}

@@ -39,17 +39,17 @@ export default async function BusinessDirectoryPage() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Business Directory</h1>
-        <p className="mt-2 text-slate-600">
+        <h1 className="text-3xl font-extrabold tracking-tight">Business Directory</h1>
+        <p className="mt-2 text-[var(--ink-700)]">
           Browse verified local service providers and businesses on ServiQ.
         </p>
       </div>
 
       {businesses.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 py-16 text-center">
-          <Store className="mb-4 h-12 w-12 text-slate-300" />
-          <h2 className="text-lg font-semibold text-slate-500">No businesses yet</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <Store className="mb-4 h-12 w-12 text-[var(--ink-500)]" />
+          <h2 className="text-lg font-semibold text-[var(--ink-500)]">No businesses yet</h2>
+          <p className="mt-1 text-sm text-[var(--ink-500)]">
             Businesses will appear here once they set up their profile.
           </p>
         </div>
@@ -59,10 +59,10 @@ export default async function BusinessDirectoryPage() {
             <Link
               key={b.id}
               href={`/business/${createBusinessSlug(b.name ?? "business", b.id)}`}
-              className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+              className="group rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-sm transition hover:border-[var(--border-strong)] hover:shadow-md"
             >
               <div className="mb-2 flex items-start justify-between">
-                <h3 className="font-semibold text-slate-900 group-hover:text-brand-600">
+                <h3 className="font-semibold text-[var(--ink-950)] group-hover:text-brand-600">
                   {b.name}
                 </h3>
                 {b.average_rating != null && (
@@ -73,10 +73,10 @@ export default async function BusinessDirectoryPage() {
                 )}
               </div>
               {b.role && (
-                <p className="mb-1 text-sm text-slate-500">{b.role}</p>
+                <p className="mb-1 text-sm text-[var(--ink-500)]">{b.role}</p>
               )}
               {b.location && (
-                <p className="mb-2 flex items-center gap-1 text-xs text-slate-400">
+                <p className="mb-2 flex items-center gap-1 text-xs text-[var(--ink-500)]">
                   <MapPin className="h-3 w-3" />
                   {b.location}
                 </p>
@@ -86,13 +86,13 @@ export default async function BusinessDirectoryPage() {
                   {b.services.slice(0, 3).map((s) => (
                     <span
                       key={s}
-                      className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                      className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-xs text-[var(--ink-700)]"
                     >
                       {s}
                     </span>
                   ))}
                   {b.services.length > 3 && (
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-[var(--ink-500)]">
                       +{b.services.length - 3} more
                     </span>
                   )}

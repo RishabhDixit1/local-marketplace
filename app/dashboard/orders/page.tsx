@@ -226,7 +226,7 @@ export default function ConsumerOrdersPage() {
   if (!consumerId) {
     return (
       <div className="w-full max-w-[1480px] mx-auto">
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-slate-700">
+        <div className="rounded-2xl border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-4 text-[var(--ink-700)]">
           Please log in to view your orders.
         </div>
       </div>
@@ -263,22 +263,22 @@ export default function ConsumerOrdersPage() {
             <Link
               key={order.id}
               href={`/orders/${order.id}`}
-              className="block p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-slate-300 transition-colors"
+              className="block p-5 bg-[var(--surface-elevated)] rounded-xl border-[var(--surface-border)] shadow-sm hover:border-[var(--border-strong)] transition-colors"
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <div className="font-semibold text-slate-900">
+                  <div className="font-semibold text-[var(--ink-950)]">
                     {order.listing_type.toUpperCase()}
                   </div>
-                  <div className="text-sm text-slate-500">₹{order.price.toLocaleString("en-IN")}</div>
-                  <div className="text-xs text-slate-400 mt-1">{new Date(order.created_at).toLocaleString()}</div>
+                  <div className="text-sm text-[var(--ink-500)]">₹{order.price.toLocaleString("en-IN")}</div>
+                  <div className="text-xs text-[var(--ink-500)] mt-1">{new Date(order.created_at).toLocaleString()}</div>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getOrderStatusPillClass(normalizedStatus)}`}>
                   {getOrderStatusLabel(normalizedStatus)}
                 </span>
               </div>
 
-              <p className="mt-2 text-xs text-slate-500">{getOrderStatusDescription(normalizedStatus)}</p>
+              <p className="mt-2 text-xs text-[var(--ink-500)]">{getOrderStatusDescription(normalizedStatus)}</p>
 
               {!!transitions.length && (
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -302,7 +302,7 @@ export default function ConsumerOrdersPage() {
               )}
 
               {!transitions.length && (
-                <p className="mt-3 text-xs text-slate-400">No further actions for this order.</p>
+                <p className="mt-3 text-xs text-[var(--ink-500)]">No further actions for this order.</p>
               )}
 
               {normalizedStatus === "payment_failed" && (
@@ -324,7 +324,7 @@ export default function ConsumerOrdersPage() {
               )}
 
               {isBusy && (
-                <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-600">
+                <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[var(--surface-soft)] px-3 py-1.5 text-xs text-[var(--ink-700)]">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   Updating...
                 </div>
@@ -334,7 +334,7 @@ export default function ConsumerOrdersPage() {
         })}
 
         {orders.length === 0 && (
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-slate-500">
+          <div className="rounded-xl border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6 text-[var(--ink-500)]">
             No orders yet.
           </div>
         )}

@@ -486,7 +486,7 @@ export default function CreatePostModal({
             type="button"
             onClick={() => openMediaPicker(item.accept)}
             disabled={mediaProcessing || attachments.length >= POST_MEDIA_MAX_ATTACHMENTS}
-            className="flex min-h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left text-sm text-slate-700 transition hover:border-[var(--brand-500)]/50 hover:bg-[var(--brand-50)]"
+            className="flex min-h-11 items-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-3 text-left text-sm text-[var(--ink-700)] transition hover:border-[var(--brand-500)]/50 hover:bg-[var(--brand-50)]"
           >
             <Icon className="h-4 w-4 shrink-0 text-[var(--brand-700)]" />
             <span className="font-semibold">{item.label}</span>
@@ -500,8 +500,8 @@ export default function CreatePostModal({
     <div
       className={`rounded-[1.75rem] border ${
         compact
-          ? "border-slate-200 bg-[linear-gradient(145deg,#ffffff_0%,#f8fafc_62%,#eef2ff_100%)] p-4"
-          : "border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(145deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-4"
+          ? "border-[var(--surface-border)] bg-[linear-gradient(145deg,#ffffff_0%,#f8fafc_62%,#eef2ff_100%)] p-4"
+          : "border-[var(--surface-border)] bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(145deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-4"
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -509,10 +509,10 @@ export default function CreatePostModal({
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-700)]">
             Media
           </p>
-          <h3 className="mt-2 text-base font-semibold text-slate-900">
+          <h3 className="mt-2 text-base font-semibold text-[var(--ink-950)]">
             {compact ? "Attach photos, video, or audio now" : "Show the request clearly"}
           </h3>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
+          <p className="mt-1 text-sm leading-6 text-[var(--ink-700)]">
             {compact
               ? "You do not need to wait for step two. Add visuals or a quick voice note as soon as you have the details."
               : "Images, short video clips, and voice notes make the post easier to trust and much easier to respond to."}
@@ -522,7 +522,7 @@ export default function CreatePostModal({
           type="button"
           onClick={() => openMediaPicker()}
           disabled={mediaProcessing || attachments.length >= POST_MEDIA_MAX_ATTACHMENTS}
-          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]"
         >
           {mediaProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : compact ? <Paperclip className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
           {mediaProcessing ? "Preparing..." : attachments.length ? "Add more" : "Add media"}
@@ -535,7 +535,7 @@ export default function CreatePostModal({
           {attachmentPreviews.map((preview, index) => (
             <div
               key={`${preview.url}-${index}`}
-              className={`relative overflow-hidden rounded-2xl border border-slate-200 bg-white ${
+              className={`relative overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] ${
                 compact ? "h-24" : "h-28"
               }`}
             >
@@ -552,9 +552,9 @@ export default function CreatePostModal({
                   preload="metadata"
                 />
               ) : (
-                <div className="flex h-full flex-col items-center justify-center gap-2 bg-slate-50 px-3 text-center">
+                <div className="flex h-full flex-col items-center justify-center gap-2 bg-[var(--surface-soft)] px-3 text-center">
                   <FileAudio className="h-6 w-6 text-[var(--brand-700)]" />
-                  <p className="line-clamp-2 text-[11px] font-semibold text-slate-700">{preview.name}</p>
+                  <p className="line-clamp-2 text-[11px] font-semibold text-[var(--ink-700)]">{preview.name}</p>
                 </div>
               )}
               {preview.kind !== "audio" ? (
@@ -570,7 +570,7 @@ export default function CreatePostModal({
               >
                 <X className="h-3.5 w-3.5" />
               </button>
-              <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-700 shadow-sm">
+              <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-[var(--ink-700)] shadow-sm">
                 {preview.kind === "video" ? <Film className="h-3 w-3" /> : preview.kind === "audio" ? <FileAudio className="h-3 w-3" /> : <Camera className="h-3 w-3" />}
                 {preview.kind}
               </div>
@@ -581,7 +581,7 @@ export default function CreatePostModal({
               type="button"
               onClick={() => openMediaPicker()}
               disabled={mediaProcessing}
-              className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-white/70 text-slate-500 transition hover:border-slate-400 hover:bg-white ${
+              className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-white/70 text-[var(--ink-500)] transition hover:border-slate-400 hover:bg-white ${
                 compact ? "h-24" : "h-28"
               }`}
             >
@@ -592,7 +592,7 @@ export default function CreatePostModal({
           </div>
           {attachments.length < POST_MEDIA_MAX_ATTACHMENTS ? (
             <div className="mt-3 rounded-[1.35rem] border border-dashed border-slate-300 bg-white/70 p-3">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-500)]">
                 Add another media type
               </p>
               {renderMediaOptionButtons()}
@@ -602,7 +602,7 @@ export default function CreatePostModal({
       ) : (
         <div className="mt-4 rounded-[1.5rem] border border-dashed border-slate-300 bg-white/70 p-4">
           {renderMediaOptionButtons()}
-          <p className="mt-3 text-sm text-slate-600">
+          <p className="mt-3 text-sm text-[var(--ink-700)]">
             Add real context now so nearby people can judge the request faster and trust what they are responding to.
           </p>
         </div>
@@ -618,9 +618,9 @@ export default function CreatePostModal({
         aria-label="Upload media"
       />
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--ink-500)]">
         <p>{POST_MEDIA_LIMIT_COPY} Images are compressed before upload.</p>
-        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-semibold text-slate-600">
+        <span className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-1 font-semibold text-[var(--ink-700)]">
           {attachmentCountLabel}
         </span>
       </div>
@@ -633,7 +633,7 @@ export default function CreatePostModal({
         type="button"
         onClick={onClose}
         disabled={posting}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-50"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-border)] text-[var(--ink-500)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
         aria-label="Go back"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -643,7 +643,7 @@ export default function CreatePostModal({
         type="button"
         onClick={onClose}
         disabled={posting}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-50"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-border)] text-[var(--ink-500)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
         aria-label="Close"
       >
         <X className="h-4 w-4" />
@@ -653,15 +653,15 @@ export default function CreatePostModal({
   const formContent = (
     <>
       {/* header */}
-      <div className="shrink-0 border-b border-slate-200 px-4 py-3">
+      <div className="shrink-0 border-b border-[var(--surface-border)] px-4 py-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Step {step} of 2</p>
-            <h2 className="mt-1 text-lg font-bold text-slate-900">{stepTitle}</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ink-500)]">Step {step} of 2</p>
+            <h2 className="mt-1 text-lg font-extrabold text-[var(--ink-950)]">{stepTitle}</h2>
           </div>
           {headerAction}
         </div>
-        <p className="mt-2 max-w-lg text-sm text-slate-500">{stepDescription}</p>
+        <p className="mt-2 max-w-lg text-sm text-[var(--ink-500)]">{stepDescription}</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           {[1, 2].map((stepNumber) => {
             const isActive = step === stepNumber;
@@ -682,17 +682,17 @@ export default function CreatePostModal({
                     ? "border-[var(--brand-500)] bg-[var(--brand-50)]"
                     : isComplete
                       ? "border-emerald-200 bg-emerald-50"
-                      : "border-slate-200 bg-slate-50"
+                      : "border-[var(--surface-border)] bg-[var(--surface-soft)]"
                 }`}
                 aria-current={isActive ? "step" : undefined}
               >
                 <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className={isActive ? "text-[var(--brand-700)]" : isComplete ? "text-emerald-700" : "text-slate-500"}>
+                  <span className={isActive ? "text-[var(--brand-700)]" : isComplete ? "text-emerald-700" : "text-[var(--ink-500)]"}>
                     {stepNumber === 1 ? "Core Details" : "Discovery Details"}
                   </span>
                   {isComplete ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : null}
                 </div>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-[var(--ink-500)]">
                   {stepNumber === 1 ? "Type, category, title, description, and media" : "Price, location, and discovery details"}
                 </p>
               </button>
@@ -716,11 +716,11 @@ export default function CreatePostModal({
                       className={`rounded-[1.35rem] border px-3 py-3 text-left transition ${
                         postType === opt.value
                           ? "border-[var(--brand-500)] bg-[linear-gradient(135deg,var(--brand-50)_0%,#ffffff_100%)] text-[var(--brand-700)] shadow-[0_16px_28px_-24px_rgba(15,118,110,0.65)]"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                          : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--border-strong)]"
                       }`}
                     >
                       <span className="block text-sm font-semibold">{opt.label}</span>
-                      <span className="mt-1 block text-[11px] leading-4 text-slate-500">
+                      <span className="mt-1 block text-[11px] leading-4 text-[var(--ink-500)]">
                         {opt.value === "need" ? "Ask nearby providers" : opt.value === "service" ? "Offer your work" : "Sell an item"}
                       </span>
                     </button>
@@ -731,22 +731,22 @@ export default function CreatePostModal({
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-700)]">
                     Need Post
                   </p>
-                  <h3 className="mt-2 text-base font-semibold text-slate-900">Create a local need post</h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                  <h3 className="mt-2 text-base font-semibold text-[var(--ink-950)]">Create a local need post</h3>
+                  <p className="mt-1 text-sm leading-6 text-[var(--ink-700)]">
                     Services and products now belong in your Store and Control flows. This composer is only for help requests.
                   </p>
                 </div>
               )}
 
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="post-category">
+                <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="post-category">
                   Category
                 </label>
                 <select
                   id="post-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20"
+                  className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20"
                 >
                   {CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
@@ -755,13 +755,13 @@ export default function CreatePostModal({
               </div>
 
               <div>
-                <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-slate-700" htmlFor="post-title">
+                <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-[var(--ink-700)]" htmlFor="post-title">
                   <span>Title</span>
-                  <span className={`text-xs font-normal ${title.length > TITLE_MAX - 10 ? "text-rose-500" : "text-slate-400"}`}>
+                  <span className={`text-xs font-normal ${title.length > TITLE_MAX - 10 ? "text-rose-500" : "text-[var(--ink-500)]"}`}>
                     {title.length}/{TITLE_MAX}
                   </span>
                   </label>
-                  <div className="mb-1.5 h-1 overflow-hidden rounded-full bg-slate-100">
+                  <div className="mb-1.5 h-1 overflow-hidden rounded-full bg-[var(--surface-soft)]">
                     <div
                       className={`h-full rounded-full transition-all duration-200 ${
                         title.length > TITLE_MAX - 10
@@ -779,19 +779,19 @@ export default function CreatePostModal({
                   onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX))}
                   rows={2}
                   placeholder={placeholder}
-                  className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base leading-6 text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                  className="w-full resize-none rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base leading-6 text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
                 />
-                <p className="mt-2 text-xs text-slate-500">Use the title as the headline people will scan first.</p>
+                <p className="mt-2 text-xs text-[var(--ink-500)]">Use the title as the headline people will scan first.</p>
               </div>
 
                 <div>
-                  <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-slate-700" htmlFor="post-details">
+                  <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-[var(--ink-700)]" htmlFor="post-details">
                     <span>Details</span>
-                    <span className={`text-xs font-normal ${details.length > DETAILS_MAX - 80 ? "text-rose-500" : "text-slate-400"}`}>
+                    <span className={`text-xs font-normal ${details.length > DETAILS_MAX - 80 ? "text-rose-500" : "text-[var(--ink-500)]"}`}>
                       {details.length}/{DETAILS_MAX}
                     </span>
                   </label>
-                  <div className="mb-1.5 h-1 overflow-hidden rounded-full bg-slate-100">
+                  <div className="mb-1.5 h-1 overflow-hidden rounded-full bg-[var(--surface-soft)]">
                     <div
                       className={`h-full rounded-full transition-all duration-200 ${
                         details.length > DETAILS_MAX - 80
@@ -809,9 +809,9 @@ export default function CreatePostModal({
                   onChange={(e) => setDetails(e.target.value.slice(0, DETAILS_MAX))}
                   rows={5}
                   placeholder={detailPlaceholder}
-                  className="w-full resize-y rounded-[24px] border border-slate-200 bg-white px-4 py-3.5 text-base leading-6 text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                  className="w-full resize-y rounded-[24px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base leading-6 text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
                 />
-                <p className="mt-2 text-xs text-slate-500">
+                <p className="mt-2 text-xs text-[var(--ink-500)]">
                   Clear details reduce back-and-forth and help the right people respond faster.
                 </p>
               </div>
@@ -820,15 +820,15 @@ export default function CreatePostModal({
             </>
           ) : (
             <>
-              <div className="rounded-[1.75rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(145deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-4">
+              <div className="rounded-[1.75rem] border border-[var(--surface-border)] bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(145deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-4">
                 <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
-                  <span className="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-slate-700">
+                  <span className="rounded-full border border-[var(--surface-border)] bg-white/80 px-2.5 py-1 text-[var(--ink-700)]">
                     {postType === "need" ? "Need Help" : postType === "service" ? "Service" : "Product"}
                   </span>
-                  <span className="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-slate-700">{category}</span>
+                  <span className="rounded-full border border-[var(--surface-border)] bg-white/80 px-2.5 py-1 text-[var(--ink-700)]">{category}</span>
                 </div>
-                <h3 className="mt-3 text-base font-semibold text-slate-900">{title.trim() || "Untitled post"}</h3>
-                <p className="mt-1 text-sm text-slate-600">
+                <h3 className="mt-3 text-base font-semibold text-[var(--ink-950)]">{title.trim() || "Untitled post"}</h3>
+                <p className="mt-1 text-sm text-[var(--ink-700)]">
                   {details.trim()
                     ? `${details.trim().slice(0, 140)}${details.trim().length > 140 ? "..." : ""}`
                     : "Add pricing, location, and media to make this post feel complete before publishing."}
@@ -836,8 +836,8 @@ export default function CreatePostModal({
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="post-price">
-                  Price <span className="font-normal text-slate-400">(optional)</span>
+                <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="post-price">
+                  Price <span className="font-normal text-[var(--ink-500)]">(optional)</span>
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -847,9 +847,9 @@ export default function CreatePostModal({
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
                     placeholder="Amount"
-                    className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                    className="min-w-0 flex-1 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
                   />
-                  <div className="flex shrink-0 overflow-hidden rounded-2xl border border-slate-200">
+                  <div className="flex shrink-0 overflow-hidden rounded-2xl border border-[var(--surface-border)]">
                     {PRICE_TYPES.map((pt) => (
                       <button
                         key={pt}
@@ -858,7 +858,7 @@ export default function CreatePostModal({
                         className={`px-3 py-2 text-xs font-semibold transition ${
                           priceType === pt
                             ? "bg-[var(--brand-900)] text-white"
-                            : "bg-white text-slate-600 hover:bg-slate-50"
+                            : "bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                         }`}
                       >
                         {pt}
@@ -866,11 +866,11 @@ export default function CreatePostModal({
                     ))}
                   </div>
                 </div>
-                <p className="mt-2 text-xs text-slate-500">{priceHint}</p>
+                <p className="mt-2 text-xs text-[var(--ink-500)]">{priceHint}</p>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="post-location">
+                <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="post-location">
                   Location
                 </label>
                 <div className="flex flex-col gap-2 sm:flex-row">
@@ -883,20 +883,20 @@ export default function CreatePostModal({
                       setGpsNotice("");
                     }}
                     placeholder="Area, neighbourhood, city"
-                    className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                    className="min-w-0 flex-1 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
                   />
                   <button
                     type="button"
                     onClick={() => void handleGps()}
                     disabled={locating}
-                    className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 sm:min-h-0"
+                    className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-60 sm:min-h-0"
                     aria-label="Detect GPS"
                   >
                     {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
                     GPS
                   </button>
                 </div>
-                <p className="mt-2 text-xs text-slate-500">{locationHint}</p>
+                <p className="mt-2 text-xs text-[var(--ink-500)]">{locationHint}</p>
                 {gpsNotice ? (
                   <p className="mt-2 text-xs font-medium text-[var(--brand-700)]">
                     {gpsNotice}
@@ -922,7 +922,7 @@ export default function CreatePostModal({
       </div>
 
       {/* sticky post button */}
-      <div className="border-t border-slate-200 bg-white px-4 pb-[env(safe-area-inset-bottom)] pt-3">
+      <div className="border-t border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 pb-[env(safe-area-inset-bottom)] pt-3">
         <div className="mx-auto flex max-w-lg gap-3">
           {step === 2 ? (
             <button
@@ -932,7 +932,7 @@ export default function CreatePostModal({
                 setStep(1);
               }}
               disabled={posting}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-4 text-base font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-[var(--surface-border)] px-4 py-4 text-base font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-60"
             >
               <ArrowLeft className="h-4 w-4" />
               Back
@@ -963,7 +963,7 @@ export default function CreatePostModal({
   if (variant === "page") {
     return (
       <div className="mx-auto w-full max-w-2xl">
-        <div className="flex min-h-screen flex-col bg-white">
+        <div className="flex min-h-screen flex-col bg-[var(--surface-elevated)]">
           {formContent}
         </div>
       </div>
@@ -972,7 +972,7 @@ export default function CreatePostModal({
 
   return (
     <div className="fixed inset-0 z-[var(--layer-modal)] flex items-end justify-center sm:items-center sm:bg-slate-950/45">
-      <div className="flex max-h-[100dvh] w-full flex-col overflow-hidden bg-white sm:max-h-[90vh] sm:max-w-2xl sm:rounded-[1.6rem] sm:shadow-2xl">
+      <div className="flex max-h-[100dvh] w-full flex-col overflow-hidden bg-[var(--surface-elevated)] sm:max-h-[90vh] sm:max-w-2xl sm:rounded-[1.6rem] sm:shadow-2xl">
         {formContent}
       </div>
     </div>

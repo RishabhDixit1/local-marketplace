@@ -25,7 +25,7 @@ const toneClasses = {
   success:
     "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus-visible:ring-emerald-500",
   danger: "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 focus-visible:ring-rose-500",
-  neutral: "border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 focus-visible:ring-slate-500",
+  neutral: "border border-[var(--surface-border)] bg-[var(--surface-soft)] text-[var(--ink-700)] hover:bg-[var(--surface-soft)] focus-visible:ring-[var(--ink-500)]",
   status: "border border-amber-200 bg-amber-50 text-amber-700",
 } as const;
 
@@ -51,7 +51,7 @@ export default function ConnectionActionGroup({
 }: Props) {
   if (demoLabel) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-600">
+      <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-1.5 text-sm font-semibold text-[var(--ink-700)]">
         {demoLabel}
       </span>
     );

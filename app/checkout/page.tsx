@@ -343,9 +343,9 @@ export default function CheckoutPage() {
   if (!hydrated || !authResolved) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--surface-app)] px-4">
-        <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-6 sm:p-10 shadow-lg max-w-sm w-full text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-slate-300" />
-          <p className="font-semibold text-slate-700">Loading checkout…</p>
+        <div className="flex flex-col items-center gap-4 rounded-3xl bg-[var(--surface-elevated)] p-6 sm:p-10 shadow-lg max-w-sm w-full text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-[var(--ink-500)]" />
+          <p className="font-semibold text-[var(--ink-700)]">Loading checkout…</p>
         </div>
       </div>
     );
@@ -354,14 +354,14 @@ export default function CheckoutPage() {
   if (success !== null) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--surface-app)] px-4">
-        <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-6 sm:p-10 shadow-lg max-w-sm w-full text-center">
+        <div className="flex flex-col items-center gap-4 rounded-3xl bg-[var(--surface-elevated)] p-6 sm:p-10 shadow-lg max-w-sm w-full text-center">
           <CheckCircle2 className="h-14 w-14 text-emerald-500" />
-          <h1 className="text-xl font-bold text-slate-900">Order Placed!</h1>
+          <h1 className="text-xl font-extrabold text-[var(--ink-950)]">Order Placed!</h1>
           {success && (
-            <p className="text-xs font-mono text-slate-400">Order #{success.slice(0, 8).toUpperCase()}</p>
+            <p className="text-xs font-mono text-[var(--ink-500)]">Order #{success.slice(0, 8).toUpperCase()}</p>
           )}
-          <p className="text-sm text-slate-500">Redirecting to your order status…</p>
-          <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+          <p className="text-sm text-[var(--ink-500)]">Redirecting to your order status…</p>
+          <Loader2 className="h-5 w-5 animate-spin text-[var(--ink-500)]" />
         </div>
       </div>
     );
@@ -370,9 +370,9 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--surface-app)] px-4">
-        <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-6 sm:p-10 shadow-lg max-w-sm w-full text-center">
-          <ShoppingBag className="h-12 w-12 text-slate-300" />
-          <p className="font-semibold text-slate-700">Your cart is empty</p>
+        <div className="flex flex-col items-center gap-4 rounded-3xl bg-[var(--surface-elevated)] p-6 sm:p-10 shadow-lg max-w-sm w-full text-center">
+          <ShoppingBag className="h-12 w-12 text-[var(--ink-500)]" />
+          <p className="font-semibold text-[var(--ink-700)]">Your cart is empty</p>
           <Link href="/dashboard" className="text-sm font-medium text-[var(--brand-500)] hover:underline">Browse marketplace</Link>
         </div>
       </div>
@@ -384,35 +384,35 @@ export default function CheckoutPage() {
       <RouteObservability route="checkout" />
 
       {/* Top bar */}
-      <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-sm">
+      <div className="sticky top-0 z-40 border-b border-[var(--surface-border)] bg-[var(--surface-elevated)]/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-3 py-3 sm:px-4">
           <button
             type="button"
             onClick={handleBackNavigation}
             aria-label="Go back"
-            className="flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-slate-100"
+            className="flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-[var(--surface-soft)]"
           >
-            <ArrowLeft className="h-4 w-4 text-slate-600" />
+            <ArrowLeft className="h-4 w-4 text-[var(--ink-700)]" />
           </button>
-          <h1 className="font-semibold text-slate-900">Checkout</h1>
-          <span className="ml-auto text-sm text-slate-500">{items.length} item{items.length !== 1 ? "s" : ""}</span>
+          <h1 className="font-semibold text-[var(--ink-950)]">Checkout</h1>
+          <span className="ml-auto text-sm text-[var(--ink-500)]">{items.length} item{items.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
 
       <div className="mx-auto max-w-5xl px-3 py-4 sm:px-4 sm:py-6 lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-5">
 
         {/* Order summary */}
-        <section className="rounded-[1.6rem] bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5 lg:col-start-2 lg:row-span-5 lg:sticky lg:top-24">
+        <section className="rounded-[1.6rem] bg-[var(--surface-elevated)] p-4 shadow-sm sm:rounded-2xl sm:p-5 lg:col-start-2 lg:row-span-5 lg:sticky lg:top-24">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="flex items-center gap-2 font-semibold text-slate-900">
-              <Package className="h-4 w-4 text-slate-500" />
+            <h2 className="flex items-center gap-2 font-semibold text-[var(--ink-950)]">
+              <Package className="h-4 w-4 text-[var(--ink-500)]" />
               Order Summary
             </h2>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+            <span className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-700)]">
               {items.length} item{items.length !== 1 ? "s" : ""}
             </span>
           </div>
-          <div className="mb-4 flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2">
+          <div className="mb-4 flex items-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] p-2">
             {[
               { key: "flow", label: "Flow", icon: SelectedFulfillmentIcon },
               { key: "address", label: "Address", icon: MapPin },
@@ -423,12 +423,12 @@ export default function CheckoutPage() {
               return (
                 <div
                   key={step.key}
-                  className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-white px-2.5 py-2 shadow-sm"
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-[var(--surface-elevated)] px-2.5 py-2 shadow-sm"
                 >
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-50 text-slate-600">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--surface-soft)] text-[var(--ink-700)]">
                     <Icon className="h-3.5 w-3.5" />
                   </span>
-                  <span className="truncate text-[11px] font-semibold text-slate-600">{step.label}</span>
+                  <span className="truncate text-[11px] font-semibold text-[var(--ink-700)]">{step.label}</span>
                 </div>
               );
             })}
@@ -437,45 +437,45 @@ export default function CheckoutPage() {
           <div className="space-y-2.5">
             {Object.entries(byProvider).map(([, provItems]) => (
               provItems.map((item) => (
-                <div key={item.key} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm">
+                <div key={item.key} className="flex items-start gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)]/80 px-3 py-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-elevated)] text-[var(--ink-500)] shadow-sm">
                     <Package className="h-3.5 w-3.5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-900">{item.title}</p>
+                    <p className="truncate text-sm font-medium text-[var(--ink-950)]">{item.title}</p>
                     {item.itemType === "product" && item.deliveryMethod ? (
-                      <p className="mt-0.5 text-[11px] text-slate-400">{PRODUCT_DELIVERY_SUMMARY_LABELS[item.deliveryMethod]}</p>
+                      <p className="mt-0.5 text-[11px] text-[var(--ink-500)]">{PRODUCT_DELIVERY_SUMMARY_LABELS[item.deliveryMethod]}</p>
                     ) : null}
-                    <p className="text-xs text-slate-500">{item.providerName} · Qty {item.quantity}</p>
+                    <p className="text-xs text-[var(--ink-500)]">{item.providerName} · Qty {item.quantity}</p>
                   </div>
-                  <p className="shrink-0 text-sm font-semibold text-slate-900">{INR(item.price * item.quantity)}</p>
+                  <p className="shrink-0 text-sm font-semibold text-[var(--ink-950)]">{INR(item.price * item.quantity)}</p>
                 </div>
               ))
             ))}
           </div>
 
-          <div className="mt-4 border-t border-slate-100 pt-4">
+          <div className="mt-4 border-t border-[var(--surface-border)] pt-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-600">Total</span>
-              <span className="text-base font-bold text-slate-900">{INR(totalPrice)}</span>
+              <span className="text-sm font-medium text-[var(--ink-700)]">Total</span>
+              <span className="text-base font-bold text-[var(--ink-950)]">{INR(totalPrice)}</span>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm">
+              <div className="flex items-center gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-2.5">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-elevated)] text-[var(--ink-700)] shadow-sm">
                   <SelectedFulfillmentIcon className="h-3.5 w-3.5" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Flow</p>
-                  <p className="truncate text-sm font-semibold text-slate-900">{fulfillmentOption.shortLabel}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-500)]">Flow</p>
+                  <p className="truncate text-sm font-semibold text-[var(--ink-950)]">{fulfillmentOption.shortLabel}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm">
+              <div className="flex items-center gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-2.5">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-elevated)] text-[var(--ink-700)] shadow-sm">
                   <SelectedPaymentIcon className="h-3.5 w-3.5" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Payment</p>
-                  <p className="truncate text-sm font-semibold text-slate-900">{selectedPaymentOption.shortLabel}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-500)]">Payment</p>
+                  <p className="truncate text-sm font-semibold text-[var(--ink-950)]">{selectedPaymentOption.shortLabel}</p>
                 </div>
               </div>
             </div>
@@ -483,9 +483,9 @@ export default function CheckoutPage() {
         </section>
 
         {/* Delivery / fulfillment */}
-        <section className="rounded-[1.6rem] bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5 lg:col-start-1">
-          <h2 className="mb-3 flex items-center gap-2 font-semibold text-slate-900">
-            <Package className="h-4 w-4 text-slate-500" />
+        <section className="rounded-[1.6rem] bg-[var(--surface-elevated)] p-4 shadow-sm sm:rounded-2xl sm:p-5 lg:col-start-1">
+          <h2 className="mb-3 flex items-center gap-2 font-semibold text-[var(--ink-950)]">
+            <Package className="h-4 w-4 text-[var(--ink-500)]" />
             Delivery / Fulfillment
           </h2>
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
@@ -504,29 +504,29 @@ export default function CheckoutPage() {
                     setFulfillmentMethod(method);
                   }}
                   className={`rounded-2xl border p-3 text-left transition ${
-                    active ? "border-[var(--brand-500)] bg-[var(--brand-50)] shadow-[0_12px_28px_-24px_rgba(14,165,164,0.28)]" : "border-slate-200 bg-white hover:border-slate-300"
+                    active ? "border-[var(--brand-500)] bg-[var(--brand-50)] shadow-[0_12px_28px_-24px_rgba(14,165,164,0.28)]" : "border-[var(--surface-border)] bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl ${active ? "bg-white text-[var(--brand-500)]" : "bg-slate-100 text-slate-600"}`}>
+                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl ${active ? "bg-[var(--surface-elevated)] text-[var(--brand-500)]" : "bg-[var(--surface-soft)] text-[var(--ink-700)]"}`}>
                       <Icon className="h-3.5 w-3.5" />
                     </span>
                     {recommended ? (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+                      <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ink-700)]">
                         Recommended
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-sm font-semibold text-slate-900">{option.shortLabel}</p>
+                  <p className="mt-3 text-sm font-semibold text-[var(--ink-950)]">{option.shortLabel}</p>
                 </button>
               );
             })}
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm">
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-2.5">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-elevated)] text-[var(--ink-700)] shadow-sm">
               <SelectedFulfillmentIcon className="h-3.5 w-3.5" />
             </span>
-            <span className="text-sm font-semibold text-slate-900">{fulfillmentOption.shortLabel}</span>
+            <span className="text-sm font-semibold text-[var(--ink-950)]">{fulfillmentOption.shortLabel}</span>
             {fulfillmentMethod === recommendedFulfillmentMethod ? (
               <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
                 Recommended
@@ -536,13 +536,13 @@ export default function CheckoutPage() {
         </section>
 
         {/* Delivery address */}
-        <section className="rounded-[1.6rem] bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5 lg:col-start-1">
-          <h2 className="mb-3 flex items-center gap-2 font-semibold text-slate-900">
-            <MapPin className="h-4 w-4 text-slate-500" />
+        <section className="rounded-[1.6rem] bg-[var(--surface-elevated)] p-4 shadow-sm sm:rounded-2xl sm:p-5 lg:col-start-1">
+          <h2 className="mb-3 flex items-center gap-2 font-semibold text-[var(--ink-950)]">
+            <MapPin className="h-4 w-4 text-[var(--ink-500)]" />
             Address
           </h2>
           <textarea
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)] resize-none"
+            className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-4 py-3 text-sm text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)] resize-none"
             placeholder={fulfillmentOption.addressPlaceholder}
             aria-label={fulfillmentOption.addressLabel}
             rows={2}
@@ -551,30 +551,30 @@ export default function CheckoutPage() {
             onChange={(e) => setAddress(e.target.value)}
           />
           <div className="mt-2 flex items-center justify-between gap-2">
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+            <span className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-500)]">
               {fulfillmentOption.shortLabel}
             </span>
-            <p className={`text-[11px] ${address.length > 480 ? "text-amber-500" : "text-slate-400"}`}>
+            <p className={`text-[11px] ${address.length > 480 ? "text-amber-500" : "text-[var(--ink-500)]"}`}>
               {address.length}/500
             </p>
           </div>
           <textarea
-            className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)] resize-none"
+            className="mt-3 w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-4 py-3 text-sm text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)] resize-none"
             placeholder={buildNotesPlaceholder(fulfillmentMethod)}
             rows={2}
             maxLength={1000}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
-          <p className={`mt-2 text-right text-[11px] ${notes.length > 980 ? "text-amber-500" : "text-slate-400"}`}>
+          <p className={`mt-2 text-right text-[11px] ${notes.length > 980 ? "text-amber-500" : "text-[var(--ink-500)]"}`}>
             {notes.length}/1000
           </p>
         </section>
 
         {/* Payment method */}
-        <section className="rounded-[1.6rem] bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5 lg:col-start-1">
-          <h2 className="mb-3 flex items-center gap-2 font-semibold text-slate-900">
-            <CreditCard className="h-4 w-4 text-slate-500" />
+        <section className="rounded-[1.6rem] bg-[var(--surface-elevated)] p-4 shadow-sm sm:rounded-2xl sm:p-5 lg:col-start-1">
+          <h2 className="mb-3 flex items-center gap-2 font-semibold text-[var(--ink-950)]">
+            <CreditCard className="h-4 w-4 text-[var(--ink-500)]" />
             Payment Method
           </h2>
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5" role="radiogroup" aria-label="Payment method">
@@ -594,36 +594,36 @@ export default function CheckoutPage() {
                     payMethod === opt.id
                       ? "border-[var(--brand-500)] bg-[var(--brand-50)] shadow-[0_12px_28px_-24px_rgba(14,165,164,0.28)]"
                       : disabled
-                      ? "cursor-not-allowed border-slate-100 bg-slate-50 opacity-40"
-                      : "border-slate-200 hover:border-slate-300"
+                      ? "cursor-not-allowed border-[var(--surface-border)] bg-[var(--surface-soft)] opacity-40"
+                      : "border-[var(--surface-border)] hover:border-[var(--border-strong)]"
                   }`}
                 >
                   <span
                     className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${
-                      payMethod === opt.id ? "bg-white text-slate-900" : "bg-slate-100 text-slate-600"
+                      payMethod === opt.id ? "bg-[var(--surface-elevated)] text-[var(--ink-950)]" : "bg-[var(--surface-soft)] text-[var(--ink-700)]"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
                   </span>
                   <div className="min-w-0">
-                    <span className="block text-sm font-semibold text-slate-900">{opt.label}</span>
-                    {disabled ? <span className="block text-[10px] text-slate-400">Not configured</span> : null}
+                    <span className="block text-sm font-semibold text-[var(--ink-950)]">{opt.label}</span>
+                    {disabled ? <span className="block text-[10px] text-[var(--ink-500)]">Not configured</span> : null}
                   </div>
                 </button>
               );
             })}
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Rails</span>
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-2.5">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-500)]">Rails</span>
             {selectedPaymentOption.rails.map((rail) => (
               <span
                 key={`${payMethod}-${rail}`}
-                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600"
+                className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-700)]"
               >
                 {rail}
               </span>
             ))}
-            <span className="ml-auto rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+            <span className="ml-auto rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-700)]">
               {selectedPaymentOption.collectionLabel}
             </span>
           </div>

@@ -198,37 +198,37 @@ export default function LaunchpadPage() {
             <Rocket className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Provider setup</h1>
-            <p className="text-sm text-slate-500">Build your identity, catalog, area, and publish-ready draft.</p>
+            <h1 className="text-xl font-bold text-[var(--ink-950)]">Provider setup</h1>
+            <p className="text-sm text-[var(--ink-500)]">Build your identity, catalog, area, and publish-ready draft.</p>
           </div>
         </div>
       </div>
 
       <div className="space-y-6">
-        <section className="rounded-[var(--radius-card-lg)] border border-slate-200 bg-white p-4 shadow-[var(--shadow-card)]">
+        <section className="rounded-[var(--radius-card-lg)] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-[var(--shadow-card)]">
           <div className="grid gap-2 sm:grid-cols-4">
             {SETUP_STEPS.map((step, index) => (
-              <div key={step.label} className="rounded-[var(--radius-card)] border border-slate-200 bg-slate-50 px-3 py-3">
+              <div key={step.label} className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-3">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] bg-[var(--brand-900)] text-white">
                     <step.icon className="h-4 w-4" />
                   </span>
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Step {index + 1}</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-500)]">Step {index + 1}</span>
                 </div>
-                <p className="mt-2 text-sm font-semibold text-slate-900">{step.label}</p>
+                <p className="mt-2 text-sm font-semibold text-[var(--ink-950)]">{step.label}</p>
               </div>
             ))}
           </div>
         </section>
 
         {/* ── Section 1: Your Business ────────────────── */}
-        <section className="rounded-[var(--radius-card-lg)] border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)]">
-          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Step 1: Identity</h2>
+        <section className="rounded-[var(--radius-card-lg)] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-[var(--shadow-card)]">
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-[var(--ink-500)]">Step 1: Identity</h2>
           <div className="space-y-4">
 
             {/* Business name */}
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-name">
+              <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="lp-name">
                 Business name
               </label>
               <input
@@ -237,20 +237,20 @@ export default function LaunchpadPage() {
                 value={answers.businessName}
                 onChange={(e) => set("businessName", e.target.value)}
                 placeholder="e.g. Sharma Plumbing Services"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
               />
             </div>
 
             {/* Business type */}
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-type">
+              <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="lp-type">
                 Business type
               </label>
               <select
                 id="lp-type"
                 value={answers.businessType}
                 onChange={(e) => set("businessType", e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20"
+                className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20"
               >
                 <option value="">Select business type</option>
                 {BUSINESS_TYPES.map((bt) => <option key={bt} value={bt}>{bt}</option>)}
@@ -259,14 +259,14 @@ export default function LaunchpadPage() {
 
             {/* Primary category */}
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-category">
+              <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="lp-category">
                 Primary category
               </label>
               <select
                 id="lp-category"
                 value={answers.primaryCategory}
                 onChange={(e) => set("primaryCategory", e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20"
+                className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20"
               >
                 <option value="">Select category</option>
                 {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
@@ -275,7 +275,7 @@ export default function LaunchpadPage() {
 
             {/* Offering type */}
             <div>
-              <p className="mb-2 text-sm font-semibold text-slate-700">What do you offer?</p>
+              <p className="mb-2 text-sm font-semibold text-[var(--ink-700)]">What do you offer?</p>
               <div className="grid grid-cols-3 gap-2">
                 {OFFERING_OPTIONS.map((opt) => (
                   <button
@@ -285,7 +285,7 @@ export default function LaunchpadPage() {
                     className={`flex flex-col items-center gap-1 rounded-2xl border py-3 px-2 text-xs font-semibold transition ${
                       answers.offeringType === opt.value
                         ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                        : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--border-strong)]"
                     }`}
                   >
                     <span className="text-sm font-bold">{opt.label}</span>
@@ -298,32 +298,32 @@ export default function LaunchpadPage() {
         </section>
 
         {/* ── Section 2: What You Offer ───────────────── */}
-        <section className="rounded-[var(--radius-card-lg)] border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)]">
-          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Step 2: Services / products</h2>
+        <section className="rounded-[var(--radius-card-lg)] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-[var(--shadow-card)]">
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-[var(--ink-500)]">Step 2: Services / products</h2>
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-offerings">
+              <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="lp-offerings">
                 Core offerings
               </label>
-              <p className="mb-2 text-xs text-slate-500">List your main services or products, one per line or comma-separated.</p>
+              <p className="mb-2 text-xs text-[var(--ink-500)]">List your main services or products, one per line or comma-separated.</p>
               <textarea
                 id="lp-offerings"
                 value={answers.coreOfferings}
                 onChange={(e) => set("coreOfferings", e.target.value)}
                 rows={3}
                 placeholder="e.g. Tap repair, pipe leakage, bathroom fitting, water tank cleaning"
-                className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                className="w-full resize-none rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
               />
             </div>
           </div>
         </section>
 
         {/* ── Section 3: Location ─────────────────────── */}
-        <section className="rounded-[var(--radius-card-lg)] border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)]">
-          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Step 3: Location / availability</h2>
+        <section className="rounded-[var(--radius-card-lg)] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-[var(--shadow-card)]">
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-[var(--ink-500)]">Step 3: Location / availability</h2>
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-location">
+              <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="lp-location">
                 Your location
               </label>
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -333,20 +333,20 @@ export default function LaunchpadPage() {
                   value={answers.location}
                   onChange={(e) => set("location", e.target.value)}
                   placeholder="Area, city"
-                  className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                  className="min-w-0 flex-1 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
                 />
                 <button
                   type="button"
                   onClick={() => void handleGps()}
                   disabled={locating}
-                  className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 sm:min-h-0"
+                  className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-60 sm:min-h-0"
                   aria-label="Detect GPS"
                 >
                   {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
                   GPS
                 </button>
               </div>
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-[var(--ink-500)]">
                 Keep this label human-readable for customers. GPS stores precise coordinates separately.
               </p>
               {typeof answers.latitude === "number" && typeof answers.longitude === "number" ? (
@@ -357,7 +357,7 @@ export default function LaunchpadPage() {
               ) : null}
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-service-area">
+              <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="lp-service-area">
                 Service area
               </label>
               <input
@@ -366,11 +366,11 @@ export default function LaunchpadPage() {
                 value={answers.serviceArea}
                 onChange={(e) => set("serviceArea", e.target.value)}
                 placeholder="Neighbourhoods or areas you cover, comma-separated"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
               />
             </div>
             <div>
-              <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-slate-700" htmlFor="lp-radius">
+              <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-[var(--ink-700)]" htmlFor="lp-radius">
                 <span>Service radius (km)</span>
                 <span className="font-bold text-[var(--brand-700)]">{answers.serviceRadiusKm} km</span>
               </label>
@@ -384,7 +384,7 @@ export default function LaunchpadPage() {
                 onChange={(e) => set("serviceRadiusKm", Number(e.target.value))}
                 className="w-full accent-[var(--brand-700)]"
               />
-              <div className="mt-1 flex justify-between text-xs text-slate-400">
+              <div className="mt-1 flex justify-between text-xs text-[var(--ink-500)]">
                 <span>1 km</span><span>50 km</span>
               </div>
             </div>
@@ -392,13 +392,13 @@ export default function LaunchpadPage() {
         </section>
 
         {/* ── Section 4: Your Brand ───────────────────── */}
-        <section className="rounded-[var(--radius-card-lg)] border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)]">
-          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Step 4: Publish</h2>
+        <section className="rounded-[var(--radius-card-lg)] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-[var(--shadow-card)]">
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-[var(--ink-500)]">Step 4: Publish</h2>
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-slate-700" htmlFor="lp-desc">
+              <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-[var(--ink-700)]" htmlFor="lp-desc">
                 <span>Short description</span>
-                <span className={`text-xs font-normal ${answers.shortDescription.length > 0 && answers.shortDescription.length < 24 ? "text-amber-500" : "text-slate-400"}`}>
+                <span className={`text-xs font-normal ${answers.shortDescription.length > 0 && answers.shortDescription.length < 24 ? "text-amber-500" : "text-[var(--ink-500)]"}`}>
                   {answers.shortDescription.length} chars (min 24)
                 </span>
               </label>
@@ -408,11 +408,11 @@ export default function LaunchpadPage() {
                 onChange={(e) => set("shortDescription", e.target.value)}
                 rows={3}
                 placeholder="We fix plumbing issues quickly and cleanly. Available 7 days a week."
-                className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                className="w-full resize-none rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
               />
             </div>
             <div>
-              <p className="mb-2 text-sm font-semibold text-slate-700">Brand tone</p>
+              <p className="mb-2 text-sm font-semibold text-[var(--ink-700)]">Brand tone</p>
               <div className="flex flex-wrap gap-2">
                 {TONE_OPTIONS.map((opt) => (
                   <button
@@ -422,7 +422,7 @@ export default function LaunchpadPage() {
                     className={`flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
                       answers.brandTone === opt.value
                         ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                        : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--border-strong)]"
                     }`}
                   >
                     <span>{opt.emoji}</span>
@@ -438,18 +438,18 @@ export default function LaunchpadPage() {
         <button
           type="button"
           onClick={() => setShowExtras((prev) => !prev)}
-          className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          className="flex w-full items-center justify-between rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-3.5 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]"
         >
           <span>Add more details (optional)</span>
           {showExtras ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
 
         {showExtras ? (
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-sm">
             <div className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-catalog">
-                  Service/product catalog <span className="font-normal text-slate-400">(paste your menu or price list)</span>
+                <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="lp-catalog">
+                  Service/product catalog <span className="font-normal text-[var(--ink-500)]">(paste your menu or price list)</span>
                 </label>
                 <textarea
                   id="lp-catalog"
@@ -457,12 +457,12 @@ export default function LaunchpadPage() {
                   onChange={(e) => set("catalogText", e.target.value)}
                   rows={4}
                   placeholder="Tap replacement – ₹299&#10;Pipe repair – ₹499&#10;Bathroom fitting – ₹1,200"
-                  className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                  className="w-full resize-none rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-pricing">
-                  Pricing notes <span className="font-normal text-slate-400">(how you charge)</span>
+                <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="lp-pricing">
+                  Pricing notes <span className="font-normal text-[var(--ink-500)]">(how you charge)</span>
                 </label>
                 <input
                   id="lp-pricing"
@@ -470,42 +470,42 @@ export default function LaunchpadPage() {
                   value={answers.pricingNotes}
                   onChange={(e) => set("pricingNotes", e.target.value)}
                   placeholder="e.g. Starting from ₹299 per visit. Quotes given before starting."
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                  className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-phone">Phone</label>
+                  <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="lp-phone">Phone</label>
                   <input
                     id="lp-phone"
                     type="tel"
                     value={answers.phone}
                     onChange={(e) => set("phone", e.target.value)}
                     placeholder="+91 98765 43210"
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                    className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-website">Website</label>
+                  <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="lp-website">Website</label>
                   <input
                     id="lp-website"
                     type="url"
                     value={answers.website}
                     onChange={(e) => set("website", e.target.value)}
                     placeholder="https://..."
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                    className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
                   />
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-hours">Working hours</label>
+                <label className="mb-1.5 block text-sm font-semibold text-[var(--ink-700)]" htmlFor="lp-hours">Working hours</label>
                 <input
                   id="lp-hours"
                   type="text"
                   value={answers.hours}
                   onChange={(e) => set("hours", e.target.value)}
                   placeholder="Mon–Sat 8am–8pm, Sunday on-call"
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                  className="w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3.5 text-base text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-[var(--ink-500)]"
                 />
               </div>
             </div>
@@ -518,11 +518,11 @@ export default function LaunchpadPage() {
         ) : null}
 
         {/* CTA */}
-        <section className="rounded-[var(--radius-card-lg)] border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)]">
+        <section className="rounded-[var(--radius-card-lg)] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-[var(--shadow-card)]">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-slate-900">Ready for review</p>
-              <p className="mt-1 text-sm text-slate-500">Generate a draft, review it, then publish.</p>
+              <p className="text-sm font-semibold text-[var(--ink-950)]">Ready for review</p>
+              <p className="mt-1 text-sm text-[var(--ink-500)]">Generate a draft, review it, then publish.</p>
             </div>
             <button
               type="button"

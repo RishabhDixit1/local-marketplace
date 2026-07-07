@@ -69,20 +69,20 @@ const faqs = [
 export default function FaqPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+      <h1 className="text-3xl font-extrabold tracking-tight text-[var(--ink-950)]">
         Frequently Asked Questions
       </h1>
-      <p className="mt-2 text-sm text-slate-500">
+      <p className="mt-2 text-sm text-[var(--ink-500)]">
         Everything you need to know about using ServiQ.
       </p>
 
       <div className="mt-8 space-y-4">
         {faqs.map((faq, i) => (
-          <details key={i} className="group rounded-2xl border border-slate-200 bg-white">
-            <summary className="flex cursor-pointer items-center justify-between px-5 py-4 text-sm font-semibold text-slate-900">
+          <details key={i} className="group rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)]">
+            <summary className="flex cursor-pointer items-center justify-between px-5 py-4 text-sm font-semibold text-[var(--ink-950)]">
               {faq.q}
               <svg
-                className="h-4 w-4 shrink-0 text-slate-400 transition group-open:rotate-180"
+                className="h-4 w-4 shrink-0 text-[var(--ink-500)] transition group-open:rotate-180"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -91,18 +91,18 @@ export default function FaqPage() {
                 <path d="M6 9l6 6 6-6" />
               </svg>
             </summary>
-            <p className="border-t border-slate-100 px-5 py-4 text-sm leading-6 text-slate-600">
+            <p className="border-t border-[var(--surface-border)] px-5 py-4 text-sm leading-6 text-[var(--ink-700)]">
               {faq.a}
             </p>
           </details>
         ))}
       </div>
 
-      <p className="mt-8 text-center text-sm text-slate-500">
+      <p className="mt-8 text-center text-sm text-[var(--ink-500)]">
         Still need help?{" "}
         <a
           href="mailto:support@serviqapp.com"
-          className="font-semibold text-slate-900 underline"
+          className="font-semibold text-[var(--ink-950)] underline"
         >
           Contact our support team
         </a>
