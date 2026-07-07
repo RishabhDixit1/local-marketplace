@@ -25,7 +25,7 @@ export default function MarketplaceReadinessPanel({
   loading?: boolean;
 }) {
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_70px_-50px_rgba(15,23,42,0.45)]">
+    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_70px_-50px_rgba(var(--shadow-rgb),0.45)]">
       <div className="bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.12),transparent_36%),radial-gradient(circle_at_top_right,rgba(99,102,241,0.11),transparent_34%)] px-5 py-5 sm:px-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-3">

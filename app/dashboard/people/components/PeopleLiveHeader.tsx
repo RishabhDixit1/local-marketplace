@@ -86,7 +86,7 @@ function PersonRow({
   actions: React.ReactNode;
 }) {
   return (
-    <article className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-[0_1px_4px_0_rgba(15,23,42,0.06)] transition hover:border-slate-200 hover:shadow-[0_2px_10px_0_rgba(15,23,42,0.09)] sm:p-3.5">
+    <article className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-[0_1px_4px_0_rgba(var(--shadow-rgb),0.06)] transition hover:border-slate-200 hover:shadow-[0_2px_10px_0_rgba(var(--shadow-rgb),0.09)] sm:p-3.5">
       <div className="flex min-w-0 items-center gap-3">
         <span className="relative inline-flex shrink-0">
           <Image
@@ -128,7 +128,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-slate-200/80 bg-white/98 shadow-[0_32px_80px_-24px_rgba(15,23,42,0.22)] ring-1 ring-slate-900/[0.04] backdrop-blur-sm sm:rounded-[1.45rem]">
+    <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-slate-200/80 bg-white/98 shadow-[0_32px_80px_-24px_rgba(var(--shadow-rgb),0.22)] ring-1 ring-slate-900/[0.04] backdrop-blur-sm sm:rounded-[1.45rem]">
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5">
         <div className="flex items-center gap-3">
           <div>
@@ -190,7 +190,7 @@ export default function PeopleLiveHeader({
         />
       )}
 
-      <header className="rounded-[1.35rem] border border-white/80 bg-white/93 px-4 py-3.5 shadow-[0_16px_60px_-40px_rgba(15,23,42,0.4)] backdrop-blur-md sm:rounded-[1.6rem] sm:px-5 sm:py-4">
+      <header className="rounded-[1.35rem] border border-white/80 bg-white/93 px-4 py-3.5 shadow-[0_16px_60px_-40px_rgba(var(--shadow-rgb),0.4)] backdrop-blur-md sm:rounded-[1.6rem] sm:px-5 sm:py-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--brand-600)]">

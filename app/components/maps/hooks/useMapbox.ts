@@ -75,7 +75,7 @@ const buildingLayer: LayerSpecification = {
       ["linear"],
       ["coalesce", ["get", "render_height"], 0],
       0,
-      "rgba(15,23,42,0.28)",
+      "rgba(var(--shadow-rgb),0.28)",
       18,
       "rgba(30,41,59,0.36)",
       60,

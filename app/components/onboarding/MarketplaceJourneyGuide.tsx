@@ -188,7 +188,7 @@ export default function MarketplaceJourneyGuide({
 }: MarketplaceJourneyGuideProps) {
   const content = contentByMode[mode];
   const rootClassName = [
-    "rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_50px_-38px_rgba(15,23,42,0.55)]",
+    "rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_50px_-38px_rgba(var(--shadow-rgb),0.55)]",
     className,
   ]
     .filter(Boolean)

@@ -812,7 +812,7 @@ export default function NotificationCenter({
 
   if (isStandalonePage) {
     return (
-      <div className="overflow-hidden rounded-[1.6rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-[0_24px_70px_-50px_rgba(15,23,42,0.24)]">
+      <div className="overflow-hidden rounded-[1.6rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-[0_24px_70px_-50px_rgba(var(--shadow-rgb),0.24)]">
         {panelContent}
       </div>
     );

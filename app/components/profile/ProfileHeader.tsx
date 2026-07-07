@@ -136,14 +136,14 @@ export default function ProfileHeader({
             quality={72}
             className="object-cover"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(15,23,42,0.45),rgba(79,70,229,0.18),rgba(15,23,42,0.62))]" />
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(var(--shadow-rgb),0.45),rgba(79,70,229,0.18),rgba(var(--shadow-rgb),0.62))]" />
         </motion.div>
       ) : null}
 
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(255,167,85,0.9),transparent_28%),radial-gradient(circle_at_82%_16%,rgba(90,88,255,0.9),transparent_30%),radial-gradient(circle_at_75%_82%,rgba(255,85,220,0.35),transparent_26%),linear-gradient(140deg,rgba(255,255,255,0.12),transparent_22%,rgba(255,255,255,0.08)_22%,transparent_36%,rgba(255,255,255,0.04)_36%,transparent_100%)]" />
       <div className="absolute inset-y-0 left-[30%] w-[28%] rotate-[16deg] bg-white/8 blur-[2px]" />
       <div className="absolute inset-y-0 right-[14%] w-[32%] -rotate-[20deg] bg-indigo-200/10 blur-[2px]" />
-      <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(15,23,42,0.72),rgba(15,23,42,0.18),transparent)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(var(--shadow-rgb),0.72),rgba(var(--shadow-rgb),0.18),transparent)]" />
 
       <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
 

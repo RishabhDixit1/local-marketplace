@@ -41,7 +41,7 @@ export default function ProviderControlNav() {
             title={tab.label}
             className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-2.5 text-[13px] font-semibold transition ${
               active
-                ? "border-[var(--brand-900)] bg-[var(--brand-900)] text-white shadow-[0_10px_24px_-18px_rgba(15,23,42,0.85)]"
+                ? "border-[var(--brand-900)] bg-[var(--brand-900)] text-white shadow-[0_10px_24px_-18px_rgba(var(--shadow-rgb),0.85)]"
                 : "border-slate-200 bg-white text-slate-600 hover:border-[var(--brand-500)]/35 hover:text-slate-900"
             }`}
           >

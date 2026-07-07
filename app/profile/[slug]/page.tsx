@@ -204,7 +204,7 @@ export default async function PublicProfilePage({ params, searchParams }: Params
             pointer-events: none !important;
           }
         `}</style>
-        <section className="relative h-[25svh] min-h-[240px] max-h-[320px] overflow-hidden rounded-[28px] border border-slate-300/30 bg-[linear-gradient(125deg,#eff6ff_0%,#dbeafe_24%,#c7d2fe_58%,#e0e7ff_100%)] text-white shadow-[0_24px_70px_-35px_rgba(15,23,42,0.55)]">
+        <section className="relative h-[25svh] min-h-[240px] max-h-[320px] overflow-hidden rounded-[28px] border border-slate-300/30 bg-[linear-gradient(125deg,#eff6ff_0%,#dbeafe_24%,#c7d2fe_58%,#e0e7ff_100%)] text-white shadow-[0_24px_70px_-35px_rgba(var(--shadow-rgb),0.55)]">
           {coverImageUrl ? (
             <Image
               src={coverImageUrl}
@@ -217,14 +217,14 @@ export default async function PublicProfilePage({ params, searchParams }: Params
             />
           ) : null}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(125,211,252,0.55),transparent_28%),radial-gradient(circle_at_82%_14%,rgba(99,102,241,0.45),transparent_28%),radial-gradient(circle_at_74%_82%,rgba(148,163,184,0.28),transparent_26%),linear-gradient(140deg,rgba(255,255,255,0.22),transparent_24%,rgba(255,255,255,0.12)_24%,transparent_38%,rgba(255,255,255,0.08)_38%,transparent)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(15,23,42,0.28),rgba(30,41,59,0.08),rgba(15,23,42,0.62))]" />
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(var(--shadow-rgb),0.28),rgba(30,41,59,0.08),rgba(var(--shadow-rgb),0.62))]" />
           <div className="absolute inset-y-0 left-[30%] w-[28%] rotate-[16deg] bg-white/14 blur-[2px]" />
           <div className="absolute inset-y-0 right-[16%] w-[32%] -rotate-[20deg] bg-sky-200/12 blur-[2px]" />
-          <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(15,23,42,0.8),rgba(15,23,42,0.16),transparent)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(var(--shadow-rgb),0.8),rgba(var(--shadow-rgb),0.16),transparent)]" />
 
           <Link
             href="/dashboard"
-            className="public-profile-header-action absolute right-3 top-3 z-20 inline-flex h-7 max-w-[calc(50%-1rem)] items-center gap-1 rounded-full border border-white/20 bg-white/12 px-2.5 text-[10px] font-semibold text-white shadow-[0_12px_30px_-20px_rgba(15,23,42,0.45)] backdrop-blur-md transition hover:bg-white/20 sm:right-5 sm:top-4 sm:h-9 sm:max-w-none sm:gap-1.5 sm:px-3.5 sm:text-xs"
+            className="public-profile-header-action absolute right-3 top-3 z-20 inline-flex h-7 max-w-[calc(50%-1rem)] items-center gap-1 rounded-full border border-white/20 bg-white/12 px-2.5 text-[10px] font-semibold text-white shadow-[0_12px_30px_-20px_rgba(var(--shadow-rgb),0.45)] backdrop-blur-md transition hover:bg-white/20 sm:right-5 sm:top-4 sm:h-9 sm:max-w-none sm:gap-1.5 sm:px-3.5 sm:text-xs"
           >
             <LayoutDashboard className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             <span className="truncate">Dashboard</span>
@@ -240,7 +240,7 @@ export default async function PublicProfilePage({ params, searchParams }: Params
             <div className="relative flex h-full flex-col justify-end">
               <div className="absolute left-0 top-11 sm:top-12">
                 <div className="relative w-fit shrink-0">
-                  <div className="flex h-18 w-18 items-center justify-center overflow-hidden rounded-full border-[4px] border-white/90 bg-slate-950 text-xl font-semibold text-white shadow-[0_20px_32px_-24px_rgba(15,23,42,0.48)] sm:h-20 sm:w-20 sm:text-2xl">
+                  <div className="flex h-18 w-18 items-center justify-center overflow-hidden rounded-full border-[4px] border-white/90 bg-slate-950 text-xl font-semibold text-white shadow-[0_20px_32px_-24px_rgba(var(--shadow-rgb),0.48)] sm:h-20 sm:w-20 sm:text-2xl">
                     {profileAvatarUrl ? (
                       <Image src={profileAvatarUrl} alt={displayName} width={80} height={80} quality={70} className="h-full w-full object-cover" />
                     ) : (

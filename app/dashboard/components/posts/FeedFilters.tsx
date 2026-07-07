@@ -36,7 +36,7 @@ export default function FeedFilters({
   onFiltersChange,
 }: FeedFiltersProps) {
   return (
-    <section className="rounded-3xl border border-slate-200/90 bg-white p-3 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.38)] sm:p-4">
+    <section className="rounded-3xl border border-slate-200/90 bg-white p-3 shadow-[0_14px_30px_-24px_rgba(var(--shadow-rgb),0.38)] sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
           <Filter size={15} />

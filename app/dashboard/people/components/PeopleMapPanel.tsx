@@ -71,7 +71,7 @@ export default function PeopleMapPanel({ items, center, activeProvider, onSelect
   const fallback = <StaticMapFallback items={items} />;
 
   return (
-    <section className="overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/[0.88] p-3 shadow-[0_24px_80px_-54px_rgba(15,23,42,0.48)] backdrop-blur sm:rounded-[2rem] sm:p-5">
+    <section className="overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/[0.88] p-3 shadow-[0_24px_80px_-54px_rgba(var(--shadow-rgb),0.48)] backdrop-blur sm:rounded-[2rem] sm:p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">Local Visibility</p>

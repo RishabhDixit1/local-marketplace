@@ -27,7 +27,7 @@ export default function AcceptConfirmDialog({
   if (confirmed) {
     return (
       <div className="fixed inset-0 z-[var(--layer-modal)] grid place-items-center bg-slate-950/50 px-4 py-8 backdrop-blur-sm">
-        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_30px_70px_-35px_rgba(15,23,42,0.55)]">
+        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_30px_70px_-35px_rgba(var(--shadow-rgb),0.55)]">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
               <CheckCircle2 size={18} className="text-emerald-600" />
@@ -50,7 +50,7 @@ export default function AcceptConfirmDialog({
 
   return (
     <div className="fixed inset-0 z-[var(--layer-modal)] grid place-items-center bg-slate-950/50 px-4 py-8 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_30px_70px_-35px_rgba(15,23,42,0.55)]">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_30px_70px_-35px_rgba(var(--shadow-rgb),0.55)]">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-slate-900">Send interest in this task</p>

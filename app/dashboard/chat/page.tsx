@@ -1346,7 +1346,7 @@ export default function ChatPage() {
       : null;
 
   return (
-    <div className="relative -mx-3 h-[calc(100dvh-12rem-env(safe-area-inset-top,0px))] min-h-[24rem] overflow-hidden border-y border-[var(--surface-border)]/80 bg-[var(--surface-elevated)] shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] sm:mx-0 sm:h-[calc(100dvh-10rem-env(safe-area-inset-top,0px))] sm:rounded-3xl sm:border sm:shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] lg:h-[calc(100dvh-8rem)]">
+    <div className="relative -mx-3 h-[calc(100dvh-12rem-env(safe-area-inset-top,0px))] min-h-[24rem] overflow-hidden border-y border-[var(--surface-border)]/80 bg-[var(--surface-elevated)] shadow-[0_20px_70px_-45px_rgba(var(--shadow-rgb),0.65)] sm:mx-0 sm:h-[calc(100dvh-10rem-env(safe-area-inset-top,0px))] sm:rounded-3xl sm:border sm:shadow-[0_20px_70px_-45px_rgba(var(--shadow-rgb),0.65)] lg:h-[calc(100dvh-8rem)]">
       <RouteObservability route="chat" />
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -right-20 -top-16 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />
@@ -2081,7 +2081,7 @@ export default function ChatPage() {
                     ))}
                   </div>
                 ) : null}
-                <div className="relative rounded-[1.65rem] border border-slate-300 bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] p-2.5 shadow-[0_18px_32px_-28px_rgba(15,23,42,0.45)]">
+                <div className="relative rounded-[1.65rem] border border-slate-300 bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] p-2.5 shadow-[0_18px_32px_-28px_rgba(var(--shadow-rgb),0.45)]">
                   {showEmoticonPicker && (
                     <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+6.25rem)] z-20 rounded-[1.6rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-3 shadow-xl shadow-slate-900/15 sm:absolute sm:bottom-full sm:left-2 sm:right-2 sm:mb-2 sm:rounded-2xl">
                       <div className="mb-2 flex items-center justify-between gap-2">

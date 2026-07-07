@@ -246,7 +246,7 @@ export default function QuickOnboardingSheet() {
 
   return (
     <div className="fixed inset-0 z-[var(--layer-modal)] grid place-items-end bg-slate-950/45 p-3 sm:place-items-center">
-      <div className="w-full max-w-4xl overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_42px_90px_-48px_rgba(15,23,42,0.7)]">
+      <div className="w-full max-w-4xl overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_42px_90px_-48px_rgba(var(--shadow-rgb),0.7)]">
         <div className="border-b border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-5 py-4 sm:px-6">
           <div className="flex items-start justify-between gap-4">
             <div>

@@ -209,8 +209,8 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
   const canEdit = Boolean(context?.canEdit);
   const panelToneClassName =
     surface === "chat"
-      ? "border-sky-200 bg-white/95 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]"
-      : "border-slate-200 bg-white shadow-[0_18px_48px_-38px_rgba(15,23,42,0.28)]";
+      ? "border-sky-200 bg-white/95 shadow-[0_18px_48px_-36px_rgba(var(--shadow-rgb),0.55)]"
+      : "border-slate-200 bg-white shadow-[0_18px_48px_-38px_rgba(var(--shadow-rgb),0.28)]";
 
   const saveCurrentDraft = async (intent: "save" | "send") => {
     if (!context) return;

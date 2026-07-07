@@ -50,7 +50,7 @@ export default function ProfileStickySaveBar({
 
   return (
     <div className="sticky bottom-4 z-30">
-      <div className="rounded-[26px] border border-slate-200/80 bg-white/92 p-4 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] backdrop-blur">
+      <div className="rounded-[26px] border border-slate-200/80 bg-white/92 p-4 shadow-[0_20px_60px_-30px_rgba(var(--shadow-rgb),0.35)] backdrop-blur">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className={`flex items-center gap-2 text-sm font-semibold ${status.className}`}>

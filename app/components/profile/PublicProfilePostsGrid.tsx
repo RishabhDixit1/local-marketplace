@@ -736,7 +736,7 @@ export default function PublicProfilePostsGrid({
             <article
               id={`profile-post-${post.id}`}
               key={post.id}
-              className={`flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] sm:p-4 ${
+              className={`flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_18px_32px_-26px_rgba(var(--shadow-rgb),0.45)] sm:p-4 ${
                 horizontal
                   ? "w-[min(82vw,320px)] min-w-[240px] max-w-[320px] shrink-0 snap-start sm:w-[calc(50vw-2.75rem)] sm:min-w-[260px] sm:max-w-[360px] lg:w-[calc(33vw-2.5rem)] lg:min-w-[280px] lg:max-w-[380px] xl:w-[calc(30vw-2.5rem)]"
                   : ""

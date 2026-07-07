@@ -12,7 +12,7 @@ export default function ProviderCardSkeleton({ count = 8 }: Props) {
           key={`provider-skeleton-${index}`}
           className="overflow-hidden rounded-[1.45rem] border border-slate-200 bg-white shadow-sm sm:rounded-[1.7rem]"
         >
-          <div className="h-14 animate-pulse bg-[linear-gradient(135deg,rgba(14,165,164,0.18),rgba(15,23,42,0.12))] sm:h-24" />
+          <div className="h-14 animate-pulse bg-[linear-gradient(135deg,rgba(14,165,164,0.18),rgba(var(--shadow-rgb),0.12))] sm:h-24" />
 
           <div className="px-3 pb-3 sm:px-5 sm:pb-5">
             <div className="-mt-5 flex justify-center sm:-mt-10">

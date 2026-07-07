@@ -223,7 +223,7 @@ export default function PublicProfileContentTabs({
   ];
 
   return (
-    <section className="rounded-[22px] border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_2px_rgba(15,23,42,0.05)] sm:px-6 sm:py-6">
+    <section className="rounded-[22px] border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_2px_rgba(var(--shadow-rgb),0.05)] sm:px-6 sm:py-6">
       <div className="flex flex-wrap items-end gap-6 border-b border-slate-200">
         {tabs.map((tab) => {
           const active = activeTab === tab.id;
@@ -372,7 +372,7 @@ export default function PublicProfileContentTabs({
             aria-modal="true"
             aria-label="Write a review"
             tabIndex={-1}
-            className="relative z-[1] flex max-h-[min(88vh,600px)] w-full max-w-lg flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_30px_80px_-35px_rgba(15,23,42,0.45)] outline-none"
+            className="relative z-[1] flex max-h-[min(88vh,600px)] w-full max-w-lg flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_30px_80px_-35px_rgba(var(--shadow-rgb),0.45)] outline-none"
           >
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
               <div>

@@ -180,7 +180,7 @@ export default function ProfileMoreMenu({ profileUserId, displayName }: ProfileM
       {dialog === "report" && (
         <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => setDialog("idle")} />
-          <div className="relative z-[1] w-full max-w-md rounded-[28px] bg-white p-6 shadow-[0_30px_80px_-35px_rgba(15,23,42,0.45)]">
+          <div className="relative z-[1] w-full max-w-md rounded-[28px] bg-white p-6 shadow-[0_30px_80px_-35px_rgba(var(--shadow-rgb),0.45)]">
             <h3 className="text-xl font-semibold text-slate-900">Report {displayName}</h3>
             <p className="mt-1 text-sm text-slate-500">Why are you reporting this user?</p>
 
@@ -233,7 +233,7 @@ export default function ProfileMoreMenu({ profileUserId, displayName }: ProfileM
       {(dialog === "block_confirm" || dialog === "unblock_confirm") && (
         <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => setDialog("idle")} />
-          <div className="relative z-[1] w-full max-w-sm rounded-[28px] bg-white p-6 shadow-[0_30px_80px_-35px_rgba(15,23,42,0.45)]">
+          <div className="relative z-[1] w-full max-w-sm rounded-[28px] bg-white p-6 shadow-[0_30px_80px_-35px_rgba(var(--shadow-rgb),0.45)]">
             <ShieldOff className="mx-auto h-10 w-10 text-slate-400" />
             <h3 className="mt-3 text-center text-xl font-semibold text-slate-900">
               {dialog === "block_confirm" ? `Block ${displayName}?` : `Unblock ${displayName}?`}

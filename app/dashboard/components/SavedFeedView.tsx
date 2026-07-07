@@ -959,7 +959,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                 key={card.id}
                 data-testid="saved-feed-card"
                 data-card-id={card.card_id}
-                className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-3.5 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition hover:border-[var(--brand-500)]/28 hover:shadow-[0_26px_42px_-28px_rgba(14,165,164,0.32)]"
+                className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-3.5 shadow-[0_18px_32px_-26px_rgba(var(--shadow-rgb),0.45)] transition hover:border-[var(--brand-500)]/28 hover:shadow-[0_26px_42px_-28px_rgba(14,165,164,0.32)]"
               >
                 <header className="flex items-center gap-3">
                   <button

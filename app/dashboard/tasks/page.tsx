@@ -2404,7 +2404,7 @@ export default function TasksPage() {
         ref={(node) => {
           taskCardRefs.current.set(task.orderId, node);
         }}
-        className="rounded-[1.35rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-[0_14px_40px_-32px_rgba(15,23,42,0.28)] transition hover:border-[var(--surface-border-hover)]"
+        className="rounded-[1.35rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-[0_14px_40px_-32px_rgba(var(--shadow-rgb),0.28)] transition hover:border-[var(--surface-border-hover)]"
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:justify-between">
           <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -2607,7 +2607,7 @@ export default function TasksPage() {
         ref={(node) => {
           taskCardRefs.current.set(task.orderId, node);
         }}
-        className="rounded-[1.35rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-[0_14px_40px_-32px_rgba(15,23,42,0.28)] transition hover:border-[var(--surface-border-hover)]"
+        className="rounded-[1.35rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-[0_14px_40px_-32px_rgba(var(--shadow-rgb),0.28)] transition hover:border-[var(--surface-border-hover)]"
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:justify-between">
           <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -2922,7 +2922,7 @@ export default function TasksPage() {
       <motion.section
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        className="market-hero-surface relative overflow-hidden rounded-[1.45rem] border border-white/70 bg-white/88 p-3.5 shadow-[0_24px_70px_-54px_rgba(15,23,42,0.38)] backdrop-blur sm:rounded-[1.6rem] sm:p-4"
+        className="market-hero-surface relative overflow-hidden rounded-[1.45rem] border border-white/70 bg-white/88 p-3.5 shadow-[0_24px_70px_-54px_rgba(var(--shadow-rgb),0.38)] backdrop-blur sm:rounded-[1.6rem] sm:p-4"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_32%),radial-gradient(circle_at_top_right,rgba(17,70,106,0.12),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.76),rgba(255,255,255,0.96))]" />
 
@@ -3025,7 +3025,7 @@ export default function TasksPage() {
       <div className="space-y-5">
           <section
             ref={liveOrdersSectionRef}
-            className="space-y-4 rounded-[1.55rem] border border-white/70 bg-white/90 p-3.5 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.44)] backdrop-blur sm:space-y-5 sm:rounded-[1.9rem] sm:p-5"
+            className="space-y-4 rounded-[1.55rem] border border-white/70 bg-white/90 p-3.5 shadow-[0_24px_70px_-50px_rgba(var(--shadow-rgb),0.44)] backdrop-blur sm:space-y-5 sm:rounded-[1.9rem] sm:p-5"
           >
             <div className="space-y-3 border-b border-[var(--surface-border)] pb-3 sm:space-y-4 sm:pb-4">
               <TaskStatusTabs tabs={taskTabs} selected={selectedTaskView} onSelect={setSelectedTaskView} />
@@ -3129,7 +3129,7 @@ export default function TasksPage() {
                         className={`relative overflow-hidden rounded-[1.25rem] border p-4 transition ${
                           isFocused
                             ? "border-[var(--brand-500)] bg-[var(--brand-50)] shadow-[0_0_0_3px_var(--brand-ring)]"
-                            : "border-[var(--surface-border)] bg-[var(--surface-elevated)] hover:border-[var(--surface-border-hover)] hover:shadow-[0_8px_32px_-20px_rgba(15,23,42,0.2)]"
+                            : "border-[var(--surface-border)] bg-[var(--surface-elevated)] hover:border-[var(--surface-border-hover)] hover:shadow-[0_8px_32px_-20px_rgba(var(--shadow-rgb),0.2)]"
                         }`}
                       >
                         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[var(--brand-500)] to-[var(--brand-700)]" />
@@ -3253,7 +3253,7 @@ export default function TasksPage() {
           </section>
 
           {!loading && (selectedTaskView === "inbox" ? inboxMatches.length === 0 && !inboxLoading : visibleTasks.length === 0) ? (
-            <div className="rounded-[1.9rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-6 py-16 text-center shadow-[0_24px_70px_-46px_rgba(15,23,42,0.36)]">
+            <div className="rounded-[1.9rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-6 py-16 text-center shadow-[0_24px_70px_-46px_rgba(var(--shadow-rgb),0.36)]">
               {selectedTaskView === "inbox" ? (
                 <Inbox className="mx-auto h-14 w-14 text-[var(--ink-500)]" />
               ) : (

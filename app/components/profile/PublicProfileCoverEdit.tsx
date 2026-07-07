@@ -147,7 +147,7 @@ export default function PublicProfileCoverEdit({
       <button
         type="button"
         onClick={() => setDialogOpen(true)}
-        className="public-profile-header-action absolute left-3 top-3 z-20 inline-flex h-7 max-w-[calc(50%-1rem)] items-center gap-1 rounded-full border border-white/20 bg-white/12 px-2.5 text-[10px] font-semibold text-white shadow-[0_12px_30px_-20px_rgba(15,23,42,0.45)] backdrop-blur-md transition hover:bg-white/20 sm:left-5 sm:top-4 sm:h-9 sm:max-w-none sm:gap-1.5 sm:px-3.5 sm:text-xs"
+        className="public-profile-header-action absolute left-3 top-3 z-20 inline-flex h-7 max-w-[calc(50%-1rem)] items-center gap-1 rounded-full border border-white/20 bg-white/12 px-2.5 text-[10px] font-semibold text-white shadow-[0_12px_30px_-20px_rgba(var(--shadow-rgb),0.45)] backdrop-blur-md transition hover:bg-white/20 sm:left-5 sm:top-4 sm:h-9 sm:max-w-none sm:gap-1.5 sm:px-3.5 sm:text-xs"
       >
         <ImageUp className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
         <span className="truncate">Edit cover</span>
@@ -163,7 +163,7 @@ export default function PublicProfileCoverEdit({
             aria-modal="true"
             aria-label="Update cover image"
             tabIndex={-1}
-            className="relative z-10 flex w-full max-w-4xl max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_35px_120px_-45px_rgba(15,23,42,0.55)] sm:max-h-[calc(100vh-3rem)]"
+            className="relative z-10 flex w-full max-w-4xl max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_35px_120px_-45px_rgba(var(--shadow-rgb),0.55)] sm:max-h-[calc(100vh-3rem)]"
           >
             <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-6 py-5 sm:px-8">
               <div>

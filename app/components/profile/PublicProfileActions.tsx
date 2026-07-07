@@ -373,7 +373,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
             aria-modal="true"
             aria-label="Edit public profile"
             tabIndex={-1}
-            className="relative z-10 flex max-h-[calc(100dvh-0.75rem)] w-full max-w-3xl flex-col overflow-hidden rounded-t-[28px] border border-slate-200 bg-white shadow-[0_30px_80px_-40px_rgba(15,23,42,0.55)] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[28px]"
+            className="relative z-10 flex max-h-[calc(100dvh-0.75rem)] w-full max-w-3xl flex-col overflow-hidden rounded-t-[28px] border border-slate-200 bg-white shadow-[0_30px_80px_-40px_rgba(var(--shadow-rgb),0.55)] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[28px]"
           >
             <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
               <div>

@@ -99,7 +99,7 @@ export default function PublicContactInfoTrigger({
             role="dialog"
             aria-modal="true"
             aria-label={`${displayName} contact information`}
-            className="relative z-10 w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.55)]"
+            className="relative z-10 w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_30px_80px_-40px_rgba(var(--shadow-rgb),0.55)]"
           >
             <div className="flex items-start justify-between gap-4">
               <div>

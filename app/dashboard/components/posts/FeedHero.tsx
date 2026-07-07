@@ -21,7 +21,7 @@ const statCards: Array<{ key: keyof MarketplaceFeedStats; label: string }> = [
 
 export default function FeedHero({ stats, realtime }: FeedHeroProps) {
   return (
-    <section className="rounded-3xl border border-slate-200/90 bg-white p-4 shadow-[0_18px_36px_-28px_rgba(15,23,42,0.45)] sm:p-5">
+    <section className="rounded-3xl border border-slate-200/90 bg-white p-4 shadow-[0_18px_36px_-28px_rgba(var(--shadow-rgb),0.45)] sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--brand-700)]">Marketplace feed</p>

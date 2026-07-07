@@ -173,7 +173,7 @@ export default function PublicProfileAvatarEdit({
         <button
           type="button"
           onClick={() => setDialogOpen(true)}
-          className={`public-profile-avatar-trigger absolute bottom-1.5 right-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-white shadow-[0_16px_28px_-18px_rgba(15,23,42,0.6)] transition hover:bg-slate-800 ${dialogOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}
+          className={`public-profile-avatar-trigger absolute bottom-1.5 right-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-white shadow-[0_16px_28px_-18px_rgba(var(--shadow-rgb),0.6)] transition hover:bg-slate-800 ${dialogOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}
           aria-label="Update profile picture"
           title="Update profile picture"
         >
@@ -191,7 +191,7 @@ export default function PublicProfileAvatarEdit({
             aria-modal="true"
             aria-label="Update profile picture"
             tabIndex={-1}
-            className="relative z-10 flex w-full max-w-3xl max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_35px_120px_-45px_rgba(15,23,42,0.55)] sm:max-h-[calc(100vh-3rem)]"
+            className="relative z-10 flex w-full max-w-3xl max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_35px_120px_-45px_rgba(var(--shadow-rgb),0.55)] sm:max-h-[calc(100vh-3rem)]"
           >
             <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-6 py-5 sm:px-8">
               <div>
@@ -217,7 +217,7 @@ export default function PublicProfileAvatarEdit({
                 <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50/70 p-5 sm:p-6">
                   <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-center gap-5">
-                      <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-[5px] border-white bg-slate-950 text-2xl font-semibold text-white shadow-[0_18px_36px_-22px_rgba(15,23,42,0.42)] sm:h-28 sm:w-28">
+                      <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-[5px] border-white bg-slate-950 text-2xl font-semibold text-white shadow-[0_18px_36px_-22px_rgba(var(--shadow-rgb),0.42)] sm:h-28 sm:w-28">
                         {previewUrl || avatarUrl ? (
                           <img src={previewUrl || avatarUrl} alt={displayName} className="h-full w-full object-cover" />
                         ) : (

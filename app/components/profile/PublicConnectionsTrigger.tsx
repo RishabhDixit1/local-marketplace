@@ -100,7 +100,7 @@ export default function PublicConnectionsTrigger({
             aria-modal="true"
             aria-label="Connections"
             tabIndex={-1}
-            className="relative z-10 flex w-full max-w-2xl max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_30px_80px_-40px_rgba(15,23,42,0.55)]"
+            className="relative z-10 flex w-full max-w-2xl max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_30px_80px_-40px_rgba(var(--shadow-rgb),0.55)]"
           >
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
               <div>

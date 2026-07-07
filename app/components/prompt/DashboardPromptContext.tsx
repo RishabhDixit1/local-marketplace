@@ -316,7 +316,7 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
             className={`group relative min-w-0 flex-1 overflow-hidden rounded-2xl border bg-white transition-all duration-250 ${
               focused
                 ? "border-[var(--brand-500)]/60 shadow-[0_0_0_3px_var(--brand-ring)]"
-                : "border-slate-200 shadow-[0_10px_26px_-22px_rgba(15,23,42,0.45)]"
+                : "border-slate-200 shadow-[0_10px_26px_-22px_rgba(var(--shadow-rgb),0.45)]"
             }`}
           >
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -395,7 +395,7 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
   }
 
   return (
-    <section className="sticky top-[4.5rem] z-30 mx-auto mb-4 w-full max-w-[960px] rounded-3xl border border-slate-200/90 bg-white/95 p-3 shadow-[0_18px_36px_-28px_rgba(15,23,42,0.5)] backdrop-blur-md sm:mb-5 sm:p-4">
+    <section className="sticky top-[4.5rem] z-30 mx-auto mb-4 w-full max-w-[960px] rounded-3xl border border-slate-200/90 bg-white/95 p-3 shadow-[0_18px_36px_-28px_rgba(var(--shadow-rgb),0.5)] backdrop-blur-md sm:mb-5 sm:p-4">
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -417,7 +417,7 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
           className={`group relative overflow-hidden rounded-2xl border bg-white transition-all duration-250 ${
             focused
               ? "border-[var(--brand-500)]/60 shadow-[0_0_0_4px_var(--brand-ring)]"
-              : "border-slate-200 shadow-[0_10px_26px_-22px_rgba(15,23,42,0.45)]"
+              : "border-slate-200 shadow-[0_10px_26px_-22px_rgba(var(--shadow-rgb),0.45)]"
           }`}
         >
           <div className="pointer-events-none absolute inset-y-0 left-0 w-14 bg-gradient-to-r from-slate-100/90 to-transparent" />

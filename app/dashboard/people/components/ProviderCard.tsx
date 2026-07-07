@@ -220,7 +220,7 @@ const ProviderCard = (props: Props) => {
               alt={provider.name}
               width={108}
               height={108}
-              className="h-[72px] w-[72px] rounded-full border-[3px] border-white object-cover shadow-[0_18px_30px_-24px_rgba(15,23,42,0.45)] sm:h-[96px] sm:w-[96px] sm:border-4"
+              className="h-[72px] w-[72px] rounded-full border-[3px] border-white object-cover shadow-[0_18px_30px_-24px_rgba(var(--shadow-rgb),0.45)] sm:h-[96px] sm:w-[96px] sm:border-4"
               fallback={<InitialsAvatar name={provider.name} size="xl" />}
             />
             <span

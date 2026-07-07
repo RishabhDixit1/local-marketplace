@@ -38,7 +38,7 @@ export default function PeopleSearchFilters({
   resultsCount,
 }: Props) {
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/90 p-4 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.48)] backdrop-blur sm:p-5">
+    <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/90 p-4 shadow-[0_24px_70px_-48px_rgba(var(--shadow-rgb),0.48)] backdrop-blur sm:p-5">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,164,0.12),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.65),rgba(255,255,255,0.9))]" />
 
       <div className="relative space-y-4">
@@ -115,7 +115,7 @@ export default function PeopleSearchFilters({
               onClick={() => onActivePillChange(pill)}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                 activePill === pill
-                  ? "bg-[var(--brand-900)] text-white shadow-[0_18px_35px_-24px_rgba(15,23,42,0.9)]"
+                  ? "bg-[var(--brand-900)] text-white shadow-[0_18px_35px_-24px_rgba(var(--shadow-rgb),0.9)]"
                   : "border border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
               }`}
             >

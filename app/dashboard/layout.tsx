@@ -681,7 +681,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] text-[var(--ink-950)]">
       <div className="flex min-h-screen">
         <aside
-          className={`hidden md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-[var(--surface-border)] md:bg-white md:shadow-[0_20px_46px_-42px_rgba(15,23,42,0.65)] transition-all duration-300 ${
+          className={`hidden md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-[var(--surface-border)] md:bg-white md:shadow-[0_20px_46px_-42px_rgba(var(--shadow-rgb),0.65)] transition-all duration-300 ${
             desktopNavCollapsed ? "w-24" : "w-72"
           }`}
         >
@@ -750,7 +750,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                       : "justify-between px-4 py-3"
                   } ${
                     isActive
-                      ? "bg-[var(--brand-900)] text-white shadow-[0_12px_26px_-18px_rgba(15,23,42,0.85)]"
+                      ? "bg-[var(--brand-900)] text-white shadow-[0_12px_26px_-18px_rgba(var(--shadow-rgb),0.85)]"
                       : "text-[var(--ink-700)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink-950)]"
                   }`}
                 >
@@ -812,7 +812,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             className={`border-t border-[var(--surface-border)] ${desktopNavCollapsed ? "px-2 py-4" : "px-4 py-4"}`}
           >
             <div
-              className={`rounded-[1.65rem] border border-[var(--surface-border)] bg-slate-50/85 shadow-[0_18px_36px_-34px_rgba(15,23,42,0.55)] ${
+              className={`rounded-[1.65rem] border border-[var(--surface-border)] bg-slate-50/85 shadow-[0_18px_36px_-34px_rgba(var(--shadow-rgb),0.55)] ${
                 desktopNavCollapsed
                   ? "space-y-2 px-2 py-2.5"
                   : "space-y-2.5 px-3 py-3"
@@ -836,7 +836,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <div className="flex-1 flex min-w-0 flex-col overflow-x-clip">
-          <header className="sticky top-0 z-40 overflow-x-clip border-b border-[var(--surface-border)]/80 bg-white/96 shadow-[0_10px_24px_-22px_rgba(15,23,42,0.45)] backdrop-blur-none md:bg-white/92 md:shadow-[0_16px_30px_-28px_rgba(15,23,42,0.55)] md:backdrop-blur-xl">
+          <header className="sticky top-0 z-40 overflow-x-clip border-b border-[var(--surface-border)]/80 bg-white/96 shadow-[0_10px_24px_-22px_rgba(var(--shadow-rgb),0.45)] backdrop-blur-none md:bg-white/92 md:shadow-[0_16px_30px_-28px_rgba(var(--shadow-rgb),0.55)] md:backdrop-blur-xl">
             <div
               className="flex min-h-16 items-center gap-2.5 px-3 sm:px-6 sm:gap-3 md:px-8"
               style={{ paddingTop: "env(safe-area-inset-top)" }}

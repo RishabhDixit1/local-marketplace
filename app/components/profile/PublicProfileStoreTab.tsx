@@ -548,7 +548,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
               return (
                 <article
                   key={svc.id}
-                  className="flex flex-col justify-between gap-3 overflow-hidden rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.06)]"
+                  className="flex flex-col justify-between gap-3 overflow-hidden rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_1px_3px_rgba(var(--shadow-rgb),0.06)]"
                 >
                   <div>
                     <div className="flex items-start gap-3">
@@ -663,7 +663,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
               return (
                 <article
                   key={prod.id}
-                  className="flex flex-col justify-between overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)]"
+                  className="flex flex-col justify-between overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_1px_3px_rgba(var(--shadow-rgb),0.06)]"
                 >
                   {imgUrl ? (
                     <div className="relative h-44 w-full overflow-hidden">
