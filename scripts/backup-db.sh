@@ -74,14 +74,14 @@ if [[ -n "$BACKUP_S3_BUCKET" ]] && command -v aws &>/dev/null; then
 elif [[ -z "$BACKUP_S3_BUCKET" ]]; then
   echo "==> BACKUP_S3_BUCKET not set — saving locally."
   LOCAL_DIR="/home/ec2-user/backups"
-  mkdir -p "$LOCAL_DIR"
+  mkdir -p "$(dirname "${LOCAL_DIR}/${FILENAME}")"
   cp "$TMPFILE" "${LOCAL_DIR}/${FILENAME}"
   echo "    Backup saved to: ${LOCAL_DIR}/${FILENAME}"
   echo "    To upload later, copy to S3 or SCP."
 elif ! command -v aws &>/dev/null; then
   echo "==> aws-cli not found — saving locally."
   LOCAL_DIR="/home/ec2-user/backups"
-  mkdir -p "$LOCAL_DIR"
+  mkdir -p "$(dirname "${LOCAL_DIR}/${FILENAME}")"
   cp "$TMPFILE" "${LOCAL_DIR}/${FILENAME}"
   echo "    Backup saved to: ${LOCAL_DIR}/${FILENAME}"
 fi
