@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { requireRequestAuth } from "@/lib/server/requestAuth";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const authResult = await requireRequestAuth(request);
+  if (!authResult.ok) {
+    return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
+  }
+
   let body: { orderId: string };
   try {
     body = await request.json();
@@ -22,12 +28,16 @@ export async function POST(request: Request) {
 
   const { data: order } = await db
     .from("orders")
-    .select("id,price,status,commission_rate,platform_fee_paise,provider_payout_paise")
+    .select("id,price,status,commission_rate,platform_fee_paise,provider_payout_paise,user_id,provider_id")
     .eq("id", body.orderId)
     .single();
 
   if (!order) {
     return NextResponse.json({ ok: false, code: "NOT_FOUND", message: "Order not found." }, { status: 404 });
+  }
+
+  if (order.user_id !== authResult.auth.userId && order.provider_id !== authResult.auth.userId) {
+    return NextResponse.json({ ok: false, code: "FORBIDDEN", message: "Not authorized to access this order." }, { status: 403 });
   }
 
   const o = order as {

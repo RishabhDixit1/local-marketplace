@@ -61,6 +61,62 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
   final Set<String> _hiddenFeedIds = <String>{};
   final Set<String> _hiddenProviderIds = <String>{};
 
+  // --- Memoization cache for _WelcomeViewModel ---
+  // Keyed on identity of feed/people AsyncValues + value-equality of hidden-id sets.
+  // When chatConversationsProvider or taskSnapshotProvider fire (the common case),
+  // the feed AsyncValues are the same objects so this skips the expensive
+  // rank/score/diversify pipeline entirely.
+  AsyncValue<MobileFeedSnapshot>? _cachedAllFeedAsync;
+  AsyncValue<MobileFeedSnapshot>? _cachedTrustedFeedAsync;
+  AsyncValue<MobilePeopleSnapshot>? _cachedPeopleAsync;
+  Set<String> _cachedHiddenFeedIds = const <String>{};
+  Set<String> _cachedHiddenProviderIds = const <String>{};
+  _WelcomeViewModel? _cachedViewModel;
+
+  // --- End memoization cache ---
+
+  _WelcomeViewModel _buildCachedViewModel({
+    required AsyncValue<MobileFeedSnapshot> allFeedAsync,
+    required AsyncValue<MobileFeedSnapshot> trustedFeedAsync,
+    required AsyncValue<MobilePeopleSnapshot> peopleAsync,
+  }) {
+    // identical() is safe here because FutureProvider returns the same
+    // AsyncValue instance until the provider is actually re-fetched/invalidated.
+    // When chatConversationsProvider or taskSnapshotProvider fire, the feed
+    // AsyncValues are unchanged objects — identical() detects this and we skip
+    // the expensive rebuild. When a feed provider *does* change, Riverpod
+    // produces a new AsyncValue and identical() returns false, so the cache
+    // is correctly invalidated.
+    final hiddenIdsEqual = _cachedViewModel != null &&
+        _setEquals(_hiddenFeedIds, _cachedHiddenFeedIds) &&
+        _setEquals(_hiddenProviderIds, _cachedHiddenProviderIds);
+
+    if (_cachedViewModel != null &&
+        identical(allFeedAsync, _cachedAllFeedAsync) &&
+        identical(trustedFeedAsync, _cachedTrustedFeedAsync) &&
+        identical(peopleAsync, _cachedPeopleAsync) &&
+        hiddenIdsEqual) {
+      return _cachedViewModel!;
+    }
+
+    final model = _WelcomeViewModel.build(
+      allFeed: allFeedAsync.asData?.value ?? _emptyFeedSnapshot,
+      trustedFeed: trustedFeedAsync.asData?.value ?? _emptyFeedSnapshot,
+      people: peopleAsync.asData?.value ?? _emptyPeopleSnapshot,
+      hiddenFeedIds: _hiddenFeedIds,
+      hiddenProviderIds: _hiddenProviderIds,
+    );
+
+    _cachedAllFeedAsync = allFeedAsync;
+    _cachedTrustedFeedAsync = trustedFeedAsync;
+    _cachedPeopleAsync = peopleAsync;
+    _cachedHiddenFeedIds = Set<String>.from(_hiddenFeedIds);
+    _cachedHiddenProviderIds = Set<String>.from(_hiddenProviderIds);
+    _cachedViewModel = model;
+
+    return model;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -581,12 +637,10 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
       );
     }
 
-    final model = _WelcomeViewModel.build(
-      allFeed: allFeed ?? _emptyFeedSnapshot,
-      trustedFeed: trustedFeed ?? _emptyFeedSnapshot,
-      people: people ?? _emptyPeopleSnapshot,
-      hiddenFeedIds: _hiddenFeedIds,
-      hiddenProviderIds: _hiddenProviderIds,
+    final model = _buildCachedViewModel(
+      allFeedAsync: allFeedAsync,
+      trustedFeedAsync: trustedFeedAsync,
+      peopleAsync: peopleAsync,
     );
 
     final userName = _resolveViewerName();
@@ -1874,6 +1928,15 @@ IconData _categoryIcon(String category) {
     return Icons.format_paint_rounded;
   }
   return Icons.home_repair_service_rounded;
+}
+
+bool _setEquals<T>(Set<T> a, Set<T> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (final element in a) {
+    if (!b.contains(element)) return false;
+  }
+  return true;
 }
 
 const _emptyFeedSnapshot = MobileFeedSnapshot(

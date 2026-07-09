@@ -110,7 +110,7 @@ function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCar
             <div className="flex items-start justify-between gap-2">
               <div>
                 <h3 className="text-sm font-extrabold text-[var(--ink-950)]">{provider.name}</h3>
-                <p className="mt-0.5 text-xs text-[var(--ink-500)]">{provider.location || "Crossings Republik"}</p>
+                <p className="mt-0.5 text-xs text-[var(--ink-500)]">{provider.location || "Local area"}</p>
               </div>
               {provider.verified && (
                 <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 border border-emerald-200">
@@ -257,7 +257,7 @@ export function LandingPageClient({
           <div className="flex items-center gap-2">
             <LocaleSwitcher />
             <Link
-              href="/market/crossing-republik"
+              href="/market"
               className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-2 text-sm font-semibold text-[var(--brand-700)] transition hover:bg-[var(--brand-100)]"
             >
               <Store className="h-4 w-4" />
@@ -321,7 +321,7 @@ export function LandingPageClient({
           <div className="mt-3 flex items-center justify-center gap-3 text-xs text-[var(--ink-500)]">
             <span>{t("landing.or")}</span>
             <Link
-              href="/market/crossing-republik"
+              href="/market"
               className="inline-flex items-center gap-1 font-semibold text-[var(--brand-700)] hover:text-[var(--brand-500)]"
             >
               {t("landing.browseMarketplace")} <ArrowRight className="h-3 w-3" />
@@ -455,7 +455,7 @@ export function LandingPageClient({
         {/* ── Footer ── */}
         <footer className="mt-12 border-t border-[var(--surface-border)] pt-8 text-center">
           <p className="text-xs text-[var(--ink-500)]">
-            {t("landing.builtForCommunity", { appName, area: "Crossings Republik" })}
+            {t("landing.builtForCommunity", { appName, area: "your neighbourhood" })}
           </p>
         </footer>
       </main>

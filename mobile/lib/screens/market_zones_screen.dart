@@ -13,8 +13,21 @@ final _localitiesProvider = FutureProvider.autoDispose
   return raw.map((json) => Locality.fromJson(json)).toList();
 });
 
+final _categoriesProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, void>((ref, _) async {
+  final client = ref.watch(mobileApiClientProvider);
+  return client.getServiceCategories();
+});
+
 class MarketZonesScreen extends ConsumerStatefulWidget {
-  const MarketZonesScreen({super.key});
+  const MarketZonesScreen({
+    super.key,
+    this.zoneSlug,
+    this.zoneName,
+  });
+
+  final String? zoneSlug;
+  final String? zoneName;
 
   @override
   ConsumerState<MarketZonesScreen> createState() => _MarketZonesScreenState();
@@ -25,9 +38,13 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
   late final TabController _tabController;
   String _searchQuery = '';
 
+  String get _title =>
+      widget.zoneName ?? 'My Area — Crossing Republik';
+
   Future<void> _refresh() async {
     final zoneType = _zoneTypeKeys[_tabController.index];
     ref.invalidate(_localitiesProvider(zoneType));
+    ref.invalidate(_categoriesProvider(null));
     await ref.read(_localitiesProvider(zoneType).future);
   }
 
@@ -61,11 +78,12 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
   Widget build(BuildContext context) {
     final zoneType = _zoneTypeKeys[_tabController.index];
     final localitiesAsync = ref.watch(_localitiesProvider(zoneType));
+    final categoriesAsync = ref.watch(_categoriesProvider(null));
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('My Area — Crossing Republik'),
+        title: Text(_title),
         backgroundColor: AppColors.surface,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(100),
@@ -172,16 +190,6 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
             );
           }
 
-          final categoryIcons = [
-            (Icons.electrical_services_rounded, 'Electrician'),
-            (Icons.plumbing_rounded, 'Plumber'),
-            (Icons.ac_unit_rounded, 'AC Repair'),
-            (Icons.water_drop_rounded, 'RO Repair'),
-            (Icons.local_fire_department_rounded, 'Geyser Repair'),
-            (Icons.build_rounded, 'Appliance Repair'),
-            (Icons.handyman_rounded, 'Carpenter'),
-          ];
-
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.pageInset),
             itemCount: filtered.length + 1,
@@ -189,47 +197,10 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
                 i > 0 ? const SizedBox(height: AppSpacing.sm) : const SizedBox(height: 0),
             itemBuilder: (context, index) {
               if (index == 0) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Popular Services',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.inkSubtle)),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: 72,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: categoryIcons.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 8),
-                          itemBuilder: (ctx, ci) {
-                            final (icon, label) = categoryIcons[ci];
-                            return Column(
-                              children: [
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primarySoft,
-                                    borderRadius: BorderRadius.circular(AppRadii.lg),
-                                  ),
-                                  child: Icon(icon, color: AppColors.primaryDeep, size: 22),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(label,
-                                    style: const TextStyle(fontSize: 10, color: AppColors.inkSubtle)),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                );
+                return _CategoryStrip(categoriesAsync: categoriesAsync);
               }
               final loc = filtered[index - 1];
-              return _LocalityCard(locality: loc);
+              return _LocalityCard(locality: loc, zoneSlug: widget.zoneSlug);
             },
           );
         },
@@ -239,10 +210,115 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
   }
 }
 
+class _CategoryStrip extends StatelessWidget {
+  const _CategoryStrip({required this.categoriesAsync});
+
+  final AsyncValue<List<Map<String, dynamic>>> categoriesAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = categoriesAsync.asData?.value ?? [];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Popular Services',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.inkSubtle)),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 72,
+            child: categories.isEmpty
+                ? _defaultCategoryIcons()
+                : ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: categories.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (ctx, ci) {
+                      final cat = categories[ci];
+                      final name = (cat['name'] as String?) ?? '';
+                      return Column(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: AppColors.primarySoft,
+                              borderRadius: BorderRadius.circular(AppRadii.lg),
+                            ),
+                            child: Icon(
+                              _categoryIcon(name),
+                              color: AppColors.primaryDeep, size: 22,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(name,
+                              style: const TextStyle(fontSize: 10, color: AppColors.inkSubtle)),
+                        ],
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _defaultCategoryIcons() {
+    const fallback = [
+      (Icons.electrical_services_rounded, 'Electrician'),
+      (Icons.plumbing_rounded, 'Plumber'),
+      (Icons.ac_unit_rounded, 'AC Repair'),
+      (Icons.water_drop_rounded, 'RO Repair'),
+      (Icons.local_fire_department_rounded, 'Geyser Repair'),
+      (Icons.build_rounded, 'Appliance Repair'),
+      (Icons.handyman_rounded, 'Carpenter'),
+    ];
+    return ListView.separated(
+      scrollDirection: Axis.horizontal,
+      itemCount: fallback.length,
+      separatorBuilder: (_, _) => const SizedBox(width: 8),
+      itemBuilder: (ctx, ci) {
+        final (icon, label) = fallback[ci];
+        return Column(
+          children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(AppRadii.lg),
+              ),
+              child: Icon(icon, color: AppColors.primaryDeep, size: 22),
+            ),
+            const SizedBox(height: 4),
+            Text(label,
+                style: const TextStyle(fontSize: 10, color: AppColors.inkSubtle)),
+          ],
+        );
+      },
+    );
+  }
+
+  IconData _categoryIcon(String name) {
+    const iconMap = {
+      'Electrician': Icons.electrical_services_rounded,
+      'Plumber': Icons.plumbing_rounded,
+      'AC Repair': Icons.ac_unit_rounded,
+      'RO Repair': Icons.water_drop_rounded,
+      'Geyser Repair': Icons.local_fire_department_rounded,
+      'Appliance Repair': Icons.build_rounded,
+      'Carpenter': Icons.handyman_rounded,
+    };
+    return iconMap[name] ?? Icons.build_rounded;
+  }
+}
+
 class _LocalityCard extends StatelessWidget {
-  const _LocalityCard({required this.locality});
+  const _LocalityCard({required this.locality, this.zoneSlug});
 
   final Locality locality;
+  final String? zoneSlug;
 
   IconData _zoneIcon() {
     switch (locality.zoneTypeEnum) {

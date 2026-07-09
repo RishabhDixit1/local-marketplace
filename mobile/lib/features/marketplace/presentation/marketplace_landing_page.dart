@@ -12,21 +12,19 @@ import '../../../shared/components/trust_badge.dart';
 import '../data/marketplace_repository.dart';
 import '../domain/marketplace_provider.dart';
 
-const _categories = [
-  ('⚡', 'Electrician'),
-  ('🔧', 'Plumber'),
-  ('❄️', 'AC Repair'),
-  ('💧', 'RO Repair'),
-  ('🪚', 'Carpenter'),
-  ('🔌', 'Appliance Repair'),
-  ('📱', 'Mobile Repair'),
-  ('🏍️', 'Bike Repair'),
-  ('🏪', 'Hardware Shop'),
-  ('💡', 'Electrical Shop'),
-];
+final _categoriesProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, void>((ref, _) async {
+  final repo = ref.watch(marketplaceRepositoryProvider);
+  return repo.fetchServiceCategories();
+});
 
 class MarketplaceLandingPage extends ConsumerStatefulWidget {
-  const MarketplaceLandingPage({super.key});
+  const MarketplaceLandingPage({
+    super.key,
+    this.zoneSlug,
+  });
+
+  final String? zoneSlug;
 
   @override
   ConsumerState<MarketplaceLandingPage> createState() => _LandingPageState();
@@ -37,6 +35,8 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
   String? _selectedCategory;
   bool _showBanner = true;
 
+  String get _locationLabel => 'Serving Crossings Republik, Ghaziabad';
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -46,8 +46,11 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
   @override
   Widget build(BuildContext context) {
     final providersAsync = ref.watch(marketplaceProvidersProvider(_selectedCategory));
+    final categoriesAsync = ref.watch(_categoriesProvider(null));
 
     final providerList = providersAsync.asData?.value ?? <MarketplaceProvider>[];
+    final categories = categoriesAsync.asData?.value ?? <Map<String, dynamic>>[];
+
     final searchQuery = _searchController.text.trim().toLowerCase();
     final filteredProviders = searchQuery.isEmpty
         ? providerList
@@ -69,7 +72,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
           slivers: [
             _buildHeader(),
             if (_showBanner) _buildHowItWorksBanner(),
-            _buildUnifiedHero(showHeroActions),
+            _buildUnifiedHero(showHeroActions, categories),
             _buildProviderList(
               providersAsync,
               filteredProviders,
@@ -187,7 +190,10 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
     );
   }
 
-  Widget _buildUnifiedHero(bool showActions) {
+  Widget _buildUnifiedHero(
+    bool showActions,
+    List<Map<String, dynamic>> categories,
+  ) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pageInset, vertical: AppSpacing.md),
@@ -208,8 +214,8 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                 children: [
                   Icon(Icons.location_on_rounded, size: 14, color: AppColors.primaryDeep),
                   const SizedBox(width: 4),
-                  const Text('Serving Crossings Republik, Ghaziabad',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryDeep)),
+                  Text(_locationLabel,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryDeep)),
                 ],
               ),
             ),
@@ -219,15 +225,18 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
             Wrap(
               spacing: AppSpacing.xs,
               runSpacing: AppSpacing.xs,
-              children: _categories.map((cat) {
-                final selected = _selectedCategory == cat.$2;
+              children: (categories.isNotEmpty ? categories : _defaultCategories()).map((cat) {
+                final name = cat is Map<String, dynamic>
+                    ? (cat['name'] as String? ?? '')
+                    : (cat.$2 as String);
+                final selected = _selectedCategory == name;
                 return FilterChip(
-                  label: Text('${cat.$1} ${cat.$2}',
+                  label: Text(name,
                       style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.bold : FontWeight.w500)),
                   selected: selected,
                   selectedColor: AppColors.primarySoft,
                   checkmarkColor: AppColors.primaryDeep,
-                  onSelected: (val) => setState(() => _selectedCategory = val ? cat.$2 : null),
+                  onSelected: (val) => setState(() => _selectedCategory = val ? name : null),
                   side: BorderSide(color: selected ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border),
                 );
               }).toList(),
@@ -291,6 +300,21 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
         ),
       ),
     );
+  }
+
+  List<dynamic> _defaultCategories() {
+    return const [
+      ('⚡', 'Electrician'),
+      ('🔧', 'Plumber'),
+      ('❄️', 'AC Repair'),
+      ('💧', 'RO Repair'),
+      ('🪚', 'Carpenter'),
+      ('🔌', 'Appliance Repair'),
+      ('📱', 'Mobile Repair'),
+      ('🏍️', 'Bike Repair'),
+      ('🏪', 'Hardware Shop'),
+      ('💡', 'Electrical Shop'),
+    ];
   }
 
   Widget _buildProviderList(
@@ -386,7 +410,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(AppSpacing.pageInset, AppSpacing.lg, AppSpacing.pageInset, AppSpacing.xxxl),
         child: const Text(
-          'ServiQ — Crossings Republik\'s local marketplace · Built for the community',
+          'ServiQ — Local marketplace · Built for the community',
           style: TextStyle(fontSize: 11, color: AppColors.inkFaint),
           textAlign: TextAlign.center,
         ),
@@ -420,7 +444,6 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
   }
 }
 
-/// ── Hero Search Field ──
 class _HeroSearchField extends StatelessWidget {
   const _HeroSearchField({required this.controller});
   final TextEditingController controller;
@@ -453,7 +476,6 @@ class _HeroSearchField extends StatelessWidget {
   }
 }
 
-/// ── Provider Landing Card ──
 class _ProviderLandingCard extends StatelessWidget {
   const _ProviderLandingCard({
     required this.provider,
@@ -602,7 +624,6 @@ class _SignalChip extends StatelessWidget {
   }
 }
 
-/// ── Provider Detail Sheet ──
 class _ProviderDetailSheet extends StatelessWidget {
   const _ProviderDetailSheet({required this.provider, required this.onContact});
 
@@ -759,7 +780,6 @@ class _DetailStat extends StatelessWidget {
   }
 }
 
-/// ── Loading Shimmer ──
 class _ProviderListShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

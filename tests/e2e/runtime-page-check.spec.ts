@@ -11,7 +11,7 @@ test.describe('Runtime page load audit', () => {
     { path: '/privacy', name: 'Privacy' },
     { path: '/search', name: 'Search' },
     { path: '/referral', name: 'Referral' },
-    { path: '/market/crossing-republik', name: 'Market Crossing Republik' },
+    { path: '/market', name: 'Market Hub' },
   ];
 
   const authPages = [

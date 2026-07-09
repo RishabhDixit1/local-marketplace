@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { QuoteApiErrorCode, GetQuoteDraftResponse, SaveQuoteDraftResponse } from "@/lib/api/quotes";
 import { loadQuoteDraft, saveQuoteDraft } from "@/lib/server/quoteWrites";
 import { mapQuoteRouteError, parseQuoteDraftInput } from "@/lib/server/quoteRoute";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 
@@ -67,6 +68,9 @@ export async function POST(request: Request) {
   if (!authResult.ok) {
     return toErrorResponse(authResult.status, "UNAUTHORIZED", authResult.message);
   }
+
+  const rateLimitCheck = await applyRateLimit(authResult.auth.userId, "quotes:draft", WRITE_ROUTE_CONFIG);
+  if (rateLimitCheck.limited) return rateLimitCheck.response;
 
   let body: unknown;
   try {

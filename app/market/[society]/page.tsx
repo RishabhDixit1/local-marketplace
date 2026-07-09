@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Building2,
+  ChevronRight,
   Loader2,
   MapPin,
   Star,
@@ -15,7 +16,9 @@ import {
   Zap,
   CheckCircle2,
 } from "lucide-react";
+import { PageMeta } from "@/app/components/PageMeta";
 import { appName } from "@/lib/branding";
+import type { ServiceCategoryResponse } from "@/app/api/service-categories/route";
 
 type LocalityData = {
   id: string;
@@ -23,6 +26,9 @@ type LocalityData = {
   slug: string;
   zone_type: string;
   description: string | null;
+  city: string;
+  state: string;
+  zone_slug: string | null;
 };
 
 type ProviderData = {
@@ -41,17 +47,6 @@ type ProviderData = {
   verified: boolean;
 };
 
-const CATEGORIES = [
-  { label: "Electrician", slug: "electrician", icon: "⚡" },
-  { label: "Plumber", slug: "plumber", icon: "🔧" },
-  { label: "AC Repair", slug: "ac-repair-service", icon: "❄️" },
-  { label: "RO Repair", slug: "ro-water-purifier-repair", icon: "💧" },
-  { label: "Carpenter", slug: "carpenter-minor-fitting", icon: "🪚" },
-  { label: "Appliance Repair", slug: "appliance-repair", icon: "🔌" },
-  { label: "Tailoring", slug: "tailoring-and-alterations", icon: "🧵" },
-  { label: "Clothing", slug: "clothing-and-fashion", icon: "👕" },
-];
-
 export default function SocietyPage() {
   const params = useParams();
   const societySlug = params.society as string;
@@ -59,17 +54,27 @@ export default function SocietyPage() {
   const [locality, setLocality] = useState<LocalityData | null>(null);
   const [allLocalities, setAllLocalities] = useState<LocalityData[]>([]);
   const [providers, setProviders] = useState<ProviderData[]>([]);
+  const [categories, setCategories] = useState<ServiceCategoryResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const getZoneHref = () => {
+    if (!locality) return "/market";
+    if (locality.zone_slug) return `/market/zone/${locality.zone_slug}`;
+    return "/market";
+  };
 
   useEffect(() => {
     let active = true;
     async function load() {
       try {
-        const locRes = await fetch("/api/localities").then((r) => r.json());
-        if (!active || !locRes.ok) return;
+        const [locRes, catRes] = await Promise.all([
+          fetch("/api/localities").then((r) => r.json()),
+          fetch("/api/service-categories").then((r) => r.json()),
+        ]);
+        if (!active) return;
 
-        const localities: LocalityData[] = locRes.localities || [];
+        const localities: LocalityData[] = locRes.ok ? (locRes.localities || []) : [];
         const match = localities.find(
           (l: LocalityData) => l.slug === societySlug || l.name.toLowerCase().replace(/\s+/g, "-") === societySlug
         );
@@ -80,6 +85,7 @@ export default function SocietyPage() {
 
         setLocality(match);
         setAllLocalities(localities.filter((l: LocalityData) => l.zone_type === "society"));
+        setCategories(catRes.ok ? (catRes.categories || []) : []);
 
         const provRes = await fetch(`/api/localities/${match.id}/providers?limit=50`).then((r) => r.json());
         if (active && provRes.ok) {
@@ -96,6 +102,7 @@ export default function SocietyPage() {
   }, [societySlug]);
 
   const societyName = locality?.name || societySlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const zoneHref = getZoneHref();
 
   if (loading) {
     return (
@@ -112,7 +119,7 @@ export default function SocietyPage() {
         <h1 className="text-xl font-extrabold text-[var(--ink-950)]">Society not found</h1>
         <p className="mt-2 text-sm text-[var(--ink-500)]">We couldn&apos;t find &ldquo;{societyName}&rdquo;. Try browsing all societies.</p>
         <Link
-          href="/market/crossing-republik"
+          href={zoneHref}
           className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[var(--brand-900)] px-5 py-2.5 text-sm font-semibold text-white"
         >
           Browse All Societies <ArrowRight className="h-4 w-4" />
@@ -123,15 +130,31 @@ export default function SocietyPage() {
 
   const otherLocalities = allLocalities.filter((l) => l.id !== locality.id).slice(0, 6);
 
+  const zoneName = locality.zone_slug
+    ? locality.zone_slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    : locality.city || "Market";
+
+  const societyName = locality.name;
+
   return (
     <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-20 pt-6 sm:px-6 sm:pt-10 lg:pb-20">
+      <PageMeta title={societyName} description={`Local services and products available in ${societyName}, ${locality.city}`} path={`/market/${params.society}`} />
+      <div className="mb-4 flex items-center gap-1.5 text-xs text-[var(--ink-500)]">
+        <Link href="/" className="hover:text-[var(--brand-700)]">Home</Link>
+        <ChevronRight className="h-3 w-3" />
+        <Link href="/market" className="hover:text-[var(--brand-700)]">Markets</Link>
+        <ChevronRight className="h-3 w-3" />
+        <Link href={zoneHref} className="hover:text-[var(--brand-700)]">{zoneName}</Link>
+        <ChevronRight className="h-3 w-3" />
+        <span className="text-[var(--ink-700)] font-semibold">{locality.name}</span>
+      </div>
       <div className="mb-6">
         <Link
-          href="/market/crossing-republik"
+          href={zoneHref}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--brand-700)] hover:text-[var(--brand-500)]"
         >
           <ArrowRight className="h-3 w-3 rotate-180" />
-          Back to Crossing Republik
+          Back to {zoneName}
         </Link>
       </div>
 
@@ -153,26 +176,28 @@ export default function SocietyPage() {
           </div>
           <div className="flex items-center gap-1.5 pl-4 text-xs font-semibold text-[var(--ink-700)]">
             <MapPin className="h-3.5 w-3.5 text-[var(--brand-600)]" />
-            Crossing Republik, Ghaziabad
+            {locality.city || "Local"}, {locality.state || ""}
           </div>
         </div>
       </section>
 
-      <section className="mb-10">
+      {categories.length > 0 && (
+        <section className="mb-10">
           <h2 className="mb-4 text-lg font-extrabold text-[var(--ink-950)]">Browse by Category</h2>
-        <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((cat) => (
-            <Link
-              key={cat.slug}
-              href={`/market/${locality.slug}/${cat.slug}`}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3.5 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-300)] hover:shadow-sm"
-            >
-              <span className="text-sm">{cat.icon}</span>
-              {cat.label}
-            </Link>
-          ))}
-        </div>
-      </section>
+          <div className="flex flex-wrap gap-2">
+            {categories.slice(0, 12).map((cat) => (
+              <Link
+                key={cat.id}
+                href={`/market/${locality.slug}/${cat.slug}`}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3.5 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-300)] hover:shadow-sm"
+              >
+                {cat.icon_slug && <span className="text-sm">{cat.icon_slug}</span>}
+                {cat.name}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mb-10">
         <div className="mb-4 flex items-center justify-between">

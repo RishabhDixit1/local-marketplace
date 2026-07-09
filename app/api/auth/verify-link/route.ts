@@ -4,7 +4,7 @@ import {
   createSupabaseAdminClient,
   createSupabaseAnonServerClient,
 } from "@/lib/server/supabaseClients";
-import { buildSupabaseSessionCookieValue } from "@/lib/server/customAuth";
+import { buildSupabaseSessionCookieValue, SESSION_EXPIRY_SECONDS } from "@/lib/server/customAuth";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { applyRateLimit, AUTH_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 
@@ -166,7 +166,7 @@ async function postHandler(request: Request) {
     user: { id: string; email: string };
   };
 
-  const expiresAt = Math.floor(Date.now() / 1000) + 34560000;
+  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_EXPIRY_SECONDS;
 
   const response = NextResponse.json({
     ok: true,
@@ -177,7 +177,7 @@ async function postHandler(request: Request) {
       access_token: sessionData.access_token,
       refresh_token: sessionData.refresh_token,
       token_type: "bearer",
-      expires_in: 34560000,
+      expires_in: SESSION_EXPIRY_SECONDS,
       expires_at: expiresAt,
       user: {
         id: fallbackUserId,

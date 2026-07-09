@@ -15,6 +15,8 @@ export type LocalityResponse = {
   radius_km: number;
   city: string;
   state: string;
+  zone_id: string | null;
+  zone_slug: string | null;
 };
 
 export type LocalitiesApiResponse = {
@@ -24,10 +26,26 @@ export type LocalitiesApiResponse = {
   message?: string;
 };
 
+type RawLocality = {
+  id: string;
+  name: string;
+  slug: string;
+  zone_type: string;
+  phase: number;
+  lat: number | null;
+  lng: number | null;
+  radius_km: number;
+  city: string;
+  state: string;
+  zone_id: string | null;
+  market_zones: { slug: string } | null;
+};
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const zoneType = searchParams.get("zone_type");
   const phase = searchParams.get("phase");
+  const zoneSlug = searchParams.get("zone_slug");
 
   const supabase = createSupabaseAnonServerClient();
 
@@ -39,12 +57,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    const cacheKey = queryCacheKey("localities", zoneType ?? "all", phase ?? "all");
+    const cacheKey = queryCacheKey("localities", zoneType ?? "all", phase ?? "all", zoneSlug ?? "all");
     const result = await withCache<LocalityResponse[]>(
       async () => {
         let query = supabase
           .from("localities")
-          .select("*")
+          .select("*, market_zones!left(slug)")
           .order("zone_type", { ascending: true })
           .order("name", { ascending: true });
 
@@ -56,10 +74,28 @@ export async function GET(request: Request) {
           query = query.eq("phase", parseInt(phase, 10));
         }
 
+        if (zoneSlug) {
+          query = query.eq("market_zones.slug", zoneSlug);
+        }
+
         const { data, error } = await query;
 
         if (error) throw new Error(error.message);
-        return data as LocalityResponse[];
+
+        return ((data ?? []) as RawLocality[]).map((r) => ({
+          id: r.id,
+          name: r.name,
+          slug: r.slug,
+          zone_type: r.zone_type,
+          phase: r.phase,
+          lat: r.lat,
+          lng: r.lng,
+          radius_km: r.radius_km,
+          city: r.city,
+          state: r.state,
+          zone_id: r.zone_id,
+          zone_slug: r.market_zones?.slug ?? null,
+        }));
       },
       { key: cacheKey, ttlSeconds: 3600 },
     );

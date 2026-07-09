@@ -12,5 +12,23 @@ export default defineConfig({
     include: ["tests/unit/**/*.test.ts"],
     environment: "node",
     reporters: "default",
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json-summary", "lcov"],
+      include: ["lib/**", "app/api/**"],
+      exclude: [
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "lib/ai/**",
+        "lib/feature-flags/**",
+        "node_modules/**",
+      ],
+      thresholds: {
+        statements: 40,
+        branches: 30,
+        functions: 40,
+        lines: 40,
+      },
+    },
   },
 });

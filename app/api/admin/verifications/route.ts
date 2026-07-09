@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { isAdminEmail, requireRequestAuth } from "@/lib/server/requestAuth";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -76,6 +77,9 @@ export async function PATCH(request: Request) {
   if (!isAdminEmail(auth.auth.email)) {
     return NextResponse.json({ ok: false, code: "FORBIDDEN", message: "Admin access required." }, { status: 403 });
   }
+
+  const rateLimit = await applyRateLimit(auth.auth.userId, "admin:verifications", WRITE_ROUTE_CONFIG);
+  if (rateLimit.limited) return rateLimit.response;
 
   const db = createSupabaseAdminClient();
   if (!db) {

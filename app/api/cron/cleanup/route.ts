@@ -29,9 +29,13 @@ export async function GET(request: Request) {
   // Also soft-delete expired OTP codes older than 24h
   const { error: otpErr } = await db.rpc("cleanup_expired_otps");
 
+  // Clean up expired rate limit entries to prevent unbounded table growth
+  const { error: rlErr } = await db.rpc("cleanup_expired_rate_limits");
+
   return NextResponse.json({
     ok: true,
     deleted_rescheduled_bookings: deleted?.length ?? 0,
     otp_cleanup_triggered: !otpErr,
+    rate_limits_cleanup_triggered: !rlErr,
   });
 }

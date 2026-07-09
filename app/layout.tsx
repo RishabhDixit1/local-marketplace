@@ -11,6 +11,7 @@ const CookieConsentBanner = dynamic(
 import { appName, appTagline } from "@/lib/branding";
 import { AppFooter } from "@/components/AppFooter";
 import { NavigationProgress } from "@/app/components/NavigationProgress";
+import { ToastProvider } from "@/app/components/toast/ToastProvider";
 import { AnimatedPage } from "@/app/components/motion/AnimatedPage";
 import { OfflineBanner } from "@/app/components/OfflineBanner";
 import { getConfiguredSiteUrl } from "@/lib/siteUrl";
@@ -73,11 +74,16 @@ export default async function RootLayout({
         </Script>
       </head>
       <body className={`${manrope.variable} ${sora.variable} flex min-h-screen flex-col bg-[var(--surface-app)] text-[var(--ink-950)] antialiased`}>
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[var(--layer-tooltip)] focus:rounded-xl focus:bg-[var(--surface-elevated)] focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-[var(--ink-950)] focus:shadow-lg focus:outline-none">
+          Skip to main content
+        </a>
         <NavigationProgress />
         <OfflineBanner />
         <LocaleProvider defaultLocale={locale}>
-          <div className="flex-1"><AnimatedPage>{children}</AnimatedPage></div>
-          <AppFooter />
+          <ToastProvider>
+            <main id="main-content" className="flex-1"><AnimatedPage>{children}</AnimatedPage></main>
+            <AppFooter />
+          </ToastProvider>
         </LocaleProvider>
         <Analytics />
         <CookieConsentBanner />

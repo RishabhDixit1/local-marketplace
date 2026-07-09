@@ -27,9 +27,7 @@ import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { buildPublicProfilePath } from "@/lib/profile/utils";
 import { PageHeader } from "@/app/components/ui/PageHeader";
-import ProfileToastViewport, {
-  type ProfileToast,
-} from "@/app/components/profile/ProfileToastViewport";
+import { useToast } from "@/app/components/toast/ToastProvider";
 import ProviderTrustPanel from "@/app/components/ProviderTrustPanel";
 
 type ProviderCard = {
@@ -404,6 +402,7 @@ function ProviderQuickViewModal({
 export default function ProvidersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast: showToast } = useToast();
   const [providers, setProviders] = useState<ProviderCard[]>([]);
   const [facets, setFacets] = useState<Facets | null>(null);
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -430,11 +429,8 @@ export default function ProvidersPage() {
   const [favoriteProviderIds, setFavoriteProviderIds] = useState<Set<string>>(new Set());
   const [quickViewProvider, setQuickViewProvider] = useState<ProviderCard | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [toasts, setToasts] = useState<ProfileToast[]>([]);
-
   const loadMoreCallbackRef = useRef<() => void>(() => {});
   const loadMoreObserverRef = useRef<IntersectionObserver | null>(null);
-  const toastTimersRef = useRef<Map<string, number>>(new Map());
 
   const mountedRef = useRef(true);
 
@@ -444,22 +440,10 @@ export default function ProvidersPage() {
   }, []);
 
   const pushToast = useCallback(
-    (kind: ProfileToast["kind"], message: string) => {
-      const toastId =
-        typeof window !== "undefined" && window.crypto?.randomUUID
-          ? window.crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-      setToasts((current) => [...current, { id: toastId, kind, message }]);
-
-      const timeoutId = window.setTimeout(() => {
-        setToasts((current) => current.filter((toast) => toast.id !== toastId));
-        toastTimersRef.current.delete(toastId);
-      }, 4600);
-
-      toastTimersRef.current.set(toastId, timeoutId);
+    (kind: "success" | "error" | "info", message: string) => {
+      showToast(kind, message);
     },
-    []
+    [showToast]
   );
 
   const toggleFavorite = useCallback((providerId: string, providerName: string) => {
@@ -478,10 +462,7 @@ export default function ProvidersPage() {
   }, [pushToast]);
 
   useEffect(() => {
-    const timers = toastTimersRef.current;
     return () => {
-      timers.forEach((timeoutId) => window.clearTimeout(timeoutId));
-      timers.clear();
       if (loadMoreObserverRef.current) {
         loadMoreObserverRef.current.disconnect();
         loadMoreObserverRef.current = null;
@@ -1267,14 +1248,6 @@ export default function ProvidersPage() {
         />
       )}
 
-      <ProfileToastViewport toasts={toasts} onDismiss={(toastId) => {
-        setToasts((prev) => prev.filter((t) => t.id !== toastId));
-        const timerId = toastTimersRef.current.get(toastId);
-        if (timerId) {
-          window.clearTimeout(timerId);
-          toastTimersRef.current.delete(toastId);
-        }
-      }} />
     </div>
   );
 }

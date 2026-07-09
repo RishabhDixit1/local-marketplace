@@ -39,7 +39,7 @@ export function MobileBottomNav({ items }: { items?: MobileNavItem[] }) {
 
   const defaultNavItems = [
     { href: "/", label: t("nav.home"), icon: Home },
-    { href: "/market/crossing-republik", label: t("nav.explore"), icon: Store },
+    { href: "/market", label: t("nav.explore"), icon: Store },
   ] as const;
 
   const authItems = [

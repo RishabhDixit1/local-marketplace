@@ -1,8 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getSupabaseAuthCookieName } from "@/lib/supabaseAuthCookie";
-import { SUPPORTED_LOCALES, type Locale } from "@/lib/i18n";
 
 const protectedPaths = ["/dashboard", "/checkout", "/orders"];
 
@@ -23,6 +21,9 @@ const publicPathPrefixes = [
 
 const publicExactPaths = ["/", "/sitemap.xml", "/robots.txt", "/manifest.json", "/sw.js"];
 
+const SUPPORTED_LOCALES = ["en", "hi", "bn", "ta", "te", "mr"] as const;
+type Locale = (typeof SUPPORTED_LOCALES)[number];
+
 const LOCALE_COOKIE = "serviq-locale";
 
 function isProtected(pathname: string): boolean {
@@ -36,7 +37,7 @@ function isPublic(pathname: string): boolean {
 
 function detectLocale(request: NextRequest): Locale {
   const cookie = request.cookies.get(LOCALE_COOKIE)?.value;
-  if (cookie && SUPPORTED_LOCALES.includes(cookie as Locale)) {
+  if (cookie && (SUPPORTED_LOCALES as readonly string[]).includes(cookie)) {
     return cookie as Locale;
   }
 
@@ -50,7 +51,7 @@ function detectLocale(request: NextRequest): Locale {
     .filter(Boolean);
 
   for (const lang of locales) {
-    if (SUPPORTED_LOCALES.includes(lang as Locale)) {
+    if ((SUPPORTED_LOCALES as readonly string[]).includes(lang)) {
       return lang as Locale;
     }
   }
@@ -69,6 +70,18 @@ function setLocaleCookie(request: NextRequest, response: NextResponse) {
     });
   }
   response.headers.set("x-serviq-locale", locale);
+}
+
+function getSupabaseAuthCookieName(): string {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!url) return "sb-auth-token";
+  try {
+    const hostname = new URL(url).hostname;
+    const projectRef = hostname.split(".")[0];
+    return `sb-${projectRef}-auth-token`;
+  } catch {
+    return "sb-auth-token";
+  }
 }
 
 function base64UrlDecode(str: string): string {
@@ -123,7 +136,7 @@ function getLocalSessionFromCookie(
   return parsed;
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const response = NextResponse.next();
 
@@ -166,7 +179,6 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // GoTrue unreachable — check for locally-signed session cookie
   const localSession = getLocalSessionFromCookie(request);
   if (localSession) {
     return supabaseResponse;

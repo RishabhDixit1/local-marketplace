@@ -85,7 +85,7 @@ function ProviderCard({
               </span>
             )}
           </div>
-          <p className="truncate text-xs text-slate-500">{provider.location || "Crossings Republik"}</p>
+          <p className="truncate text-xs text-slate-500">{provider.location || "Local area"}</p>
         </div>
       </div>
 

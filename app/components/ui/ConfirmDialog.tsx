@@ -84,6 +84,9 @@ export function ConfirmDialog({
             onClick={busy ? undefined : onCancel}
           />
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-dialog-title"
             className={`relative w-full max-w-sm overflow-hidden rounded-2xl border bg-white shadow-2xl ${style.border}`}
             initial={{ opacity: 0, scale: 0.92, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -96,7 +99,7 @@ export function ConfirmDialog({
                   <AlertTriangle size={18} className={style.icon} />
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+                  <h3 id="confirm-dialog-title" className="text-sm font-bold text-slate-900">{title}</h3>
                   <p className="mt-1 text-sm leading-[1.55] text-slate-600">{message}</p>
                 </div>
               </div>

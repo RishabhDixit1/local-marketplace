@@ -34,13 +34,8 @@ import {
 } from "@/lib/feedCardSavesClient";
 import { supabase } from "@/lib/supabase";
 import { buildWelcomeFeedCards, type WelcomeFeedCard } from "@/lib/welcomeFeed";
+import { useToast } from "@/app/components/toast/ToastProvider";
 import { ArrowRight, Bookmark, BookmarkMinus, Check, Clock3, Loader2, MapPin, Share2, Sparkles, X } from "lucide-react";
-
-type FeedToast = {
-  id: number;
-  kind: "success" | "error" | "info";
-  message: string;
-};
 
 type SavedFeedViewProps = {
   embedded?: boolean;
@@ -299,6 +294,7 @@ const buildSavedWelcomeDisplayItem = (card: WelcomeFeedCard): MarketplaceDisplay
 
 export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) {
   const router = useRouter();
+  const { toast: showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [savedCards, setSavedCards] = useState<FeedCardSaveRecord[]>([]);
@@ -309,15 +305,9 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
   const [messageCardId, setMessageCardId] = useState<string | null>(null);
   const [acceptingCardId, setAcceptingCardId] = useState<string | null>(null);
   const [acceptTarget, setAcceptTarget] = useState<{ cardId: string; item: MarketplaceDisplayFeedItem } | null>(null);
-  const [feedToasts, setFeedToasts] = useState<FeedToast[]>([]);
-
-  const pushFeedToast = useCallback((kind: FeedToast["kind"], message: string) => {
-    const id = Date.now() + Math.floor(Math.random() * 1000);
-    setFeedToasts((current) => [...current, { id, kind, message }]);
-    window.setTimeout(() => {
-      setFeedToasts((current) => current.filter((toast) => toast.id !== id));
-    }, 2600);
-  }, []);
+  const pushFeedToast = useCallback((kind: "success" | "error" | "info", message: string) => {
+    showToast(kind, message);
+  }, [showToast]);
 
   const buildSavedFeedPath = useCallback((card: FeedCardSaveRecord) => {
     const basePath = card.action_path || "/dashboard";
@@ -1165,27 +1155,6 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
         }}
       />
 
-      <div
-        aria-live="polite"
-        aria-atomic="true"
-        className="pointer-events-none fixed bottom-6 right-4 z-[var(--layer-toast)] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2 sm:right-6"
-      >
-        {feedToasts.map((toast) => (
-          <div
-            key={toast.id}
-            role="status"
-            className={`rounded-xl border px-3 py-2 text-sm shadow-lg backdrop-blur ${
-              toast.kind === "success"
-                ? "border-emerald-200 bg-emerald-50/95 text-emerald-800"
-                : toast.kind === "error"
-                  ? "border-rose-200 bg-rose-50/95 text-rose-800"
-                  : "border-cyan-200 bg-cyan-50/95 text-cyan-800"
-            }`}
-          >
-            {toast.message}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

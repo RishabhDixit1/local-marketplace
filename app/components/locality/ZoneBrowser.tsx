@@ -32,10 +32,12 @@ export default function ZoneBrowser({
   initialLocalities,
   loading,
   error,
+  zoneSlug,
 }: {
   initialLocalities: Locality[];
   loading?: boolean;
   error?: string | null;
+  zoneSlug?: string;
 }) {
   const [activeTab, setActiveTab] = useState<string>("society");
   const [search, setSearch] = useState("");
@@ -133,7 +135,7 @@ export default function ZoneBrowser({
             return (
               <Link
                 key={locality.id}
-                href={`/dashboard/people?locality_id=${locality.id}`}
+                href={`/market/${locality.slug}`}
                 className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md active:scale-[0.98] active:shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">

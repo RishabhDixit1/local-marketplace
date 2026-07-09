@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { AcceptQuoteResponse, QuoteApiErrorCode } from "@/lib/api/quotes";
 import { acceptQuoteDraft } from "@/lib/server/quoteWrites";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 
@@ -15,6 +16,9 @@ export async function POST(
 ) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) return toErrorResponse(authResult.status, "UNAUTHORIZED", authResult.message);
+
+  const rateLimitCheck = await applyRateLimit(authResult.auth.userId, "quotes:accept", WRITE_ROUTE_CONFIG);
+  if (rateLimitCheck.limited) return rateLimitCheck.response;
 
   const { quoteId } = await params;
   if (!quoteId?.trim()) return toErrorResponse(400, "INVALID_PAYLOAD", "quoteId path parameter is required.");

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { PublishNeedRequest, PublishNeedResponse, PublishApiErrorCode } from "@/lib/api/publish";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { insertHelpRequestRow, insertPostRow, runImmediateMatching } from "@/lib/server/publishWrites";
 import { invalidateUserFeed } from "@/lib/cache/invalidation";
 
@@ -45,6 +46,9 @@ export async function POST(request: Request) {
   if (!authResult.ok) {
     return toErrorResponse(authResult.status, "UNAUTHORIZED", authResult.message);
   }
+
+  const rateLimitCheck = await applyRateLimit(authResult.auth.userId, "needs:publish", WRITE_ROUTE_CONFIG);
+  if (rateLimitCheck.limited) return rateLimitCheck.response;
 
   const admin = createSupabaseAdminClient();
   const dbClient = admin || createSupabaseUserServerClient(authResult.auth.accessToken);

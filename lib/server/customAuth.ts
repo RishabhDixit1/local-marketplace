@@ -12,7 +12,7 @@ const getSecret = (): string => {
   return key;
 };
 
-const SESSION_EXPIRY_SECONDS = 7 * 24 * 60 * 60;
+export const SESSION_EXPIRY_SECONDS = 7 * 24 * 60 * 60;
 
 export function createLocalAuthToken(userId: string, email: string): string {
   return jwt.sign(

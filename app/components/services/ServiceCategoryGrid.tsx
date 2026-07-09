@@ -30,9 +30,11 @@ const iconMap: Record<string, LucideIcon> = {
 export default function ServiceCategoryGrid({
   categories,
   localityId,
+  zoneSlug,
 }: {
   categories: ServiceCategory[];
   localityId?: string;
+  zoneSlug?: string;
 }) {
   const visibleCategories = categories.filter(
     (c) => c.base_price_min != null && c.base_price_max != null
@@ -54,9 +56,11 @@ export default function ServiceCategoryGrid({
           <Link
             key={cat.id}
             href={
-              localityId
-                ? `/?category=${cat.slug}&locality=${localityId}`
-                : `/?category=${cat.slug}`
+              zoneSlug
+                ? `/market/zone/${zoneSlug}?category=${cat.slug}`
+                : localityId
+                  ? `/?category=${cat.slug}&locality=${localityId}`
+                  : `/?category=${cat.slug}`
             }
             className="group flex flex-col items-start gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
           >

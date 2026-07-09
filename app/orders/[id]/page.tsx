@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { PageMeta } from "@/app/components/PageMeta";
 import {
   AlertCircle,
   ArrowLeft,
@@ -305,6 +306,7 @@ export default function OrderStatusPage() {
 
   return (
     <div className="min-h-screen bg-[#f4f2ee]">
+      <PageMeta title={order ? `Order #${order.id.slice(0, 8)}` : "Order"} path={`/orders/${id}`} />
       {/* Top bar */}
       <div className="sticky top-0 z-40 border-b border-[var(--surface-border)] bg-[var(--surface-elevated)]/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">

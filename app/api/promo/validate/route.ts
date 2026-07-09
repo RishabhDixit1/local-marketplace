@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { requireRequestAuth } from "@/lib/server/requestAuth";
 
 export const runtime = "nodejs";
 
 export const POST = withErrorHandling(async function postHandler(request: Request) {
+  const authResult = await requireRequestAuth(request);
+  if (!authResult.ok) {
+    return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
+  }
   let body: { code: string; orderPaise?: number };
   try {
     body = await request.json();

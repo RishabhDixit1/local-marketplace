@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireRequestAuthMock = vi.fn();
 const createSupabaseAdminClientMock = vi.fn();
+const applyRateLimitMock = vi.fn();
 
 vi.mock("@/lib/server/requestAuth", () => ({
   requireRequestAuth: requireRequestAuthMock,
@@ -10,6 +11,11 @@ vi.mock("@/lib/server/requestAuth", () => ({
 
 vi.mock("@/lib/server/supabaseClients", () => ({
   createSupabaseAdminClient: createSupabaseAdminClientMock,
+}));
+
+vi.mock("@/lib/server/rateLimit", () => ({
+  applyRateLimit: applyRateLimitMock,
+  WRITE_ROUTE_CONFIG: { windowSeconds: 60, maxRequests: 20 },
 }));
 
 const authContext = {
@@ -51,6 +57,7 @@ describe("POST /api/payment/verify", () => {
   beforeEach(() => {
     vi.resetModules();
     requireRequestAuthMock.mockReset();
+    applyRateLimitMock.mockResolvedValue({ limited: false, response: null });
     createSupabaseAdminClientMock.mockReset();
     process.env.RAZORPAY_KEY_SECRET = "test-secret";
   });

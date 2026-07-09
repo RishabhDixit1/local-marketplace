@@ -181,6 +181,13 @@ class MobileApiClient {
     return list.whereType<Map>().cast<Map<String, dynamic>>().toList();
   }
 
+  Future<Map<String, dynamic>> getMarketZone(String slug) async {
+    return getJson(
+      '/api/market/$slug',
+      authenticated: false,
+    );
+  }
+
   Future<Map<String, dynamic>> postOnboardLocality({
     required String localityId,
     List<String> serviceZoneIds = const [],

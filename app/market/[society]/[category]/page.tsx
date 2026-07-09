@@ -26,13 +26,15 @@ async function getData(societySlug: string, categorySlug: string) {
   if (!db) return null;
 
   const [localityRes, categoryRes] = await Promise.all([
-    db.from("localities").select("*").eq("slug", societySlug).eq("zone_type", "society").maybeSingle(),
+    db.from("localities").select("*, market_zones(name)").eq("slug", societySlug).eq("zone_type", "society").maybeSingle(),
     db.from("service_categories").select("*").eq("slug", categorySlug).maybeSingle(),
   ]);
 
   const locality = localityRes.data;
   const category = categoryRes.data;
   if (!locality || !category) return null;
+
+  const zoneName = (locality as Record<string, unknown> & { market_zones?: { name: string } | null }).market_zones?.name || null;
 
   const { data: providers } = await db
     .from("profiles")
@@ -48,7 +50,7 @@ async function getData(societySlug: string, categorySlug: string) {
     .eq("zone_type", "society")
     .order("name");
 
-  return { locality, category, providers: providers || [], allLocalities: allLocalities || [] };
+  return { locality, category, zoneName, providers: providers || [], allLocalities: allLocalities || [] };
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -60,14 +62,15 @@ export async function generateMetadata({ params }: PageProps) {
 
   if (!data) {
     return {
-      title: `${catName} in Crossings Republik - ${appName}`,
-      openGraph: { title: `${catName} in Crossings Republik - ${appName}`, description: `Find trusted ${catName.toLowerCase()} service providers in Crossings Republik, Ghaziabad.` },
-      twitter: { card: "summary_large_image", title: `${catName} in Crossings Republik - ${appName}`, description: `Find trusted ${catName.toLowerCase()} service providers in Crossings Republik, Ghaziabad.` },
+      title: `${catName} - ${appName}`,
+      openGraph: { title: `${catName} - ${appName}`, description: `Find trusted ${catName.toLowerCase()} service providers near you.` },
+      twitter: { card: "summary_large_image", title: `${catName} - ${appName}`, description: `Find trusted ${catName.toLowerCase()} service providers near you.` },
     };
   }
 
-  const title = `${catName} in ${data.locality.name}, Crossings Republik - ${appName}`;
-  const description = `Find trusted ${catName.toLowerCase()} service providers in ${data.locality.name}, Crossings Republik, Ghaziabad. Book verified local professionals near you.`;
+  const areaName = data.zoneName || data.locality.name;
+  const title = `${catName} in ${data.locality.name}, ${areaName} - ${appName}`;
+  const description = `Find trusted ${catName.toLowerCase()} service providers in ${data.locality.name}, ${areaName}. Book verified local professionals near you.`;
   const url = `${siteUrl}/market/${society}/${category}`;
   const ogImage = [{ url: `${siteUrl}/api/og?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description.slice(0, 100))}` }];
 
@@ -86,6 +89,7 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
 
   if (!data) { notFound(); }
 
+  const areaName = data.zoneName || data.locality.name;
   const catName = CATEGORY_LABELS[category] || category.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
@@ -99,7 +103,7 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
             name: `${catName} in ${data.locality.name}`,
             areaServed: {
               "@type": "City",
-              name: `${data.locality.name}, Crossings Republik, Ghaziabad`,
+              name: `${data.locality.name}, ${areaName}`,
             },
             provider: {
               "@type": "LocalBusiness",
@@ -119,7 +123,7 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
           <span className="text-[var(--brand-700)]">{data.locality.name}</span>
         </h1>
         <p className="mx-auto mt-2 max-w-lg text-sm text-[var(--ink-500)]">
-          Find trusted {catName.toLowerCase()} service providers in {data.locality.name}, Crossings Republik, Ghaziabad.
+          Find trusted {catName.toLowerCase()} service providers in {data.locality.name}, {areaName}.
         </p>
 
         <div className="mx-auto mt-6 inline-flex items-center gap-4 divide-x divide-slate-200 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-2.5 shadow-sm">
@@ -129,7 +133,7 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
           </div>
           <div className="flex items-center gap-1.5 pl-4 text-xs font-semibold text-[var(--ink-700)]">
             <MapPin className="h-3.5 w-3.5 text-[var(--brand-600)]" />
-            {data.locality.name}, Crossings Republik
+            {data.locality.name}, {areaName}
           </div>
         </div>
 
@@ -142,7 +146,7 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
             Browse Providers
           </Link>
           <Link
-            href={`/market/crossing-republik?category=${category}`}
+            href={`/market?category=${category}`}
             className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-3 text-sm font-bold text-[var(--ink-700)] transition hover:border-[var(--border-strong)]"
           >
             <ArrowRight className="h-4 w-4" />
@@ -187,7 +191,7 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
 
       <section className="mt-10">
         <div className="mb-4">
-          <h2 className="text-lg font-extrabold text-[var(--ink-950)]">Other Societies in Crossings Republik</h2>
+          <h2 className="text-lg font-extrabold text-[var(--ink-950)]">Other Societies in {areaName}</h2>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {data.allLocalities.filter((l) => l.id !== data.locality.id).slice(0, 6).map((l) => (
@@ -210,7 +214,7 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
 
       <footer className="mt-12 border-t border-[var(--surface-border)] pt-8 text-center">
         <p className="text-xs text-[var(--ink-500)]">
-          ServiQ — Crossings Republik&apos;s local marketplace &middot; {catName} in {data.locality.name}
+          ServiQ — {areaName}&apos;s local marketplace &middot; {catName} in {data.locality.name}
         </p>
       </footer>
     </div>

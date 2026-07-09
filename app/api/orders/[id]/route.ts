@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
+import { logger } from "@/lib/server/logger";
 import type { CanonicalOrderStatus, OrderActorRole } from "@/lib/orderWorkflow";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { canTransitionOrderStatus, getOrderStatusLabel } from "@/lib/orderWorkflow";
@@ -94,6 +96,9 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
   }
+
+  const rateLimitCheck = await applyRateLimit(authResult.auth.userId, "orders:update", WRITE_ROUTE_CONFIG);
+  if (rateLimitCheck.limited) return rateLimitCheck.response;
 
   const { id } = await params;
   let body: unknown;
@@ -196,7 +201,7 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
           },
         });
       } catch (err) {
-        console.error("[order-status-notification] failed for order", id, err);
+        logger.error("orders:update", "Status notification failed", err, { orderId: id });
       }
     })();
   }
@@ -229,7 +234,7 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
           }
         }
       } catch (err) {
-        console.error("[order-refund] failed for order", id, err);
+        logger.error("orders:update", "Refund processing failed", err, { orderId: id });
       }
     })();
   }
@@ -246,7 +251,7 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
           status: "sent",
         }, { onConflict: "order_id, requester_id" });
       } catch (err) {
-        console.error("[review-request] failed for order", id, err);
+        logger.error("orders:update", "Review request creation failed", err, { orderId: id });
       }
 
       // Calculate platform commission
@@ -278,11 +283,11 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
           });
 
           if (payoutErr) {
-            console.error("[auto-payout] insert failed for order", id, payoutErr.message);
+            logger.error("orders:update", "Auto-payout insert failed", payoutErr, { orderId: id });
           }
         }
       } catch (err) {
-        console.error("[commission] calculation failed for order", id, err);
+        logger.error("orders:update", "Commission calculation failed", err, { orderId: id });
       }
     })();
   }
@@ -340,7 +345,7 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
         });
       }
     } catch (err) {
-      console.error("[order-status-emails] failed for order", id, err);
+      logger.error("orders:update", "Status email sending failed", err, { orderId: id });
     }
   })();
 
@@ -356,7 +361,7 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
         price: ex.price,
       }, previousStatus);
     } catch (err) {
-      console.error("[order-status-sms] failed for order", id, err);
+      logger.error("orders:update", "Status SMS sending failed", err, { orderId: id });
     }
   })();
 

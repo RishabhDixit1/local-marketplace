@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth, isAdminEmail } from "@/lib/server/requestAuth";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { isRazorpayConfigured, getRazorpay } from "@/lib/server/razorpay";
@@ -59,6 +60,9 @@ export const PATCH = withErrorHandling(async function patchHandler(request: Requ
   if (!isAdminEmail(auth.auth.email)) {
     return NextResponse.json({ ok: false, message: "Forbidden" }, { status: 403 });
   }
+
+  const rateLimit = await applyRateLimit(auth.auth.userId, "admin:payouts-update", WRITE_ROUTE_CONFIG);
+  if (rateLimit.limited) return rateLimit.response;
 
   let body: PatchBody;
   try {

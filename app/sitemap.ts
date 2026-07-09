@@ -9,7 +9,7 @@ const STATIC_ROUTES = [
   { url: "/dashboard/people", changeFrequency: "weekly" as const, priority: 0.7 },
   { url: "/dashboard/providers", changeFrequency: "weekly" as const, priority: 0.7 },
   { url: "/dashboard/referrals", changeFrequency: "monthly" as const, priority: 0.5 },
-  { url: "/market/crossing-republik", changeFrequency: "weekly" as const, priority: 0.9 },
+  { url: "/market", changeFrequency: "weekly" as const, priority: 0.9 },
   { url: "/referral", changeFrequency: "monthly" as const, priority: 0.3 },
 ];
 

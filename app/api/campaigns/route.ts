@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { enqueueJob } from "@/lib/server/backgroundJobs";
 import { withErrorHandling } from "@/lib/server/errorHandler";
@@ -30,6 +31,9 @@ async function getHandler(request: Request) {
 async function postHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) return toError(401, "UNAUTHORIZED", auth.message);
+
+  const rateLimit = await applyRateLimit(auth.auth.userId, "campaigns:create", WRITE_ROUTE_CONFIG);
+  if (rateLimit.limited) return rateLimit.response;
 
   const db = createSupabaseAdminClient() || createSupabaseUserServerClient(auth.auth.accessToken);
   if (!db) return toError(500, "CONFIG", "No DB client");
@@ -80,6 +84,9 @@ async function patchHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) return toError(401, "UNAUTHORIZED", auth.message);
 
+  const rateLimit = await applyRateLimit(auth.auth.userId, "campaigns:update", WRITE_ROUTE_CONFIG);
+  if (rateLimit.limited) return rateLimit.response;
+
   const db = createSupabaseAdminClient() || createSupabaseUserServerClient(auth.auth.accessToken);
   if (!db) return toError(500, "CONFIG", "No DB client");
 
@@ -98,6 +105,9 @@ async function patchHandler(request: Request) {
 async function deleteHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) return toError(401, "UNAUTHORIZED", auth.message);
+
+  const rateLimit = await applyRateLimit(auth.auth.userId, "campaigns:delete", WRITE_ROUTE_CONFIG);
+  if (rateLimit.limited) return rateLimit.response;
 
   const db = createSupabaseAdminClient() || createSupabaseUserServerClient(auth.auth.accessToken);
   if (!db) return toError(500, "CONFIG", "No DB client");

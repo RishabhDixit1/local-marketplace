@@ -6,12 +6,11 @@ import { SlidersHorizontal } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PageMeta } from "@/app/components/PageMeta";
+import { useToast } from "@/app/components/toast/ToastProvider";
 import RouteObservability from "@/app/components/RouteObservability";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
-import ProfileToastViewport, {
-  type ProfileToast,
-} from "@/app/components/profile/ProfileToastViewport";
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
 import DashboardHero from "@/app/dashboard/components/DashboardHero";
 import DashboardProviderScroll from "@/app/dashboard/components/providers/DashboardProviderScroll";
@@ -39,13 +38,12 @@ const MOBILE_VISIBLE_INCREMENT = 6;
 export default function MarketplacePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast: showToast } = useToast();
   const [openPostModal, setOpenPostModal] = useState(false);
   const [hoveredMapItemId, setHoveredMapItemId] = useState<string | null>(null);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
   const [providers, setProviders] = useState<ProviderCardData[]>([]);
   const [providersLoading, setProvidersLoading] = useState(true);
-  const [toasts, setToasts] = useState<ProfileToast[]>([]);
-  const toastTimersRef = useRef<Map<string, number>>(new Map());
   const mobileLoadMoreRef = useRef<HTMLDivElement | null>(null);
   const [showPostExplainer, setShowPostExplainer] = useState(false);
   const [mobileVisibleState, setMobileVisibleState] = useState({
@@ -56,22 +54,10 @@ export default function MarketplacePage() {
   const [connectedProviderIds, setConnectedProviderIds] = useState<Set<string>>(new Set());
 
   const pushToast = useCallback(
-    (kind: ProfileToast["kind"], message: string) => {
-      const toastId =
-        typeof window !== "undefined" && window.crypto?.randomUUID
-          ? window.crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-      setToasts((current) => [...current, { id: toastId, kind, message }]);
-
-      const timeoutId = window.setTimeout(() => {
-        setToasts((current) => current.filter((toast) => toast.id !== toastId));
-        toastTimersRef.current.delete(toastId);
-      }, 4600);
-
-      toastTimersRef.current.set(toastId, timeoutId);
+    (kind: "success" | "error" | "info", message: string) => {
+      showToast(kind, message);
     },
-    [],
+    [showToast],
   );
 
   const handleConnect = useCallback(
@@ -109,14 +95,6 @@ export default function MarketplacePage() {
     },
     [connectedProviderIds, pushToast]
   );
-
-  useEffect(() => {
-    const timers = toastTimersRef.current;
-    return () => {
-      timers.forEach((timeoutId) => window.clearTimeout(timeoutId));
-      timers.clear();
-    };
-  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -432,6 +410,7 @@ export default function MarketplacePage() {
   return (
     <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] pt-5 text-[var(--ink-950)] sm:pt-6">
       <RouteObservability route="dashboard" />
+      <PageMeta title="Dashboard" description="Your local marketplace feed" path="/dashboard" />
 
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
         <DashboardHero
@@ -543,19 +522,6 @@ export default function MarketplacePage() {
         />
       ) : null}
 
-      <ProfileToastViewport
-        toasts={toasts}
-        onDismiss={(toastId) => {
-          setToasts((current) =>
-            current.filter((toast) => toast.id !== toastId),
-          );
-          const timeoutId = toastTimersRef.current.get(toastId);
-          if (timeoutId) {
-            window.clearTimeout(timeoutId);
-            toastTimersRef.current.delete(toastId);
-          }
-        }}
-      />
     </div>
   );
 }

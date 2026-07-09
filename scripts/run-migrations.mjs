@@ -12,6 +12,7 @@
  */
 
 import { readFileSync, readdirSync } from "fs";
+import { createHash } from "crypto";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import pg from "pg";
@@ -143,35 +144,92 @@ async function getConnectedClient() {
 
 // ── Apply migrations ──────────────────────────────────────────────────────────
 
+async function ensureMigrationsTable(client) {
+  await client.query(`
+    create table if not exists public._migrations (
+      id          bigint generated always as identity primary key,
+      filename    text not null unique,
+      checksum    text not null,
+      applied_at  timestamptz not null default now(),
+      duration_ms int not null default 0,
+      success     boolean not null default true,
+      error_msg   text
+    );
+  `);
+}
+
+function computeChecksum(sql) {
+  return createHash("md5").update(sql).digest("hex");
+}
+
+async function isMigrationApplied(client, file) {
+  const { rows } = await client.query(
+    "select count(*)::int as cnt from public._migrations where filename = $1 and success = true",
+    [file],
+  );
+  return rows[0].cnt > 0;
+}
+
+async function recordMigration(client, file, checksum, durationMs, success, errorMsg) {
+  await client.query(
+    `insert into public._migrations (filename, checksum, duration_ms, success, error_msg)
+     values ($1, $2, $3, $4, $5)
+     on conflict (filename) do update set
+       duration_ms = excluded.duration_ms,
+       success = excluded.success,
+       error_msg = excluded.error_msg`,
+    [file, checksum, durationMs, success, errorMsg],
+  );
+}
+
 async function applyMigrations(client) {
+  await ensureMigrationsTable(client);
+
   let applied = 0;
   let failed = 0;
+  let skipped = 0;
 
   for (const file of migrationFiles) {
     const filePath = join(MIGRATIONS_DIR, file);
     const sql = readFileSync(filePath, "utf8");
+    const checksum = computeChecksum(sql);
+
+    // Skip if already applied successfully
+    const already = await isMigrationApplied(client, file);
+    if (already) {
+      console.log(`\n⏭️  ${file} ... already applied (skipping)`);
+      skipped++;
+      continue;
+    }
 
     process.stdout.write(`\n⏳  ${file} ... `);
+    const start = Date.now();
     try {
       await client.query(sql);
-      console.log("✅ applied");
+      const duration = Date.now() - start;
+      console.log(`✅ applied (${duration}ms)`);
+      await recordMigration(client, file, checksum, duration, true, null);
       applied++;
     } catch (err) {
-      // Idempotent errors (already exists, duplicate policy) are warnings, not failures
+      const duration = Date.now() - start;
       const msg = err.message;
+
+      // Idempotent errors (already exists, duplicate policy) are warnings
       const isIdempotent =
         msg.includes("already exists") ||
         msg.includes("duplicate") ||
-        err.code === "42710" || // duplicate_object
-        err.code === "42P07" || // duplicate_table
-        err.code === "42723";   // duplicate_function
+        err.code === "42710" ||
+        err.code === "42P07" ||
+        err.code === "42723";
 
       if (isIdempotent) {
         console.log(`⚠️  skipped (already applied: ${msg.split("\n")[0]})`);
+        await recordMigration(client, file, checksum, duration, true, msg.split("\n")[0]);
         applied++;
       } else {
         console.log(`❌ FAILED`);
         console.error(`   Error: ${msg}`);
+        await recordMigration(client, file, checksum, duration, false, msg);
         failed++;
       }
     }
@@ -179,6 +237,7 @@ async function applyMigrations(client) {
 
   console.log(`\n────────────────────────────────`);
   console.log(`✅  Applied : ${applied}`);
+  if (skipped > 0) console.log(`⏭️  Skipped : ${skipped}`);
   if (failed > 0) console.log(`❌  Failed  : ${failed}`);
   console.log(`────────────────────────────────\n`);
   return failed === 0;

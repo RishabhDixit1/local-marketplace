@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 
 
@@ -13,6 +14,9 @@ export async function POST(
   if (!auth.ok) {
     return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
   }
+
+  const rateLimitCheck = await applyRateLimit(auth.auth.userId, "reviews:vote", WRITE_ROUTE_CONFIG);
+  if (rateLimitCheck.limited) return rateLimitCheck.response;
 
   const { id: reviewId } = await params;
   let body: { vote?: string };

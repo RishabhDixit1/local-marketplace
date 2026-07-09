@@ -107,34 +107,6 @@ jobs:
 
             cd /home/ec2-user/serviq
 
-            # Create .env.ec2 from secrets if it doesn't exist
-            if [ ! -f .env.ec2 ]; then
-              cat > .env.ec2 << 'ENVEOF'
-            NODE_ENV=production
-            SUPABASE_URL=http://54.253.40.174:8000
-            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-            RAZORPAY_WEBHOOK_SECRET=${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
-            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-            NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
-            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
-            BACKUP_EMAIL_API_KEY=${{ secrets.BACKUP_EMAIL_API_KEY }}
-            SENTRY_DSN=${{ secrets.SENTRY_DSN }}
-            RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
-            RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
-            SERVIQ_INTERNAL_PUSH_KEY=${{ secrets.SERVIQ_INTERNAL_PUSH_KEY }}
-            VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}
-            VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
-            VAPID_EMAIL=${{ secrets.VAPID_EMAIL }}
-            FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}
-            FIREBASE_SERVICE_ACCOUNT_JSON=${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
-            ENVEOF
-              echo "Created .env.ec2"
-            else
-              echo ".env.ec2 already exists, keeping existing"
-            fi
-
             # Report disk before cleanup
             echo "Disk before cleanup:"
             df -h / | tail -1
@@ -172,12 +144,30 @@ jobs:
             docker load -i serviq-docker.tar
             rm -f serviq-docker.tar
 
-            # Start via docker run with env_file (avoids docker-compose build issue on older Docker)
+            # Start via docker run with explicit env vars (avoids secrets on disk)
             docker run -d \
               --name serviq \
               --restart unless-stopped \
               -p 3000:3000 \
-              --env-file .env.ec2 \
+              -e NODE_ENV=production \
+              -e SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+              -e SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} \
+              -e RAZORPAY_WEBHOOK_SECRET=${{ secrets.RAZORPAY_WEBHOOK_SECRET }} \
+              -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+              -e NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }} \
+              -e NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} \
+              -e NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }} \
+              -e RESEND_API_KEY=${{ secrets.RESEND_API_KEY }} \
+              -e BACKUP_EMAIL_API_KEY=${{ secrets.BACKUP_EMAIL_API_KEY }} \
+              -e SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
+              -e RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }} \
+              -e RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }} \
+              -e SERVIQ_INTERNAL_PUSH_KEY=${{ secrets.SERVIQ_INTERNAL_PUSH_KEY }} \
+              -e VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }} \
+              -e VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }} \
+              -e VAPID_EMAIL=${{ secrets.VAPID_EMAIL }} \
+              -e FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }} \
+              -e FIREBASE_SERVICE_ACCOUNT_JSON=${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }} \
               serviq:latest
 
             # Show container start logs immediately

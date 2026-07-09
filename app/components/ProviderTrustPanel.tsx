@@ -269,8 +269,8 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
     <div className="fixed inset-0 z-[var(--layer-modal)] flex">
       <div className="flex-1 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-[420px] max-w-full overflow-y-auto border-l border-[var(--surface-border)] bg-[var(--surface-soft)] p-6 text-[var(--ink-950)] shadow-xl animate-in slide-in-from-right">
-        <button type="button" onClick={onClose} className="absolute right-4 top-4 text-[var(--ink-500)] hover:text-[var(--ink-950)]">
+      <div role="dialog" aria-modal="true" aria-label="Provider trust panel" className="relative w-[420px] max-w-full overflow-y-auto border-l border-[var(--surface-border)] bg-[var(--surface-soft)] p-6 text-[var(--ink-950)] shadow-xl animate-in slide-in-from-right">
+        <button type="button" aria-label="Close" onClick={onClose} className="absolute right-4 top-4 text-[var(--ink-500)] hover:text-[var(--ink-950)]">
           <X />
         </button>
 

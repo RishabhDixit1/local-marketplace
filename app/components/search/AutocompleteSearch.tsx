@@ -131,6 +131,7 @@ export function AutocompleteSearch({
           {query && (
             <button
               type="button"
+              aria-label="Clear search"
               onClick={() => {
                 setQuery("");
                 setActiveIndex(-1);

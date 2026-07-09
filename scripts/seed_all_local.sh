@@ -42,11 +42,19 @@ echo "=== Step 2: Applying dashboard seed ==="
 psql_exec -f supabase/seed_dashboard_demo.sql
 echo "Dashboard seed done."
 
-echo "=== Step 3: Applying realtime tabs seed ==="
+echo "=== Step 3: Seeding Crossing Republik zones ==="
+psql_exec -f supabase/seed_crossing_republik_localities.sql
+echo "Crossing Republik localities seeded."
+
+echo "=== Step 4: Seeding new market zones ==="
+psql_exec -f supabase/seed_new_zones_localities.sql
+echo "New market zones seeded (Shahberi, Gaur City 1, Gaur City 2, Greater Noida West)."
+
+echo "=== Step 5: Applying realtime tabs seed ==="
 psql_exec -f supabase/seed_realtime_tabs_demo.sql
 echo "Realtime tabs seed done."
 
-echo "=== Step 4: Seeding provider_presence ==="
+echo "=== Step 6: Seeding provider_presence ==="
 psql_exec -c "
 INSERT INTO public.provider_presence (provider_id, is_online, availability, response_sla_minutes, completed_jobs)
 SELECT id, true, 'available', 15, 42 FROM auth.users WHERE email = 'provider1@serviq.test'
@@ -66,7 +74,7 @@ ON CONFLICT (provider_id) DO NOTHING;
 "
 echo "Provider presence seeded."
 
-echo "=== Step 5: Linking providers to Crossing Republik localities ==="
+echo "=== Step 7: Linking providers to Crossing Republik localities ==="
 # Get the first 5 society locality IDs
 psql_exec -c "
 WITH provider_list AS (

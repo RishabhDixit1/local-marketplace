@@ -104,6 +104,8 @@ export function InitialsAvatar({
 
   return (
     <div
+      role="img"
+      aria-label={name}
       className={`flex items-center justify-center rounded-full font-bold text-white ${AVATAR_COLORS[colorIndex]} ${sizeMap[size]} ${className}`}
       title={name}
     >

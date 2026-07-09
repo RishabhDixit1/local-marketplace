@@ -6,6 +6,7 @@ const createSupabaseUserServerClientMock = vi.fn();
 const loadQuoteDraftMock = vi.fn();
 const saveQuoteDraftMock = vi.fn();
 const sendQuoteDraftMock = vi.fn();
+const applyRateLimitMock = vi.fn();
 
 vi.mock("@/lib/server/requestAuth", () => ({
   requireRequestAuth: requireRequestAuthMock,
@@ -20,6 +21,11 @@ vi.mock("@/lib/server/quoteWrites", () => ({
   loadQuoteDraft: loadQuoteDraftMock,
   saveQuoteDraft: saveQuoteDraftMock,
   sendQuoteDraft: sendQuoteDraftMock,
+}));
+
+vi.mock("@/lib/server/rateLimit", () => ({
+  applyRateLimit: applyRateLimitMock,
+  WRITE_ROUTE_CONFIG: { windowSeconds: 60, maxRequests: 20 },
 }));
 
 const authContext = {
@@ -98,6 +104,7 @@ describe("quote api routes", () => {
   beforeEach(() => {
     vi.resetModules();
     requireRequestAuthMock.mockReset();
+    applyRateLimitMock.mockResolvedValue({ limited: false, response: null });
     createSupabaseAdminClientMock.mockReset();
     createSupabaseUserServerClientMock.mockReset();
     loadQuoteDraftMock.mockReset();

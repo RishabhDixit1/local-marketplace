@@ -1,0 +1,26 @@
+zone,zone_slug,society_name,provider_name,phone,email,category,service_description,price_min,price_max
+Shahberi,shahberi,Shahberi Main Market,Vinod Electrical Works,9876543210,vinod@example.com,Electrician,Complete electrical wiring, repairs and panel upgrades in Shahberi,300,1500
+Shahberi,shahberi,Shahberi Sabzi Market,Ram Plumbing Services,9876543211,ramplumb@example.com,Plumber,Bathroom fitting, pipe repair and water tank cleaning,500,3000
+Shahberi,shahberi,Shahberi Furniture Market,Shahberi AC Repair Hub,9876543212,shahberiac@example.com,AC Repair,Split and window AC installation, gas refill and annual servicing,800,5000
+Shahberi,shahberi,Shahberi Building Material Market,Construction Carpentry Works,9876543213,carpentry@example.com,Carpenter,Custom furniture, modular kitchen and woodwork for homes,1000,8000
+Shahberi,shahberi,Shahberi Daily Needs Market,Shahberi Clean Squad,9876543214,cleansquad@example.com,Cleaning,Home deep cleaning, office sanitization and post-construction cleanup,400,2500
+Shahberi,shahberi,Shahberi Main Road Commercial Stretch,Shahberi Property Consultants,9876543215,property@example.com,Real Estate,Residential and commercial property brokerage in Shahberi,2000,15000
+
+Gaur City 1,gaur-city-1,Gaur City Plaza,Gaur City Electricians,9876543216,gaurelec@example.com,Electrician,Electrical repairs, wiring and inverter installation in Gaur City 1,350,1800
+Gaur City 1,gaur-city-1,Gaur City Centre,Gaur City Plumbing Co,9876543217,gaurplumb@example.com,Plumber,Leak detection, drain cleaning and bathroom renovation plumbing,500,3500
+Gaur City 1,gaur-city-1,Galaxy Plaza,Galaxy Appliance Repair,9876543218,galaxyappl@example.com,Appliance Repair,Washing machine, refrigerator and microwave repair in Gaur City,600,4000
+Gaur City 1,gaur-city-1,Gaur City 1 Commercial Arcades,Gaur City Pest Control,9876543219,gaurpest@example.com,Cleaning,Termite treatment, cockroach control and general pest management,500,3000
+Gaur City 1,gaur-city-1,Gaur City 1 Food Streets,Gaur City Real Estate Advisors,9876543220,gaurprop@example.com,Real Estate,Flat resale, rental and commercial space deals in Gaur City 1,2000,12000
+
+Gaur City 2,gaur-city-2,Gaur City Mall,Gaur City2 Electricals,9876543221,gaur2elec@example.com,Electrician,MCB tripping, earthing, wiring and smart home electrical work,300,1600
+Gaur City 2,gaur-city-2,Gaur City Commercial Belt,Sai Plumbing Solutions,9876543222,saiplumb@example.com,Plumber,Water motor installation, pipe replacement and waterproofing,500,3200
+Gaur City 2,gaur-city-2,Gaur City 2 Retail Plaza,CoolAir AC Services,9876543223,coolair@example.com,AC Repair,AC deep servicing, gas charging and outdoor unit cleaning,700,4500
+Gaur City 2,gaur-city-2,Gaur City 2 Food Court & Restaurant Zone,FreshHome Cleaning,9876543224,freshhome@example.com,Cleaning,Sofa shampooing, kitchen deep clean and move-in/move-out cleaning,400,2800
+Gaur City 2,gaur-city-2,Gaur City 2 Daily Needs Market,Gaur City2 Handyman,9876543225,gaur2handy@example.com,Appliance Repair,Fan repair, geyser installation, chimney cleaning and minor fixes,250,2000
+
+Greater Noida West,greater-noida-west,Techzone 4 Market,Techzone Electricians,9876543226,tzelec@example.com,Electrician,House wiring, modular switch installation and power backup setup,350,1700
+Greater Noida West,greater-noida-west,Noida Extension Market,Extension Plumbing Services,9876543227,extplumb@example.com,Plumber,Bore well maintenance, pipeline repair and water purifier installation,500,3500
+Greater Noida West,greater-noida-west,Sector 1 Commercial Area,Noida Extension AC Masters,9876543228,necool@example.com,AC Repair,AC installation, duct cleaning and AMC for residential societies,800,5000
+Greater Noida West,greater-noida-west,Sector 2 Commercial Area,Noida Extension Home Services,9876543229,nehome@example.com,Cleaning,Full home cleaning, tank sanitization and pest control for societies,450,3000
+Greater Noida West,greater-noida-west,Sector 16B Commercial Area,GN West Property Hub,9876543230,gnprop@example.com,Real Estate,New booking, resale and rental assistance in Greater Noida West,2500,15000
+Greater Noida West,greater-noida-west,Sector 10 Commercial Area,GN West Appliance Care,9876543231,gnappl@example.com,Appliance Repair,Washing machine, chimney, water heater and microwave repair,300,2500

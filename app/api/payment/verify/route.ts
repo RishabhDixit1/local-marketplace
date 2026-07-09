@@ -2,6 +2,8 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { normalizeOrderStatus } from "@/lib/orderWorkflow";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
+import { logger } from "@/lib/server/logger";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { withErrorHandling } from "@/lib/server/errorHandler";
@@ -68,6 +70,9 @@ async function postHandler(request: Request) {
     );
   }
 
+  const rateLimitCheck = await applyRateLimit(authResult.auth.userId, "payment:verify", WRITE_ROUTE_CONFIG);
+  if (rateLimitCheck.limited) return rateLimitCheck.response;
+
   if (!RAZORPAY_KEY_SECRET) {
     return NextResponse.json(
       { ok: false, code: "CONFIG", message: "Payment gateway not configured." },
@@ -122,7 +127,7 @@ async function postHandler(request: Request) {
     .in("id", normalizedBody.serviQOrderIds);
 
   if (error) {
-    console.error("[api/payment/verify] load error:", error.message);
+    logger.error("payment:verify", "Failed to load orders for verification", error);
     return NextResponse.json({ ok: false, code: "DB_ERROR", message: "Could not load orders for verification." }, { status: 500 });
   }
 
@@ -193,7 +198,7 @@ async function postHandler(request: Request) {
       .eq("consumer_id", authResult.auth.userId);
 
     if (updateError) {
-      console.error("[api/payment/verify] update error:", updateError.message);
+      logger.error("payment:verify", "Failed to update order after payment", updateError);
       return NextResponse.json({ ok: false, code: "DB_ERROR", message: "Could not update orders." }, { status: 500 });
     }
 
@@ -233,7 +238,7 @@ async function postHandler(request: Request) {
             },
           });
         } catch (err) {
-          console.error("[payment-verify-notification] failed for order", order.id, err);
+          logger.error("payment:verify", "Notification after payment verification failed", err, { orderId: order.id });
         }
       })();
     }

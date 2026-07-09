@@ -1,5 +1,6 @@
 "use client";
 
+import { PageMeta } from "@/app/components/PageMeta";
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -20,8 +21,11 @@ function ReferralHandler() {
 
 export default function ReferralPage() {
   return (
-    <Suspense>
-      <ReferralHandler />
-    </Suspense>
+    <>
+      <PageMeta title="Referral" description="Join ServiQ and earn rewards" />
+      <Suspense>
+        <ReferralHandler />
+      </Suspense>
+    </>
   );
 }

@@ -28,7 +28,6 @@ Future<void> main() async {
       final appConfig = await AppConfig.load();
       final firebaseFuture = AppFirebase.initialize(config: appConfig);
       MobilePushNotificationService.registerBackgroundHandler();
-      initializeLocalNotifications();
 
       runApp(
         _BootstrapHost(
@@ -36,6 +35,13 @@ Future<void> main() async {
           firebaseFuture: firebaseFuture,
         ),
       );
+
+      // Deferred until after first frame: notification plugin init makes a
+      // platform channel call that competes with the first frame for the main
+      // thread. Not needed for first paint.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        initializeLocalNotifications();
+      });
     },
     (error, stackTrace) {
       debugPrint('ServiQ mobile: Uncaught error: $error');
@@ -67,7 +73,15 @@ class _BootstrapHostState extends State<_BootstrapHost> {
   @override
   void initState() {
     super.initState();
-    _startBootstrap();
+    // Deferred until after first frame: Supabase.initialize() does 3
+    // sequential FlutterSecureStorage platform-channel reads (Keystore init
+    // on cold Android start, 100-500 ms each) and Firebase.initializeApp()
+    // makes a heavy platform-channel call (200-800 ms). Running these in
+    // Future.wait after the first frame paints keeps the loading screen
+    // responsive while the heavy init happens in the background.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startBootstrap();
+    });
   }
 
   @override

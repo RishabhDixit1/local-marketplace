@@ -13,7 +13,7 @@ const DEFAULT_CONFIG: RateLimitConfig = {
 
 const AUTH_ROUTE_CONFIG: RateLimitConfig = {
   windowSeconds: 60,
-  maxRequests: 30,
+  maxRequests: 10,
 };
 
 const WRITE_ROUTE_CONFIG: RateLimitConfig = {
@@ -87,9 +87,16 @@ export const checkRateLimit = async (
       remaining: config.maxRequests - newCount,
       resetInSeconds: config.windowSeconds - elapsed,
     };
-  } catch {
-    console.error("Rate limit check failed, allowing request (fail-open):", key);
-    return { allowed: true, remaining: 999, resetInSeconds: 0 };
+  } catch (err) {
+    console.error("[rateLimit] check failed, denying request (fail-closed):", key, err);
+    if (typeof process !== "undefined" && process.env.NODE_ENV === "production") {
+      const Sentry = await import("@sentry/nextjs").catch(() => null);
+      Sentry?.captureException?.(err instanceof Error ? err : new Error(String(err)), {
+        tags: { feature: "rate-limit" },
+        extra: { key },
+      });
+    }
+    return { allowed: false, remaining: 0, resetInSeconds: config.windowSeconds };
   }
 };
 

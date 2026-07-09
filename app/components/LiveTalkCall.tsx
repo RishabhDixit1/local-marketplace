@@ -232,6 +232,7 @@ export default function LiveTalkCall({ conversationId, userId, otherUserId, onEn
       <div className="flex items-center justify-center gap-6 px-6 py-8">
         <button
           type="button"
+          aria-label={muted ? "Unmute microphone" : "Mute microphone"}
           onClick={toggleMute}
           className={`flex h-14 w-14 items-center justify-center rounded-full transition ${
             muted ? "bg-rose-600 text-white" : "bg-white/15 text-white hover:bg-white/25"
@@ -242,6 +243,7 @@ export default function LiveTalkCall({ conversationId, userId, otherUserId, onEn
 
         <button
           type="button"
+          aria-label="End call"
           onClick={() => { cleanup(); onEnd(); }}
           className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-600 text-white transition hover:bg-rose-500"
         >
@@ -250,6 +252,7 @@ export default function LiveTalkCall({ conversationId, userId, otherUserId, onEn
 
         <button
           type="button"
+          aria-label={videoOff ? "Turn on camera" : "Turn off camera"}
           onClick={toggleVideo}
           className={`flex h-14 w-14 items-center justify-center rounded-full transition ${
             videoOff ? "bg-rose-600 text-white" : "bg-white/15 text-white hover:bg-white/25"

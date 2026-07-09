@@ -28,16 +28,15 @@ export async function verifyOtp(email: string, otp: string): Promise<{ userId: s
 
   const { data, error } = await db
     .from("otp_codes")
-    .select("id, user_id")
+    .update({ used: true })
     .eq("email", email)
     .eq("otp", otp)
     .eq("used", false)
     .gt("expires_at", new Date().toISOString())
+    .select("user_id")
     .maybeSingle();
 
   if (error || !data) return null;
-
-  await db.from("otp_codes").update({ used: true }).eq("id", data.id);
 
   return { userId: data.user_id };
 }

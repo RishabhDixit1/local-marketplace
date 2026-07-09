@@ -6,6 +6,7 @@ import { CronExpressionParser } from "cron-parser";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { appName } from "@/lib/branding";
 import { sendEmail } from "@/lib/email";
+import { verifyCronSecret, cronAuthFailure } from "@/lib/server/requestAuth";
 
 export const runtime = "nodejs";
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
@@ -43,7 +44,12 @@ const parseCron = (expression: string): boolean => {
   }
 };
 
-async function postHandler() {
+async function postHandler(request: Request) {
+  if (!verifyCronSecret(request)) {
+    console.warn("[campaigns] rejected unauthenticated cron request");
+    return cronAuthFailure();
+  }
+
   const db = createSupabaseAdminClient();
   if (!db) return NextResponse.json({ ok: false, message: "No DB client" }, { status: 500 });
 

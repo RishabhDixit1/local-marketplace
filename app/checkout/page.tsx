@@ -18,6 +18,7 @@ import {
   Truck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { PageMeta } from "@/app/components/PageMeta";
 import RouteObservability from "@/app/components/RouteObservability";
 import { useCart } from "@/app/components/store/CartContext";
 import {
@@ -382,6 +383,7 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-[var(--surface-app)]">
       <RouteObservability route="checkout" />
+      <PageMeta title="Checkout" description="Review your cart and complete your purchase" path="/checkout" />
 
       {/* Top bar */}
       <div className="sticky top-0 z-40 border-b border-[var(--surface-border)] bg-[var(--surface-elevated)]/90 backdrop-blur-sm">

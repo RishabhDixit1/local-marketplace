@@ -21,6 +21,10 @@ class MarketplaceRepository {
 
   final MobileApiClient _apiClient;
 
+  Future<List<Map<String, dynamic>>> fetchServiceCategories() async {
+    return _apiClient.getServiceCategories();
+  }
+
   Future<List<MarketplaceProvider>> fetchProviders({String? category}) async {
     final body = <String, dynamic>{};
     if (category != null && category.isNotEmpty) {

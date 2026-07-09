@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import { PageMeta } from "@/app/components/PageMeta";
 import ServiQLogo from "@/app/components/ServiQLogo";
 import { appName, appTagline } from "@/lib/branding";
 import { Input } from "@/app/components/ui/Input";
@@ -61,6 +62,7 @@ export default function SetPasswordPage() {
   if (checkingSession) {
     return (
       <main className="min-h-screen grid place-items-center bg-[var(--surface-app)] px-6 py-10">
+      <PageMeta title="Set password" description="Create a password for your account" />
         <div className="w-full max-w-md rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-7 text-center shadow-[0_24px_60px_-38px_rgba(var(--shadow-rgb),0.45)] space-y-3 startup-fade">
           <div className="flex justify-center">
             <ServiQLogo compact href="/" ariaLabel="Open homepage" />
@@ -73,6 +75,7 @@ export default function SetPasswordPage() {
 
   return (
     <main className="min-h-screen grid place-items-center bg-[var(--surface-app)] px-6 py-10">
+      <PageMeta title="Set password" description="Create a password for your account" />
       <div className="w-full max-w-md rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-7 shadow-[0_24px_60px_-38px_rgba(var(--shadow-rgb),0.45)] space-y-5 startup-fade">
         <div className="flex justify-center">
           <ServiQLogo compact href="/" ariaLabel="Open homepage" />

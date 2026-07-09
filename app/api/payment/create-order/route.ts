@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { getRazorpay, isRazorpayConfigured } from "@/lib/server/razorpay";
@@ -27,6 +28,9 @@ async function postHandler(request: Request) {
       { status: authResult.status }
     );
   }
+
+  const rateLimitCheck = await applyRateLimit(authResult.auth.userId, "payment:create-order", WRITE_ROUTE_CONFIG);
+  if (rateLimitCheck.limited) return rateLimitCheck.response;
 
   if (!isRazorpayConfigured()) {
     return NextResponse.json(

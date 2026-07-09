@@ -1,5 +1,6 @@
 "use client";
 
+import { PageMeta } from "@/app/components/PageMeta";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
@@ -199,6 +200,7 @@ function SearchPageContent() {
 
   return (
     <div className="min-h-screen bg-[var(--surface-elevated)] pb-24 lg:pb-0">
+      <PageMeta title="Search" description="Find local services, products, and providers near you" path="/search" />
       <header className="sticky top-0 z-30 border-b border-[var(--surface-border)]/80 bg-[var(--surface-elevated)]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 sm:px-6">
           <Link href="/" className="shrink-0 text-sm font-bold text-[var(--brand-700)]">ServiQ</Link>
@@ -439,7 +441,7 @@ function SearchPageContent() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <h3 className="text-sm font-bold text-[var(--ink-950)]">{provider.name}</h3>
-                      <p className="mt-0.5 text-xs text-[var(--ink-500)]">{provider.location || "Crossings Republik"}</p>
+                      <p className="mt-0.5 text-xs text-[var(--ink-500)]">{provider.location || "Local area"}</p>
                     </div>
                     {provider.verified && (
                       <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 border border-emerald-200">Verified</span>
