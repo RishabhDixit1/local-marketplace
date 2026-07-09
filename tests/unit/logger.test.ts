@@ -7,12 +7,12 @@ describe("logger", () => {
     vi.spyOn(console, "info").mockImplementation(() => {});
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
-    process.env.NODE_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    process.env.NODE_ENV = "test";
+    vi.stubEnv("NODE_ENV", "test");
   });
 
   it("logs info messages with module prefix", () => {
@@ -43,7 +43,7 @@ describe("logger", () => {
   });
 
   it("outputs JSON in production", () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     logger.info("payments", "payment captured", { amount: 50000 });
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('"level":"info"'),

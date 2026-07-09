@@ -49,8 +49,8 @@ describe("multi-tenant data isolation", () => {
   });
 
   it("user A cannot access user B's orders without ownership", () => {
-    const userAId = "user-a";
-    const userBId = "user-b";
+    const userAId: string = "user-a";
+    const userBId: string = "user-b";
     const orderOwnerId = userBId;
 
     const canAccess = orderOwnerId === userAId;

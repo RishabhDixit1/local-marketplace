@@ -13,8 +13,10 @@ function buildSignature(body: string): string {
   return crypto.createHmac("sha256", WEBHOOK_SECRET).update(body).digest("hex");
 }
 
+type MockChain = Record<string, ReturnType<typeof vi.fn>>;
+
 function makeDbMock() {
-  const chain: Record<string, unknown> = {
+  const chain: MockChain = {
     select: vi.fn(() => chain),
     eq: vi.fn(() => chain),
     filter: vi.fn(() => chain),
@@ -66,7 +68,7 @@ describe("POST /api/webhooks/razorpay", () => {
   });
 
   it("accepts a valid signature and processes payment.captured", async () => {
-    const chain = {
+    const chain: MockChain = {
       select: vi.fn(() => chain),
       eq: vi.fn(() => chain),
       filter: vi.fn(() => chain),
@@ -136,7 +138,7 @@ describe("POST /api/webhooks/razorpay", () => {
   });
 
   it("handles refund.created events correctly", async () => {
-    const chain = {
+    const chain: MockChain = {
       select: vi.fn(() => chain),
       eq: vi.fn(() => chain),
       filter: vi.fn(() => chain),
@@ -244,7 +246,7 @@ describe("POST /api/webhooks/razorpay", () => {
   });
 
   it("rejects payment.failed events and marks orders correctly", async () => {
-    const chain = {
+    const chain: MockChain = {
       select: vi.fn(() => chain),
       eq: vi.fn(() => chain),
       filter: vi.fn(() => chain),
