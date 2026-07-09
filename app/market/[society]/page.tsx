@@ -134,8 +134,6 @@ export default function SocietyPage() {
     ? locality.zone_slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
     : locality.city || "Market";
 
-  const societyName = locality.name;
-
   return (
     <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-20 pt-6 sm:px-6 sm:pt-10 lg:pb-20">
       <PageMeta title={societyName} description={`Local services and products available in ${societyName}, ${locality.city}`} path={`/market/${params.society}`} />
