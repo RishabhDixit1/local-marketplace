@@ -12,7 +12,7 @@ void main() {
     );
     expect(
       MobileOnboardingIntent.earnNearby.destinationRoute,
-      AppRoutes.providerOnboarding,
+      AppRoutes.providerLaunchpad,
     );
     expect(
       MobileOnboardingIntent.businessSetup.destinationRoute,
@@ -77,10 +77,10 @@ void main() {
     );
     final controller = OnboardingHandoffController(store);
 
-    expect(controller.postAuthDestination, AppRoutes.providerOnboarding);
+    expect(controller.postAuthDestination, AppRoutes.providerLaunchpad);
     expect(
       controller.resolvePostAuthDestination(),
-      AppRoutes.providerOnboarding,
+      AppRoutes.providerLaunchpad,
     );
   });
 
@@ -139,7 +139,7 @@ void main() {
         selectedIntent: MobileOnboardingIntent.earnNearby,
         hasPendingHandoff: true,
         hasStoredHandoff: true,
-        storedHandoffRoute: AppRoutes.providerOnboarding,
+        storedHandoffRoute: AppRoutes.providerLaunchpad,
         profileReadiness: providerReady,
       ),
       AppRoutes.providerLaunchpad,

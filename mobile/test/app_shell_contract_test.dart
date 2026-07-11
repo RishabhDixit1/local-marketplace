@@ -5,6 +5,7 @@ import 'package:serviq_mobile/app/presentation/app_shell.dart';
 import 'package:serviq_mobile/app/presentation/main_bottom_nav.dart';
 import 'package:serviq_mobile/core/constants/app_routes.dart';
 import 'package:serviq_mobile/core/theme/app_theme.dart';
+import 'package:serviq_mobile/l10n/l10n.dart';
 
 void main() {
   test('home route points at the welcome surface', () {
@@ -66,12 +67,15 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: const [AppLocalizations.delegate],
+        supportedLocales: const [Locale('en', 'US')],
         theme: AppTheme.light(),
         home: Scaffold(
           bottomNavigationBar: MainBottomNav(currentIndex: 0, onTap: (_) {}),
         ),
       ),
     );
+    await tester.pump();
 
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('People'), findsOneWidget);
@@ -85,6 +89,8 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: const [AppLocalizations.delegate],
+        supportedLocales: const [Locale('en', 'US')],
         theme: AppTheme.light(),
         home: Scaffold(
           body: MainNavigationRail(
@@ -96,6 +102,7 @@ void main() {
         ),
       ),
     );
+    await tester.pump();
 
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('People'), findsOneWidget);

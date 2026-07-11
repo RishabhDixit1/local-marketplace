@@ -7,6 +7,7 @@ import 'package:serviq_mobile/core/supabase/app_bootstrap.dart';
 import 'package:serviq_mobile/core/theme/app_theme.dart';
 import 'package:serviq_mobile/features/auth/data/onboarding_handoff.dart';
 import 'package:serviq_mobile/features/auth/presentation/sign_in_page.dart';
+import 'package:serviq_mobile/l10n/l10n.dart';
 
 const _bootstrap = AppBootstrap(
   config: AppConfig(
@@ -36,7 +37,7 @@ void main() {
       expect(find.text('Earn nearby'), findsOneWidget);
       expect(find.text('Set up my business'), findsOneWidget);
       expect(find.text('Sign in with email'), findsOneWidget);
-      expect(find.text('Send magic link instead'), findsOneWidget);
+      expect(find.text('Send magic link'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
@@ -50,13 +51,13 @@ void main() {
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
-      find.text('Send magic link instead'),
+      find.text('Send magic link'),
       400,
       scrollable: scrollable,
     );
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('Send magic link instead'), findsOneWidget);
+    expect(find.text('Send magic link'), findsOneWidget);
   });
 
   testWidgets('intent selection updates without losing auth controls', (
@@ -69,9 +70,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('Sign in with email'), findsOneWidget);
-    expect(find.text('Send magic link instead'), findsOneWidget);
+    expect(find.text('Send magic link'), findsOneWidget);
     expect(store.readIntent(), MobileOnboardingIntent.earnNearby);
-    expect(store.readLastRoute(), '/app/provider-onboarding');
+    expect(store.readLastRoute(), '/app/provider-launchpad');
     expect(tester.takeException(), isNull);
   });
 
@@ -110,7 +111,12 @@ Future<void> _pumpSignInPage(
         if (store != null)
           onboardingHandoffStoreProvider.overrideWithValue(store),
       ],
-      child: MaterialApp(theme: AppTheme.light(), home: const SignInPage()),
+      child: MaterialApp(
+        localizationsDelegates: const [AppLocalizations.delegate],
+        supportedLocales: const [Locale('en', 'US')],
+        theme: AppTheme.light(),
+        home: const SignInPage(),
+      ),
     ),
   );
   await tester.pump(const Duration(milliseconds: 200));
