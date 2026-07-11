@@ -14,6 +14,7 @@ import {
   LogIn,
   Zap,
   Store,
+  Search,
   SearchX,
   Loader2,
   User as UserIcon,
@@ -425,8 +426,19 @@ export function LandingPageClient({
           </div>
         )}
 
+        {/* ── CTA: Browse marketplace ── */}
+        <div className="mt-12 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6 text-center shadow-sm">
+          <Search className="mx-auto h-8 w-8 text-[var(--brand-500)]" />
+          <h3 className="mt-3 text-lg font-extrabold text-[var(--ink-950)]">{t("landing.lookingForServices")}</h3>
+          <p className="mt-1 text-sm text-[var(--ink-500)]">{t("landing.findServicesCTA")}</p>
+          <Link
+            href="/login?next=/dashboard"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[var(--brand-900)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+          ><Search className="h-4 w-4" /> {t("landing.browseMarketplace")}</Link>
+        </div>
+
         {/* ── CTA: List your business ── */}
-        <div className="mt-12 rounded-2xl border border-dashed border-[var(--brand-300)] bg-gradient-to-br from-[var(--brand-50)] to-white p-6 text-center">
+        <div className="mt-6 rounded-2xl border border-dashed border-[var(--brand-300)] bg-gradient-to-br from-[var(--brand-50)] to-white p-6 text-center">
           <Store className="mx-auto h-8 w-8 text-[var(--brand-500)]" />
           <h3 className="mt-3 text-lg font-extrabold text-[var(--ink-950)]">{t("landing.areYouProvider")}</h3>
           <p className="mt-1 text-sm text-[var(--ink-500)]">{t("landing.listBusinessCTA", { appName })}</p>

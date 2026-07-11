@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CalendarDays, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { fetchAuthedJson } from "@/lib/clientApi";
 
 type Props = {
   orderId: string;
@@ -28,9 +30,8 @@ export default function BookingSlotPicker({ orderId, providerId, onBooked }: Pro
 
   const fetchSlots = useCallback(async () => {
     try {
-      const res = await fetch(`/api/provider/availability?provider_id=${providerId}`);
-      const json = await res.json();
-      if (json.ok) setSlots(json.slots);
+      const json = await fetchAuthedJson<{ ok: boolean; slots?: Slot[] }>(supabase, `/api/provider/availability?provider_id=${providerId}`);
+      if (json.ok) setSlots(json.slots ?? []);
     } catch {
       setError("Failed to load availability.");
     } finally {
@@ -60,16 +61,14 @@ export default function BookingSlotPicker({ orderId, providerId, onBooked }: Pro
     setBooking(true);
     setError("");
     try {
-      const res = await fetch(`/api/orders/${orderId}/book-slot`, {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, `/api/orders/${orderId}/book-slot`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scheduled_date: selectedDate,
           start_time: selectedStart,
           end_time: selectedEnd,
         }),
       });
-      const json = await res.json();
       if (json.ok) {
         setBooked(true);
         onBooked();

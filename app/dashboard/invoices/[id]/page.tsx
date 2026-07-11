@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ArrowLeft, FileText, Loader2, Printer } from "lucide-react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+import { fetchAuthedJson } from "@/lib/clientApi";
 
 type InvoiceData = {
   id: string;
@@ -32,11 +34,8 @@ export default function InvoiceDetailPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/invoices?invoiceId=${params.id}`);
-        if (res.ok) {
-          const body = (await res.json()) as { invoice: InvoiceData };
-          setInvoice(body.invoice);
-        }
+        const body = await fetchAuthedJson<{ ok: boolean; invoice?: InvoiceData }>(supabase, `/api/invoices?invoiceId=${params.id}`);
+        if (body.invoice) setInvoice(body.invoice);
       } finally {
         setLoading(false);
       }

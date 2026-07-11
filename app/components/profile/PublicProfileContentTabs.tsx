@@ -11,6 +11,7 @@ import type { VerificationStatus } from "@/lib/business";
 import { formatPaymentRailLabel } from "@/lib/paymentFlow";
 import type { PublicProfilePost, PublicProfileReview } from "@/lib/profile/public";
 import { supabase } from "@/lib/supabase";
+import { fetchAuthedJson } from "@/lib/clientApi";
 import { setPublicProfileModalOpen } from "@/app/components/profile/publicProfileModalState";
 
 type PublicProfileContentTabsProps = {
@@ -187,7 +188,7 @@ export default function PublicProfileContentTabs({
         for (const photo of reviewPhotos) {
           const formData = new FormData();
           formData.append("file", photo);
-          await fetch(`/api/reviews/${inserted.id}/photos`, {
+          await fetchAuthedJson(supabase, `/api/reviews/${inserted.id}/photos`, {
             method: "POST",
             body: formData,
           });
@@ -547,8 +548,7 @@ function ReviewCard({ review, viewerId }: { review: PublicProfileReview; viewerI
     if (!viewerId) return;
     const fetchVotes = async () => {
       try {
-        const res = await fetch(`/api/reviews/${review.reviewerId ?? "none"}/vote/status`);
-        const json = await res.json();
+        const json = await fetchAuthedJson<{ ok: boolean; helpful_count?: number; not_helpful_count?: number; user_vote?: string | null }>(supabase, `/api/reviews/${review.reviewerId ?? "none"}/vote/status`);
         if (json.ok) {
           setVoteState({
             helpful: json.helpful_count ?? 0,
@@ -570,17 +570,15 @@ function ReviewCard({ review, viewerId }: { review: PublicProfileReview; viewerI
     if (!viewerId || voting) return;
     setVoting(true);
     try {
-      const res = await fetch(`/api/reviews/${review.reviewerId ?? "none"}/vote`, {
+      const json = await fetchAuthedJson<{ ok: boolean; action?: string; vote?: string }>(supabase, `/api/reviews/${review.reviewerId ?? "none"}/vote`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ vote }),
       });
-      const json = await res.json();
       if (json.ok) {
         setVoteState((prev) => ({
           helpful: json.action === "removed" && voteState?.userVote === "helpful" ? (prev?.helpful ?? 1) - 1 : json.vote === "helpful" ? (prev?.helpful ?? 0) + 1 : prev?.helpful ?? 0,
           notHelpful: json.action === "removed" && voteState?.userVote === "not_helpful" ? (prev?.notHelpful ?? 1) - 1 : json.vote === "not_helpful" ? (prev?.notHelpful ?? 0) + 1 : prev?.notHelpful ?? 0,
-          userVote: json.action === "removed" ? null : json.vote,
+          userVote: json.action === "removed" ? null : (json.vote ?? null),
         }));
       }
     } catch {

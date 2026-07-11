@@ -519,12 +519,14 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         widget.snapshotOverride ?? ref.watch(feedSnapshotProvider(_scope));
     final AsyncValue<MobilePeopleSnapshot> peopleSnapshot =
         widget.peopleOverride ?? ref.watch(peopleSnapshotProvider);
-    final previewData = snapshot.asData?.value;
-    final profileSnapshot = ref.watch(profileSnapshotProvider);
     final cartAsync = ref.watch(cartProvider);
     final cartCount = cartAsync.value == null
         ? 0
         : cartTotalQuantity(cartAsync.value!);
+    final feedChildren = _feedChildren(
+      snapshot: snapshot,
+      peopleSnapshot: peopleSnapshot,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -555,198 +557,208 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
-          child: ListView(
+          child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-            children: [
-              ...profileSnapshot.maybeWhen(
-                data: (profile) {
-                  if (profile.completionPercent >= 50) {
-                    return <Widget>[];
-                  }
-                  return [
-                    SectionCard(
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          Icons.assignment_turned_in_outlined,
-                          color: AppColors.primary,
-                        ),
-                        title: const Text('Finish your public profile'),
-                        subtitle: Text(
-                          'You are at ${profile.completionPercent}% — add name, area, and contact so nearby customers trust you faster.',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        trailing: FilledButton.tonal(
-                          onPressed: () => context.push(AppRoutes.profile),
-                          child: const Text('Go'),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ];
-                },
-                orElse: () => <Widget>[],
-              ),
-              MarketplaceLoopHero(
-                title: widget.mode.heroTitle,
-                message: widget.mode.heroMessage,
-                searchLabel: widget.mode.searchHint,
-                primaryLabel: 'Post Need',
-                signalLabels: _exploreHeroSignals(
-                  snapshot: previewData,
-                  providerCount:
-                      peopleSnapshot.asData?.value.people.length ?? 0,
-                ),
-                onPrimaryTap: _openPostTask,
-                onSearchTap: () => context.push(AppRoutes.search),
-              ),
-              const SizedBox(height: 16),
-              _ExploreIntentPanel(
-                mode: widget.mode,
-                searchController: _searchController,
-                scope: _scope,
-                filters: _filters,
-                onQueryChanged: _onQueryChanged,
-                onScopeChanged: (scope) => setState(() => _scope = scope),
-                onFiltersChanged: (next) => setState(() {
-                  _filters
-                    ..clear()
-                    ..addAll(next);
-                }),
-                onOpenPeople: () => context.push(AppRoutes.people),
-                selectedCategory: _selectedCategory,
-                onCategoryChanged: (cat) => setState(() => _selectedCategory = cat),
-                selectedLocalityName: _selectedLocalityName,
-                onOpenLocalityPicker: _showLocalityPicker,
-              ),
-              if (widget.mode == FeedPageMode.explore) ...[
-                const SizedBox(height: 12),
-                SectionCard(
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(AppRadii.xl),
-                    onTap: () => context.push(AppRoutes.marketZones),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: AppColors.primarySoft,
-                              borderRadius: BorderRadius.circular(AppRadii.lg),
-                            ),
-                            child: const Icon(Icons.explore_rounded, color: AppColors.primaryDeep),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Explore Local Zones',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.inkStrong)),
-                                const SizedBox(height: 2),
-                                Text('Browse societies, markets, and supply areas in Crossings Republik',
-                                    style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              ServiqAsyncBody<MobileFeedSnapshot>(
-                value: snapshot,
-                errorTitle: 'Unable to load the feed',
-                errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
-                onRetry: _refresh,
-                loadingBuilder: () => const _FeedLoadingState(),
-                data: (data) {
-                  final items = _filterItems(data.items);
-                  final people = _filterPeople(
-                    peopleSnapshot.asData?.value.people ??
-                        const <MobilePersonCard>[],
-                  );
-
-                  if (widget.mode == FeedPageMode.explore) {
-                    return _ExploreMarketplaceLanes(
-                      items: items,
-                      people: people,
-                      peopleSnapshot: peopleSnapshot,
-                      viewerRoleFamily: data.viewerRoleFamily,
-                      onOpenPeople: () => context.go(AppRoutes.people),
-                      onRetryPeople: () {
-                        ref.invalidate(peopleSnapshotProvider);
-                      },
-                      feedCardBuilder: (item) => FeedCard(
-                        item: item,
-                        onPrimaryTap: _primaryActionFor(item),
-                        onSecondaryTap: _messageActionFor(item),
-                        primaryLabel: _primaryLabelFor(item),
-                        secondaryLabel: _secondaryLabelFor(item),
-                        onMoreTap: _moreActionFor(item),
-                      ),
-                      providerCardBuilder: (person) => ProviderCard(
-                        person: person,
-                        onOpenProfile: () =>
-                            context.push(AppRoutes.provider(person.id)),
-                        onMessage: () => context.push(
-                          AppRoutes.chatDirect(
-                            recipientId: person.id,
-                            contextTitle: person.name,
-                            source: 'feed_provider_card',
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SectionHeader(
-                        title: widget.mode == FeedPageMode.welcome
-                            ? 'Connected feed'
-                            : 'Live local feed',
-                        subtitle:
-                            'Marketplace feed with ${items.length} items matching your current search and filters.',
-                      ),
-                      const SizedBox(height: 12),
-                      if (items.isEmpty)
-                        const SectionCard(
-                          child: EmptyStateView(
-                            title: 'No matching posts',
-                            message:
-                                'Try a broader term or clear one of the active filters to widen the nearby feed.',
-                          ),
-                        )
-                      else
-                        ...items.map(
-                          (item) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: FeedCard(
-                              item: item,
-                              onPrimaryTap: _primaryActionFor(item),
-                              onSecondaryTap: _messageActionFor(item),
-                              primaryLabel: _primaryLabelFor(item),
-                              secondaryLabel: _secondaryLabelFor(item),
-                              onMoreTap: _moreActionFor(item),
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ],
+            itemCount: feedChildren.length,
+            itemBuilder: (context, index) => feedChildren[index],
           ),
         ),
       ),
     );
+  }
+
+  List<Widget> _feedChildren({
+    required AsyncValue<MobileFeedSnapshot> snapshot,
+    required AsyncValue<MobilePeopleSnapshot> peopleSnapshot,
+  }) {
+    final previewData = snapshot.asData?.value;
+    final profileSnapshot = ref.watch(profileSnapshotProvider);
+
+    return [
+      ...profileSnapshot.maybeWhen(
+        data: (profile) {
+          if (profile.completionPercent >= 50) {
+            return <Widget>[];
+          }
+          return [
+            SectionCard(
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  Icons.assignment_turned_in_outlined,
+                  color: AppColors.primary,
+                ),
+                title: const Text('Finish your public profile'),
+                subtitle: Text(
+                  'You are at ${profile.completionPercent}% — add name, area, and contact so nearby customers trust you faster.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                trailing: FilledButton.tonal(
+                  onPressed: () => context.push(AppRoutes.profile),
+                  child: const Text('Go'),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ];
+        },
+        orElse: () => <Widget>[],
+      ),
+      MarketplaceLoopHero(
+        title: widget.mode.heroTitle,
+        message: widget.mode.heroMessage,
+        searchLabel: widget.mode.searchHint,
+        primaryLabel: 'Post Need',
+        signalLabels: _exploreHeroSignals(
+          snapshot: previewData,
+          providerCount: peopleSnapshot.asData?.value.people.length ?? 0,
+        ),
+        onPrimaryTap: _openPostTask,
+        onSearchTap: () => context.push(AppRoutes.search),
+      ),
+      const SizedBox(height: 16),
+      _ExploreIntentPanel(
+        mode: widget.mode,
+        searchController: _searchController,
+        scope: _scope,
+        filters: _filters,
+        onQueryChanged: _onQueryChanged,
+        onScopeChanged: (scope) => setState(() => _scope = scope),
+        onFiltersChanged: (next) => setState(() {
+          _filters
+            ..clear()
+            ..addAll(next);
+        }),
+        onOpenPeople: () => context.push(AppRoutes.people),
+        selectedCategory: _selectedCategory,
+        onCategoryChanged: (cat) => setState(() => _selectedCategory = cat),
+        selectedLocalityName: _selectedLocalityName,
+        onOpenLocalityPicker: _showLocalityPicker,
+      ),
+      if (widget.mode == FeedPageMode.explore) ...[
+        const SizedBox(height: 12),
+        SectionCard(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            onTap: () => context.push(AppRoutes.marketZones),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                    ),
+                    child: const Icon(Icons.explore_rounded, color: AppColors.primaryDeep),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Explore Local Zones',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.inkStrong)),
+                        const SizedBox(height: 2),
+                        Text('Browse societies, markets, and supply areas in Crossings Republik',
+                            style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+      const SizedBox(height: 16),
+      ServiqAsyncBody<MobileFeedSnapshot>(
+        value: snapshot,
+        errorTitle: 'Unable to load the feed',
+        errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
+        onRetry: _refresh,
+        loadingBuilder: () => const _FeedLoadingState(),
+        data: (data) {
+          final items = _filterItems(data.items);
+          final people = _filterPeople(
+            peopleSnapshot.asData?.value.people ??
+                const <MobilePersonCard>[],
+          );
+
+          if (widget.mode == FeedPageMode.explore) {
+            return _ExploreMarketplaceLanes(
+              items: items,
+              people: people,
+              peopleSnapshot: peopleSnapshot,
+              viewerRoleFamily: data.viewerRoleFamily,
+              onOpenPeople: () => context.go(AppRoutes.people),
+              onRetryPeople: () {
+                ref.invalidate(peopleSnapshotProvider);
+              },
+              feedCardBuilder: (item) => FeedCard(
+                item: item,
+                onPrimaryTap: _primaryActionFor(item),
+                onSecondaryTap: _messageActionFor(item),
+                primaryLabel: _primaryLabelFor(item),
+                secondaryLabel: _secondaryLabelFor(item),
+                onMoreTap: _moreActionFor(item),
+              ),
+              providerCardBuilder: (person) => ProviderCard(
+                person: person,
+                onOpenProfile: () =>
+                    context.push(AppRoutes.provider(person.id)),
+                onMessage: () => context.push(
+                  AppRoutes.chatDirect(
+                    recipientId: person.id,
+                    contextTitle: person.name,
+                    source: 'feed_provider_card',
+                  ),
+                ),
+              ),
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionHeader(
+                title: widget.mode == FeedPageMode.welcome
+                    ? 'Connected feed'
+                    : 'Live local feed',
+                subtitle:
+                    'Marketplace feed with ${items.length} items matching your current search and filters.',
+              ),
+              const SizedBox(height: 12),
+              if (items.isEmpty)
+                const SectionCard(
+                  child: EmptyStateView(
+                    title: 'No matching posts',
+                    message:
+                        'Try a broader term or clear one of the active filters to widen the nearby feed.',
+                  ),
+                )
+              else
+                ...items.map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: FeedCard(
+                      item: item,
+                      onPrimaryTap: _primaryActionFor(item),
+                      onSecondaryTap: _messageActionFor(item),
+                      primaryLabel: _primaryLabelFor(item),
+                      secondaryLabel: _secondaryLabelFor(item),
+                      onMoreTap: _moreActionFor(item),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    ];
   }
 }
 
@@ -1011,28 +1023,31 @@ class _ExploreFeedLane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(title: title),
-        const SizedBox(height: 12),
-        if (items.isEmpty)
-          SectionCard(
-            child: EmptyStateView(
-              title: emptyTitle ?? 'Nothing here yet',
-              message:
-                  emptyMessage ??
-                  'Clear a filter or search a broader category.',
-            ),
-          )
-        else
-          ...items.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: cardBuilder(item),
-            ),
+    final children = <Widget>[
+      SectionHeader(title: title),
+      const SizedBox(height: 12),
+      if (items.isEmpty)
+        SectionCard(
+          child: EmptyStateView(
+            title: emptyTitle ?? 'Nothing here yet',
+            message:
+                emptyMessage ??
+                'Clear a filter or search a broader category.',
           ),
-      ],
+        )
+      else
+        for (final item in items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: cardBuilder(item),
+          ),
+    ];
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: children.length,
+      itemBuilder: (context, index) => children[index],
     );
   }
 }

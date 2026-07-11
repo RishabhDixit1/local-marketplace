@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Loader2, Rocket, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { fetchAuthedJson } from "@/lib/clientApi";
 
 type Profile = {
   id: string;
@@ -57,21 +56,21 @@ export default function ProviderPublishOnboarding() {
     setPublishing(true);
     setError("");
     try {
-      const result = await fetchAuthedJson<{ ok: boolean; message?: string }>(
-        supabase,
-        "/api/profile/save",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            values: { onboarding_completed: true },
-          }),
-        }
-      );
-      if (result?.ok) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setError("Not authenticated"); setPublishing(false); return; }
+
+      const { error: upsertError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: user.id,
+          onboarding_completed: true,
+        }, { onConflict: "id" });
+
+      if (upsertError) {
+        setError(upsertError.message);
+      } else {
         setPublished(true);
         setTimeout(() => router.push("/dashboard"), 1200);
-      } else {
-        setError(result?.message || "Failed to publish");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");

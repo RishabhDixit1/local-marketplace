@@ -3,6 +3,7 @@ import { isRelistedHelpRequest, normalizeHelpRequestProgressStage } from "@/lib/
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
+import { transitionLinkedPostStatus } from "@/lib/postStatus";
 
 export const runtime = "nodejs";
 
@@ -135,6 +136,21 @@ export async function POST(request: Request) {
       { ok: false, code: "FORBIDDEN", message: "Request already accepted or unavailable." },
       { status: 409 }
     );
+  }
+
+  const linkedPostId =
+    existingMetadata && typeof existingMetadata.linked_post_id === "string"
+      ? existingMetadata.linked_post_id
+      : null;
+
+  if (linkedPostId && adminDbClient) {
+    await transitionLinkedPostStatus({
+      db: adminDbClient,
+      orderId: "",
+      newOrderStatus: "accepted",
+      actorId: authResult.auth.userId,
+      postIdOverride: linkedPostId,
+    });
   }
 
   return NextResponse.json({ ok: true, status: "accepted", helpRequestId });

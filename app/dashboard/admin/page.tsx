@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, BadgeCheck, CheckCircle2, Flag, Gavel, Loader2, Search, Shield, Users, ShoppingCart, XCircle } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { fetchAuthedJson } from "@/lib/clientApi";
 
 type AdminStats = {
   totalUsers: number;
@@ -94,10 +96,8 @@ const TAB_LABELS: Record<TabId, string> = {
 
 const tryFetch = async <T,>(url: string, options?: RequestInit): Promise<T | null> => {
   try {
-    const res = await fetch(url, options);
-    const json = await res.json();
-    if (json?.ok) return json as T;
-    return null;
+    const json = await fetchAuthedJson<T>(supabase, url, options ?? {});
+    return json;
   } catch {
     return null;
   }
@@ -130,8 +130,7 @@ export default function AdminPage() {
   useEffect(() => {
     const check = async () => {
       try {
-        const res = await fetch("/api/system/startup-check");
-        const json = await res.json();
+        const json = await fetchAuthedJson<{ admin?: boolean }>(supabase, "/api/system/startup-check");
         setIsAdmin(json?.admin === true);
       } catch {
         setIsAdmin(false);
@@ -217,12 +216,10 @@ export default function AdminPage() {
     setBusyId(id);
     setError("");
     try {
-      const res = await fetch("/api/admin/reports", {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/admin/reports", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, action: "dismiss" }),
       });
-      const json = await res.json();
       if (json?.ok) {
         setReports((prev) => prev.filter((r) => r.id !== id));
       } else {
@@ -239,12 +236,10 @@ export default function AdminPage() {
     setBusyId(`${id}_${action}`);
     setError("");
     try {
-      const res = await fetch("/api/admin/reports", {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/admin/reports", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, action }),
       });
-      const json = await res.json();
       if (json?.ok) {
         setReports((prev) => prev.filter((r) => r.id !== id));
       } else {
@@ -261,12 +256,10 @@ export default function AdminPage() {
     setBusyId(`${id}_${action}`);
     setError("");
     try {
-      const res = await fetch("/api/admin/verifications", {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/admin/verifications", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, action }),
       });
-      const json = await res.json();
       if (json?.ok) {
         setVerifications((prev) => prev.filter((v: Record<string, unknown>) => v.id !== id));
       } else {
@@ -283,12 +276,10 @@ export default function AdminPage() {
     setBusyId(`${id}_${action}`);
     setError("");
     try {
-      const res = await fetch("/api/admin/disputes", {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/admin/disputes", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, action }),
       });
-      const json = await res.json();
       if (json?.ok) {
         setDisputes((prev) => prev.filter((d) => d.id !== id));
       } else {
@@ -305,12 +296,10 @@ export default function AdminPage() {
     setBusyId(`refund_${id}`);
     setError("");
     try {
-      const res = await fetch("/api/admin/orders", {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/admin/orders", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, action: "refund" }),
       });
-      const json = await res.json();
       if (json?.ok) {
         setOrders((prev) => prev.filter((o) => o.id !== id));
       } else {
@@ -327,12 +316,10 @@ export default function AdminPage() {
     setBusyId(`override_${id}`);
     setError("");
     try {
-      const res = await fetch("/api/admin/orders", {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/admin/orders", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, action: "status_override", status }),
       });
-      const json = await res.json();
       if (json?.ok) {
         await fetchOrders({});
       } else {
@@ -349,12 +336,10 @@ export default function AdminPage() {
     setBusyId(`payout_${id}`);
     setError("");
     try {
-      const res = await fetch("/api/admin/orders", {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/admin/orders", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, action: "create_payout" }),
       });
-      const json = await res.json();
       if (json?.ok) {
         setError("");
       } else {
@@ -1114,9 +1099,8 @@ function AdminPayoutsTab() {
   const fetchPayouts = useCallback(async (status: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/payouts?status=${status}`);
-      const json = await res.json();
-      if (json.ok) setPayouts(json.payouts);
+      const json = await fetchAuthedJson<{ ok: boolean; payouts?: Record<string, unknown>[] }>(supabase, `/api/admin/payouts?status=${status}`);
+      if (json.ok) setPayouts(json.payouts ?? []);
     } catch {
       // ignore
     } finally {
@@ -1129,12 +1113,10 @@ function AdminPayoutsTab() {
   const handleAction = async (payoutId: string, action: string) => {
     setBusyId(`${payoutId}_${action}`);
     try {
-      const res = await fetch("/api/admin/payouts", {
+      const json = await fetchAuthedJson<{ ok: boolean }>(supabase, "/api/admin/payouts", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ payoutId, action }),
       });
-      const json = await res.json();
       if (json.ok) {
         setPayouts((prev) => prev.filter((p) => (p.id as string) !== payoutId));
       }
@@ -1170,10 +1152,9 @@ function AdminPayoutsTab() {
             setBatchRunning(true);
             setBatchResult(null);
             try {
-              const res = await fetch("/api/admin/batch-payouts", { method: "POST" });
-              const json = await res.json();
+              const json = await fetchAuthedJson<{ ok: boolean; processed?: number; failed?: number; message?: string }>(supabase, "/api/admin/batch-payouts", { method: "POST" });
               if (json.ok) {
-                setBatchResult(`Processed: ${json.processed}, Failed: ${json.failed}`);
+                setBatchResult(`Processed: ${json.processed ?? 0}, Failed: ${json.failed ?? 0}`);
                 void fetchPayouts(filterStatus);
               } else {
                 setBatchResult(json.message || "Batch failed");

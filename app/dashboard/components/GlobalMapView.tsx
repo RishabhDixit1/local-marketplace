@@ -23,6 +23,8 @@ import { buildMarketplaceDisplayItem, type MarketplaceFeedItem } from "@/lib/mar
 import { captureUiActionObservability, resolveObservedRouteFromPathname } from "@/lib/observability";
 import { buildPublicProfilePath } from "@/lib/profile/utils";
 import { societyPins, marketPins } from "@/lib/demo/crossings-republik";
+import { supabase } from "@/lib/supabase";
+import { fetchAuthedJson } from "@/lib/clientApi";
 
 const MarketplaceMap = dynamic(
   () => import("@/app/components/MarketplaceMap").then((m) => ({ default: m.default ?? m })),
@@ -79,11 +81,7 @@ const buildExploreFeedUrl = (viewerCenter?: ViewerCenter | null) => {
 
 async function fetchExploreItems(viewerCenter?: ViewerCenter | null): Promise<MarketplaceMapItem[]> {
   try {
-    const res = await fetch(buildExploreFeedUrl(viewerCenter), {
-      credentials: "include",
-    });
-    if (!res.ok) return [];
-    const json = (await res.json()) as CommunityFeedResponse;
+    const json = await fetchAuthedJson<CommunityFeedResponse>(supabase, buildExploreFeedUrl(viewerCenter));
     if (!json.ok) return [];
 
     return (json.feedItems ?? []).map((item) => {
@@ -116,11 +114,7 @@ async function fetchExploreItems(viewerCenter?: ViewerCenter | null): Promise<Ma
 
 async function fetchPeopleItems(): Promise<MarketplaceMapItem[]> {
   try {
-    const res = await fetch("/api/community/people?lite=1&limit=200", {
-      credentials: "include",
-    });
-    if (!res.ok) return [];
-    const json = (await res.json()) as CommunityPeopleResponse;
+    const json = await fetchAuthedJson<CommunityPeopleResponse>(supabase, "/api/community/people?lite=1&limit=200");
     if (!json.ok) return [];
 
     const categoriesByProfileId = new Map<string, string[]>();

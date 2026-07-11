@@ -25,7 +25,11 @@ Future<void> main() async {
     () async {
       WidgetsFlutterBinding.ensureInitialized();
 
-      final appConfig = await AppConfig.load();
+      // Use the synchronous compile-time config so runApp() is not blocked
+      // by the asset-bundle platform channel in AppConfig.load() (which reads
+      // config/local.json via rootBundle.loadString).  The full config
+      // (including local.json overlay) is loaded inside _startBootstrap().
+      final appConfig = AppConfig.fromEnvironment();
       final firebaseFuture = AppFirebase.initialize(config: appConfig);
       MobilePushNotificationService.registerBackgroundHandler();
 
@@ -81,6 +85,7 @@ class _BootstrapHostState extends State<_BootstrapHost> {
     // responsive while the heavy init happens in the background.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startBootstrap();
+      _scheduleTimeout();
     });
   }
 
@@ -99,15 +104,33 @@ class _BootstrapHostState extends State<_BootstrapHost> {
       _timedOut = false;
     });
     _startBootstrap();
+    _scheduleTimeout();
   }
 
-  void _startBootstrap() {
-    Future.wait([
-      AppBootstrap.initialize(config: widget.appConfig),
-      widget.firebaseFuture.catchError(
-        (_) => const AppFirebaseState.disabled(),
-      ),
-    ]).then((results) {
+  Future<void> _startBootstrap() async {
+    // Load the full config (including local.json overlay) now that the first
+    // frame has already painted.  This replaces the earlier await that blocked
+    // runApp().
+    AppConfig config;
+    try {
+      config = await AppConfig.load();
+    } catch (e) {
+      if (!mounted) return;
+      _bootstrapError = 'Failed to load config: $e';
+      setState(() {});
+      return;
+    }
+
+    if (!mounted) return;
+
+    try {
+      final results = await Future.wait([
+        AppBootstrap.initialize(config: config),
+        widget.firebaseFuture.catchError(
+          (_) => const AppFirebaseState.disabled(),
+        ),
+      ]);
+
       if (!mounted) return;
       final bootstrap = results[0] as AppBootstrap;
       _firebaseState = results[1] as AppFirebaseState;
@@ -117,12 +140,11 @@ class _BootstrapHostState extends State<_BootstrapHost> {
         _bootstrap = bootstrap;
       }
       setState(() {});
-    }).catchError((e) {
+    } catch (e) {
       if (!mounted) return;
       _bootstrapError = e.toString();
       setState(() {});
-    });
-    _scheduleTimeout();
+    }
   }
 
   void _scheduleTimeout() {

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { scheduleClientIdleTask } from "@/lib/clientIdle";
+import { subscribeWithBackoff } from "@/lib/realtime/subscribeWithBackoff";
 import { isAbortLikeError, isFailedFetchError } from "@/lib/runtimeErrors";
 import {
   getNotificationKind,
@@ -304,51 +305,50 @@ export default function NotificationCenter({
   useEffect(() => {
     if (!enabled || !userId || demoMode) return;
 
-    const channel = supabase
-      .channel(`notifications-live-${userId}-${isStandalonePage ? "page" : "trigger"}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          scheduleLoadNotifications();
+    const unsubscribe = subscribeWithBackoff(
+      supabase,
+      `notifications-live-${userId}-${isStandalonePage ? "page" : "trigger"}`,
+      (ch) =>
+        ch.on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            scheduleLoadNotifications();
 
-          if (
-            payload.eventType === "INSERT" &&
-            !isOpenRef.current &&
-            payload.new &&
-            typeof payload.new === "object"
-          ) {
-            const row = payload.new as Record<string, unknown>;
-            const title =
-              typeof row.title === "string" ? row.title : "New notification";
-            const kind = getNotificationKind(
-              typeof row.kind === "string" ? row.kind : null,
-            );
+            if (
+              payload.eventType === "INSERT" &&
+              !isOpenRef.current &&
+              payload.new &&
+              typeof payload.new === "object"
+            ) {
+              const row = payload.new as Record<string, unknown>;
+              const title =
+                typeof row.title === "string" ? row.title : "New notification";
+              const kind = getNotificationKind(
+                typeof row.kind === "string" ? row.kind : null,
+              );
 
-            setToast({ title, kind });
+              setToast({ title, kind });
 
-            if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-            toastTimerRef.current = setTimeout(() => setToast(null), 5000);
-          }
-        },
-      )
-      .subscribe((status) => {
-        if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
-          console.warn(`[notifications] Realtime subscription ${status}, falling back to polling`);
-        }
-      });
+              if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+              toastTimerRef.current = setTimeout(() => setToast(null), 5000);
+            }
+          },
+        ),
+      { logPrefix: "[notifications]" },
+    );
 
     return () => {
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
         refreshTimerRef.current = null;
       }
-      supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, [demoMode, enabled, isStandalonePage, scheduleLoadNotifications, userId]);
 

@@ -1,6 +1,6 @@
 import { streamText } from "ai";
 import { google } from "@ai-sdk/google";
-import { createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
+import { createSupabaseAnonServerClientWithAuthTimeout } from "@/lib/server/supabaseClients";
 import { parseIntentBest } from "@/lib/ai/intentParser";
 import { moderatePrompt } from "@/lib/ai/contentModeration";
 import { appName } from "@/lib/branding";
@@ -44,17 +44,21 @@ export async function POST(request: Request) {
     let userRole: string | undefined;
     const authHeader = request.headers.get("authorization")?.replace("Bearer ", "");
     if (authHeader) {
-      const supabase = createSupabaseAnonServerClient();
+      const supabase = createSupabaseAnonServerClientWithAuthTimeout(5_000);
       if (supabase) {
-        const { data } = await supabase.auth.getUser(authHeader);
-        if (data?.user) {
-          userId = data.user.id;
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", userId)
-            .single();
-          userRole = profile?.role;
+        try {
+          const { data } = await supabase.auth.getUser(authHeader);
+          if (data?.user) {
+            userId = data.user.id;
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("role")
+              .eq("id", userId)
+              .single();
+            userRole = profile?.role;
+          }
+        } catch {
+          // GoTrue unreachable — proceed as anonymous
         }
       }
     }

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CalendarCheck, CheckCircle2, Clock, Loader2, XCircle } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { fetchAuthedJson } from "@/lib/clientApi";
 
 type Booking = {
   id: string;
@@ -38,9 +40,8 @@ export default function BookingsPage() {
 
   const fetchBookings = useCallback(async () => {
     try {
-      const res = await fetch("/api/provider/bookings");
-      const json = await res.json();
-      if (json.ok) setBookings(json.bookings);
+      const json = await fetchAuthedJson<{ ok: boolean; bookings?: Booking[]; message?: string }>(supabase, "/api/provider/bookings");
+      if (json.ok) setBookings(json.bookings ?? []);
       else setError(json.message || "Failed to load bookings.");
     } catch {
       setError("Network error.");

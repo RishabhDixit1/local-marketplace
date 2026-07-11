@@ -3,6 +3,7 @@ import { createAvatarFallback } from "./avatarFallback";
 import { resolveProfileAvatarUrl } from "./mediaUrl";
 import { looksLikePlaceholderText, toDisplayText as sanitizeDisplayText } from "./contentQuality";
 import { readMarketplaceComposerMetadata } from "./marketplaceMetadata";
+import { normalizePostStatus, postStatusLabel, type PostStatus } from "./postStatus";
 
 export type TaskType = "posted" | "accepted";
 export type TaskStatus = "active" | "in-progress" | "completed" | "cancelled";
@@ -405,6 +406,72 @@ export const mapOrderToTask = (params: {
     amount: Number.isFinite(Number(order.price)) ? Number(order.price) : null,
     createdAtRaw: order.created_at,
     progressStage,
+  } satisfies Task;
+};
+
+export const mapPostToTask = (params: {
+  post: PostRow & { creator_id?: string | null; status?: string | null; created_at?: string | null; lat?: number | null; lng?: number | null; location_label?: string | null };
+  currentUserId: string;
+  profileMap: Map<string, ProfileRow>;
+}) => {
+  const { post, currentUserId, profileMap } = params;
+
+  const metadata = post.metadata && typeof post.metadata === "object" && !Array.isArray(post.metadata) ? post.metadata : null;
+  const composerMeta = readMarketplaceComposerMetadata(metadata);
+  const parsed = parseComposerStylePostText(post.text || post.content || post.description || "");
+
+  const title = sanitizeDisplayText(
+    composerMeta?.title || post.title || parsed.title || post.text || "Marketplace post",
+    "Marketplace post"
+  );
+  const description = sanitizeDisplayText(
+    composerMeta?.details || post.description || parsed.description || post.text || "View and manage this marketplace post.",
+    "View and manage this marketplace post."
+  );
+  const category = sanitizeDisplayText(
+    composerMeta?.category || post.category || parsed.category || "Demand",
+    "Demand"
+  );
+
+  const postStatus = normalizePostStatus(post.status);
+  const isPostedByMe = (post.creator_id || "") === currentUserId;
+  const currentUserProfile = profileMap.get(currentUserId);
+  const currentUserName = getPreferredProfileName(currentUserProfile, "Local Member");
+  const currentUserAvatar = resolveProfileAvatarUrl(currentUserProfile?.avatar_url);
+
+  const budget = Number.isFinite(Number(composerMeta?.budget)) ? Number(composerMeta?.budget) : null;
+  const locationLabel = pickString(post.location_label) || pickString(metadata?.location_label) || currentUserProfile?.location || "Nearby";
+
+  const normalizedStatus: TaskStatus =
+    postStatus === "completed" ? "completed" :
+    postStatus === "cancelled" ? "cancelled" :
+    postStatus === "in_progress" ? "in-progress" : "active";
+
+  return {
+    id: post.id,
+    orderId: post.id,
+    title,
+    description,
+    type: "posted" as TaskType,
+    status: normalizedStatus,
+    rawStatus: postStatus,
+    budget: budget ? formatCurrency(budget) : undefined,
+    timeline: timelineFromStatus(postStatus),
+    location: locationLabel,
+    postedBy: {
+      id: post.creator_id || currentUserId,
+      name: isPostedByMe ? currentUserName : getPreferredProfileName(profileMap.get(post.creator_id || ""), "Local Member"),
+      image: (isPostedByMe ? currentUserAvatar : resolveProfileAvatarUrl(profileMap.get(post.creator_id || "")?.avatar_url)) || fallbackAvatar,
+    },
+    tags: [
+      category,
+      "Demand",
+      postStatusLabel(postStatus),
+    ],
+    listingType: "demand",
+    counterpartyId: null,
+    amount: budget,
+    createdAtRaw: post.created_at || null,
   } satisfies Task;
 };
 

@@ -42,7 +42,7 @@ export async function PATCH(request: Request) {
   // Verify ownership before modifying
   const { data: post, error: fetchError } = await db
     .from("posts")
-    .select("id, owner_id, type")
+    .select("id, owner_id, user_id, author_id, created_by, requester_id, provider_id, type, status, metadata")
     .eq("id", postId)
     .single();
 
@@ -50,20 +50,52 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, message: "Post not found" }, { status: 404 });
   }
 
-  if (post.owner_id !== userId) {
+  const ownerIds = [
+    post.owner_id,
+    post.user_id,
+    post.author_id,
+    post.created_by,
+    post.requester_id,
+    post.provider_id,
+  ].filter(Boolean);
+
+  if (!ownerIds.includes(userId)) {
     return NextResponse.json({ ok: false, message: "Forbidden" }, { status: 403 });
   }
 
   if (action === "archive") {
-    const { error } = await db
-      .from("posts")
-      .update({ status: "archived" })
-      .eq("id", postId)
-      .eq("owner_id", userId);
+    // Try the RPC for proper transition + history tracking
+    const { data: result, error: rpcError } = await db.rpc("transition_post_status", {
+      p_post_id: postId,
+      p_new_status: "archived",
+      p_actor_id: userId,
+    });
 
-    if (error) {
-      return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
+    if (rpcError) {
+      const msg = rpcError.message || "";
+      // RPC doesn't exist yet (migration not applied) — fall back to direct update
+      if (msg.includes("function") && msg.includes("does not exist")) {
+        const { error: fallbackErr } = await db
+          .from("posts")
+          .update({ status: "archived", updated_at: new Date().toISOString() })
+          .eq("id", postId);
+        if (fallbackErr) {
+          return NextResponse.json({ ok: false, message: fallbackErr.message }, { status: 500 });
+        }
+        invalidateUserFeed(userId).catch(() => {});
+        return NextResponse.json({ ok: true });
+      }
+      return NextResponse.json({ ok: false, message: msg }, { status: 500 });
     }
+
+    const resultObj = result as { ok?: boolean; message?: string } | null;
+    if (!resultObj?.ok) {
+      return NextResponse.json(
+        { ok: false, message: resultObj?.message || "Archive failed" },
+        { status: 400 },
+      );
+    }
+
     invalidateUserFeed(userId).catch(() => {});
     return NextResponse.json({ ok: true });
   }
@@ -71,25 +103,36 @@ export async function PATCH(request: Request) {
   // action === "edit"
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (typeof title === "string" && title.trim()) updates.title = title.trim();
-  if (typeof details === "string") updates.details = details.trim();
+  if (typeof details === "string") updates.description = details.trim();
   if (typeof category === "string" && category.trim()) updates.category = category.trim();
-  if (typeof budget === "number" && budget >= 0) updates.budget_max = budget;
+  if (typeof budget === "number" && budget >= 0) {
+    const currentMetadata =
+      post.metadata && typeof post.metadata === "object" && !Array.isArray(post.metadata)
+        ? (post.metadata as Record<string, unknown>)
+        : {};
+    updates.metadata = { ...currentMetadata, budget };
+  }
 
-  const { error } = await db
+  const { data: updated, error } = await db
     .from("posts")
     .update(updates)
     .eq("id", postId)
-    .eq("owner_id", userId);
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
+  }
+
+  if (!updated) {
+    return NextResponse.json({ ok: false, message: "Post not found or not editable." }, { status: 404 });
   }
 
   invalidateUserFeed(userId).catch(() => {});
   return NextResponse.json({ ok: true });
 }
 
-// DELETE /api/posts/manage — permanently delete a post
+// DELETE /api/posts/manage — soft-delete a post (sets status = 'deleted')
 export async function DELETE(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
@@ -112,7 +155,7 @@ export async function DELETE(request: Request) {
   // Verify ownership
   const { data: post, error: fetchError } = await db
     .from("posts")
-    .select("id, owner_id")
+    .select("id, owner_id, user_id, author_id, created_by, requester_id, provider_id")
     .eq("id", postId)
     .single();
 
@@ -120,18 +163,49 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: false, message: "Post not found" }, { status: 404 });
   }
 
-  if (post.owner_id !== userId) {
+  const ownerIds = [
+    post.owner_id,
+    post.user_id,
+    post.author_id,
+    post.created_by,
+    post.requester_id,
+    post.provider_id,
+  ].filter(Boolean);
+
+  if (!ownerIds.includes(userId)) {
     return NextResponse.json({ ok: false, message: "Forbidden" }, { status: 403 });
   }
 
-  const { error } = await db
-    .from("posts")
-    .delete()
-    .eq("id", postId)
-    .eq("owner_id", userId);
+  // Try the RPC for proper transition + history tracking
+  const { data: result, error: rpcError } = await db.rpc("transition_post_status", {
+    p_post_id: postId,
+    p_new_status: "deleted",
+    p_actor_id: userId,
+  });
 
-  if (error) {
-    return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
+  if (rpcError) {
+    const msg = rpcError.message || "";
+    // RPC doesn't exist yet (migration not applied) — fall back to direct update
+    if (msg.includes("function") && msg.includes("does not exist")) {
+      const { error: fallbackErr } = await db
+        .from("posts")
+        .update({ status: "deleted", updated_at: new Date().toISOString() })
+        .eq("id", postId);
+      if (fallbackErr) {
+        return NextResponse.json({ ok: false, message: fallbackErr.message }, { status: 500 });
+      }
+      invalidateUserFeed(userId).catch(() => {});
+      return NextResponse.json({ ok: true });
+    }
+    return NextResponse.json({ ok: false, message: msg }, { status: 500 });
+  }
+
+  const resultObj = result as { ok?: boolean; message?: string } | null;
+  if (!resultObj?.ok) {
+    return NextResponse.json(
+      { ok: false, message: resultObj?.message || "Delete failed" },
+      { status: 400 },
+    );
   }
 
   invalidateUserFeed(userId).catch(() => {});

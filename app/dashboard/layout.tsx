@@ -344,7 +344,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Give auth callbacks a short window to hydrate session before redirecting.
+      // Give auth callbacks a long window to hydrate session before giving up.
       redirectTimer = window.setTimeout(async () => {
         if (!active) return;
         const {
@@ -357,11 +357,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setAuthReady(false);
-        setShellEnhancementsPrimed(false);
+        console.warn("[dashboard] Auth session did not resolve in 15s; retrying on next navigation.");
         clearLocalAuthSession();
-        router.replace("/");
-      }, 8000);
+      }, 15000);
     };
 
     void verifySession();
@@ -591,8 +589,24 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   if (!authReady) {
     return (
       <div className="min-h-screen grid place-items-center bg-[var(--surface-app)]">
-        <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-3 text-sm font-medium text-[var(--ink-700)] shadow-sm">
-          Loading dashboard...
+        <div className="w-full max-w-xl rounded-[28px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6 shadow-xl shadow-[var(--shadow-md)]">
+          <div className="flex items-center gap-3 text-[var(--ink-700)]">
+            <svg className="h-5 w-5 animate-spin text-[var(--brand-600)]" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold">Preparing your dashboard</p>
+              <p className="text-xs text-[var(--ink-500)]">Checking your session and loading your profile.</p>
+            </div>
+          </div>
+          <div className="mt-6 space-y-3">
+            <div className="h-24 animate-pulse rounded-3xl bg-[var(--surface-soft)]" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="h-32 animate-pulse rounded-3xl bg-[var(--surface-soft)]" />
+              <div className="h-32 animate-pulse rounded-3xl bg-[var(--surface-soft)]" />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -960,11 +974,11 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               setShowUserMenu(false);
               setOpenCreatePost(true);
             }}
-            aria-label="Post a need"
+            aria-label="Create a post"
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:min-h-12 md:px-5"
           >
             <Plus className="h-4 w-4" />
-            <span>Post Need</span>
+            <span>Create</span>
           </button>
         </motion.div>
       )}
@@ -973,7 +987,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         <CreatePostModal
           open={openCreatePost}
           onClose={() => setOpenCreatePost(false)}
-          allowedPostTypes={["need"]}
+          allowedPostTypes={profile?.role === "provider" || profile?.role === "business" ? ["need", "service", "product"] : ["need"]}
           onPublished={(result?: PublishPostResult) => {
             setOpenCreatePost(false);
             if (result?.helpRequestId) {

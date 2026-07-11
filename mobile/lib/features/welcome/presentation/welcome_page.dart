@@ -649,7 +649,12 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
         ? _surface
         : model.defaultSurface;
     _resolvedSurface = model.resolveSurface(preferredSurface);
-    final activeEntries = model.entriesFor(_resolvedSurface);
+    final welcomeChildren = _welcomeSliverChildren(
+      greeting: greeting,
+      activeTaskCount: activeTaskCount,
+      unreadChatCount: unreadChatCount,
+      model: model,
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -705,140 +710,10 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
                 sliver: SliverList(
-                  delegate: SliverChildListDelegate.fixed([
-                    _HeroSection(
-                      greeting: greeting,
-                      activeTaskCount: activeTaskCount,
-                      unreadChatCount: unreadChatCount,
-                      onInboxTap: () => context.push(AppRoutes.chat),
-                      onTasksTap: () => context.go(AppRoutes.tasks),
-                      onFindPeopleTap: () => context.go(AppRoutes.people),
-                      onPrimaryTap: () {
-                        _trackFirstEngagement('post_need');
-                        ref
-                            .read(analyticsServiceProvider)
-                            .trackEvent(
-                              'home_post_need_tapped',
-                              extras: {
-                                'surface': _resolvedSurface.analyticsValue,
-                              },
-                            );
-                        context.push(AppRoutes.createRequest);
-                      },
-                    ),
-                    const SizedBox(height: 18),
-                    SectionHeader(
-                      title: _resolvedSurface == _WelcomeSurface.nearby
-                          ? 'Explore all'
-                          : 'Switch view',
-                      actionLabel: _resolvedSurface == _WelcomeSurface.nearby
-                          ? 'Explore all'
-                          : 'Switch view',
-                      onAction: () {
-                        if (_resolvedSurface == _WelcomeSurface.nearby) {
-                          context.go(AppRoutes.explore);
-                          return;
-                        }
-                        _setSurface(_WelcomeSurface.nearby);
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    _SurfaceTabsRow(
-                      value: _resolvedSurface,
-                      onChanged: _setSurface,
-                    ),
-                    const SizedBox(height: 12),
-                    ...activeEntries.map((entry) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _buildEntryCard(entry, model),
-                      );
-                    }),
-                    if (model.quickCategories.isNotEmpty) ...[
-                      const SizedBox(height: 18),
-                      SectionHeader(
-                        title: 'Nearby',
-                        actionLabel: 'Search',
-                        onAction: () => context.push(AppRoutes.search),
-                      ),
-                      const SizedBox(height: 10),
-                      _QuickCategoryRow(
-                        categories: model.quickCategories,
-                        onPressed: (category) {
-                          ref
-                              .read(analyticsServiceProvider)
-                              .trackEvent(
-                                'home_category_tapped',
-                                extras: {'category': category},
-                              );
-                          context.push(
-                            '${AppRoutes.search}?q=${Uri.encodeComponent(category)}',
-                          );
-                        },
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    InkWell(
-                      onTap: () => context.push(AppRoutes.mapDiscovery),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceAlt,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.map_outlined, size: 18, color: AppColors.primary),
-                            const SizedBox(width: 10),
-                            Text('Discover on Map',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                            const Spacer(),
-                            Icon(Icons.chevron_right, size: 16, color: AppColors.inkFaint),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    SectionHeader(
-                      title: 'Recommended',
-                      actionLabel: model.hasTrustedNetwork
-                          ? 'People'
-                          : 'Grow network',
-                      onAction: () => context.go(AppRoutes.people),
-                    ),
-                    const SizedBox(height: 10),
-                    model.hasTrustedNetwork
-                        ? _TrustedRail(
-                            items: model.trustedRailItems,
-                            onOpen: (item) {
-                              ref
-                                  .read(analyticsServiceProvider)
-                                  .trackEvent(
-                                    'home_trusted_card_opened',
-                                    extras: {'item_id': item.id},
-                                  );
-                              _openFeedItem(item);
-                            },
-                            onMessage: (item) => _messageFeedItem(item),
-                            onMore: (item) => _showItemActionsSheet(
-                              _WelcomeFeedEntry.connection(
-                                item: item,
-                                reason: _buildFeedReason(
-                                  item,
-                                  hotCategories: model.hotCategoryKeys,
-                                  trusted: true,
-                                ),
-                              ),
-                              backendSavedIds: model.savedCardIds,
-                            ),
-                          )
-                        : _NetworkPromptCard(
-                            onPeopleTap: () => context.go(AppRoutes.people),
-                            onExploreTap: () => context.go(AppRoutes.explore),
-                          ),
-                  ]),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => welcomeChildren[index],
+                    childCount: welcomeChildren.length,
+                  ),
                 ),
               ),
             ],
@@ -846,6 +721,148 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
         ),
       ),
     );
+  }
+
+  List<Widget> _welcomeSliverChildren({
+    required String greeting,
+    required int activeTaskCount,
+    required int unreadChatCount,
+    required _WelcomeViewModel model,
+  }) {
+    return [
+      _HeroSection(
+        greeting: greeting,
+        activeTaskCount: activeTaskCount,
+        unreadChatCount: unreadChatCount,
+        onInboxTap: () => context.push(AppRoutes.chat),
+        onTasksTap: () => context.go(AppRoutes.tasks),
+        onFindPeopleTap: () => context.go(AppRoutes.people),
+        onPrimaryTap: () {
+          _trackFirstEngagement('post_need');
+          ref
+              .read(analyticsServiceProvider)
+              .trackEvent(
+                'home_post_need_tapped',
+                extras: {
+                  'surface': _resolvedSurface.analyticsValue,
+                },
+              );
+          context.push(AppRoutes.createRequest);
+        },
+      ),
+      const SizedBox(height: 18),
+      SectionHeader(
+        title: _resolvedSurface == _WelcomeSurface.nearby
+            ? 'Explore all'
+            : 'Switch view',
+        actionLabel: _resolvedSurface == _WelcomeSurface.nearby
+            ? 'Explore all'
+            : 'Switch view',
+        onAction: () {
+          if (_resolvedSurface == _WelcomeSurface.nearby) {
+            context.go(AppRoutes.explore);
+            return;
+          }
+          _setSurface(_WelcomeSurface.nearby);
+        },
+      ),
+      const SizedBox(height: 10),
+      _SurfaceTabsRow(
+        value: _resolvedSurface,
+        onChanged: _setSurface,
+      ),
+      const SizedBox(height: 12),
+      for (final entry in model.entriesFor(_resolvedSurface))
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _buildEntryCard(entry, model),
+        ),
+      if (model.quickCategories.isNotEmpty) ...[
+        const SizedBox(height: 18),
+        SectionHeader(
+          title: 'Nearby',
+          actionLabel: 'Search',
+          onAction: () => context.push(AppRoutes.search),
+        ),
+        const SizedBox(height: 10),
+        _QuickCategoryRow(
+          categories: model.quickCategories,
+          onPressed: (category) {
+            ref
+                .read(analyticsServiceProvider)
+                .trackEvent(
+                  'home_category_tapped',
+                  extras: {'category': category},
+                );
+            context.push(
+              '${AppRoutes.search}?q=${Uri.encodeComponent(category)}',
+            );
+          },
+        ),
+      ],
+      const SizedBox(height: 12),
+      InkWell(
+        onTap: () => context.push(AppRoutes.mapDiscovery),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.map_outlined, size: 18, color: AppColors.primary),
+              const SizedBox(width: 10),
+              Text('Discover on Map',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+              const Spacer(),
+              Icon(Icons.chevron_right, size: 16, color: AppColors.inkFaint),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 18),
+      SectionHeader(
+        title: 'Recommended',
+        actionLabel: model.hasTrustedNetwork
+            ? 'People'
+            : 'Grow network',
+        onAction: () => context.go(AppRoutes.people),
+      ),
+      const SizedBox(height: 10),
+      if (model.hasTrustedNetwork)
+        _TrustedRail(
+          items: model.trustedRailItems,
+          onOpen: (item) {
+            ref
+                .read(analyticsServiceProvider)
+                .trackEvent(
+                  'home_trusted_card_opened',
+                  extras: {'item_id': item.id},
+                );
+            _openFeedItem(item);
+          },
+          onMessage: (item) => _messageFeedItem(item),
+          onMore: (item) => _showItemActionsSheet(
+            _WelcomeFeedEntry.connection(
+              item: item,
+              reason: _buildFeedReason(
+                item,
+                hotCategories: model.hotCategoryKeys,
+                trusted: true,
+              ),
+            ),
+            backendSavedIds: model.savedCardIds,
+          ),
+        )
+      else
+        _NetworkPromptCard(
+          onPeopleTap: () => context.go(AppRoutes.people),
+          onExploreTap: () => context.go(AppRoutes.explore),
+        ),
+    ];
   }
 
   Widget _buildEntryCard(_WelcomeFeedEntry entry, _WelcomeViewModel model) {

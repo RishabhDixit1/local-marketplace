@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { transitionLinkedPostStatus } from "@/lib/postStatus";
 
 export const runtime = "nodejs";
 
@@ -97,6 +98,18 @@ export async function POST(request: Request) {
     const { error: updateError } = await admin.from("orders").update({ metadata: nextMetadata, status: nextStatus }).eq("id", taskId);
     if (updateError) {
       return NextResponse.json({ ok: false, code: "DB", message: updateError.message }, { status: 500 });
+    }
+
+    // Transition linked post status (fire-and-forget, non-blocking)
+    if (nextStatus && nextStatus !== order.status) {
+      transitionLinkedPostStatus({
+        db: admin,
+        orderId: taskId,
+        newOrderStatus: nextStatus,
+        actorId: authResult.auth.userId,
+      }).catch((err) => {
+        console.error("[task-progress] linked post status sync failed", err);
+      });
     }
 
     const title =

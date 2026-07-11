@@ -6,6 +6,7 @@ import { withErrorHandling } from "@/lib/server/errorHandler";
 import { sendOrderEmail, shouldSkipOrderEmail } from "@/lib/email";
 import { isOrderFulfillmentMethod, type OrderFulfillmentMethod } from "@/lib/orderFulfillment";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
+import { logger } from "@/lib/server/logger";
 
 export const runtime = "nodejs";
 
@@ -324,101 +325,96 @@ async function postHandler(request: Request) {
 
   const orderIds = ((data as Array<{ id: string }> | null) || []).map((row) => row.id);
 
-  void (async () => {
-    try {
-      const notificationRows = requestedItems
-        .map((item, index) => {
-          const orderId = orderIds[index];
-          if (!orderId) return null;
-          return {
-            user_id: item.providerId,
+  try {
+    const notificationRows = requestedItems
+      .map((item, index) => {
+        const orderId = orderIds[index];
+        if (!orderId) return null;
+        return {
+          user_id: item.providerId,
+          kind: "order",
+          title: "New order received",
+          message: `${clampText(item.title, 120) || "A marketplace item"} was ordered. Open the order to confirm fulfillment.`,
+          entity_type: "order",
+          entity_id: orderId,
+          metadata: {
+            order_id: orderId,
+            item_type: item.itemType,
+            title: clampText(item.title, 160),
+            source: "checkout",
+          },
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x != null);
+
+    if (notificationRows.length > 0) {
+      await admin.from("notifications").insert(notificationRows);
+    }
+
+    await Promise.all(
+      requestedItems.map((item, index) => {
+        const orderId = orderIds[index];
+        if (!orderId) return Promise.resolve({ sent: 0, failed: 0 });
+        return sendPushToUser(admin, item.providerId, {
+          title: "New order received",
+          body: `${clampText(item.title, 120) || "A marketplace item"} was ordered.`,
+          data: {
             kind: "order",
-            title: "New order received",
-            message: `${clampText(item.title, 120) || "A marketplace item"} was ordered. Open the order to confirm fulfillment.`,
             entity_type: "order",
             entity_id: orderId,
-            metadata: {
-              order_id: orderId,
-              item_type: item.itemType,
-              title: clampText(item.title, 160),
-              source: "checkout",
-            },
-          };
-        })
-        .filter((x): x is NonNullable<typeof x> => x != null);
+            order_id: orderId,
+            title: clampText(item.title, 160),
+            source: "checkout",
+          },
+        });
+      })
+    );
+  } catch (err) {
+    logger.error("orders:create", "Provider notification failed", err);
+  }
 
-      if (notificationRows.length > 0) {
-        await admin.from("notifications").insert(notificationRows);
+  try {
+    const [consumerUser, providerUser] = await Promise.all([
+      admin.auth.admin.getUserById(authResult.auth.userId).catch(() => null),
+      requestedItems[0] ? admin.auth.admin.getUserById(requestedItems[0].providerId).catch(() => null) : null,
+    ]);
+
+    const consumerName = (consumerUser?.data?.user?.user_metadata?.name as string | undefined) ?? "there";
+    const consumerEmail = consumerUser?.data?.user?.email;
+    const providerName = (providerUser?.data?.user?.user_metadata?.name as string | undefined) ?? undefined;
+    const providerEmail = providerUser?.data?.user?.email;
+
+    if (consumerEmail && requestedItems[0]) {
+      const consumerSkip = await shouldSkipOrderEmail(authResult.auth.userId);
+      if (!consumerSkip) {
+        await sendOrderEmail({
+          type: "placed",
+          to: consumerEmail,
+          recipientName: consumerName,
+          orderId: orderIds[0] ?? "",
+          itemTitle: requestedItems[0].title ?? "your order",
+          price: requestedItems[0].price,
+        });
       }
-
-      await Promise.all(
-        requestedItems.map((item, index) => {
-          const orderId = orderIds[index];
-          if (!orderId) return Promise.resolve({ sent: 0, failed: 0 });
-          return sendPushToUser(admin, item.providerId, {
-            title: "New order received",
-            body: `${clampText(item.title, 120) || "A marketplace item"} was ordered.`,
-            data: {
-              kind: "order",
-              entity_type: "order",
-              entity_id: orderId,
-              order_id: orderId,
-              title: clampText(item.title, 160),
-              source: "checkout",
-            },
-          });
-        })
-      );
-    } catch (err) {
-      console.error("[order-provider-notification] failed", err);
     }
-  })();
 
-  // Fire-and-forget: email buyer confirmation + provider notification
-  void (async () => {
-    try {
-      const [consumerUser, providerUser] = await Promise.all([
-        admin.auth.admin.getUserById(authResult.auth.userId).catch(() => null),
-        requestedItems[0] ? admin.auth.admin.getUserById(requestedItems[0].providerId).catch(() => null) : null,
-      ]);
-
-      const consumerName = (consumerUser?.data?.user?.user_metadata?.name as string | undefined) ?? "there";
-      const consumerEmail = consumerUser?.data?.user?.email;
-      const providerName = (providerUser?.data?.user?.user_metadata?.name as string | undefined) ?? undefined;
-      const providerEmail = providerUser?.data?.user?.email;
-
-      if (consumerEmail && requestedItems[0]) {
-        const consumerSkip = await shouldSkipOrderEmail(authResult.auth.userId);
-        if (!consumerSkip) {
-          await sendOrderEmail({
-            type: "placed",
-            to: consumerEmail,
-            recipientName: consumerName,
-            orderId: orderIds[0] ?? "",
-            itemTitle: requestedItems[0].title ?? "your order",
-            price: requestedItems[0].price,
-          });
-        }
+    if (providerEmail && requestedItems[0]) {
+      const skip = await shouldSkipOrderEmail(requestedItems[0].providerId);
+      if (!skip) {
+        await sendOrderEmail({
+          type: "order_placed_provider",
+          to: providerEmail,
+          recipientName: providerName ?? "there",
+          orderId: orderIds[0] ?? "",
+          itemTitle: requestedItems[0].title ?? "an order",
+          price: requestedItems[0].price,
+          consumerName,
+        });
       }
-
-      if (providerEmail && requestedItems[0]) {
-        const skip = await shouldSkipOrderEmail(requestedItems[0].providerId);
-        if (!skip) {
-          await sendOrderEmail({
-            type: "order_placed_provider",
-            to: providerEmail,
-            recipientName: providerName ?? "there",
-            orderId: orderIds[0] ?? "",
-            itemTitle: requestedItems[0].title ?? "an order",
-            price: requestedItems[0].price,
-            consumerName,
-          });
-        }
-      }
-    } catch (err) {
-      console.error("[order-emails] failed", err);
     }
-  })();
+  } catch (err) {
+    logger.error("orders:create", "Order confirmation email failed", err);
+  }
 
   return NextResponse.json(
     {

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -398,7 +398,6 @@ export default function MarketplacePage() {
             : "Request published. Matching is in progress.",
         );
         setShowPostExplainer(true);
-        setTimeout(() => setShowPostExplainer(false), 8000);
         void fetchFeed(true);
       } else {
         router.push("/dashboard/profile");
@@ -427,7 +426,16 @@ export default function MarketplacePage() {
         />
 
          {showPostExplainer && (
-          <WhatHappensNext kind="post_need" />
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowPostExplainer(false)}
+              className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+            <WhatHappensNext kind="post_need" />
+          </div>
         )}
 
         {showAdvancedFilters && (
@@ -473,6 +481,7 @@ export default function MarketplacePage() {
           onPrimaryAction={handlePrimaryAction}
           onSecondaryAction={handleSecondaryAction}
           onFeedRefresh={() => void fetchFeed(true)}
+          pushToast={pushToast}
         />
 
         {hasMoreMobileItems ? (

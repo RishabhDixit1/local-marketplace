@@ -55,6 +55,7 @@ import {
   describeCancelledTrackerStage,
 } from "@/lib/helpRequestProgress";
 import { supabase } from "@/lib/supabase";
+import { MY_WORK_STATUSES } from "@/lib/postStatus";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import {
   canTransitionOrderStatus,
@@ -81,6 +82,7 @@ import {
   getListingTypeLabel,
   getPreferredProfileName,
   mapOrderToTask,
+  mapPostToTask,
   mapTaskEventToFeedItem,
   normalizeTaskStatus,
   resolveOrderListing,
@@ -213,7 +215,7 @@ export default function TasksPage() {
 
       setCurrentUserId(user.id);
 
-      const [ordersRes, helpRequestsResult] = await Promise.all([
+      const [ordersRes, helpRequestsResult, myWorkPostsResult] = await Promise.all([
         supabase
           .from("orders")
           .select("*")
@@ -225,6 +227,13 @@ export default function TasksPage() {
         })
           .then((payload) => ({ ok: true as const, payload }))
           .catch((error: unknown) => ({ ok: false as const, error })),
+        supabase
+          .from("posts")
+          .select("id,title,text,content,description,category,metadata,creator_id,status,created_at,location_label")
+          .eq("creator_id", user.id)
+          .in("status", MY_WORK_STATUSES as readonly string[])
+          .order("created_at", { ascending: false })
+          .limit(60),
       ]);
 
       if (ordersRes.error) {
@@ -393,7 +402,35 @@ export default function TasksPage() {
             profileMap,
           })
         ),
-      ].sort(
+      ];
+
+      const orderLinkedPostIds = new Set(
+        liveOrders.map((o) => o.post_id).filter((id): id is string => Boolean(id))
+      );
+      const helpRequestLinkedPostIds = new Set(
+        liveHelpRequests.map((r) => {
+          const meta = r.metadata && typeof r.metadata === "object" ? r.metadata : null;
+          return meta && typeof meta.linked_post_id === "string" ? meta.linked_post_id : null;
+        }).filter((id): id is string => Boolean(id))
+      );
+      const excludedPostIds = new Set([...orderLinkedPostIds, ...helpRequestLinkedPostIds]);
+
+      const myWorkPosts = (myWorkPostsResult.data as Array<PostRow & { creator_id?: string | null; status?: string | null; created_at?: string | null; location_label?: string | null }> | null) || [];
+      myWorkPosts
+        .filter((post) => !excludedPostIds.has(post.id))
+        .forEach((post) => {
+          mappedTasks.push({
+            ...mapPostToTask({
+              post,
+              currentUserId: user.id,
+              profileMap,
+            }),
+            source: "order" as const,
+            helpRequestId: null,
+          });
+        });
+
+      mappedTasks.sort(
         (left, right) => new Date(right.createdAtRaw || 0).getTime() - new Date(left.createdAtRaw || 0).getTime()
       );
 

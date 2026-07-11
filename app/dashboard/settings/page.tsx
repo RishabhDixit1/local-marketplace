@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Bell, Loader2, LogOut, MessageCircle, Moon, Shield, Sun, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { fetchAuthedJson } from "@/lib/clientApi";
 
 type UserSettings = {
   order_notifications: boolean;
@@ -103,17 +104,11 @@ export default function SettingsPage() {
     if (deleteConfirmText !== "DELETE") return;
     setDeleting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/account/delete", {
+      const json = await fetchAuthedJson<{ ok?: boolean; error?: string }>(supabase, "/api/account/delete", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${session?.access_token ?? ""}`,
-          "Content-Type": "application/json",
-        },
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to delete account");
+      if (!json.ok) {
+        throw new Error(json.error || "Failed to delete account");
       }
       await supabase.auth.signOut();
       router.replace("/");

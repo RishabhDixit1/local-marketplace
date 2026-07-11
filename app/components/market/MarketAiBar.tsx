@@ -14,6 +14,8 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { fetchAuthedJson } from "@/lib/clientApi";
 
 const STORAGE_KEY = "serviq-market-recent";
 const MAX_RECENT = 5;
@@ -99,13 +101,10 @@ export function MarketAiFloating() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/ai/prompt", {
+      const data = await fetchAuthedJson<AiResponse>(supabase, "/api/ai/prompt", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: q }),
       });
-      if (!res.ok) throw new Error("API error");
-      const data: AiResponse = await res.json();
       setAiResponse(data);
       setShowAiResult(true);
     } catch {

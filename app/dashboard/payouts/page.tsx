@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Banknote, Landmark, Loader2, Plus, Trash2, Wallet } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { fetchAuthedJson } from "@/lib/clientApi";
 
 type BankAccount = {
   id: string;
@@ -70,17 +72,15 @@ export default function PayoutsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [payoutsRes, accountsRes] = await Promise.all([
-        fetch("/api/provider/payouts"),
-        fetch("/api/provider/bank-accounts"),
+      const [payoutsJson, accountsJson] = await Promise.all([
+        fetchAuthedJson<{ ok: boolean; payouts?: Payout[]; summary?: PayoutSummary }>(supabase, "/api/provider/payouts"),
+        fetchAuthedJson<{ ok: boolean; accounts?: BankAccount[] }>(supabase, "/api/provider/bank-accounts"),
       ]);
-      const payoutsJson = await payoutsRes.json();
-      const accountsJson = await accountsRes.json();
       if (payoutsJson.ok) {
-        setPayouts(payoutsJson.payouts);
-        setSummary(payoutsJson.summary);
+        setPayouts(payoutsJson.payouts ?? []);
+        setSummary(payoutsJson.summary ?? null);
       }
-      if (accountsJson.ok) setAccounts(accountsJson.accounts);
+      if (accountsJson.ok) setAccounts(accountsJson.accounts ?? []);
     } catch {
       setError("Failed to load data.");
     } finally {
@@ -98,12 +98,10 @@ export default function PayoutsPage() {
     setRequesting(true);
     setError(""); setSuccess("");
     try {
-      const res = await fetch("/api/provider/payouts", {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/provider/payouts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount_paise: amount, payout_method: payoutMethod }),
       });
-      const json = await res.json();
       if (json.ok) {
         setSuccess(`Withdrawal of ${INR(amount)} requested.`);
         setPayoutAmount("");
@@ -125,9 +123,8 @@ export default function PayoutsPage() {
     setSavingAccount(true);
     setError(""); setSuccess("");
     try {
-      const res = await fetch("/api/provider/bank-accounts", {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/provider/bank-accounts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           account_type: acctType,
           account_holder_name: holderName || undefined,
@@ -138,7 +135,6 @@ export default function PayoutsPage() {
           is_default: accounts.length === 0,
         }),
       });
-      const json = await res.json();
       if (json.ok) {
         setShowAddForm(false);
         setHolderName(""); setBankName(""); setAccountNumber(""); setIfscCode(""); setUpiHandle("");
@@ -156,7 +152,7 @@ export default function PayoutsPage() {
 
   const deleteAccount = async (id: string) => {
     try {
-      await fetch(`/api/provider/bank-accounts/${id}`, { method: "DELETE" });
+      await fetchAuthedJson<{ ok: boolean }>(supabase, `/api/provider/bank-accounts/${id}`, { method: "DELETE" });
       void fetchData();
     } catch {
       setError("Failed to delete account.");

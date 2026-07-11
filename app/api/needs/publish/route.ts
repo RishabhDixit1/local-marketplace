@@ -114,6 +114,16 @@ export async function POST(request: Request) {
     );
   }
 
+  if (postId && !helpRequestId) {
+    await dbClient.from("posts").delete().eq("id", postId);
+    return toErrorResponse(500, "DB", "Help request creation failed. Post rolled back.");
+  }
+
+  if (!postId && helpRequestId) {
+    await dbClient.from("help_requests").delete().eq("id", helpRequestId);
+    return toErrorResponse(500, "DB", "Post creation failed. Help request rolled back.");
+  }
+
   let matchedCount = 0;
   let notifiedProviders = 0;
   let firstNotificationLatencyMs = 0;

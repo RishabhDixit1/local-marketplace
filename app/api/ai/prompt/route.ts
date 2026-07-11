@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseAdminClient, createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
+import { createSupabaseAdminClient, createSupabaseAnonServerClientWithAuthTimeout } from "@/lib/server/supabaseClients";
 import { executeQuery } from "@/lib/ai/orchestrator";
 import { moderatePrompt } from "@/lib/ai/contentModeration";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
@@ -116,17 +116,21 @@ export async function POST(request: Request) {
 
     const authHeader = request.headers.get("authorization")?.replace("Bearer ", "");
     if (authHeader) {
-      const supabase = createSupabaseAnonServerClient();
+      const supabase = createSupabaseAnonServerClientWithAuthTimeout(5_000);
       if (supabase) {
-        const { data } = await supabase.auth.getUser(authHeader);
-        if (data?.user) {
-          userId = data.user.id;
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", userId)
-            .single();
-          userRole = profile?.role;
+        try {
+          const { data } = await supabase.auth.getUser(authHeader);
+          if (data?.user) {
+            userId = data.user.id;
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("role")
+              .eq("id", userId)
+              .single();
+            userRole = profile?.role;
+          }
+        } catch {
+          // GoTrue unreachable — proceed as anonymous
         }
       }
     }

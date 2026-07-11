@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { verifyOtp } from "@/lib/server/otpStore";
 import {
-  createSupabaseAdminClient,
-  createSupabaseAnonServerClient,
+  createSupabaseAdminClientWithAuthTimeout,
+  createSupabaseAnonServerClientWithAuthTimeout,
 } from "@/lib/server/supabaseClients";
 import { buildSupabaseSessionCookieValue, SESSION_EXPIRY_SECONDS } from "@/lib/server/customAuth";
 import { withErrorHandling } from "@/lib/server/errorHandler";
@@ -14,7 +14,7 @@ async function ensureGoTrueUser(
   email: string,
 ): Promise<{ id: string; email: string } | null> {
   try {
-    const adminClient = createSupabaseAdminClient();
+    const adminClient = createSupabaseAdminClientWithAuthTimeout(5_000);
     if (!adminClient) return null;
 
     const { data, error } = await adminClient.auth.admin.createUser({
@@ -44,7 +44,7 @@ async function buildGoTrueSession(
   user: { id: string; email: string };
 } | null> {
   try {
-    const adminClient = createSupabaseAdminClient();
+    const adminClient = createSupabaseAdminClientWithAuthTimeout(5_000);
     if (!adminClient) return null;
 
     // Ensure user exists in GoTrue (idempotent — ignores "already exists")
@@ -66,7 +66,7 @@ async function buildGoTrueSession(
     if (linkError || !emailOtp) return null;
 
     // Exchange the token for a real GoTrue session
-    const anonClient = createSupabaseAnonServerClient();
+    const anonClient = createSupabaseAnonServerClientWithAuthTimeout(5_000);
     if (!anonClient) return null;
 
     const { data: verifyData, error: verifyError } = await anonClient.auth.verifyOtp({

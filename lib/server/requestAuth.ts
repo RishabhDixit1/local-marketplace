@@ -1,5 +1,8 @@
 import type { User } from "@supabase/supabase-js";
-import { createSupabaseAdminClient, createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
+import {
+  createSupabaseAdminClient,
+  createSupabaseAnonServerClientWithAuthTimeout,
+} from "@/lib/server/supabaseClients";
 import { verifyLocalAuthToken } from "@/lib/server/customAuth";
 import { NextResponse } from "next/server";
 
@@ -34,7 +37,9 @@ export const requireRequestAuth = async (
     };
   }
 
-  const supabase = createSupabaseAnonServerClient();
+  // Use a timeout-aware client so a hung GoTrue/EC2 connection
+  // fails fast (5 s) instead of blocking the event loop for minutes.
+  const supabase = createSupabaseAnonServerClientWithAuthTimeout(5_000);
   if (!supabase) {
     return {
       ok: false,
@@ -43,9 +48,36 @@ export const requireRequestAuth = async (
     };
   }
 
-  const { data, error } = await supabase.auth.getUser(accessToken);
-  if (error || !data.user) {
-    // GoTrue is unreachable — fall back to local JWT verification
+  // Defense-in-depth: Promise.race ensures we bail out even if the
+  // Supabase client's internal logic (initializePromise, _acquireLock,
+  // session refresh) ignores the fetch-level abort and keeps hanging.
+  const AUTH_TIMEOUT_MS = 5_000;
+  let data: { user: User | null } | null = null;
+  let error: { message: string } | null = null;
+  try {
+    const result = await Promise.race([
+      supabase.auth.getUser(accessToken),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("GoTrue getUser timeout")),
+          AUTH_TIMEOUT_MS,
+        ),
+      ),
+    ]);
+    data = result.data;
+    error = result.error;
+  } catch (err) {
+    // Network timeout / ECONNRESET / ENETUNREACH / Promise.race timeout
+    const ts = new Date().toISOString();
+    console.warn(
+      `[requestAuth] GoTrue getUser failed (${ts}):`,
+      err instanceof Error ? err.message : String(err),
+    );
+    error = { message: err instanceof Error ? err.message : "Auth service unreachable" };
+  }
+
+  if (error || !data?.user) {
+    // GoTrue is unreachable or rejected — fall back to local JWT verification
     const localUser = verifyLocalAuthToken(accessToken);
     if (!localUser) {
       return {
@@ -55,6 +87,9 @@ export const requireRequestAuth = async (
       };
     }
 
+    console.info(
+      `[requestAuth] fallback to local JWT succeeded (${new Date().toISOString()})`,
+    );
     return {
       ok: true,
       auth: {

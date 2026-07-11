@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BadgeCheck, Banknote, CalendarDays, CheckCircle2, Clock, FileText, Loader2, Scale } from "lucide-react";
 import { acceptQuoteDraft } from "@/lib/quotes/client";
+import { supabase } from "@/lib/supabase";
+import { fetchAuthedJson } from "@/lib/clientApi";
 
 type QuoteLineItem = {
   id: string;
@@ -51,11 +53,10 @@ export default function QuoteComparisonPage() {
   const fetchQuotes = useCallback(async () => {
     if (!helpRequestId) return;
     try {
-      const res = await fetch(`/api/quotes/for-request?helpRequestId=${helpRequestId}`);
-      const json = await res.json();
+      const json = await fetchAuthedJson<{ ok: boolean; quotes?: Quote[]; help_request_title?: string; message?: string }>(supabase, `/api/quotes/for-request?helpRequestId=${helpRequestId}`);
       if (json.ok) {
-        setQuotes(json.quotes);
-        setHelpRequestTitle(json.help_request_title);
+        setQuotes(json.quotes ?? []);
+        setHelpRequestTitle(json.help_request_title ?? "");
       } else {
         setError(json.message || "Failed to load quotes.");
       }

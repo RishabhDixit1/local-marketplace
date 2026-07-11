@@ -11,6 +11,7 @@ import {
   type DeliveryInfo,
 } from "@/lib/deliveryWorkflow";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
+import { transitionLinkedPostStatus } from "@/lib/postStatus";
 
 export const runtime = "nodejs";
 
@@ -112,72 +113,84 @@ async function postHandler(request: Request, { params }: { params: Promise<{ id:
 
     // If delivered → auto-complete the order
     if (newStatus === "delivered") {
-      void (async () => {
-        try {
+      try {
+        await admin.from("orders").update({
+          status: "completed",
+          metadata: {
+            ...row.metadata,
+            delivery: update,
+            fulfillment_status: "completed",
+            fulfillment_status_label: "Completed, waiting to close",
+            fulfillment_updated_at: new Date().toISOString(),
+          },
+          updated_at: new Date().toISOString(),
+        }).eq("id", id);
+
+        // Transition linked post status
+        transitionLinkedPostStatus({
+          db: admin,
+          orderId: id,
+          newOrderStatus: "completed",
+          actorId: authResult.auth.userId,
+        }).catch((err) => {
+          console.error("[delivery→complete] post status sync failed", err);
+        });
+
+        // Review request
+        await admin.from("review_requests").upsert({
+          order_id: id,
+          provider_id: row.provider_id,
+          requester_id: row.consumer_id,
+          sent_at: new Date().toISOString(),
+          status: "sent",
+        }, { onConflict: "order_id, requester_id" });
+
+        // Commission — read price from order
+        const { data: orderRow } = await admin.from("orders")
+          .select("price,metadata")
+          .eq("id", id)
+          .single();
+        if (orderRow) {
+          const p = typeof orderRow.price === "number" ? orderRow.price : 0;
+          const pp = Math.round(p * 100);
+          const rate = typeof orderRow.metadata?.commission_rate === "number"
+            ? (orderRow.metadata.commission_rate as number)
+            : 5.0;
+          const feePaise = Math.round(pp * (rate / 100));
+          const payoutPaise = pp - feePaise;
           await admin.from("orders").update({
-            status: "completed",
+            platform_fee_paise: feePaise,
+            provider_payout_paise: payoutPaise,
             metadata: {
               ...row.metadata,
               delivery: update,
-              fulfillment_status: "completed",
-              fulfillment_status_label: "Completed, waiting to close",
-              fulfillment_updated_at: new Date().toISOString(),
+              commission_calculated_at: new Date().toISOString(),
             },
-            updated_at: new Date().toISOString(),
           }).eq("id", id);
 
-          // Review request
-          await admin.from("review_requests").upsert({
-            order_id: id,
-            provider_id: row.provider_id,
-            requester_id: row.consumer_id,
-            sent_at: new Date().toISOString(),
-            status: "sent",
-          }, { onConflict: "order_id, requester_id" });
-
-          // Commission — read price from order
-          const { data: orderRow } = await admin.from("orders")
-            .select("price,metadata")
-            .eq("id", id)
-            .single();
-          if (orderRow) {
-            const p = typeof orderRow.price === "number" ? orderRow.price : 0;
-            const pp = Math.round(p * 100);
-            const rate = typeof orderRow.metadata?.commission_rate === "number"
-              ? (orderRow.metadata.commission_rate as number)
-              : 5.0;
-            const feePaise = Math.round(pp * (rate / 100));
-            const payoutPaise = pp - feePaise;
-            await admin.from("orders").update({
-              platform_fee_paise: feePaise,
-              provider_payout_paise: payoutPaise,
-              metadata: {
-                ...row.metadata,
-                delivery: update,
-                commission_calculated_at: new Date().toISOString(),
-              },
-            }).eq("id", id);
-
-            // Auto-create pending payout
-            if (row.provider_id && payoutPaise > 0) {
-              const { error: payoutErr } = await admin.from("provider_payouts").insert({
-                provider_id: row.provider_id,
-                amount_paise: pp,
-                fee_paise: feePaise,
-                net_amount_paise: payoutPaise,
-                status: "pending",
-                payout_method: "auto",
-                notes: `Auto-payout for order ${id}`,
-              });
-              if (payoutErr) {
-                console.error("[auto-payout] insert failed for order", id, payoutErr.message);
-              }
+          // Auto-create pending payout
+          if (row.provider_id && payoutPaise > 0) {
+            const { error: payoutErr } = await admin.from("provider_payouts").insert({
+              provider_id: row.provider_id,
+              amount_paise: pp,
+              fee_paise: feePaise,
+              net_amount_paise: payoutPaise,
+              status: "pending",
+              payout_method: "auto",
+              notes: `Auto-payout for order ${id}`,
+            });
+            if (payoutErr) {
+              console.error("[auto-payout] insert failed for order", id, payoutErr.message);
             }
           }
-        } catch (err) {
-          console.error("[delivery→complete] failed for order", id, err);
         }
-      })();
+      } catch (err) {
+        console.error("[delivery→complete] failed for order", id, err);
+        return NextResponse.json(
+          { ok: false, message: "Auto-complete failed. Delivery status saved, but financial processing encountered an error." },
+          { status: 500 }
+        );
+      }
     }
 
     // Notify consumer

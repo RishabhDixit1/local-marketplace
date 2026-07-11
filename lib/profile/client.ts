@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import type { SaveProfileResponse, UploadProfileAvatarResponse } from "@/lib/api/profile";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
+import { subscribeWithBackoff } from "@/lib/realtime/subscribeWithBackoff";
 import { type ProfileFormValues, type ProfileRecord, type StoredProfileRole } from "@/lib/profile/types";
 import {
   buildBootstrapProfilePatch,
@@ -123,9 +124,8 @@ export const uploadProfileAvatar = async (params: { userId: string; file: File }
 };
 
 export const subscribeToCurrentUserProfile = (userId: string, onChange: () => void) => {
-  const channel = supabase
-    .channel(`profile-live-${userId}`)
-    .on(
+  return subscribeWithBackoff(supabase, `profile-live-${userId}`, (ch) =>
+    ch.on(
       "postgres_changes",
       {
         event: "*",
@@ -133,17 +133,9 @@ export const subscribeToCurrentUserProfile = (userId: string, onChange: () => vo
         table: "profiles",
         filter: `id=eq.${userId}`,
       },
-      onChange
-    )
-    .subscribe((status) => {
-      if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
-        console.warn(`[profile-live] Realtime subscription ${status}`);
-      }
-    });
-
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+      onChange,
+    ),
+  { logPrefix: "[profile-live]" });
 };
 
 export const resolveCurrentProfileDestination = (profile: ProfileRecord | null, nextPath?: string) =>

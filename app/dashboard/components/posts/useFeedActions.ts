@@ -23,6 +23,7 @@ import {
 import { resolveMarketplaceCardActionModel, type MarketplacePrimaryActionKind, type MarketplaceSecondaryActionKind } from "@/lib/marketplaceCardActions";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
+import { subscribeWithBackoff } from "@/lib/realtime/subscribeWithBackoff";
 import { toErrorMessage } from "@/lib/runtimeErrors";
 
 type ToastKind = "success" | "error" | "info";
@@ -175,43 +176,42 @@ export const useFeedActions = ({
   useEffect(() => {
     if (!viewerId) return;
 
-    const channel = supabase
-      .channel(`posts-feed-saves-${viewerId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "feed_card_saves",
-          filter: `user_id=eq.${viewerId}`,
-        },
-        (payload) => {
-          const previous = (payload.old as { card_id?: string } | null)?.card_id || "";
-          const next = (payload.new as { card_id?: string } | null)?.card_id || "";
-          const cardId = next || previous;
-          if (!cardId) return;
+    const unsubscribe = subscribeWithBackoff(
+      supabase,
+      `posts-feed-saves-${viewerId}`,
+      (ch) =>
+        ch.on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "feed_card_saves",
+            filter: `user_id=eq.${viewerId}`,
+          },
+          (payload) => {
+            const previous = (payload.old as { card_id?: string } | null)?.card_id || "";
+            const next = (payload.new as { card_id?: string } | null)?.card_id || "";
+            const cardId = next || previous;
+            if (!cardId) return;
 
-          setSavedListingIds((current) => {
-            const updated = new Set(current);
-            if (payload.eventType === "DELETE") {
-              clearPendingFeedCardSave(viewerId, cardId);
-              updated.delete(cardId);
-            } else {
-              prunePendingFeedCardSaves(viewerId, [cardId]);
-              updated.add(cardId);
-            }
-            return updated;
-          });
-        }
-      )
-      .subscribe((status) => {
-        if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
-          console.warn(`[feed-saves] Realtime subscription ${status}`);
-        }
-      });
+            setSavedListingIds((current) => {
+              const updated = new Set(current);
+              if (payload.eventType === "DELETE") {
+                clearPendingFeedCardSave(viewerId, cardId);
+                updated.delete(cardId);
+              } else {
+                prunePendingFeedCardSaves(viewerId, [cardId]);
+                updated.add(cardId);
+              }
+              return updated;
+            });
+          },
+        ),
+      { logPrefix: "[feed-saves]" },
+    );
 
     return () => {
-      void supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, [viewerId]);
 
@@ -693,20 +693,64 @@ export const useFeedActions = ({
       }
 
       if (action === "hide") {
+        const cardId = buildMarketplaceFeedCardId(item);
         setFeed((current) => current.filter((feedItem) => {
-          const cardId = buildMarketplaceFeedCardId(item);
           return feedItem.id !== item.id && buildMarketplaceFeedCardId(feedItem) !== cardId;
         }));
+
+        try {
+          await fetchAuthedJson(supabase, "/api/feed-card-interactions", {
+            method: "POST",
+            body: JSON.stringify({
+              action: "hide",
+              card: {
+                card_id: cardId,
+                focus_id: item.id,
+                card_type: item.type,
+                title: item.displayTitle,
+                subtitle: item.displayDescription,
+                action_path: buildFeedContextPath(item),
+                metadata: buildSaveMetadata(item),
+              },
+              reason: null,
+            }),
+          });
+        } catch {
+          // Best-effort: already removed from local feed
+        }
+
         pushToast("info", "Post hidden from your feed.");
         return;
       }
 
       if (action === "report") {
-        pushToast("info", "Post reported. Our team will review it.");
+        const cardId = buildMarketplaceFeedCardId(item);
+
+        try {
+          await fetchAuthedJson(supabase, "/api/feed-card-interactions", {
+            method: "POST",
+            body: JSON.stringify({
+              action: "report",
+              card: {
+                card_id: cardId,
+                focus_id: item.id,
+                card_type: item.type,
+                title: item.displayTitle,
+                subtitle: item.displayDescription,
+                action_path: buildFeedContextPath(item),
+                metadata: buildSaveMetadata(item),
+              },
+              reason: "Reported from feed",
+            }),
+          });
+          pushToast("success", "Post reported. Our team will review it.");
+        } catch {
+          pushToast("error", "Unable to report this post. Please try again.");
+        }
         return;
       }
     },
-    [shareListing, toggleSaveListing, pushToast, setFeed]
+    [buildFeedContextPath, buildSaveMetadata, shareListing, toggleSaveListing, pushToast, setFeed]
   );
 
   const resolveActionModel = useCallback(

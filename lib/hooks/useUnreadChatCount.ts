@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { scheduleClientIdleTask } from "@/lib/clientIdle";
 import { supabase } from "@/lib/supabase";
+import { subscribeWithBackoff } from "@/lib/realtime/subscribeWithBackoff";
 
 type ParticipantRow = {
   conversation_id: string;
@@ -150,50 +151,48 @@ export default function useUnreadChatCount(enabled = true, userId: string | null
       void loadUnreadCount();
     }, 3200);
 
-    const participantsChannel = supabase
-      .channel(`dashboard-chat-unread-participants-${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "conversation_participants",
-          filter: `user_id=eq.${userId}`,
-        },
-        () => {
-          scheduleLoadUnreadCount();
-        }
-      )
-      .subscribe((status) => {
-        if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
-          console.warn(`[unread-participants] Realtime subscription ${status}`);
-        }
-      });
+    const unsubscribeParticipants = subscribeWithBackoff(
+      supabase,
+      `dashboard-chat-unread-participants-${userId}`,
+      (ch) =>
+        ch.on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "conversation_participants",
+            filter: `user_id=eq.${userId}`,
+          },
+          () => {
+            scheduleLoadUnreadCount();
+          },
+        ),
+      { logPrefix: "[unread-participants]" },
+    );
 
-    const messagesChannel = supabase
-      .channel(`dashboard-chat-unread-messages-${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-        },
-        (payload) => {
-          const conversationId =
-            payload.new && typeof payload.new === "object" && "conversation_id" in payload.new
-              ? String(payload.new.conversation_id || "")
-              : "";
+    const unsubscribeMessages = subscribeWithBackoff(
+      supabase,
+      `dashboard-chat-unread-messages-${userId}`,
+      (ch) =>
+        ch.on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+          },
+          (payload) => {
+            const conversationId =
+              payload.new && typeof payload.new === "object" && "conversation_id" in payload.new
+                ? String(payload.new.conversation_id || "")
+                : "";
 
-          if (!conversationId || !conversationIdsRef.current.has(conversationId)) return;
-          scheduleLoadUnreadCount();
-        }
-      )
-      .subscribe((status) => {
-        if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
-          console.warn(`[unread-messages] Realtime subscription ${status}`);
-        }
-      });
+            if (!conversationId || !conversationIdsRef.current.has(conversationId)) return;
+            scheduleLoadUnreadCount();
+          },
+        ),
+      { logPrefix: "[unread-messages]" },
+    );
 
     return () => {
       if (refreshTimerRef.current) {
@@ -201,8 +200,8 @@ export default function useUnreadChatCount(enabled = true, userId: string | null
         refreshTimerRef.current = null;
       }
       cancelIdleTask();
-      void supabase.removeChannel(participantsChannel);
-      void supabase.removeChannel(messagesChannel);
+      unsubscribeParticipants();
+      unsubscribeMessages();
     };
   }, [enabled, loadUnreadCount, userId]);
 

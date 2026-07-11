@@ -5,6 +5,7 @@ import {
   motion,
   type Variants,
 } from "framer-motion";
+import type React from "react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -18,6 +19,8 @@ import FeedEmptyState from "@/app/dashboard/components/posts/FeedEmptyState";
 import { ConfirmDialog } from "@/app/components/ui/ConfirmDialog";
 import { Loader2, Pencil, Save, X } from "lucide-react";
 import { Input } from "@/app/components/ui/Input";
+import { fetchAuthedJson } from "@/lib/clientApi";
+import { supabase } from "@/lib/supabase";
 
 const staggerCardVariants: Variants = {
   hidden: (i: number) => ({
@@ -48,6 +51,8 @@ const staggerCardVariants: Variants = {
 
 const feedGridClassName =
   "grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,23rem),1fr))] 2xl:gap-4";
+
+type ToastKind = "success" | "error" | "info";
 
 type FeedGridProps = {
   items: MarketplaceDisplayFeedItem[];
@@ -82,6 +87,7 @@ type FeedGridProps = {
     action: MarketplaceSecondaryActionKind,
   ) => void | Promise<void>;
   onFeedRefresh?: () => void;
+  pushToast?: (kind: ToastKind, message: string) => void;
   renderHeaderAction?: (item: MarketplaceDisplayFeedItem) => ReactNode;
 };
 
@@ -107,6 +113,7 @@ export default function FeedGrid({
   onPrimaryAction,
   onSecondaryAction,
   onFeedRefresh,
+  pushToast,
   renderHeaderAction,
 }: FeedGridProps) {
   const cardRefs = useRef<Map<string, HTMLElement | null>>(new Map());
@@ -118,6 +125,7 @@ export default function FeedGrid({
 
   // Owner post management state
   const [ownerBusyId, setOwnerBusyId] = useState<string | null>(null);
+  const [pendingRemovalIds, setPendingRemovalIds] = useState<Set<string>>(new Set());
   const [editingPost, setEditingPost] = useState<{
     id: string;
     title: string;
@@ -145,20 +153,22 @@ export default function FeedGrid({
           setConfirmDialog(null);
           setOwnerBusyId(item.id);
           try {
-            const res = await fetch("/api/posts/manage", {
+            await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/posts/manage", {
               method: "PATCH",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ postId: item.id, action: "archive" }),
             });
-            if (res.ok) onFeedRefresh?.();
+            setPendingRemovalIds((current) => new Set(current).add(item.id));
+            pushToast?.("success", "Post archived.");
+            onFeedRefresh?.();
+          } catch (error) {
+            pushToast?.("error", error instanceof Error ? error.message : "Unable to archive this post.");
           } finally {
             setOwnerBusyId(null);
           }
         },
       });
     },
-    [onFeedRefresh],
+    [onFeedRefresh, pushToast],
   );
 
   const handleOwnerDelete = useCallback(
@@ -175,39 +185,39 @@ export default function FeedGrid({
           setConfirmDialog(null);
           setOwnerBusyId(item.id);
           try {
-            const res =
-              isHelpRequest && item.helpRequestId
-                ? await fetch("/api/needs/status", {
-                    method: "POST",
-                    credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      helpRequestId: item.helpRequestId,
-                      status: "cancelled",
-                    }),
-                  })
-                : await fetch(`/api/posts/manage?postId=${item.id}`, {
-                    method: "DELETE",
-                    credentials: "include",
-                  });
-            if (res.ok) onFeedRefresh?.();
+            if (isHelpRequest && item.helpRequestId) {
+              await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/needs/status", {
+                method: "POST",
+                body: JSON.stringify({
+                  helpRequestId: item.helpRequestId,
+                  status: "cancelled",
+                }),
+              });
+            } else {
+              await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, `/api/posts/manage?postId=${item.id}`, {
+                method: "DELETE",
+              });
+            }
+            setPendingRemovalIds((current) => new Set(current).add(item.id));
+            pushToast?.("success", isHelpRequest ? "Request deleted." : "Post deleted.");
+            onFeedRefresh?.();
+          } catch (error) {
+            pushToast?.("error", error instanceof Error ? error.message : "Unable to delete this post.");
           } finally {
             setOwnerBusyId(null);
           }
         },
       });
     },
-    [onFeedRefresh],
+    [onFeedRefresh, pushToast],
   );
 
   const handleOwnerSaveEdit = useCallback(async () => {
     if (!editingPost) return;
     setOwnerBusyId(editingPost.id);
     try {
-      const res = await fetch("/api/posts/manage", {
+      await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/posts/manage", {
         method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           postId: editingPost.id,
           action: "edit",
@@ -217,14 +227,15 @@ export default function FeedGrid({
           budget: editingPost.budget,
         }),
       });
-      if (res.ok) {
-        setEditingPost(null);
-        onFeedRefresh?.();
-      }
+      setEditingPost(null);
+      pushToast?.("success", "Post updated.");
+      onFeedRefresh?.();
+    } catch (error) {
+      pushToast?.("error", error instanceof Error ? error.message : "Unable to save changes.");
     } finally {
       setOwnerBusyId(null);
     }
-  }, [editingPost, onFeedRefresh]);
+  }, [editingPost, onFeedRefresh, pushToast]);
 
   useEffect(() => {
     if (!focusItemId || deepLinkHandledRef.current) return;
@@ -389,7 +400,7 @@ export default function FeedGrid({
 
       <div className={feedGridClassName}>
       <AnimatePresence mode="popLayout">
-        {items.map((item, index) => {
+        {items.filter((item) => !pendingRemovalIds.has(item.id)).map((item, index) => {
           const actionModel = resolveActionModel(item);
           const isOwner =
             !!viewerId &&

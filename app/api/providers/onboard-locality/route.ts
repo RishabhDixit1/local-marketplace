@@ -60,6 +60,7 @@ export async function POST(request: Request) {
   try {
     const updateFields: Record<string, unknown> = {
       locality_id: body.locality_id,
+      role: "provider",
     };
 
     if (body.service_zone_ids !== undefined) {

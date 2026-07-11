@@ -24,10 +24,9 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
 
     const role = profile?.role;
     const hasLocality = !!profile?.locality_id;
-    const isEstablishedUser = !!profile?.full_name;
     const needsLocality = role === "provider" || role === "business";
 
-    if (needsLocality && !hasLocality && !isEstablishedUser) {
+    if (needsLocality && !hasLocality) {
       const isAlreadyOnOnboarding = ONBOARDING_STEPS.some((step) => pathname?.startsWith(step));
       if (!isAlreadyOnOnboarding) {
         startTransition(() => {

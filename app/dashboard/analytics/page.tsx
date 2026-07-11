@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import TrustStats from "@/app/components/profile/TrustStats";
 import { supabase } from "@/lib/supabase";
+import { fetchAuthedJson } from "@/lib/clientApi";
 import type { ProfileRecord } from "@/lib/profile/types";
 
 const INR = (paise: number) =>
@@ -95,9 +96,8 @@ export default function AnalyticsPage() {
   const fetchAnalytics = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/provider/analytics?year=${year}`, { signal });
-      const json = await res.json();
-      if (json.ok && !signal?.aborted) setData(json.analytics);
+      const json = await fetchAuthedJson<{ ok: boolean; analytics?: Analytics }>(supabase, `/api/provider/analytics?year=${year}`, { signal });
+      if (json.ok && !signal?.aborted) setData(json.analytics ?? null);
     } catch {
       // ignore
     } finally {
@@ -115,12 +115,10 @@ export default function AnalyticsPage() {
   const fetchAiInsights = useCallback(async () => {
     setAiLoading(true);
     try {
-      const [pricingRes, scoreRes] = await Promise.all([
-        fetch("/api/provider/pricing-insights"),
-        fetch("/api/provider/listing-score"),
+      const [pricingJson, scoreJson] = await Promise.all([
+        fetchAuthedJson<{ ok: boolean; insights?: PricingInsight[] }>(supabase, "/api/provider/pricing-insights"),
+        fetchAuthedJson<{ ok: boolean; listings?: ListingScore[] }>(supabase, "/api/provider/listing-score"),
       ]);
-      const pricingJson = await pricingRes.json();
-      const scoreJson = await scoreRes.json();
       if (pricingJson.ok) setPricingInsights(pricingJson.insights ?? []);
       if (scoreJson.ok) setListingScores(scoreJson.listings ?? []);
     } catch {

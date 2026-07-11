@@ -9,6 +9,7 @@ import { canTransitionOrderStatus, getOrderStatusLabel } from "@/lib/orderWorkfl
 import { sendOrderEmail, shouldSkipOrderEmail } from "@/lib/email";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
 import { createRefund, isRazorpayConfigured } from "@/lib/server/razorpay";
+import { transitionLinkedPostStatus } from "@/lib/postStatus";
 
 export const runtime = "nodejs";
 
@@ -159,6 +160,16 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
 
   if (error) return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
 
+  // Transition linked post status (non-blocking)
+  transitionLinkedPostStatus({
+    db: admin,
+    orderId: id,
+    newOrderStatus: status,
+    actorId: authResult.auth.userId,
+  }).catch((err) => {
+    logger.error("orders:update", "Linked post status sync failed", err, { orderId: id, newStatus: status });
+  });
+
   const otherUserId = actor === "consumer" ? ex.provider_id : ex.consumer_id;
   if (otherUserId) {
     void (async () => {
@@ -206,90 +217,92 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
     })();
   }
 
+  let refundWarning: string | undefined;
+
   // If cancelled, process refund for paid orders
   if (status === "cancelled") {
-    void (async () => {
-      try {
-        const meta = ex.metadata || {};
-        const paymentStatus = meta.payment_status as string | undefined;
-        const razorpayPaymentId = meta.razorpay_payment_id as string | undefined;
+    try {
+      const meta = ex.metadata || {};
+      const paymentStatus = meta.payment_status as string | undefined;
+      const razorpayPaymentId = meta.razorpay_payment_id as string | undefined;
 
-        if (paymentStatus === "paid" && razorpayPaymentId && isRazorpayConfigured()) {
-          const amountPaise = ex.price != null ? Math.round(ex.price * 100) : 0;
-          const refund = await createRefund(razorpayPaymentId, amountPaise, {
-            order_id: id,
-            reason: `Order cancelled (status transition from ${previousStatus})`,
-          });
+      if (paymentStatus === "paid" && razorpayPaymentId && isRazorpayConfigured()) {
+        const amountPaise = ex.price != null ? Math.round(ex.price * 100) : 0;
+        const refund = await createRefund(razorpayPaymentId, amountPaise, {
+          order_id: id,
+          reason: `Order cancelled (status transition from ${previousStatus})`,
+        });
 
-          if (refund) {
-            await admin.from("orders").update({
-              metadata: {
-                ...meta,
-                payment_status: "refunded",
-                refund_id: refund.id,
-                refund_status: refund.status,
-                refunded_at: new Date().toISOString(),
-              },
-            }).eq("id", id);
-          }
+        if (refund) {
+          await admin.from("orders").update({
+            metadata: {
+              ...meta,
+              payment_status: "refunded",
+              refund_id: refund.id,
+              refund_status: refund.status,
+              refunded_at: new Date().toISOString(),
+            },
+          }).eq("id", id);
         }
-      } catch (err) {
-        logger.error("orders:update", "Refund processing failed", err, { orderId: id });
       }
-    })();
+    } catch (err) {
+      logger.error("orders:update", "Refund processing failed", err, { orderId: id });
+      refundWarning = "Order cancelled but refund processing failed. Please contact support.";
+    }
   }
+
+  let payoutWarning: string | undefined;
 
   // Auto-create review request + commission + payout on completion
   if (status === "completed") {
-    void (async () => {
-      try {
-        await admin.from("review_requests").upsert({
-          order_id: id,
+    try {
+      await admin.from("review_requests").upsert({
+        order_id: id,
+        provider_id: ex.provider_id,
+        requester_id: ex.consumer_id,
+        sent_at: new Date().toISOString(),
+        status: "sent",
+      }, { onConflict: "order_id, requester_id" });
+    } catch (err) {
+      logger.error("orders:update", "Review request creation failed", err, { orderId: id });
+      payoutWarning = "Review request creation failed.";
+    }
+
+    try {
+      const pricePaise = ex.price != null ? Math.round(ex.price * 100) : 0;
+      const rate = typeof ex.metadata?.commission_rate === "number" ? ex.metadata.commission_rate : 5.0;
+      const feePaise = Math.round(pricePaise * (rate / 100));
+      const payoutPaise = pricePaise - feePaise;
+
+      await admin.from("orders").update({
+        platform_fee_paise: feePaise,
+        provider_payout_paise: payoutPaise,
+        metadata: {
+          ...(ex.metadata || {}),
+          commission_calculated_at: new Date().toISOString(),
+        },
+      }).eq("id", id);
+
+      if (ex.provider_id && payoutPaise > 0) {
+        const { error: payoutErr } = await admin.from("provider_payouts").insert({
           provider_id: ex.provider_id,
-          requester_id: ex.consumer_id,
-          sent_at: new Date().toISOString(),
-          status: "sent",
-        }, { onConflict: "order_id, requester_id" });
-      } catch (err) {
-        logger.error("orders:update", "Review request creation failed", err, { orderId: id });
-      }
+          amount_paise: pricePaise,
+          fee_paise: feePaise,
+          net_amount_paise: payoutPaise,
+          status: "pending",
+          payout_method: "auto",
+          notes: `Auto-payout for order ${id}`,
+        });
 
-      // Calculate platform commission
-      try {
-        const pricePaise = ex.price != null ? Math.round(ex.price * 100) : 0;
-        const rate = typeof ex.metadata?.commission_rate === "number" ? ex.metadata.commission_rate : 5.0;
-        const feePaise = Math.round(pricePaise * (rate / 100));
-        const payoutPaise = pricePaise - feePaise;
-
-        await admin.from("orders").update({
-          platform_fee_paise: feePaise,
-          provider_payout_paise: payoutPaise,
-          metadata: {
-            ...(ex.metadata || {}),
-            commission_calculated_at: new Date().toISOString(),
-          },
-        }).eq("id", id);
-
-        // Auto-create pending payout
-        if (ex.provider_id && payoutPaise > 0) {
-          const { error: payoutErr } = await admin.from("provider_payouts").insert({
-            provider_id: ex.provider_id,
-            amount_paise: pricePaise,
-            fee_paise: feePaise,
-            net_amount_paise: payoutPaise,
-            status: "pending",
-            payout_method: "auto",
-            notes: `Auto-payout for order ${id}`,
-          });
-
-          if (payoutErr) {
-            logger.error("orders:update", "Auto-payout insert failed", payoutErr, { orderId: id });
-          }
+        if (payoutErr) {
+          logger.error("orders:update", "Auto-payout insert failed", payoutErr, { orderId: id });
+          payoutWarning = "Payout creation failed. Please contact support.";
         }
-      } catch (err) {
-        logger.error("orders:update", "Commission calculation failed", err, { orderId: id });
       }
-    })();
+    } catch (err) {
+      logger.error("orders:update", "Commission/payout calculation failed", err, { orderId: id });
+      payoutWarning = "Commission calculation failed. Please contact support.";
+    }
   }
 
   // Fire-and-forget email notifications (with error capture)
@@ -365,7 +378,12 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
     }
   })();
 
-  return NextResponse.json({ ok: true, status });
+  return NextResponse.json({
+    ok: true,
+    status,
+    ...(refundWarning ? { refundWarning } : {}),
+    ...(payoutWarning ? { payoutWarning } : {}),
+  });
 }
 
 export const GET = withErrorHandling(getHandler, "orders:get");

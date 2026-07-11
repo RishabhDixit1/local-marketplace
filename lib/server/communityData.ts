@@ -986,6 +986,7 @@ export const loadCommunityFeedSnapshot = async (
           orderBy: { column: "created_at", ascending: false },
           limit: CONNECTED_FEED_LIMIT_PER_TYPE,
           allowMissingRelation: true,
+          eqFilters: [{ column: "status", value: "open" }],
         },
       ),
       selectRowsWithFallback(

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Flag, MoreVertical, Send, ShieldOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { fetchAuthedJson } from "@/lib/clientApi";
 
 type ProfileMoreMenuProps = {
   profileUserId: string;
@@ -27,9 +28,8 @@ export default function ProfileMoreMenu({ profileUserId, displayName }: ProfileM
     const check = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const res = await fetch(`/api/block?userId=${profileUserId}`);
-      const json = await res.json();
-      if (json.ok) setBlocked(json.blocked);
+      const json = await fetchAuthedJson<{ ok: boolean; blocked?: boolean }>(supabase, `/api/block?userId=${profileUserId}`);
+      if (json.ok) setBlocked(json.blocked ?? false);
     };
     void check();
   }, [open, profileUserId]);
@@ -49,12 +49,10 @@ export default function ProfileMoreMenu({ profileUserId, displayName }: ProfileM
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/block", {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/block", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blockedId: profileUserId }),
       });
-      const json = await res.json();
       if (!json.ok) throw new Error(json.message ?? "Failed to block user");
       setBlocked(true);
       setDialog("idle");
@@ -70,10 +68,9 @@ export default function ProfileMoreMenu({ profileUserId, displayName }: ProfileM
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/block?blockedId=${encodeURIComponent(profileUserId)}`, {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, `/api/block?blockedId=${encodeURIComponent(profileUserId)}`, {
         method: "DELETE",
       });
-      const json = await res.json();
       if (!json.ok) throw new Error(json.message ?? "Failed to unblock user");
       setBlocked(false);
       setDialog("idle");
@@ -93,9 +90,8 @@ export default function ProfileMoreMenu({ profileUserId, displayName }: ProfileM
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/reports", {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/reports", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           targetType: "provider",
           targetId: profileUserId,
@@ -103,7 +99,6 @@ export default function ProfileMoreMenu({ profileUserId, displayName }: ProfileM
           description,
         }),
       });
-      const json = await res.json();
       if (!json.ok) throw new Error(json.message ?? "Failed to submit report");
       setDialog("idle");
       setSuccess("Report submitted. Our team will review it.");

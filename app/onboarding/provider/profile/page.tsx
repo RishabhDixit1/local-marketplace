@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Eye, Globe, Loader2, Phone, UserPen } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { fetchAuthedJson } from "@/lib/clientApi";
 
 type ProfileValues = {
   full_name: string;
@@ -54,26 +53,24 @@ export default function ProviderProfileOnboarding() {
     setSaving(true);
     setError("");
     try {
-      const result = await fetchAuthedJson<{ ok: boolean; message?: string }>(
-        supabase,
-        "/api/profile/save",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            values: {
-              full_name: values.full_name,
-              headline: values.headline,
-              bio: values.bio,
-              phone: values.phone,
-              website: values.website,
-            },
-          }),
-        }
-      );
-      if (result?.ok) {
-        router.push("/onboarding/provider/publish");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setError("Not authenticated"); setSaving(false); return; }
+
+      const { error: upsertError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: user.id,
+          full_name: values.full_name || undefined,
+          headline: values.headline || undefined,
+          bio: values.bio || undefined,
+          phone: values.phone || undefined,
+          website: values.website || undefined,
+        }, { onConflict: "id" });
+
+      if (upsertError) {
+        setError(upsertError.message);
       } else {
-        setError(result?.message || "Failed to save profile");
+        router.push("/onboarding/provider/publish");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");

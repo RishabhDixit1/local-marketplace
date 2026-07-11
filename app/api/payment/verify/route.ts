@@ -206,41 +206,39 @@ async function postHandler(request: Request) {
 
     const providerId = order.provider_id;
     if (providerId && providerId !== authResult.auth.userId) {
-      void (async () => {
-        try {
-          const itemTitle = trimText(currentMetadata.title) || "Order";
-          await admin.from("notifications").insert({
-            user_id: providerId,
+      try {
+        const itemTitle = trimText(currentMetadata.title) || "Order";
+        await admin.from("notifications").insert({
+          user_id: providerId,
+          kind: "order",
+          title: "Payment received",
+          message: `Razorpay payment for ${itemTitle} is verified. You can continue fulfillment.`,
+          entity_type: "order",
+          entity_id: order.id,
+          metadata: {
+            order_id: order.id,
+            payment_status: "paid",
+            payment_method: "razorpay",
+            razorpay_order_id: normalizedBody.razorpayOrderId,
+            razorpay_payment_id: normalizedBody.razorpayPaymentId,
+            source: "payment_verify",
+          },
+        });
+        await sendPushToUser(admin, providerId, {
+          title: "Payment received",
+          body: `Razorpay payment for ${itemTitle} is verified.`,
+          data: {
             kind: "order",
-            title: "Payment received",
-            message: `Razorpay payment for ${itemTitle} is verified. You can continue fulfillment.`,
             entity_type: "order",
             entity_id: order.id,
-            metadata: {
-              order_id: order.id,
-              payment_status: "paid",
-              payment_method: "razorpay",
-              razorpay_order_id: normalizedBody.razorpayOrderId,
-              razorpay_payment_id: normalizedBody.razorpayPaymentId,
-              source: "payment_verify",
-            },
-          });
-          await sendPushToUser(admin, providerId, {
-            title: "Payment received",
-            body: `Razorpay payment for ${itemTitle} is verified.`,
-            data: {
-              kind: "order",
-              entity_type: "order",
-              entity_id: order.id,
-              order_id: order.id,
-              payment_status: "paid",
-              source: "payment_verify",
-            },
-          });
-        } catch (err) {
-          logger.error("payment:verify", "Notification after payment verification failed", err, { orderId: order.id });
-        }
-      })();
+            order_id: order.id,
+            payment_status: "paid",
+            source: "payment_verify",
+          },
+        });
+      } catch (err) {
+        logger.error("payment:verify", "Notification after payment verification failed", err, { orderId: order.id });
+      }
     }
   }
 

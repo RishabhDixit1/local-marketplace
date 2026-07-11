@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Ban, CalendarX, Clock, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { fetchAuthedJson } from "@/lib/clientApi";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -46,10 +48,9 @@ export default function AvailabilityEditor() {
 
   const fetchSlots = useCallback(async () => {
     try {
-      const res = await fetch("/api/provider/availability");
-      const json = await res.json();
+      const json = await fetchAuthedJson<{ ok: boolean; slots?: Slot[]; timezone?: string }>(supabase, "/api/provider/availability");
       if (json.ok) {
-        setSlots(json.slots);
+        setSlots(json.slots ?? []);
         if (json.timezone) setTimezone(json.timezone);
       }
     } catch {
@@ -61,9 +62,8 @@ export default function AvailabilityEditor() {
 
   const fetchExceptions = useCallback(async () => {
     try {
-      const res = await fetch("/api/provider/availability/exceptions");
-      const json = await res.json();
-      if (json.ok) setExceptions(json.exceptions);
+      const json = await fetchAuthedJson<{ ok: boolean; exceptions?: DateException[] }>(supabase, "/api/provider/availability/exceptions");
+      if (json.ok) setExceptions(json.exceptions ?? []);
     } catch { /* best-effort */ }
   }, []);
 
@@ -92,12 +92,10 @@ export default function AvailabilityEditor() {
     setSaving(true);
     setMessage("");
     try {
-      const res = await fetch("/api/provider/availability", {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/provider/availability", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slots, timezone }),
       });
-      const json = await res.json();
       if (json.ok) {
         setMessage("Availability saved!");
       } else {
@@ -113,18 +111,16 @@ export default function AvailabilityEditor() {
   const addException = async () => {
     if (!exceptionDate) return;
     try {
-      const res = await fetch("/api/provider/availability/exceptions", {
+      const json = await fetchAuthedJson<{ ok: boolean; exceptions?: DateException[] }>(supabase, "/api/provider/availability/exceptions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           exception_date: exceptionDate,
           is_available: false,
           reason: exceptionReason.trim() || null,
         }),
       });
-      const json = await res.json();
       if (json.ok) {
-        setExceptions(json.exceptions);
+        setExceptions(json.exceptions ?? []);
         setExceptionDate("");
         setExceptionReason("");
       }
@@ -133,8 +129,7 @@ export default function AvailabilityEditor() {
 
   const removeException = async (date: string) => {
     try {
-      const res = await fetch(`/api/provider/availability/exceptions?date=${date}`, { method: "DELETE" });
-      const json = await res.json();
+      const json = await fetchAuthedJson<{ ok: boolean }>(supabase, `/api/provider/availability/exceptions?date=${date}`, { method: "DELETE" });
       if (json.ok) {
         setExceptions((prev) => prev.filter((e) => e.exception_date !== date));
       }

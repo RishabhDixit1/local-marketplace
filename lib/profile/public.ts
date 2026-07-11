@@ -288,6 +288,7 @@ const loadProfilePosts = async (
       .from("posts")
       .select("*", { count: "exact" })
       .or(buildPostOwnerFilter(profileId, ownerFields))
+      .not("status", "in", "(cancelled,deleted)")
       .order("created_at", { ascending: false })
       .limit(6);
 
