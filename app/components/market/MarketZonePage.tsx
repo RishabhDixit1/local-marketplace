@@ -138,8 +138,8 @@ export default function MarketZonePage({ slug }: MarketZonePageProps) {
   };
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-20 sm:px-6 lg:pb-20">
-      <header className="sticky top-0 z-30 -mx-4 mb-4 border-b border-[var(--surface-border)]/80 bg-white/95 px-4 backdrop-blur-md sm:-mx-6 sm:px-6">
+    <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-6 lg:pb-20">
+      <header className="sticky top-0 z-30 -mx-4 mb-4 border-b border-[var(--surface-border)]/80 bg-[var(--surface-elevated)]/95 px-4 backdrop-blur-md sm:-mx-6 sm:px-6">
         <div className="mx-auto flex max-w-5xl items-center justify-between py-3">
           <ServiQLogo href="/" ariaLabel="ServiQ home" />
           <div className="flex items-center gap-2">

@@ -23,9 +23,9 @@ export default function MarketHubPage() {
   }, []);
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-20 sm:px-6 lg:pb-20">
+    <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-6 lg:pb-20">
       <PageMeta title="Markets" description="Browse local markets and societies near you" path="/market" />
-      <header className="sticky top-0 z-30 -mx-4 mb-6 border-b border-[var(--surface-border)]/80 bg-white/95 px-4 backdrop-blur-md sm:-mx-6 sm:px-6">
+      <header className="sticky top-0 z-30 -mx-4 mb-6 border-b border-[var(--surface-border)]/80 bg-[var(--surface-elevated)]/95 px-4 backdrop-blur-md sm:-mx-6 sm:px-6">
         <div className="mx-auto flex max-w-5xl items-center justify-between py-3">
           <ServiQLogo href="/" ariaLabel="ServiQ home" />
         </div>
@@ -49,7 +49,7 @@ export default function MarketHubPage() {
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="animate-pulse rounded-2xl border border-slate-200 bg-white p-5">
+            <div key={i} className="animate-pulse rounded-2xl border border-slate-200 bg-[var(--surface-elevated)] p-5">
               <div className="h-5 w-32 rounded bg-slate-100 mb-3" />
               <div className="h-4 w-24 rounded bg-slate-100 mb-4" />
               <div className="flex gap-3">
@@ -65,7 +65,7 @@ export default function MarketHubPage() {
             <Link
               key={zone.id}
               href={`/market/zone/${zone.slug}`}
-              className="group rounded-2xl border border-[var(--surface-border)] bg-white p-5 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md active:scale-[0.99]"
+              className="group rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md active:scale-[0.99]"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>

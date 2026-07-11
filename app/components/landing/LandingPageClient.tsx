@@ -244,9 +244,9 @@ export function LandingPageClient({
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-[var(--surface-elevated)] pb-24 lg:pb-0">
+    <div className="relative min-h-screen bg-[var(--surface-elevated)] pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 border-b border-[var(--surface-border)]/80 bg-white/95 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-[var(--surface-border)]/80 bg-[var(--surface-elevated)]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <ServiQLogo href="/" ariaLabel={t("nav.home")} />

@@ -65,7 +65,7 @@ export function MobileBottomNav({ items }: { items?: MobileNavItem[] }) {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-[var(--layer-mobile-nav)] border-t border-slate-200/90 bg-white/98 shadow-[0_-14px_36px_-28px_rgba(var(--shadow-rgb),0.42)] backdrop-blur-none md:hidden"
+      className="fixed inset-x-0 bottom-0 z-[var(--layer-mobile-nav)] border-t border-slate-200/90 bg-[var(--surface-elevated)]/98 shadow-[0_-14px_36px_-28px_rgba(var(--shadow-rgb),0.42)] backdrop-blur-none md:hidden"
       aria-label="Main navigation"
     >
       <div

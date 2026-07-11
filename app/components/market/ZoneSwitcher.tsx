@@ -42,7 +42,7 @@ export default function ZoneSwitcher({ currentSlug }: { currentSlug: string }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-white px-3 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-300)] hover:shadow-sm"
+        className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-300)] hover:shadow-sm"
       >
         <MapPin className="h-3.5 w-3.5 text-[var(--brand-600)]" />
         {current?.name ?? "Switch Zone"}
@@ -50,7 +50,7 @@ export default function ZoneSwitcher({ currentSlug }: { currentSlug: string }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-2xl border border-[var(--surface-border)] bg-white p-1 shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-1 shadow-lg">
           {zones.map((zone) => {
             const isActive = zone.slug === currentSlug;
             return (
