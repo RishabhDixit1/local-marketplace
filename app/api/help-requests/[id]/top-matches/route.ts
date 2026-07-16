@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function getHandler(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
@@ -65,3 +66,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   return NextResponse.json({ ok: true, matches: topMatches });
 }
+
+export const GET = withErrorHandling(getHandler, "help-requests:top-matches");

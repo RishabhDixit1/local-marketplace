@@ -154,6 +154,8 @@ class _PublicBusinessContent extends StatelessWidget {
                 Text('About', style: theme.textTheme.titleMedium),
                 const SizedBox(height: AppSpacing.xs),
                 Text(profile.bio,
+                    maxLines: 8,
+                    overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: AppColors.inkSubtle)),
               ],
@@ -238,6 +240,8 @@ class _HeroSection extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         Text(
           fullName,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: theme.textTheme.headlineSmall
               ?.copyWith(fontWeight: FontWeight.w700),
           textAlign: TextAlign.center,
@@ -246,6 +250,8 @@ class _HeroSection extends StatelessWidget {
           const SizedBox(height: AppSpacing.xxs),
           Text(
             headline,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodyLarge
                 ?.copyWith(color: AppColors.inkSubtle),
             textAlign: TextAlign.center,
@@ -259,10 +265,14 @@ class _HeroSection extends StatelessWidget {
               Icon(Icons.location_on_outlined,
                   size: 16, color: AppColors.inkFaint),
               const SizedBox(width: AppSpacing.xxs),
-              Text(
-                location,
-                style: theme.textTheme.bodySmall
+              Flexible(
+                child: Text(
+                  location,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall
                     ?.copyWith(color: AppColors.inkFaint),
+                ),
               ),
             ],
           ),

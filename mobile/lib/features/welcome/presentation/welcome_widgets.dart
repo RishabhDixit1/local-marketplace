@@ -39,9 +39,9 @@ class _AppBarAction extends StatelessWidget {
         onPressed: onPressed,
         icon: Icon(icon),
         style: IconButton.styleFrom(
-          backgroundColor: AppColors.surface,
-          foregroundColor: AppColors.ink,
-          side: const BorderSide(color: AppColors.border),
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          side: BorderSide(color: Theme.of(context).colorScheme.outline),
         ),
       ),
     );
@@ -273,9 +273,9 @@ class _TrustedConnectionRailCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -819,7 +819,7 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
                 variant: ServiqSurfaceVariant.raised,
                 child: Container(
                   decoration: BoxDecoration(
-                    gradient: ServiqThemeTokens.light.exploreGradient,
+                    gradient: Theme.of(context).extension<ServiqThemeTokens>()?.exploreGradient ?? ServiqThemeTokens.light.exploreGradient,
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(18),
@@ -968,7 +968,7 @@ class _WelcomeLoadingState extends StatelessWidget {
           variant: ServiqSurfaceVariant.raised,
           child: Container(
             decoration: BoxDecoration(
-              gradient: ServiqThemeTokens.light.heroGradient,
+              gradient: Theme.of(context).extension<ServiqThemeTokens>()?.heroGradient ?? ServiqThemeTokens.light.heroGradient,
             ),
             padding: const EdgeInsets.all(18),
             child: const Column(
@@ -1014,9 +1014,9 @@ class _WelcomeLoadingState extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(AppRadii.md),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: Theme.of(context).colorScheme.outline),
                 ),
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

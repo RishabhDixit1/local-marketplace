@@ -440,8 +440,8 @@ function SearchPageContent() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h3 className="text-sm font-bold text-[var(--ink-950)]">{provider.name}</h3>
-                      <p className="mt-0.5 text-xs text-[var(--ink-500)]">{provider.location || "Local area"}</p>
+                      <h3 className="text-sm font-bold text-[var(--ink-950)] truncate">{provider.name}</h3>
+                      <p className="mt-0.5 text-xs text-[var(--ink-500)] truncate">{provider.location || "Local area"}</p>
                     </div>
                     {provider.verified && (
                       <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 border border-emerald-200">Verified</span>

@@ -87,7 +87,7 @@ export function Modal({
           transition={{ duration: 0.15 }}
         >
           <div
-            className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/55 backdrop-blur-sm"
             onClick={handleBackdropClick}
           />
 
@@ -95,7 +95,7 @@ export function Modal({
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            className={`relative z-[1] w-full ${sizeMaxWidth[size]} rounded-[28px] border border-slate-200 bg-white shadow-2xl ${className}`}
+            className={`relative z-[1] w-full ${sizeMaxWidth[size]} rounded-[28px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-2xl ${className}`}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -106,12 +106,12 @@ export function Modal({
               <div className="flex items-start justify-between gap-4 px-6 pt-6">
                 <div className="min-w-0 flex-1">
                   {title && (
-                    <h2 className="text-lg font-semibold text-slate-900">
+                    <h2 className="text-lg font-semibold text-[var(--ink-950)]">
                       {title}
                     </h2>
                   )}
                   {subtitle && (
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1 text-sm text-[var(--ink-700)]">
                       {subtitle}
                     </p>
                   )}
@@ -120,7 +120,7 @@ export function Modal({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--surface-border)] text-[var(--ink-500)] hover:bg-[var(--surface-soft)]"
                     aria-label="Close"
                   >
                     <X className="h-4 w-4" />

@@ -2,10 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/api/mobile_api_provider.dart';
+import '../../../core/cache/feed_cache.dart';
 import '../domain/feed_snapshot.dart';
 
 final feedRepositoryProvider = Provider<FeedRepository>((ref) {
-  return FeedRepository(ref.watch(mobileApiClientProvider));
+  return FeedRepository(
+    ref.watch(mobileApiClientProvider),
+    ref.watch(feedCacheProvider),
+  );
 });
 
 final feedSnapshotProvider =
@@ -14,23 +18,34 @@ final feedSnapshotProvider =
     });
 
 class FeedRepository {
-  const FeedRepository(this._apiClient);
+  const FeedRepository(this._apiClient, this._cache);
 
   final MobileApiClient _apiClient;
+  final FeedCache _cache;
 
   Future<MobileFeedSnapshot> fetchFeed({required MobileFeedScope scope}) async {
-    final payload = await _apiClient.getJson(
-      '/api/community/feed',
-      queryParameters: {'scope': scope.queryValue},
-    );
-
-    if (payload['ok'] != true) {
-      throw ApiException(
-        (payload['message'] as String?) ?? 'Unable to load the community feed.',
+    try {
+      final payload = await _apiClient.getJson(
+        '/api/community/feed',
+        queryParameters: {'scope': scope.queryValue},
       );
-    }
 
-    return MobileFeedSnapshot.fromJson(payload);
+      if (payload['ok'] != true) {
+        throw ApiException(
+          (payload['message'] as String?) ?? 'Unable to load the community feed.',
+        );
+      }
+
+      final snapshot = MobileFeedSnapshot.fromJson(payload);
+      await _cache.cacheFeed(snapshot);
+      return snapshot;
+    } catch (e) {
+      final cached = await _cache.getCachedFeed();
+      if (cached != null) {
+        return cached;
+      }
+      rethrow;
+    }
   }
 
   Future<void> expressInterest(String helpRequestId) async {

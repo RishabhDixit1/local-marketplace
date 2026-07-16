@@ -35,7 +35,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
   String? _selectedCategory;
   bool _showBanner = true;
 
-  String get _locationLabel => 'Serving Crossings Republik, Ghaziabad';
+  String get _locationLabel => 'Your area';
 
   @override
   void dispose() {
@@ -261,7 +261,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
             ),
             if (showActions) ...[
               const SizedBox(height: 12),
-              const Text('Covering all service categories across Crossings Republik and nearby areas.',
+              const Text('Covering all service categories in your area.',
                   style: TextStyle(fontSize: 12, color: AppColors.inkMuted)),
               const SizedBox(height: AppSpacing.md),
               Row(
@@ -536,7 +536,7 @@ class _ProviderLandingCard extends StatelessWidget {
                           ),
                       ],
                     ),
-                    Text(provider.location.isNotEmpty ? provider.location : 'Crossings Republik',
+                    Text(provider.location.isNotEmpty ? provider.location : 'Location not set',
                         style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
                     const SizedBox(height: AppSpacing.xxs),
                     Wrap(
@@ -663,15 +663,19 @@ class _ProviderDetailSheet extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(provider.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.inkStrong)),
+                      Expanded(
+                        child: Text(provider.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.inkStrong)),
+                      ),
                       if (provider.verified) ...[
                         const SizedBox(width: AppSpacing.xxs),
                         const TrustBadge(label: 'Verified'),
                       ],
                     ],
                   ),
-                  Text(provider.location.isNotEmpty ? provider.location : 'Crossings Republik',
+                  Text(provider.location.isNotEmpty ? provider.location : 'Location not set',
                       style: const TextStyle(fontSize: 13, color: AppColors.inkSubtle)),
                 ],
               ),

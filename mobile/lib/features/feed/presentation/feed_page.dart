@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/auth/auth_state_controller.dart';
+import '../../../core/constants/categories.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
@@ -73,11 +74,6 @@ class FeedPage extends ConsumerStatefulWidget {
   @override
   ConsumerState<FeedPage> createState() => _FeedPageState();
 }
-
-const _categories = [
-  'Electrician', 'Plumber', 'RO Repair', 'AC Repair',
-  'Geyser Repair', 'Appliance Repair', 'Carpenter',
-];
 
 class _FeedPageState extends ConsumerState<FeedPage> {
   final _searchController = TextEditingController();
@@ -475,6 +471,51 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     ServiqToast.show(context, message: 'Hidden.', tone: ServiqToastTone.success);
   }
 
+  FeedCardInteractionContext _buildInteractionContext(MobileFeedItem item) {
+    return FeedCardInteractionContext(
+      cardId: item.cardKey,
+      focusId: item.providerId,
+      cardType: item.type == MobileFeedItemType.service ? 'service' : 'product',
+      title: item.title,
+      subtitle: item.description,
+    );
+  }
+
+  bool _isSaved(MobileFeedItem item, Set<String> savedCardIds) {
+    return savedCardIds.contains(item.cardKey);
+  }
+
+  Future<void> _toggleSave(
+    MobileFeedItem item, {
+    required Set<String> savedCardIds,
+  }) async {
+    final saved = _isSaved(item, savedCardIds);
+    final ctx = _buildInteractionContext(item);
+
+    try {
+      final repository = ref.read(feedInteractionsRepositoryProvider);
+      if (saved) {
+        await repository.removeSave(item.cardKey);
+      } else {
+        await repository.save(ctx);
+      }
+      ref.invalidate(feedSnapshotProvider(_scope));
+      if (!mounted) return;
+      ServiqToast.show(
+        context,
+        message: saved ? 'Removed from saved.' : 'Saved for later.',
+        tone: ServiqToastTone.success,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ServiqToast.show(
+        context,
+        message: AppErrorMapper.toMessage(error),
+        tone: ServiqToastTone.danger,
+      );
+    }
+  }
+
   VoidCallback? _messageActionFor(MobileFeedItem item) {
     if (item.providerId.trim().isEmpty) {
       return null;
@@ -662,7 +703,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                         const Text('Explore Local Zones',
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.inkStrong)),
                         const SizedBox(height: 2),
-                        Text('Browse societies, markets, and supply areas in Crossings Republik',
+                        Text('Browse societies, markets, and supply areas in your locality',
                             style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
                       ],
                     ),
@@ -698,14 +739,20 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               onRetryPeople: () {
                 ref.invalidate(peopleSnapshotProvider);
               },
-              feedCardBuilder: (item) => FeedCard(
-                item: item,
-                onPrimaryTap: _primaryActionFor(item),
-                onSecondaryTap: _messageActionFor(item),
-                primaryLabel: _primaryLabelFor(item),
-                secondaryLabel: _secondaryLabelFor(item),
-                onMoreTap: _moreActionFor(item),
-              ),
+              feedCardBuilder: (item) {
+                final savedCardIds =
+                    snapshot.asData?.value.savedCardIds ?? const {};
+                return FeedCard(
+                  item: item,
+                  onPrimaryTap: _primaryActionFor(item),
+                  onSecondaryTap: _messageActionFor(item),
+                  primaryLabel: _primaryLabelFor(item),
+                  secondaryLabel: _secondaryLabelFor(item),
+                  onMoreTap: _moreActionFor(item),
+                  isSaved: _isSaved(item, savedCardIds),
+                  onSaveTap: () => _toggleSave(item, savedCardIds: savedCardIds),
+                );
+              },
               providerCardBuilder: (person) => ProviderCard(
                 person: person,
                 onOpenProfile: () =>
@@ -742,17 +789,24 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 )
               else
                 ...items.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: FeedCard(
-                      item: item,
-                      onPrimaryTap: _primaryActionFor(item),
-                      onSecondaryTap: _messageActionFor(item),
-                      primaryLabel: _primaryLabelFor(item),
-                      secondaryLabel: _secondaryLabelFor(item),
-                      onMoreTap: _moreActionFor(item),
-                    ),
-                  ),
+                  (item) {
+                    final savedCardIds =
+                        snapshot.asData?.value.savedCardIds ?? const {};
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: FeedCard(
+                        item: item,
+                        onPrimaryTap: _primaryActionFor(item),
+                        onSecondaryTap: _messageActionFor(item),
+                        primaryLabel: _primaryLabelFor(item),
+                        secondaryLabel: _secondaryLabelFor(item),
+                        onMoreTap: _moreActionFor(item),
+                        isSaved: _isSaved(item, savedCardIds),
+                        onSaveTap: () =>
+                            _toggleSave(item, savedCardIds: savedCardIds),
+                      ),
+                    );
+                  },
                 ),
             ],
           );
@@ -823,10 +877,10 @@ class _ExploreIntentPanel extends StatelessWidget {
             height: 36,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: _categories.length,
+              itemCount: categories.length,
               separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, index) {
-                final cat = _categories[index];
+                final cat = categories[index];
                 final selected = selectedCategory == cat;
                 return FilterChip(
                   label: Text(cat, style: const TextStyle(fontSize: 12)),

@@ -47,6 +47,7 @@ import {
   CalendarCheck,
   ChevronDown,
   ClipboardList,
+  Compass,
   ChevronsLeft,
   ChevronsRight,
   Clock,
@@ -95,7 +96,7 @@ const CartDrawer = dynamic(
 const baseNavigationTabs = [
   { name: "Market", path: "/dashboard", icon: Store },
   { name: "My Work", path: "/dashboard/tasks", icon: ClipboardList },
-  { name: "Profile", path: "/dashboard/profile", icon: User },
+  { name: "Explore", path: "/market", icon: Compass },
 ];
 
 const secondaryNavItems = [
@@ -695,7 +696,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] text-[var(--ink-950)]">
       <div className="flex min-h-screen">
         <aside
-          className={`hidden md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-[var(--surface-border)] md:bg-white md:shadow-[0_20px_46px_-42px_rgba(var(--shadow-rgb),0.65)] transition-all duration-300 ${
+          className={`hidden md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-[var(--surface-border)] md:bg-[var(--surface-elevated)] md:shadow-[0_20px_46px_-42px_rgba(var(--shadow-rgb),0.65)] transition-all duration-300 ${
             desktopNavCollapsed ? "w-24" : "w-72"
           }`}
         >
@@ -850,7 +851,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <div className="flex-1 flex min-w-0 flex-col overflow-x-clip">
-          <header className="sticky top-0 z-40 overflow-x-clip border-b border-[var(--surface-border)]/80 bg-white/96 shadow-[0_10px_24px_-22px_rgba(var(--shadow-rgb),0.45)] backdrop-blur-none md:bg-white/92 md:shadow-[0_16px_30px_-28px_rgba(var(--shadow-rgb),0.55)] md:backdrop-blur-xl">
+          <header className="sticky top-0 z-40 overflow-x-clip border-b border-[var(--surface-border)]/80 bg-[var(--surface-elevated)]/96 shadow-[0_10px_24px_-22px_rgba(var(--shadow-rgb),0.45)] backdrop-blur-none md:bg-[var(--surface-elevated)]/92 md:shadow-[0_16px_30px_-28px_rgba(var(--shadow-rgb),0.55)] md:backdrop-blur-xl">
             <div
               className="flex min-h-16 items-center gap-2.5 px-3 sm:px-6 sm:gap-3 md:px-8"
               style={{ paddingTop: "env(safe-area-inset-top)" }}

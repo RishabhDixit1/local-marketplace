@@ -17,9 +17,9 @@ const variantStyles: Record<ButtonVariant, string> = {
   primary:
     "bg-[var(--brand-900)] text-white hover:bg-[var(--brand-700)] disabled:hover:bg-[var(--brand-900)]",
   secondary:
-    "border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900 disabled:hover:border-slate-200",
+    "border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--surface-border-strong)] hover:text-[var(--ink-950)] disabled:hover:border-[var(--surface-border)]",
   ghost:
-    "bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:hover:bg-transparent",
+    "bg-transparent text-[var(--ink-700)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink-950)] disabled:hover:bg-transparent",
   "brand-outline":
     "border border-[var(--brand-200)] bg-[var(--brand-50)] text-[var(--brand-700)] hover:bg-[var(--brand-100)] disabled:hover:bg-[var(--brand-50)]",
   success:

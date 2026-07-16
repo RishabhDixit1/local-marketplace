@@ -28,6 +28,7 @@ import '../../features/orders/presentation/provider_orders_page.dart';
 import '../../features/promotions/presentation/provider_boosts_page.dart';
 import '../../features/subscriptions/presentation/provider_subscriptions_page.dart';
 import '../../features/invoices/presentation/invoices_page.dart';
+import '../../features/invoices/presentation/invoice_detail_page.dart';
 import '../../features/payouts/presentation/payouts_page.dart';
 import '../../features/payments/presentation/transactions_page.dart';
 import '../../features/referrals/presentation/referrals_page.dart';
@@ -314,6 +315,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.invoices,
         builder: (context, state) => const InvoicesPage(),
+      ),
+      GoRoute(
+        path: '${AppRoutes.invoices}/:invoiceId',
+        builder: (context, state) => InvoiceDetailPage(
+          invoiceId: state.pathParameters['invoiceId']!,
+        ),
       ),
       GoRoute(
         path: AppRoutes.connections,

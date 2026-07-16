@@ -199,6 +199,7 @@ class MobileFeedItem {
     this.cardId = '',
     this.sourceType = 'nearby_public',
     this.thumbnailUrl = '',
+    this.mediaUrls = const [],
     this.priorityScore = 0,
     this.feedReason = '',
     this.whyThisCard = '',
@@ -281,6 +282,11 @@ class MobileFeedItem {
         fallback: 'nearby_public',
       ),
       thumbnailUrl: _readString(json['thumbnailUrl'] ?? json['thumbnail_url']),
+      mediaUrls: ((json['media'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((m) => _readString(m['url']))
+          .where((url) => url.isNotEmpty)
+          .toList(),
       priorityScore: _toInt(json['priorityScore'] ?? json['priority_score']),
       feedReason: _readString(json['feedReason'] ?? json['feed_reason']),
       whyThisCard: _readString(json['whyThisCard'] ?? json['why_this_card']),
@@ -336,6 +342,7 @@ class MobileFeedItem {
   final String cardId;
   final String sourceType;
   final String thumbnailUrl;
+  final List<String> mediaUrls;
   final int priorityScore;
   final String feedReason;
   final String whyThisCard;
@@ -457,6 +464,7 @@ class MobileFeedItem {
     'cardId': cardId,
     'sourceType': sourceType,
     'thumbnailUrl': thumbnailUrl,
+    'mediaUrls': mediaUrls,
     'priorityScore': priorityScore,
     'feedReason': feedReason,
     'whyThisCard': whyThisCard,

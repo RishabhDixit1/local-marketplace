@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
-export async function GET(
+async function getHandler(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -59,3 +60,5 @@ export async function GET(
     config: widgetConfig,
   });
 }
+
+export const GET = withErrorHandling(getHandler, "widgets:public");

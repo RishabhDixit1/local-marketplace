@@ -10,11 +10,11 @@ type CardRadius = "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
 
 const variantStyles: Record<CardVariant, string> = {
   elevated:
-    "border border-slate-200 bg-white shadow-[var(--shadow-card)]",
+    "border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-card)]",
   "elevated-lg":
-    "border border-slate-200 bg-white shadow-[var(--shadow-elevated)]",
+    "border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-elevated)]",
   outlined:
-    "border border-slate-200 bg-white shadow-sm",
+    "border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-sm",
   ghost:
     "border border-transparent bg-transparent",
 };

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
@@ -13,23 +15,68 @@ import '../../../shared/components/metric_tile.dart';
 import '../../tasks/data/task_repository.dart';
 import '../../tasks/domain/task_snapshot.dart';
 
-class ProviderOrdersPage extends ConsumerWidget {
+class ProviderOrdersPage extends ConsumerStatefulWidget {
   const ProviderOrdersPage({super.key});
 
-  Future<void> _refresh(WidgetRef ref) async {
+  @override
+  ConsumerState<ProviderOrdersPage> createState() =>
+      _ProviderOrdersPageState();
+}
+
+class _ProviderOrdersPageState extends ConsumerState<ProviderOrdersPage> {
+  String? _busyTaskId;
+
+  Future<void> _refresh() async {
     ref.invalidate(taskSnapshotProvider);
     await ref.read(taskSnapshotProvider.future);
   }
 
+  Future<void> _runPrimaryAction(MobileTaskItem task) async {
+    final action = task.primaryAction;
+    if (action == null) return;
+
+    setState(() => _busyTaskId = task.id);
+
+    try {
+      await ref.read(taskRepositoryProvider).performPrimaryAction(task);
+      ref.invalidate(taskSnapshotProvider);
+      await ref.read(taskSnapshotProvider.future);
+      if (!mounted) return;
+
+      HapticFeedback.mediumImpact();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(action.successMessage)));
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busyTaskId = null);
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final snapshot = ref.watch(taskSnapshotProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Provider Orders')),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () => _refresh(ref),
+          onRefresh: _refresh,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
@@ -37,7 +84,7 @@ class ProviderOrdersPage extends ConsumerWidget {
                 value: snapshot,
                 errorTitle: 'Unable to load orders',
                 errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
-                onRetry: () => _refresh(ref),
+                onRetry: _refresh,
                 loadingBuilder: () => const _Loading(),
                 data: (data) {
                   final orders = data.items
@@ -66,7 +113,14 @@ class ProviderOrdersPage extends ConsumerWidget {
                         ...orders.map(
                           (order) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
-                            child: _OrderCard(order: order),
+                            child: _OrderCard(
+                              order: order,
+                              busy: _busyTaskId == order.id,
+                              onPrimaryAction:
+                                  order.primaryAction == null
+                                      ? null
+                                      : () => _runPrimaryAction(order),
+                            ),
                           ),
                         ),
                     ],
@@ -169,8 +223,14 @@ class _Stats extends StatelessWidget {
 }
 
 class _OrderCard extends StatelessWidget {
-  const _OrderCard({required this.order});
+  const _OrderCard({
+    required this.order,
+    this.busy = false,
+    this.onPrimaryAction,
+  });
   final MobileTaskItem order;
+  final bool busy;
+  final VoidCallback? onPrimaryAction;
 
   @override
   Widget build(BuildContext context) {
@@ -225,8 +285,14 @@ class _OrderCard extends StatelessWidget {
               if (primaryAction != null) ...[
                 const SizedBox(width: 10),
                 OutlinedButton(
-                  onPressed: () => _performAction(context, primaryAction),
-                  child: Text(primaryAction.label),
+                  onPressed: busy ? null : onPrimaryAction,
+                  child: busy
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(primaryAction.label),
                 ),
               ],
             ],
@@ -235,11 +301,6 @@ class _OrderCard extends StatelessWidget {
       ),
     );
   }
-
-  Future<void> _performAction(
-    BuildContext context,
-    MobileTaskPrimaryAction action,
-  ) async {}
 }
 
 class _Loading extends StatelessWidget {

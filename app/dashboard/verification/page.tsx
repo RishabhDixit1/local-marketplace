@@ -219,17 +219,22 @@ export default function VerificationPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
+      <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 opacity-70">
         <h2 className="text-sm font-bold text-[var(--ink-950)] mb-3">
           <span className="inline-flex items-center gap-1.5">
-            <Scan className="h-4 w-4 text-[var(--brand-700)]" />
+            <Scan className="h-4 w-4 text-[var(--ink-500)]" />
             Instant KYC (Aadhaar / PAN)
           </span>
         </h2>
-        <p className="text-xs text-[var(--ink-500)] mb-4">
+        <p className="text-xs text-[var(--ink-500)] mb-3">
           Verify instantly via government databases — no manual review needed.
         </p>
-        <InstantKycForm />
+        <div className="rounded-xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] px-4 py-5 text-center">
+          <p className="text-sm font-semibold text-[var(--ink-700)]">Coming Soon</p>
+          <p className="mt-1 text-xs text-[var(--ink-500)]">
+            Instant KYC verification will be available once our identity verification partner is integrated.
+          </p>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">

@@ -18,12 +18,13 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final content = Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: backgroundColor ?? AppColors.surface,
+        color: backgroundColor ?? scheme.surface,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: scheme.outline),
         boxShadow: AppShadows.card,
       ),
       child: child,
@@ -91,10 +92,10 @@ class AppMetricCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(AppRadii.sm),
             ),
-            child: Icon(icon, color: AppColors.ink),
+            child: Icon(icon, color: Theme.of(context).colorScheme.onSurface),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(label, style: Theme.of(context).textTheme.bodySmall),

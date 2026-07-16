@@ -907,7 +907,7 @@ export default async function BusinessProfilePage({ params }: Params) {
                 {reviews.slice(0, 4).map((review, index) => (
                   <div key={`review-${index}`} className="rounded-xl border border-slate-800 bg-slate-950 p-3">
                     <p className="text-amber-300 text-sm">{"★".repeat(Math.max(1, Number(review.rating || 0)))}</p>
-                    <p className="mt-1 text-sm text-[var(--ink-500)]">{review.comment || "Customer left a rating."}</p>
+                    <p className="mt-1 text-sm text-[var(--ink-500)] line-clamp-4">{review.comment || "Customer left a rating."}</p>
                   </div>
                 ))}
               </div>

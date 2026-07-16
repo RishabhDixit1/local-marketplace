@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/constants/categories.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -20,28 +21,6 @@ import '../../feed/data/feed_repository.dart';
 import '../../feed/domain/feed_snapshot.dart';
 import '../../tasks/data/task_repository.dart';
 import '../data/create_need_repository.dart';
-
-const _categories = [
-  'Plumber',
-  'Electrician',
-  'AC Repair',
-  'Carpenter',
-  'Painter',
-  'Cleaning',
-  'RO Service',
-  'Appliance Repair',
-  'Mechanic',
-  'Mobile Repair',
-  'Computer Repair',
-  'Tutor',
-  'Delivery',
-  'Tailor',
-  'Beautician',
-  'Photographer',
-  'CCTV',
-  'Internet / WiFi',
-  'Other',
-];
 
 const _neededWithinOptions = ['Now', 'Today', 'This week', 'Flexible'];
 
@@ -120,7 +99,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
   final ImagePicker _imagePicker = ImagePicker();
 
   int _step = 1;
-  String _category = _categories.first;
+  String _category = categories.first;
   String _neededWithin = _defaultNeededWithin;
   CreateNeedMode _mode = CreateNeedMode.urgent;
   _ServiceDelivery _delivery = _ServiceDelivery.inPerson;
@@ -831,7 +810,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     _CreateNeedDraftCache.clear();
     setState(() {
       _step = 1;
-      _category = _categories.first;
+      _category = categories.first;
       _neededWithin = _defaultNeededWithin;
       _mode = CreateNeedMode.urgent;
       _delivery = _ServiceDelivery.inPerson;
@@ -1508,8 +1487,8 @@ class _CategoryPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final featured = _categories.take(8).toList();
-    final remaining = _categories.skip(8).toList();
+    final featured = categories.take(8).toList();
+    final remaining = categories.skip(8).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1533,9 +1512,9 @@ class _CategoryPicker extends StatelessWidget {
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
           key: ValueKey('category-more-$selectedCategory'),
-          initialValue: _categories.contains(selectedCategory)
+          initialValue: categories.contains(selectedCategory)
               ? selectedCategory
-              : _categories.first,
+              : categories.first,
           isExpanded: true,
           decoration: const InputDecoration(
             labelText: 'More categories',
@@ -1551,7 +1530,7 @@ class _CategoryPicker extends StatelessWidget {
               .toList(),
           onChanged: enabled
               ? (value) {
-                  final next = value ?? _categories.first;
+                  final next = value ?? categories.first;
                   onSelected(next);
                 }
               : null,
@@ -2586,7 +2565,7 @@ class _CreateNeedDraftSnapshot {
         budgetText.trim().isNotEmpty ||
         locationLabel.trim().isNotEmpty ||
         media.isNotEmpty ||
-        category != _categories.first ||
+        category != categories.first ||
         neededWithin != _defaultNeededWithin ||
         mode != CreateNeedMode.urgent ||
         delivery != _ServiceDelivery.inPerson ||

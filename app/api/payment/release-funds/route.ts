@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { verifyCronSecret, cronAuthFailure } from "@/lib/server/requestAuth";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   if (!verifyCronSecret(request)) return cronAuthFailure();
 
   const db = createSupabaseAdminClient();
@@ -52,3 +53,5 @@ export async function POST(request: Request) {
     total: (heldOrders ?? []).length,
   });
 }
+
+export const POST = withErrorHandling(postHandler, "payment:release-funds");

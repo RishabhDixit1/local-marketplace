@@ -13,7 +13,7 @@ type BadgeVariant =
 type BadgeSize = "sm" | "md";
 
 const variantStyles: Record<BadgeVariant, string> = {
-  neutral: "bg-slate-100 text-slate-700",
+  neutral: "bg-[var(--surface-soft)] text-[var(--ink-700)]",
   brand: "bg-[var(--brand-50)] text-[var(--brand-700)]",
   success: "border border-emerald-200 bg-emerald-50 text-emerald-700",
   warning: "border border-amber-200 bg-amber-50 text-amber-700",

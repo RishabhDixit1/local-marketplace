@@ -36,6 +36,7 @@ class AppRoutes {
   static const providerBoosts = '/app/provider-boosts';
   static const providerSubscriptions = '/app/provider-subscriptions';
   static const invoices = '/app/invoices';
+  static String invoiceDetail(String invoiceId) => '/app/invoices/$invoiceId';
   static const checkout = '/app/checkout';
   static const saved = '/app/saved';
   static const providerLaunchpadReview = '/app/provider-launchpad-review';

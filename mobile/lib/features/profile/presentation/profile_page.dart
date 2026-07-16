@@ -1328,6 +1328,8 @@ class _PublicProfilePreviewCard extends StatelessWidget {
                     const SizedBox(height: 5),
                     Text(
                       headline,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.inkSubtle,
                       ),
@@ -1342,6 +1344,8 @@ class _PublicProfilePreviewCard extends StatelessWidget {
             profile.bio.isEmpty
                 ? 'Profile copy is pending. Launchpad can draft a clearer public summary next.'
                 : profile.bio,
+            maxLines: 6,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 14),
@@ -1896,6 +1900,8 @@ class _ProfileHero extends StatelessWidget {
                       profile.headline.isEmpty
                           ? snapshot.roleLabel
                           : profile.headline,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.inkSubtle,
                       ),

@@ -32,7 +32,7 @@ export default function DashboardHero({ activeCategory, providerCount }: Dashboa
           );
         }
       })
-      .catch(() => {});
+      .catch((err) => { console.error("[DashboardHero] failed to load zones:", err); });
   }, []);
 
   return (

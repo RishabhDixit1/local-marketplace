@@ -64,6 +64,32 @@ class _ProviderListingsPageState extends ConsumerState<ProviderListingsPage> {
     }
   }
 
+  Future<void> _confirmDelete({
+    required MobileProviderListingType type,
+    required String id,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete listing?'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _delete(type: type, id: id);
+    }
+  }
+
   Future<void> _delete({
     required MobileProviderListingType type,
     required String id,
@@ -207,7 +233,7 @@ class _ProviderListingsPageState extends ConsumerState<ProviderListingsPage> {
                         onEdit: (service) =>
                             _openServiceSheet(service: service),
                         onToggle: _toggleService,
-                        onDelete: (service) => _delete(
+                        onDelete: (service) => _confirmDelete(
                           type: MobileProviderListingType.service,
                           id: service.id,
                         ),
@@ -220,7 +246,7 @@ class _ProviderListingsPageState extends ConsumerState<ProviderListingsPage> {
                         onEdit: (product) =>
                             _openProductSheet(product: product),
                         onToggle: _toggleProduct,
-                        onDelete: (product) => _delete(
+                        onDelete: (product) => _confirmDelete(
                           type: MobileProviderListingType.product,
                           id: product.id,
                         ),

@@ -152,7 +152,7 @@ export default function MarketplacePage() {
         if (!active) return;
         setProviders(data.providers || []);
       })
-      .catch(() => {})
+      .catch((err) => { console.error("[dashboard] failed to load providers:", err); })
       .finally(() => {
         if (!active) return;
         setProvidersLoading(false);

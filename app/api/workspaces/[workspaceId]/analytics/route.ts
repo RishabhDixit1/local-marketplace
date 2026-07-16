@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
 const toError = (status: number, code: string, message: string) =>
   NextResponse.json({ ok: false, code, message }, { status });
 
-export async function GET(request: Request, { params }: { params: Promise<{ workspaceId: string }> }) {
+async function getHandler(request: Request, { params }: { params: Promise<{ workspaceId: string }> }) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) return toError(401, "UNAUTHORIZED", auth.message);
   const { workspaceId } = await params;
@@ -50,3 +51,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ work
     },
   });
 }
+
+export const GET = withErrorHandling(getHandler, "workspaces:analytics");

@@ -23,11 +23,12 @@ class StickyBottomCTA extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: const Border(top: BorderSide(color: AppColors.border)),
+        color: scheme.surface,
+        border: Border(top: BorderSide(color: scheme.outline)),
         boxShadow: AppShadows.floating,
       ),
       child: SafeArea(

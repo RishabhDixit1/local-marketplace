@@ -336,13 +336,13 @@ class _LocalityCard extends StatelessWidget {
   Color _zoneColor() {
     switch (locality.zoneTypeEnum) {
       case ZoneType.society:
-        return Colors.blue;
+        return AppColors.accent;
       case ZoneType.market:
-        return Colors.teal;
+        return AppColors.primary;
       case ZoneType.supplyArea:
-        return Colors.amber;
+        return AppColors.warm;
       case ZoneType.expansion:
-        return Colors.purple;
+        return AppColors.premium;
     }
   }
 

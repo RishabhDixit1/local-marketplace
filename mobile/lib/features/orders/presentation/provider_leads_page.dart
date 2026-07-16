@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
@@ -13,8 +15,15 @@ import '../../../shared/components/metric_tile.dart';
 import '../../tasks/data/task_repository.dart';
 import '../../tasks/domain/task_snapshot.dart';
 
-class ProviderLeadsPage extends ConsumerWidget {
+class ProviderLeadsPage extends ConsumerStatefulWidget {
   const ProviderLeadsPage({super.key});
+
+  @override
+  ConsumerState<ProviderLeadsPage> createState() => _ProviderLeadsPageState();
+}
+
+class _ProviderLeadsPageState extends ConsumerState<ProviderLeadsPage> {
+  String? _busyTaskId;
 
   static List<MobileTaskItem> _leads(MobileTaskSnapshot data) =>
       data.items.where(
@@ -23,8 +32,45 @@ class ProviderLeadsPage extends ConsumerWidget {
             item.isProviderTask,
       ).toList();
 
+  Future<void> _runPrimaryAction(MobileTaskItem task) async {
+    final action = task.primaryAction;
+    if (action == null) return;
+
+    setState(() => _busyTaskId = task.id);
+
+    try {
+      await ref.read(taskRepositoryProvider).performPrimaryAction(task);
+      ref.invalidate(taskSnapshotProvider);
+      await ref.read(taskSnapshotProvider.future);
+      if (!mounted) return;
+
+      HapticFeedback.mediumImpact();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(action.successMessage)));
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busyTaskId = null);
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final snapshot = ref.watch(taskSnapshotProvider);
 
     return Scaffold(
@@ -67,7 +113,14 @@ class ProviderLeadsPage extends ConsumerWidget {
                         ...leads.map(
                           (lead) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
-                            child: _LeadCard(lead: lead),
+                            child: _LeadCard(
+                              lead: lead,
+                              busy: _busyTaskId == lead.id,
+                              onPrimaryAction:
+                                  lead.primaryAction == null
+                                      ? null
+                                      : () => _runPrimaryAction(lead),
+                            ),
                           ),
                         ),
                     ],
@@ -172,8 +225,14 @@ class _Stats extends StatelessWidget {
 }
 
 class _LeadCard extends StatelessWidget {
-  const _LeadCard({required this.lead});
+  const _LeadCard({
+    required this.lead,
+    this.busy = false,
+    this.onPrimaryAction,
+  });
   final MobileTaskItem lead;
+  final bool busy;
+  final VoidCallback? onPrimaryAction;
 
   @override
   Widget build(BuildContext context) {
@@ -248,8 +307,14 @@ class _LeadCard extends StatelessWidget {
               if (action != null) ...[
                 const SizedBox(width: 10),
                 OutlinedButton(
-                  onPressed: () {},
-                  child: Text(action.label),
+                  onPressed: busy ? null : onPrimaryAction,
+                  child: busy
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(action.label),
                 ),
               ],
             ],

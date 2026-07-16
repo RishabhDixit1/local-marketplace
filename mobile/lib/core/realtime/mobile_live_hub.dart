@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -7,14 +10,19 @@ import '../../features/feed/domain/feed_snapshot.dart';
 import '../../features/notifications/data/notification_repository.dart';
 import '../../features/people/data/people_repository.dart';
 import '../../features/profile/data/profile_repository.dart';
+import '../../features/provider/data/provider_listing_repository.dart';
 import '../../features/tasks/data/task_repository.dart';
 import '../supabase/app_bootstrap.dart';
 
 final mobileLiveHubProvider = Provider<MobileLiveHub?>((ref) {
   final client = ref.watch(appBootstrapProvider).client;
-  final userId = client?.auth.currentUser?.id ?? '';
 
-  if (client == null || userId.isEmpty) {
+  if (client == null) {
+    return null;
+  }
+
+  final userId = client.auth.currentUser?.id ?? '';
+  if (userId.isEmpty) {
     return null;
   }
 
@@ -43,6 +51,10 @@ final mobileLiveHubProvider = Provider<MobileLiveHub?>((ref) {
     ref.invalidate(profileSnapshotProvider);
   }
 
+  void invalidateProviderListings() {
+    ref.invalidate(providerListingsProvider);
+  }
+
   final channel = client
       .channel('mobile-live-shell-$userId')
       .onPostgresChanges(
@@ -64,13 +76,19 @@ final mobileLiveHubProvider = Provider<MobileLiveHub?>((ref) {
         event: PostgresChangeEvent.all,
         schema: 'public',
         table: 'service_listings',
-        callback: (_) => invalidateFeed(),
+        callback: (_) {
+          invalidateFeed();
+          invalidateProviderListings();
+        },
       )
       .onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
         table: 'product_catalog',
-        callback: (_) => invalidateFeed(),
+        callback: (_) {
+          invalidateFeed();
+          invalidateProviderListings();
+        },
       )
       .onPostgresChanges(
         event: PostgresChangeEvent.all,
@@ -150,8 +168,21 @@ final mobileLiveHubProvider = Provider<MobileLiveHub?>((ref) {
           invalidateChat();
           invalidateNotifications();
         },
-      )
-      .subscribe();
+      );
+
+  channel.subscribe((status, [error]) {
+    if (status == RealtimeSubscribeStatus.channelError ||
+        status == RealtimeSubscribeStatus.timedOut) {
+      debugPrint('ServiQ MobileLiveHub channel error: $status $error');
+      Future.delayed(const Duration(seconds: 5), () {
+        // ignore: invalid_use_of_internal_member — no public API exposed.
+        if (!channel.isJoined) {
+          debugPrint('ServiQ MobileLiveHub attempting reconnect...');
+          channel.subscribe();
+        }
+      });
+    }
+  });
 
   ref.onDispose(() {
     client.removeChannel(channel);

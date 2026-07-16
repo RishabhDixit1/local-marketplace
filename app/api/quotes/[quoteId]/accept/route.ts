@@ -4,13 +4,14 @@ import { acceptQuoteDraft } from "@/lib/server/quoteWrites";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
 const toErrorResponse = (status: number, code: QuoteApiErrorCode, message: string, details?: string) =>
   NextResponse.json({ ok: false, code, message, details }, { status });
 
-export async function POST(
+async function postHandler(
   request: Request,
   { params }: { params: Promise<{ quoteId: string }> }
 ) {
@@ -45,3 +46,5 @@ export async function POST(
 
   return NextResponse.json(result satisfies AcceptQuoteResponse);
 }
+
+export const POST = withErrorHandling(postHandler, "quotes:accept");

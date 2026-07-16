@@ -123,6 +123,7 @@ class _SeekerOnboardingPageState
         website: snapshot.profile.website,
         avatarUrl: snapshot.profile.avatarUrl,
         availability: snapshot.profile.availability,
+        interests: _interests.toList(),
       );
 
       ref.invalidate(profileSnapshotProvider);
@@ -370,13 +371,13 @@ class _SeekerOnboardingPageState
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha: 0.1),
+              color: AppColors.success.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(24),
             ),
             child: const Icon(
               Icons.check_circle_rounded,
               size: 48,
-              color: Colors.green,
+              color: AppColors.success,
             ),
           ),
           const SizedBox(height: 24),
@@ -519,7 +520,7 @@ class _StepIndicator extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: isComplete
-                        ? Colors.green
+                        ? AppColors.success
                         : isActive
                             ? Theme.of(context).colorScheme.primary
                             : AppColors.border,
@@ -547,7 +548,7 @@ class _StepIndicator extends StatelessWidget {
                       color: isActive
                           ? AppColors.ink
                           : isComplete
-                              ? Colors.green
+                              ? AppColors.success
                               : AppColors.inkMuted,
                     ),
                     overflow: TextOverflow.ellipsis,

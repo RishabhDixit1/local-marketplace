@@ -36,9 +36,9 @@ export default function FeedFilters({
   onFiltersChange,
 }: FeedFiltersProps) {
   return (
-    <section className="rounded-3xl border border-slate-200/90 bg-white p-3 shadow-[0_14px_30px_-24px_rgba(var(--shadow-rgb),0.38)] sm:p-4">
+    <section className="rounded-3xl border border-slate-200/90 dark:border-slate-700/90 bg-white dark:bg-slate-800 p-3 shadow-[0_14px_30px_-24px_rgba(var(--shadow-rgb),0.38)] sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
           <Filter size={15} />
           Feed filters
         </div>
@@ -46,7 +46,7 @@ export default function FeedFilters({
           <button
             type="button"
             onClick={onToggleAdvanced}
-            className="inline-flex min-h-9 items-center gap-1 rounded-full border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+            className="inline-flex min-h-9 items-center gap-1 rounded-full border border-slate-200 dark:border-slate-700 px-3 text-xs font-semibold text-slate-600 dark:text-slate-400 transition hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white"
           >
             <SlidersHorizontal size={13} />
             {showAdvancedFilters ? "Hide" : "Show"} filters
@@ -54,7 +54,7 @@ export default function FeedFilters({
           <button
             type="button"
             onClick={onReset}
-            className="inline-flex min-h-9 items-center gap-1 rounded-full border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+            className="inline-flex min-h-9 items-center gap-1 rounded-full border border-slate-200 dark:border-slate-700 px-3 text-xs font-semibold text-slate-600 dark:text-slate-400 transition hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white"
           >
             <RotateCcw size={13} />
             Reset
@@ -73,7 +73,7 @@ export default function FeedFilters({
               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                 active
                   ? opt.activeClassName
-                  : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                  : "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               {opt.label}
@@ -93,7 +93,7 @@ export default function FeedFilters({
               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                 active
                   ? "bg-slate-900 text-white"
-                  : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                  : "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               {category === "all" ? "All" : category}
@@ -103,10 +103,10 @@ export default function FeedFilters({
       </div>
 
       {showAdvancedFilters ? (
-        <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+        <div className="mt-3 space-y-3 border-t border-slate-200 dark:border-slate-700 pt-3">
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            <label className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-              <span className="font-semibold text-slate-800">Max distance</span>
+            <label className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs text-slate-700 dark:text-slate-300">
+              <span className="font-semibold text-slate-800 dark:text-slate-200">Max distance</span>
               <input
                 type="range"
                 min={0}
@@ -129,7 +129,7 @@ export default function FeedFilters({
             {toggleOptions.map((option) => (
               <label
                 key={option.key}
-                className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700"
+                className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300"
               >
                 {option.label}
                 <input
@@ -141,7 +141,7 @@ export default function FeedFilters({
                       [option.key]: event.target.checked,
                     }))
                   }
-                  className="h-4 w-4 rounded border-slate-300"
+                  className="h-4 w-4 rounded border-slate-300 dark:border-slate-600"
                 />
               </label>
             ))}

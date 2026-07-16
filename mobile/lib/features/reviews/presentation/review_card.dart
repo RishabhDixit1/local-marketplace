@@ -129,6 +129,8 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
             if (review.comment != null && review.comment!.trim().isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(review.comment!,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4)),
             ],
             if (review.photos.isNotEmpty) ...[

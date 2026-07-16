@@ -150,7 +150,11 @@ export async function middleware(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || "";
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    return response;
+    const signInUrl = new URL("/", request.url);
+    signInUrl.searchParams.set("signin", "true");
+    const redirectResponse = NextResponse.redirect(signInUrl);
+    setLocaleCookie(request, redirectResponse);
+    return redirectResponse;
   }
 
   let supabaseResponse = NextResponse.next({ request });

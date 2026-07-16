@@ -383,6 +383,14 @@ class MobileApiClient {
                 body: jsonEncode(body ?? <String, dynamic>{}),
               )
               .timeout(_requestTimeout);
+        case 'PUT':
+          response = await _httpClient
+              .put(
+                uri,
+                headers: headers,
+                body: jsonEncode(body ?? <String, dynamic>{}),
+              )
+              .timeout(_requestTimeout);
         default:
           throw ApiException('Unsupported method: $method');
       }

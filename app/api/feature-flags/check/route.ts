@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { isFeatureEnabled } from "@/lib/feature-flags/server";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const { searchParams } = new URL(request.url);
   const flagKey = searchParams.get("key");
   const userId = searchParams.get("userId");
@@ -13,3 +14,5 @@ export async function GET(request: Request) {
   const enabled = await isFeatureEnabled(flagKey, userId);
   return NextResponse.json({ enabled });
 }
+
+export const GET = withErrorHandling(getHandler, "feature-flags:check");

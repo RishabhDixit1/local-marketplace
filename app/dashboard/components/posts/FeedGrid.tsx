@@ -261,22 +261,22 @@ export default function FeedGrid({
         {skeletonCards.map((key) => (
           <div
             key={key}
-            className="w-full max-w-[40rem] justify-self-center overflow-hidden rounded-[1.4rem] border border-slate-200 bg-white p-3.5 shadow-sm sm:rounded-[1.6rem] sm:p-4"
+            className="w-full max-w-[40rem] justify-self-center overflow-hidden rounded-[1.4rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-3.5 shadow-sm sm:rounded-[1.6rem] sm:p-4"
           >
             <div className="flex items-center gap-3">
-              <div className="h-11 w-11 animate-pulse rounded-full bg-slate-200" />
+              <div className="h-11 w-11 animate-pulse rounded-full bg-[var(--surface-soft)]" />
               <div className="flex-1 space-y-1.5">
-                <div className="h-3 w-1/3 animate-pulse rounded bg-slate-200" />
-                <div className="h-2.5 w-1/2 animate-pulse rounded bg-slate-100" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-[var(--surface-soft)]" />
+                <div className="h-2.5 w-1/2 animate-pulse rounded bg-[var(--surface-soft)]" />
               </div>
             </div>
-            <div className="mt-3 h-40 animate-pulse rounded-[1.2rem] bg-slate-100 sm:h-44 sm:rounded-[1.4rem]" />
-            <div className="mt-3 h-4 w-3/4 animate-pulse rounded bg-slate-200" />
-            <div className="mt-2 h-3 w-full animate-pulse rounded bg-slate-100" />
+            <div className="mt-3 h-40 animate-pulse rounded-[1.2rem] bg-[var(--surface-soft)] sm:h-44 sm:rounded-[1.4rem]" />
+            <div className="mt-3 h-4 w-3/4 animate-pulse rounded bg-[var(--surface-soft)]" />
+            <div className="mt-2 h-3 w-full animate-pulse rounded bg-[var(--surface-soft)]" />
             <div className="mt-4 flex gap-2">
-              <div className="h-9 w-9 animate-pulse rounded-xl bg-slate-100 sm:h-10 sm:w-28 sm:flex-1" />
-              <div className="h-9 w-9 animate-pulse rounded-xl bg-slate-100 sm:h-10 sm:w-28 sm:flex-1" />
-              <div className="ml-auto h-9 w-9 animate-pulse rounded-full bg-slate-100" />
+              <div className="h-9 w-9 animate-pulse rounded-xl bg-[var(--surface-soft)] sm:h-10 sm:w-28 sm:flex-1" />
+              <div className="h-9 w-9 animate-pulse rounded-xl bg-[var(--surface-soft)] sm:h-10 sm:w-28 sm:flex-1" />
+              <div className="ml-auto h-9 w-9 animate-pulse rounded-full bg-[var(--surface-soft)]" />
             </div>
           </div>
         ))}
@@ -300,23 +300,23 @@ export default function FeedGrid({
       {/* ── Edit Post Modal ──────────────────────────────────────── */}
       {editingPost && (
         <div className="fixed inset-0 z-[var(--layer-modal)] flex items-end justify-center bg-slate-950/40 p-4 backdrop-blur-sm sm:items-center">
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--surface-border)] px-5 py-4">
               <div className="flex items-center gap-2">
                 <Pencil size={16} className="text-[var(--brand-700)]" />
-                <h2 className="text-sm font-bold text-slate-900">Edit Post</h2>
+                <h2 className="text-sm font-bold text-[var(--ink-950)]">Edit Post</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setEditingPost(null)}
-                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100"
+                className="rounded-full p-1.5 text-[var(--ink-500)] hover:bg-[var(--surface-soft)]"
               >
                 <X size={16} />
               </button>
             </div>
             <div className="space-y-3 p-5">
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">
+                <label className="mb-1 block text-xs font-semibold text-[var(--ink-500)]">
                   Title
                 </label>
                 <Input
@@ -327,7 +327,7 @@ export default function FeedGrid({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">
+                <label className="mb-1 block text-xs font-semibold text-[var(--ink-500)]">
                   Description
                 </label>
                 <textarea
@@ -336,12 +336,12 @@ export default function FeedGrid({
                   onChange={(e) =>
                     setEditingPost({ ...editingPost, details: e.target.value })
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-[var(--brand-500)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]/30"
+                  className="w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2.5 text-sm text-[var(--ink-950)] focus:border-[var(--brand-500)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]/30"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-slate-600">
+                  <label className="mb-1 block text-xs font-semibold text-[var(--ink-500)]">
                     Category
                   </label>
                   <Input
@@ -355,7 +355,7 @@ export default function FeedGrid({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-slate-600">
+                  <label className="mb-1 block text-xs font-semibold text-[var(--ink-500)]">
                     Budget (INR)
                   </label>
                   <Input
@@ -372,7 +372,7 @@ export default function FeedGrid({
                 </div>
               </div>
             </div>
-            <div className="flex gap-3 border-t border-slate-100 px-5 py-4">
+            <div className="flex gap-3 border-t border-[var(--surface-border)] px-5 py-4">
               <button
                 type="button"
                 onClick={() => void handleOwnerSaveEdit()}
@@ -389,7 +389,7 @@ export default function FeedGrid({
               <button
                 type="button"
                 onClick={() => setEditingPost(null)}
-                className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="rounded-2xl border border-[var(--surface-border)] px-4 py-2.5 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]"
               >
                 Cancel
               </button>
