@@ -15,6 +15,7 @@ import {
   type CanonicalOrderStatus,
 } from "@/lib/orderWorkflow";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import { useToast } from "@/app/components/toast/ToastProvider";
 
 declare global {
   interface Window {
@@ -34,6 +35,7 @@ type Order = {
 };
 
 export default function ConsumerOrdersPage() {
+  const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [consumerId, setConsumerId] = useState<string | null>(null);
@@ -138,7 +140,7 @@ export default function ConsumerOrdersPage() {
     });
 
     if (!canTransition) {
-      alert("Invalid status transition for consumer workflow.");
+      toast("warning", "Invalid transition", "This status change is not allowed for your workflow.");
       return;
     }
 
@@ -150,7 +152,7 @@ export default function ConsumerOrdersPage() {
       .eq("consumer_id", consumerId);
 
     if (error) {
-      alert(`Unable to update order status: ${error.message}`);
+      toast("error", "Update failed", `Unable to update order status: ${error.message}`);
       setBusyOrderId(null);
       return;
     }
@@ -163,7 +165,7 @@ export default function ConsumerOrdersPage() {
 
   const handleRetryPayment = useCallback(async (order: Order) => {
     if (!razorpayAvailable || !window.Razorpay) {
-      alert("Payment gateway not loaded. Please refresh and try again.");
+      toast("error", "Payment unavailable", "Payment gateway not loaded. Please refresh and try again.");
       return;
     }
     setRetryingOrderId(order.id);
@@ -210,11 +212,11 @@ export default function ConsumerOrdersPage() {
         rz.open();
       });
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Payment failed.");
+      toast("error", "Payment failed", e instanceof Error ? e.message : "Payment processing failed.");
     } finally {
       setRetryingOrderId(null);
     }
-  }, [razorpayAvailable, consumerId, loadOrders]);
+  }, [razorpayAvailable, consumerId, loadOrders, toast]);
 
   if (loading)
     return (

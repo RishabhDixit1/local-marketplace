@@ -77,23 +77,23 @@ export default function DisputeFormModal({ orderId, open, onClose, onSuccess }: 
       <div
         role="dialog"
         aria-modal="true"
-        className="relative z-[1] flex max-h-[min(88vh,600px)] w-full max-w-lg flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_30px_80px_-35px_rgba(var(--shadow-rgb),0.45)]"
+        className="relative z-[1] flex max-h-[min(88vh,600px)] w-full max-w-lg flex-col overflow-hidden rounded-[28px] bg-white dark:bg-slate-800 shadow-[0_30px_80px_-35px_rgba(var(--shadow-rgb),0.45)]"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 dark:border-slate-700 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-amber-100 p-2 text-amber-700">
               <Gavel className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Dispute</p>
-              <h3 className="mt-0.5 text-xl font-semibold tracking-tight text-slate-950">File a dispute</h3>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Dispute</p>
+              <h3 className="mt-0.5 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">File a dispute</h3>
             </div>
           </div>
           <button
             type="button"
             onClick={handleClose}
             disabled={submitting}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 disabled:opacity-50"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -103,11 +103,11 @@ export default function DisputeFormModal({ orderId, open, onClose, onSuccess }: 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
           <div className="space-y-5">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-900">Reason</label>
+              <label className="text-sm font-semibold text-slate-900 dark:text-white">Reason</label>
               <select
                 value={reason}
                 onChange={(e) => { setReason(e.target.value); setError(""); }}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
               >
                 <option value="">Select a reason...</option>
                 {DISPUTE_REASONS.map((r) => (
@@ -117,15 +117,15 @@ export default function DisputeFormModal({ orderId, open, onClose, onSuccess }: 
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-900">Description</label>
+              <label className="text-sm font-semibold text-slate-900 dark:text-white">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => { setDescription(e.target.value); setError(""); }}
                 rows={5}
                 placeholder="Describe what went wrong in detail..."
-                className="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                className="min-h-[140px] w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-700 px-4 py-4 text-sm leading-6 text-slate-900 dark:text-white outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
               />
-              <p className="text-xs text-slate-400 text-right">{description.length} / 2000</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 text-right">{description.length} / 2000</p>
             </div>
 
             {error ? (
@@ -137,12 +137,12 @@ export default function DisputeFormModal({ orderId, open, onClose, onSuccess }: 
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-200 px-6 py-5">
+        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-700 px-6 py-5">
           <button
             type="button"
             onClick={handleClose}
             disabled={submitting}
-            className="inline-flex min-h-11 items-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center rounded-full border border-slate-200 dark:border-slate-700 px-5 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
           >
             Cancel
           </button>
@@ -150,7 +150,7 @@ export default function DisputeFormModal({ orderId, open, onClose, onSuccess }: 
             type="button"
             disabled={submitting || !reason || description.trim().length < 10}
             onClick={() => void handleSubmit()}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-600"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {submitting ? "Submitting..." : "Submit dispute"}

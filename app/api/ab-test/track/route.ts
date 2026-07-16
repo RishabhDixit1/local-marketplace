@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   const body: {
     eventName?: string;
     data?: Record<string, unknown>;
@@ -12,3 +13,5 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withErrorHandling(postHandler, "ab-test:track");

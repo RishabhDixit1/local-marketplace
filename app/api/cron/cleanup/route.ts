@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { verifyCronSecret, cronAuthFailure } from "@/lib/server/requestAuth";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   if (!verifyCronSecret(request)) return cronAuthFailure();
 
   const db = createSupabaseAdminClient();
@@ -39,3 +40,5 @@ export async function GET(request: Request) {
     rate_limits_cleanup_triggered: !rlErr,
   });
 }
+
+export const GET = withErrorHandling(getHandler, "cron:cleanup");

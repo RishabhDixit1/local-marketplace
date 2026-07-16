@@ -80,14 +80,14 @@ export function ConfirmDialog({
           transition={{ duration: 0.15 }}
         >
           <div
-            className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={busy ? undefined : onCancel}
           />
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-labelledby="confirm-dialog-title"
-            className={`relative w-full max-w-sm overflow-hidden rounded-2xl border bg-white shadow-2xl ${style.border}`}
+            className={`relative w-full max-w-sm overflow-hidden rounded-2xl border bg-[var(--surface-elevated)] shadow-2xl ${style.border}`}
             initial={{ opacity: 0, scale: 0.92, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 12 }}
@@ -99,17 +99,17 @@ export function ConfirmDialog({
                   <AlertTriangle size={18} className={style.icon} />
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <h3 id="confirm-dialog-title" className="text-sm font-bold text-slate-900">{title}</h3>
-                  <p className="mt-1 text-sm leading-[1.55] text-slate-600">{message}</p>
+                  <h3 id="confirm-dialog-title" className="text-sm font-bold text-[var(--ink-950)]">{title}</h3>
+                  <p className="mt-1 text-sm leading-[1.55] text-[var(--ink-700)]">{message}</p>
                 </div>
               </div>
             </div>
-            <div className="flex gap-2.5 border-t border-slate-100 px-5 py-3.5">
+            <div className="flex gap-2.5 border-t border-[var(--surface-border)] px-5 py-3.5">
               <button
                 type="button"
                 onClick={onCancel}
                 disabled={busy}
-                className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                className="flex-1 rounded-xl border border-[var(--surface-border)] px-3 py-2 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
               >
                 {cancelLabel}
               </button>

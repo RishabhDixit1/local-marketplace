@@ -13,6 +13,7 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../disputes/presentation/dispute_sheet.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
@@ -936,12 +937,17 @@ class _OrderSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(order.title, style: Theme.of(context).textTheme.headlineSmall),
+          Text(order.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
           Text(
             order.notes.isEmpty
                 ? 'Order details, payment, and fulfillment notes stay attached here.'
                 : order.notes,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 12),
@@ -1086,11 +1092,11 @@ String _deliveryStatusDescription(String status) {
 Color _deliveryStatusColor(String status) {
   switch (status) {
     case 'delivered':
-      return Colors.green;
+      return AppColors.success;
     case 'failed':
-      return Colors.red;
+      return AppColors.danger;
     default:
-      return Colors.orange;
+      return AppColors.warning;
   }
 }
 

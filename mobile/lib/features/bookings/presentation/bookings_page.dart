@@ -158,7 +158,9 @@ class _BookingCard extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: booking.statusBgColor,
+                                color: booking.statusBgColor(
+                                  brightness: Theme.of(context).brightness,
+                                ),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -166,7 +168,9 @@ class _BookingCard extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
-                                  color: booking.statusColor,
+                                  color: booking.statusColor(
+                                    brightness: Theme.of(context).brightness,
+                                  ),
                                 ),
                               ),
                             ),

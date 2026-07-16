@@ -1,0 +1,75 @@
+# Caddyfile for Serviq — TLS termination + reverse proxy
+# Deploy on EC2 after obtaining a domain pointing to this instance.
+#
+# Prerequisites:
+#   1. A domain (e.g., serviqapp.com) with DNS A record pointing to this EC2's public IP
+#   2. Ports 80 and 443 open in the EC2 security group
+#   3. Caddy installed: sudo apt install -y caddy  (or see setup-ec2-tls.sh)
+#
+# Usage:
+#   sudo cp Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl restart caddy
+#
+# Caddy auto-provisions Let's Encrypt certificates on first request.
+
+# Main app — serviqapp.com
+serviqapp.com {
+    reverse_proxy localhost:3000
+
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Rate limiting via Caddy (optional, supplement app-level limits)
+    rate_limit {
+        zone dynamic {
+            key {remote_host}
+            events 100
+            window 1m
+        }
+    }
+}
+
+# Supabase API — Kong on port 8000
+supabase.serviqapp.com {
+    reverse_proxy localhost:8000
+
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    }
+
+    # WebSocket support for Realtime
+    @websockets {
+        header Connection *Upgrade*
+        header Upgrade websocket
+    }
+    reverse_proxy @websockets localhost:8000
+}
+
+# Supabase Realtime — direct WebSocket
+realtime.serviqapp.com {
+    reverse_proxy localhost:4000
+
+    @websockets {
+        header Connection *Upgrade*
+        header Upgrade websocket
+    }
+    reverse_proxy @websockets localhost:4000
+
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    }
+}
+
+# Staging (if on a separate subdomain)
+staging.serviqapp.com {
+    reverse_proxy localhost:3001
+
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    }
+}

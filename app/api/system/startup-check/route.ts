@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { isAdminEmail, requireRequestAuth } from "@/lib/server/requestAuth";
 import { getConfiguredSiteUrl } from "@/lib/siteUrl";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -102,7 +103,7 @@ const fallbackDiagnostics = async () => {
   return { ok: issues.length === 0, checks, issues };
 }
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, admin: false, issues: [authResult.message] }, { status: authResult.status });
@@ -168,3 +169,5 @@ export async function GET(request: Request) {
     source: "rpc",
   });
 }
+
+export const GET = withErrorHandling(getHandler, "system:startup-check");

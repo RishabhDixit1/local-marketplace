@@ -19,17 +19,18 @@ class ServiqSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final (Color bg, List<BoxShadow> shadows) = switch (variant) {
-      ServiqSurfaceVariant.flat => (AppColors.surface, AppShadows.card),
-      ServiqSurfaceVariant.raised => (AppColors.surface, AppShadows.floating),
-      ServiqSurfaceVariant.highlight => (AppColors.surfaceTint, AppShadows.card),
+      ServiqSurfaceVariant.flat => (scheme.surface, AppShadows.card),
+      ServiqSurfaceVariant.raised => (scheme.surface, AppShadows.floating),
+      ServiqSurfaceVariant.highlight => (scheme.surfaceContainerHighest, AppShadows.card),
     };
 
     return DecoratedBox(
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: scheme.outline),
         boxShadow: shadows,
       ),
       child: ClipRRect(

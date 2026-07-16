@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import type { QuoteAttachmentRecord, QuoteAttachmentType } from "@/lib/api/quotes";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -21,7 +22,7 @@ type RemoveAttachmentRequest = {
   attachmentId: string;
 };
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
@@ -114,7 +115,7 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true, attachment });
 }
 
-export async function DELETE(request: Request) {
+async function deleteHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
@@ -152,3 +153,6 @@ export async function DELETE(request: Request) {
 
   return NextResponse.json({ ok: true, attachmentId: body.attachmentId });
 }
+
+export const POST = withErrorHandling(postHandler, "quotes:attachments");
+export const DELETE = withErrorHandling(deleteHandler, "quotes:attachments:delete");

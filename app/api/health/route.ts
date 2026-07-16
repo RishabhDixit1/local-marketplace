@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+async function getHandler() {
   return NextResponse.json({
     ok: true,
     status: "healthy",
@@ -10,3 +11,5 @@ export async function GET() {
     uptime: process.uptime(),
   });
 }
+
+export const GET = withErrorHandling(getHandler, "health");

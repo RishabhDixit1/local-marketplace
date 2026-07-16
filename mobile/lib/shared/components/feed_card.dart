@@ -196,13 +196,24 @@ bool _hasRealMoneySignal(MobileFeedItem item) {
   return label.startsWith('inr ') || label.startsWith('₹');
 }
 
-class _FeedPreview extends StatelessWidget {
+class _FeedPreview extends StatefulWidget {
   const _FeedPreview({required this.item});
 
   final MobileFeedItem item;
 
   @override
+  State<_FeedPreview> createState() => _FeedPreviewState();
+}
+
+class _FeedPreviewState extends State<_FeedPreview> {
+  int _currentPage = 0;
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
+    final urls = item.mediaUrls.where((u) => u.isNotEmpty).toList();
+    final hasCarousel = urls.length > 1;
+
     return Container(
       height: 96,
       width: double.infinity,
@@ -215,12 +226,24 @@ class _FeedPreview extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CachedNetworkImage(
-            imageUrl: item.thumbnailUrl,
-            fit: BoxFit.cover,
-            errorWidget: (context, url, error) => _PreviewFallback(item: item),
-            placeholder: (context, url) => _PreviewFallback(item: item),
-          ),
+          if (hasCarousel)
+            PageView.builder(
+              itemCount: urls.length,
+              onPageChanged: (i) => setState(() => _currentPage = i),
+              itemBuilder: (context, index) => CachedNetworkImage(
+                imageUrl: urls[index],
+                fit: BoxFit.cover,
+                errorWidget: (context, url, error) => _PreviewFallback(item: item),
+                placeholder: (context, url) => _PreviewFallback(item: item),
+              ),
+            )
+          else
+            CachedNetworkImage(
+              imageUrl: item.thumbnailUrl,
+              fit: BoxFit.cover,
+              errorWidget: (context, url, error) => _PreviewFallback(item: item),
+              placeholder: (context, url) => _PreviewFallback(item: item),
+            ),
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -230,6 +253,26 @@ class _FeedPreview extends StatelessWidget {
               ),
             ),
           ),
+          if (hasCarousel)
+            Positioned(
+              right: AppSpacing.sm,
+              bottom: AppSpacing.sm,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(AppRadii.xs),
+                ),
+                child: Text(
+                  '${_currentPage + 1}/${urls.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             left: AppSpacing.sm,
             right: AppSpacing.sm,
@@ -239,7 +282,7 @@ class _FeedPreview extends StatelessWidget {
               runSpacing: AppSpacing.xs,
               children: [
                 _OverlayPill(label: item.category),
-                if (item.mediaCount > 1)
+                if (item.mediaCount > 1 && !hasCarousel)
                   _OverlayPill(label: '${item.mediaCount} photos'),
               ],
             ),

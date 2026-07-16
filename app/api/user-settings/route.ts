@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -23,7 +24,7 @@ const getDbClient = (accessToken: string) => {
   return admin || createSupabaseUserServerClient(accessToken);
 };
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
@@ -61,7 +62,7 @@ export async function GET(request: Request) {
   return NextResponse.json({ ok: true, settings: data });
 }
 
-export async function PATCH(request: Request) {
+async function patchHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
@@ -115,3 +116,6 @@ export async function PATCH(request: Request) {
 
   return NextResponse.json({ ok: true, settings: data });
 }
+
+export const GET = withErrorHandling(getHandler, "user-settings:get");
+export const PATCH = withErrorHandling(patchHandler, "user-settings:patch");

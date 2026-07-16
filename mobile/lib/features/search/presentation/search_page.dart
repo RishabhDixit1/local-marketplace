@@ -78,6 +78,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   List<Map<String, dynamic>> _categories = [];
   SearchResponse? _results;
   bool _loading = false;
+  bool _loadingMore = false;
   String? _error;
   List<String> _recent = [];
 
@@ -132,6 +133,41 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       if (mounted) setState(() { _results = results; _loading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    final current = _results;
+    if (current == null || !current.hasMore || _loadingMore) return;
+
+    setState(() => _loadingMore = true);
+
+    try {
+      final repo = ref.read(searchRepositoryProvider);
+      final nextResults = await repo.search(
+        category: _selectedCategory,
+        query: _query.isNotEmpty ? _query : null,
+        limit: 50,
+        offset: current.offset + current.limit,
+        minRating: _minRating,
+        onlineOnly: _onlineOnly,
+        sortBy: _sortBy.name,
+      );
+      if (mounted) {
+        setState(() {
+          _results = SearchResponse(
+            providers: [...current.providers, ...nextResults.providers],
+            facets: nextResults.facets,
+            total: nextResults.total,
+            offset: nextResults.offset,
+            limit: nextResults.limit,
+            hasMore: nextResults.hasMore,
+          );
+          _loadingMore = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loadingMore = false);
     }
   }
 
@@ -434,10 +470,16 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Center(
-                child: FilledButton.tonal(
-                  onPressed: () {},
-                  child: const Text('Load more'),
-                ),
+                child: _loadingMore
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : FilledButton.tonal(
+                        onPressed: _loadMore,
+                        child: const Text('Load more'),
+                      ),
               ),
             ),
         ] else if (!_loading) ...[

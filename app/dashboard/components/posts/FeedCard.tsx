@@ -17,10 +17,8 @@ import {
   MoreVertical,
   Pencil,
   Share2,
-  Star,
   Trash2,
   X,
-  Zap,
 } from "lucide-react";
 import { Card } from "@/app/components/ui/Card";
 import TrustSnapshot from "@/app/components/trust/TrustSnapshot";
@@ -57,9 +55,9 @@ type FeedCardProps = {
 
 const buttonToneClassNames: Record<MarketplaceCardActionButton<MarketplacePrimaryActionKind>["tone"], string> = {
   primary: "border-slate-900 bg-slate-900 text-white hover:bg-slate-800",
-  secondary: "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900",
+  secondary: "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white",
   success: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
-  status: "border-slate-200 bg-slate-100 text-slate-500",
+  status: "border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400",
   destructive: "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
 };
 
@@ -210,7 +208,7 @@ export default function FeedCard({
         <button
           type="button"
           onClick={() => void onPrimaryAction("view_profile")}
-          className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:h-10 sm:w-10"
+          className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-slate-200 dark:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:h-10 sm:w-10"
           aria-label={`Open ${item.displayCreator} profile`}
         >
           <SafeImage
@@ -229,7 +227,7 @@ export default function FeedCard({
             <button
               type="button"
               onClick={() => void onPrimaryAction("view_profile")}
-              className="min-w-0 max-w-full truncate text-left text-[14px] font-semibold text-slate-900 transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:text-[15px]"
+              className="min-w-0 max-w-full truncate text-left text-[14px] font-semibold text-slate-900 dark:text-white transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:text-[15px]"
               aria-label={`Open ${item.displayCreator} profile`}
             >
               {item.displayCreator}
@@ -242,28 +240,13 @@ export default function FeedCard({
             ) : null}
           </div>
 
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-500 sm:text-[11px]">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500 dark:text-slate-400 sm:text-[11px]">
             <span>{item.timeLabel}</span>
             <span className="inline-flex min-w-0 items-center gap-1 truncate">
               <MapPin size={11} />
               {item.distanceLabel}
             </span>
-            {item.responseMinutes > 0 ? (
-              <span className="inline-flex items-center gap-1 shrink-0">
-                <Zap size={10} />
-                ~{item.responseMinutes} min
-              </span>
-            ) : null}
-            {item.completedJobs && item.completedJobs > 0 ? (
-              <span className="shrink-0">{item.completedJobs} jobs</span>
-            ) : null}
-            {item.averageRating && item.averageRating > 0 ? (
-              <span className="inline-flex items-center gap-0.5 shrink-0">
-                <Star className="h-3 w-3 text-amber-400" fill="currentColor" />
-                {item.averageRating.toFixed(1)}
-              </span>
-            ) : null}
-            {item.urgent ? <span className="shrink-0 text-rose-600">Urgent</span> : null}
+            {item.urgent ? <span className="shrink-0 font-semibold text-rose-600">Urgent</span> : null}
           </div>
         </div>
 
@@ -276,13 +259,13 @@ export default function FeedCard({
               onClick={() => setOwnerMenuOpen((current) => !current)}
               disabled={ownerBusy}
               aria-label="Post options"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 sm:h-8 sm:w-8"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 dark:text-slate-500 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300 disabled:opacity-50 sm:h-8 sm:w-8"
             >
               {ownerBusy ? <Loader2 size={15} className="animate-spin" /> : <MoreVertical size={15} />}
             </button>
 
             {ownerMenuOpen && (ownerCanEdit || ownerCanArchive || ownerCanDelete) ? (
-              <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white py-1 shadow-2xl">
+              <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-1 shadow-2xl">
                 {ownerCanEdit ? (
                   <button
                     type="button"
@@ -290,9 +273,9 @@ export default function FeedCard({
                       setOwnerMenuOpen(false);
                       onOwnerEdit?.();
                     }}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700"
                   >
-                    <Pencil size={14} className="text-slate-400" />
+                    <Pencil size={14} className="text-slate-400 dark:text-slate-500" />
                     Edit post
                   </button>
                 ) : null}
@@ -304,14 +287,14 @@ export default function FeedCard({
                       setOwnerMenuOpen(false);
                       onOwnerArchive?.();
                     }}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700"
                   >
                     <Archive size={14} className="text-amber-400" />
                     Archive post
                   </button>
                 ) : null}
 
-                {ownerCanDelete && (ownerCanEdit || ownerCanArchive) ? <div className="my-1 border-t border-slate-100" /> : null}
+                {ownerCanDelete && (ownerCanEdit || ownerCanArchive) ? <div className="my-1 border-t border-slate-100 dark:border-slate-700" /> : null}
 
                 {ownerCanDelete ? (
                   <button
@@ -332,7 +315,7 @@ export default function FeedCard({
         ) : null}
       </header>
 
-      <div className="mt-2.5 flex min-w-0 min-h-0 flex-1 flex-col">
+      <div className="mt-2 flex min-w-0 min-h-0 flex-1 flex-col">
         {hasMedia ? (
           <div data-testid="feed-card-main-image">
             <FeedMediaCarousel
@@ -344,7 +327,7 @@ export default function FeedCard({
         ) : (
           <div
             data-testid="feed-card-main-image"
-            className="overflow-hidden rounded-[1.15rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-3 sm:rounded-[1.35rem] sm:p-3.5"
+            className="overflow-hidden rounded-[1.15rem] border border-slate-200 dark:border-slate-700 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#1e293b_0%,#0f172a_62%,#0c2427_100%)] p-3 pb-3.5 sm:rounded-[1.35rem] sm:p-3.5"
           >
             <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold sm:gap-2 sm:text-[11px]">
               {heroPills.map((pill) => (
@@ -358,11 +341,11 @@ export default function FeedCard({
             </div>
 
             <div className={heroPills.length > 0 ? "mt-3" : ""}>
-              <h3 className="break-words text-[15px] font-semibold leading-tight text-slate-950 [overflow-wrap:anywhere] sm:text-[1.02rem]">
+              <h3 className="break-words text-[15px] font-semibold leading-tight text-slate-950 dark:text-white [overflow-wrap:anywhere] sm:text-[1.02rem]">
                 {item.displayTitle}
               </h3>
               <p
-                className={`mt-1.5 break-words text-[13px] leading-5 text-slate-600 [overflow-wrap:anywhere] sm:text-sm sm:leading-6 ${
+                className={`mt-1.5 break-words text-[13px] leading-5 text-slate-600 dark:text-slate-400 [overflow-wrap:anywhere] sm:text-sm sm:leading-6 ${
                   detailsExpanded ? "" : descriptionClampClassName
                 }`}
               >
@@ -372,14 +355,14 @@ export default function FeedCard({
           </div>
         )}
 
-        <div className={hasMedia ? "mt-2.5" : "mt-0"}>
+        <div className={hasMedia ? "mt-2" : "mt-0"}>
           {hasMedia ? (
             <>
-              <h3 className="line-clamp-2 break-words text-[15px] font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere] sm:text-[1.02rem]">
+              <h3 className="line-clamp-2 break-words text-[15px] font-semibold leading-tight text-slate-900 dark:text-white [overflow-wrap:anywhere] sm:text-[1.02rem]">
                 {item.displayTitle}
               </h3>
               <p
-                className={`mt-1.5 break-words text-[13px] leading-5 text-slate-600 [overflow-wrap:anywhere] sm:text-sm sm:leading-relaxed ${
+                className={`mt-1.5 break-words text-[13px] leading-5 text-slate-600 dark:text-slate-400 [overflow-wrap:anywhere] sm:text-sm sm:leading-relaxed ${
                   detailsExpanded ? "" : descriptionClampClassName
                 }`}
               >
@@ -389,7 +372,7 @@ export default function FeedCard({
           ) : null}
 
           {visibleMetaPills.length > 0 ? (
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {visibleMetaPills.map((pill) => (
                 <span
                   key={`${item.id}:${pill.label}`}
@@ -406,7 +389,7 @@ export default function FeedCard({
             <button
               type="button"
               onClick={() => setDetailsExpanded((expanded) => !expanded)}
-              className="mt-2 inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-[var(--brand-700)] transition hover:border-[var(--brand-300)] hover:text-[var(--brand-800)]"
+              className="mt-2 inline-flex items-center rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1 text-[11px] font-semibold text-[var(--brand-700)] transition hover:border-[var(--brand-300)] hover:text-[var(--brand-800)]"
             >
               {detailsExpanded ? "Show less" : "Show more"}
             </button>
@@ -414,7 +397,7 @@ export default function FeedCard({
 
           {item.locationLabel ? (
             <p
-              className={`mt-2 items-start gap-1.5 text-[11px] text-slate-500 sm:text-xs ${
+              className={`mt-1.5 items-start gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 sm:text-xs ${
                 detailsExpanded ? "flex" : "hidden sm:flex"
               }`}
             >
@@ -469,13 +452,13 @@ export default function FeedCard({
               ].filter((value): value is { label: string; tone: "neutral" | "good" | "caution" } => value !== null)}
               compact
               mobileItemLimit={2}
-              className="mt-2"
+              className="mt-1.5"
             />
           ) : null}
         </div>
       </div>
 
-      <div className="mt-auto flex flex-col gap-2 pt-3 sm:flex-row sm:items-center sm:justify-between sm:pt-3.5">
+      <div className="mt-auto flex flex-col gap-2 pt-2.5 sm:flex-row sm:items-center sm:justify-between sm:pt-3">
         <div className="flex flex-wrap items-center gap-2">
           {primaryButton ? (
             <button
@@ -514,7 +497,7 @@ export default function FeedCard({
               disabled={sendQuoteButton.disabled || actionBusyState[sendQuoteButton.kind]}
               aria-label={actionBusyState[sendQuoteButton.kind] ? buttonBusyLabels[sendQuoteButton.kind] : sendQuoteButton.label}
               title={actionBusyState[sendQuoteButton.kind] ? buttonBusyLabels[sendQuoteButton.kind] : sendQuoteButton.label}
-              className="inline-flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 transition hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
             >
               {actionBusyState[sendQuoteButton.kind] ? (
                 <Loader2 size={16} className="animate-spin" />
@@ -533,7 +516,7 @@ export default function FeedCard({
               disabled={openButton.disabled}
               aria-label={openButton.label}
               title={openButton.label}
-              className="inline-flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 transition hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
             >
               <ArrowUpRight size={16} />
               <span className="hidden sm:inline">{openButton.label}</span>
@@ -563,7 +546,7 @@ export default function FeedCard({
                     ? "border-slate-900 bg-slate-900 text-white"
                     : isDestructive
                       ? "border-rose-200 bg-rose-50 text-rose-600 hover:border-rose-300 hover:text-rose-700"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white"
                 }`}
               >
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <Icon size={16} />}

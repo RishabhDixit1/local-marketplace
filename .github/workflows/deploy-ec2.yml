@@ -61,6 +61,9 @@ jobs:
 
   deploy:
     needs: build
+    if: false  # App deployment disabled — Vercel serves the web app. EC2 runs Supabase only.
+              # To re-enable: change `if: false` to `if: true` (or remove the line).
+              # This workflow now only deploys DB migrations to EC2.
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -96,7 +99,7 @@ jobs:
           target: /home/ec2-user/serviq/migrations
           strip_components: 0
 
-      - name: Deploy on EC2
+      - name: Apply DB migrations on EC2
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -107,125 +110,27 @@ jobs:
 
             cd /home/ec2-user/serviq
 
-            # Report disk before cleanup
-            echo "Disk before cleanup:"
-            df -h / | tail -1
-
-            # Kill the running container and remove the old image FIRST to free space
-            docker stop serviq --time 10 2>/dev/null || true
-            docker rm serviq 2>/dev/null || true
-            docker rmi serviq:latest 2>/dev/null || true
-            docker ps -q --filter publish=3000 | xargs -r docker stop --time 10 2>/dev/null || true
-            docker ps -q --filter publish=3000 | xargs -r docker rm -f 2>/dev/null || true
-            fuser -k 3000/tcp 2>/dev/null || true
-
-            # Prune remaining dangling layers, build cache, temp files
-            docker system prune -f --all 2>/dev/null || true
-            docker volume prune -f 2>/dev/null || true
-            docker builder prune -f --all 2>/dev/null || true
-            rm -rf /tmp/* 2>/dev/null || true
-
-            # Also clean old deployment artifacts from pre-Docker era
-            rm -rf /home/ec2-user/serviq/node_modules 2>/dev/null || true
-            rm -rf /home/ec2-user/serviq/.next 2>/dev/null || true
-
-            echo "Disk after cleanup:"
-            df -h / | tail -1
-
-            # Verify the image tarball arrived
-            if [ ! -f serviq-docker.tar.gz ]; then
-              echo "ERROR: serviq-docker.tar.gz not found after SCP."
-              ls -la /home/ec2-user/serviq/
-              exit 1
+            echo "--- Applying pending database migrations ---"
+            MIGRATIONS_DIR="/home/ec2-user/serviq/migrations/supabase/migrations"
+            DB_CONTAINER=$(docker ps --filter "name=db" --filter "name=supabase" --format "{{.Names}}" | head -1)
+            if [ -z "$DB_CONTAINER" ]; then
+              DB_CONTAINER=$(docker ps --filter "ancestor=supabase/postgres" --format "{{.Names}}" | head -1)
             fi
 
-            # Load the new image
-            gzip -d -f serviq-docker.tar.gz
-            docker load -i serviq-docker.tar
-            rm -f serviq-docker.tar
-
-            # Start via docker run with explicit env vars (avoids secrets on disk)
-            docker run -d \
-              --name serviq \
-              --restart unless-stopped \
-              -p 3000:3000 \
-              -e NODE_ENV=production \
-              -e SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-              -e SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} \
-              -e RAZORPAY_WEBHOOK_SECRET=${{ secrets.RAZORPAY_WEBHOOK_SECRET }} \
-              -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
-              -e NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }} \
-              -e NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} \
-              -e NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }} \
-              -e RESEND_API_KEY=${{ secrets.RESEND_API_KEY }} \
-              -e BACKUP_EMAIL_API_KEY=${{ secrets.BACKUP_EMAIL_API_KEY }} \
-              -e SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
-              -e RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }} \
-              -e RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }} \
-              -e SERVIQ_INTERNAL_PUSH_KEY=${{ secrets.SERVIQ_INTERNAL_PUSH_KEY }} \
-              -e VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }} \
-              -e VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }} \
-              -e VAPID_EMAIL=${{ secrets.VAPID_EMAIL }} \
-              -e FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }} \
-              -e FIREBASE_SERVICE_ACCOUNT_JSON=${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }} \
-              serviq:latest
-
-            # Show container start logs immediately
-            sleep 2
-            echo "Container startup logs:"
-            docker logs serviq --tail 30 2>/dev/null || echo "(no logs yet)"
-
-            # Wait for container health
-            echo "Waiting for container to be healthy..."
-            for i in $(seq 1 15); do
-              RUNNING=$(docker inspect --format='{{.State.Running}}' serviq 2>/dev/null || echo "false")
-              STATUS=$(docker inspect --format='{{.State.Health.Status}}' serviq 2>/dev/null || echo "")
-              EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' serviq 2>/dev/null || echo "")
-              echo "  [${i}/15] Running=${RUNNING} Health=${STATUS:-none} ExitCode=${EXIT_CODE}"
-
-              if [ "$RUNNING" = "true" ]; then
-                if [ -z "$STATUS" ] || [ "$STATUS" = "healthy" ]; then
-                  echo "Deploy successful — container is running!"
-
-                  # ── Run pending database migrations ──
-                  echo "--- Applying pending database migrations ---"
-                  MIGRATIONS_DIR="/home/ec2-user/serviq/migrations/supabase/migrations"
-                  DB_CONTAINER=$(docker ps --filter "name=db" --filter "name=supabase" --format "{{.Names}}" | head -1)
-                  if [ -z "$DB_CONTAINER" ]; then
-                    DB_CONTAINER=$(docker ps --filter "ancestor=supabase/postgres" --format "{{.Names}}" | head -1)
-                  fi
-
-                  if [ -n "$DB_CONTAINER" ] && [ -d "$MIGRATIONS_DIR" ]; then
-                    # Extract DB user/password from Supabase container env if needed
-                    DB_USER="postgres"
-                    for f in "$MIGRATIONS_DIR"/*.sql; do
-                      [ -f "$f" ] || continue
-                      echo "  Applying $(basename "$f")..."
-                      docker cp "$f" "$DB_CONTAINER:/tmp/$(basename "$f")"
-                      OUTPUT=$(docker exec "$DB_CONTAINER" psql -U "$DB_USER" -f "/tmp/$(basename "$f")" 2>&1) || true
-                      echo "$OUTPUT" | grep -i "error\|already exists\|skipped" | head -3 || true
-                      docker exec "$DB_CONTAINER" rm -f "/tmp/$(basename "$f")" 2>/dev/null || true
-                    done
-                    echo "--- Database migrations complete ---"
-                  else
-                    echo "WARNING: Could not find Supabase DB container or migration files. Skipping migrations."
-                    [ -z "$DB_CONTAINER" ] && echo "  (No database container found)"
-                    [ ! -d "$MIGRATIONS_DIR" ] && echo "  (Migrations dir $MIGRATIONS_DIR not found)"
-                  fi
-
-                  docker ps --filter name=serviq --format "table {{.ID}}\t{{.Image}}\t{{.Status}}"
-                  exit 0
-                fi
-              elif [ "$RUNNING" = "false" ] && [ "$EXIT_CODE" != "" ] && [ "$EXIT_CODE" != "0" ]; then
-                echo "Container exited with code $EXIT_CODE — dumping logs..."
-                docker logs serviq --tail 50 2>/dev/null || true
-                exit 1
-              fi
-              sleep 4
-            done
-
-            echo "ERROR: Health check failed after 60s"
-            docker ps -a --filter name=serviq --format "table {{.ID}}\t{{.Image}}\t{{.Status}}" 2>/dev/null || true
-            docker logs serviq --tail 80 2>/dev/null || true
-            exit 1
+            if [ -n "$DB_CONTAINER" ] && [ -d "$MIGRATIONS_DIR" ]; then
+              DB_USER="postgres"
+              for f in "$MIGRATIONS_DIR"/*.sql; do
+                [ -f "$f" ] || continue
+                echo "  Applying $(basename "$f")..."
+                docker cp "$f" "$DB_CONTAINER:/tmp/$(basename "$f")"
+                OUTPUT=$(docker exec "$DB_CONTAINER" psql -U "$DB_USER" -f "/tmp/$(basename "$f")" 2>&1) || true
+                echo "$OUTPUT" | grep -i "error\|already exists\|skipped" | head -3 || true
+                docker exec "$DB_CONTAINER" rm -f "/tmp/$(basename "$f")" 2>/dev/null || true
+              done
+              echo "--- Database migrations complete ---"
+            else
+              echo "WARNING: Could not find Supabase DB container or migration files. Skipping migrations."
+              [ -z "$DB_CONTAINER" ] && echo "  (No database container found)"
+              [ ! -d "$MIGRATIONS_DIR" ] && echo "  (Migrations dir $MIGRATIONS_DIR not found)"
+            fi
           command_timeout: 5m

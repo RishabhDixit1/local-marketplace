@@ -12,7 +12,7 @@ final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
 
 final notificationListProvider =
     FutureProvider.autoDispose<List<MobileNotificationItem>>((ref) {
-      return ref.watch(notificationRepositoryProvider).fetchNotifications();
+      return ref.watch(notificationRepositoryProvider).fetchNotifications(limit: 50);
     });
 
 final unreadNotificationCountProvider = Provider<int>((ref) {
@@ -41,7 +41,10 @@ class NotificationRepository {
 
   String get currentUserId => _client.auth.currentUser?.id ?? (throw StateError('NotificationRepository.currentUserId called with no signed-in user.'));
 
-  Future<List<MobileNotificationItem>> fetchNotifications() async {
+  Future<List<MobileNotificationItem>> fetchNotifications({
+    int offset = 0,
+    int limit = 30,
+  }) async {
     try {
       final rows = await _client
           .from('notifications')
@@ -51,7 +54,7 @@ class NotificationRepository {
           .eq('user_id', currentUserId)
           .isFilter('cleared_at', null)
           .order('created_at', ascending: false)
-          .limit(60);
+          .range(offset, offset + limit - 1);
 
       return _rowsFromResult(
         rows,

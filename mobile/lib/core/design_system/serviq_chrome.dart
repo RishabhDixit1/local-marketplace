@@ -50,7 +50,7 @@ class ServiqTopBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: actions,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       surfaceTintColor: Colors.transparent,
     );
   }

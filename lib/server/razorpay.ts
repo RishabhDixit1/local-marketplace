@@ -1,6 +1,6 @@
 import Razorpay from "razorpay";
 
-const RAZORPAY_MODE = process.env.RAZORPAY_MODE ?? "live";
+const RAZORPAY_MODE = process.env.RAZORPAY_MODE ?? "test";
 
 export const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID ?? "";
 export const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? "";

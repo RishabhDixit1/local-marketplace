@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 
 export const runtime = "nodejs";
 
-export async function POST(
+async function postHandler(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -86,7 +87,7 @@ export async function POST(
   return NextResponse.json({ ok: true, photo: publicUrl });
 }
 
-export async function DELETE(
+async function deleteHandler(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -127,3 +128,6 @@ export async function DELETE(
 
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withErrorHandling(postHandler, "reviews:photos");
+export const DELETE = withErrorHandling(deleteHandler, "reviews:photos:delete");

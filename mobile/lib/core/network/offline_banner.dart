@@ -19,12 +19,18 @@ class OfflineBanner extends ConsumerWidget {
       color: AppColors.warning,
       child: Row(
         children: [
-          const Icon(Icons.cloud_off_rounded, color: Colors.white, size: 18),
+          Icon(
+            Icons.cloud_off_rounded,
+            color: Theme.of(context).colorScheme.onPrimary,
+            size: 18,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               'You are offline. Some features may be limited.',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.white),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
             ),
           ),
         ],

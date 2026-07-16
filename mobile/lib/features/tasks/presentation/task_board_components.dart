@@ -697,7 +697,7 @@ Color _statusTint(MobileTaskStatus status) {
     case MobileTaskStatus.active:
       return AppColors.verifiedSoft;
     case MobileTaskStatus.inProgress:
-      return const Color(0xFFEDE9FE);
+      return AppColors.accentSoft;
     case MobileTaskStatus.completed:
       return AppColors.successSoft;
     case MobileTaskStatus.cancelled:
@@ -710,7 +710,7 @@ Color _statusInk(MobileTaskStatus status) {
     case MobileTaskStatus.active:
       return AppColors.ink;
     case MobileTaskStatus.inProgress:
-      return const Color(0xFF5B21B6);
+      return AppColors.accent;
     case MobileTaskStatus.completed:
       return AppColors.success;
     case MobileTaskStatus.cancelled:

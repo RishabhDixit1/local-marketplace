@@ -18,7 +18,7 @@ export default function MarketHubPage() {
       .then((data) => {
         if (data.ok) setZones(data.zones);
       })
-      .catch(() => {})
+      .catch((err) => { console.error("[market] failed to load zones:", err); })
       .finally(() => setLoading(false));
   }, []);
 

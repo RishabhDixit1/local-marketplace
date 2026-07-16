@@ -8,8 +8,8 @@ class Locality {
     this.lat,
     this.lng,
     this.radiusKm = 1.0,
-    this.city = 'Ghaziabad',
-    this.state = 'Uttar Pradesh',
+    this.city = '',
+    this.state = '',
     this.providerCount,
   });
 
@@ -23,8 +23,8 @@ class Locality {
       lat: _toDouble(json['lat']),
       lng: _toDouble(json['lng']),
       radiusKm: _toDouble(json['radius_km'], fallback: 1.0),
-      city: _readString(json['city'], fallback: 'Ghaziabad'),
-      state: _readString(json['state'], fallback: 'Uttar Pradesh'),
+      city: _readString(json['city']),
+      state: _readString(json['state']),
       providerCount: _toInt(json['provider_count']),
     );
   }

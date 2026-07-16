@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, Bell, Loader2, LogOut, MessageCircle, Moon, Shield, Sun, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import { useToast } from "@/app/components/toast/ToastProvider";
 
 type UserSettings = {
   order_notifications: boolean;
@@ -15,6 +16,7 @@ type UserSettings = {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [settings, setSettings] = useState<UserSettings>({
     order_notifications: true,
     promo_notifications: true,
@@ -114,9 +116,9 @@ export default function SettingsPage() {
       router.replace("/");
     } catch (e) {
       setDeleting(false);
-      alert(e instanceof Error ? e.message : "Failed to delete account. Please try again.");
+      toast("error", "Deletion failed", e instanceof Error ? e.message : "Failed to delete account. Please try again.");
     }
-  }, [deleteConfirmText, router]);
+  }, [deleteConfirmText, router, toast]);
 
   if (loading) {
     return (

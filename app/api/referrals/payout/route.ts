@@ -58,7 +58,7 @@ async function postHandler(request: Request) {
   });
 }
 
-export async function GET(request: Request) {
+export async function getHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) return NextResponse.json({ ok: false, message: auth.message }, { status: 401 });
 
@@ -90,4 +90,5 @@ export async function GET(request: Request) {
   });
 }
 
+export const GET = withErrorHandling(getHandler, "referrals:payout");
 export const POST = withErrorHandling(postHandler, "referrals:payout");

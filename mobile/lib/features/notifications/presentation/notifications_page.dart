@@ -540,6 +540,8 @@ class _NotificationCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             item.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                         ),
@@ -557,6 +559,8 @@ class _NotificationCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       item.message,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.inkSubtle,
                           ),

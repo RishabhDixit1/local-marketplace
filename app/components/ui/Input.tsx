@@ -49,12 +49,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const pad = iconPadding[size];
 
     const inputClasses = [
-      "w-full border bg-white text-slate-900 outline-none transition",
-      "placeholder:text-slate-400",
-      "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500",
+      "w-full border bg-[var(--surface-elevated)] text-[var(--ink-950)] outline-none transition",
+      "placeholder:text-[var(--ink-400)]",
+      "disabled:cursor-not-allowed disabled:bg-[var(--surface-soft)] disabled:text-[var(--ink-400)]",
       error
         ? "border-rose-300 focus:border-rose-400 focus:ring-1 focus:ring-rose-400"
-        : "border-slate-200 focus:border-[var(--brand-400)] focus:ring-1 focus:ring-[var(--brand-400)]",
+        : "border-[var(--surface-border)] focus:border-[var(--brand-400)] focus:ring-1 focus:ring-[var(--brand-400)]",
       sizeStyles[size],
       hasIcon && (leftIcon ? pad.left : "") + (rightIcon ? pad.right : ""),
       className,
@@ -84,7 +84,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-xs font-semibold text-slate-600"
+            className="block text-xs font-semibold text-[var(--ink-700)]"
           >
             {label}
           </label>
@@ -94,7 +94,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <div className="relative">
             {leftIcon && (
               <span
-                className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-slate-400 ${size === "md" ? "left-3" : "left-4"}`}
+                className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-[var(--ink-400)] ${size === "md" ? "left-3" : "left-4"}`}
               >
                 {leftIcon}
               </span>
@@ -102,7 +102,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {inputElement}
             {rightIcon && (
               <span
-                className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-slate-400 ${size === "md" ? "right-3" : "right-4"}`}
+                className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-[var(--ink-400)] ${size === "md" ? "right-3" : "right-4"}`}
               >
                 {rightIcon}
               </span>
@@ -119,7 +119,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
 
         {helperText && !error && (
-          <p id={`${inputId}-helper`} className="text-xs text-slate-500">
+          <p id={`${inputId}-helper`} className="text-xs text-[var(--ink-500)]">
             {helperText}
           </p>
         )}

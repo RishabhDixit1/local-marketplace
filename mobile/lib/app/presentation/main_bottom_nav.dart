@@ -38,8 +38,8 @@ class MainBottomNav extends StatelessWidget {
       minimum: const EdgeInsets.fromLTRB(0, 0, 0, 0),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: const Border(top: BorderSide(color: AppColors.border)),
+          color: Theme.of(context).colorScheme.surface,
+          border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
           boxShadow: const [
             BoxShadow(
               color: AppColors.shadow,
@@ -95,9 +95,9 @@ class MainNavigationRail extends StatelessWidget {
     );
 
     return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(right: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(right: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: SafeArea(
         right: false,

@@ -210,7 +210,8 @@ class MobilePeopleSnapshot {
               }
 
               final completionPercent = _toInt(
-                profile['profile_completion_percent'],
+                profile['profile_completion_percent'] ??
+                    profile['completionPercent'],
               );
               final reviewCount = reviewCountsByProvider[id] ?? 0;
               final averageRating = reviewCount == 0
@@ -223,7 +224,9 @@ class MobilePeopleSnapshot {
               final prices = List<double>.from(
                 pricesByProvider[id] ?? const <double>[],
               )..sort();
-              final profileServices = _readStringList(profile['services'])
+              final profileServices = _readStringList(
+                    profile['services'],
+                  )
                   .map(_cleanCardLabel)
                   .where((value) => value.isNotEmpty)
                   .toList();
@@ -243,10 +246,13 @@ class MobilePeopleSnapshot {
                 presence['rolling_response_minutes'],
               );
               final verificationLevel = _humanize(
-                _readString(profile['verification_level']),
+                _readString(
+                  profile['verification_level'] ??
+                      profile['verificationLabel'],
+                ),
               );
               final locationLabel = _firstNonEmpty([
-                _readString(profile['location']),
+                _readString(profile['location'] ?? profile['locationLabel']),
                 'Nearby',
               ]);
               final serviceCount = serviceCountByProvider[id] ?? 0;
@@ -268,7 +274,9 @@ class MobilePeopleSnapshot {
                   _readString(profile['email']),
                   'Local provider',
                 ]),
-                avatarUrl: _readString(profile['avatar_url']),
+                avatarUrl: _readString(
+                  profile['avatar_url'] ?? profile['avatarUrl'],
+                ),
                 headline: headline,
                 locationLabel: locationLabel,
                 isOnline: isOnline,
@@ -304,8 +312,12 @@ class MobilePeopleSnapshot {
                 previewMediaCount: preview?.mediaCount ?? 0,
                 previewTitle: preview?.title ?? '',
                 previewSource: preview?.source ?? '',
-                contactPhone: _readString(profile['phone']),
-                canCall: _readString(profile['phone']).isNotEmpty,
+                contactPhone: _readString(
+                  profile['phone'] ?? profile['contactPhone'],
+                ),
+                canCall: _readString(
+                  profile['phone'] ?? profile['contactPhone'],
+                ).isNotEmpty,
               );
             })
             .whereType<MobilePersonCard>()

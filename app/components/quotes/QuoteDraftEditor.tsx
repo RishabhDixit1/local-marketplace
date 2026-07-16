@@ -209,8 +209,8 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
   const canEdit = Boolean(context?.canEdit);
   const panelToneClassName =
     surface === "chat"
-      ? "border-sky-200 bg-white/95 shadow-[0_18px_48px_-36px_rgba(var(--shadow-rgb),0.55)]"
-      : "border-slate-200 bg-white shadow-[0_18px_48px_-38px_rgba(var(--shadow-rgb),0.28)]";
+      ? "border-sky-200 bg-white/95 shadow-[0_18px_48px_-36px_rgba(var(--shadow-rgb),0.55)] dark:border-sky-800 dark:bg-gray-800/95"
+      : "border-slate-200 bg-white shadow-[0_18px_48px_-38px_rgba(var(--shadow-rgb),0.28)] dark:border-gray-700 dark:bg-gray-800";
 
   const saveCurrentDraft = async (intent: "save" | "send") => {
     if (!context) return;
@@ -320,7 +320,7 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
   if (loading) {
     return (
       <div className={`rounded-[1.6rem] border p-5 ${panelToneClassName}`}>
-        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-gray-400">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading quote workspace...
         </div>
@@ -332,12 +332,12 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
     <section ref={containerRef} className={`rounded-[1.6rem] border p-5 sm:p-6 ${panelToneClassName}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
+          <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:border-sky-800 dark:bg-sky-900/30 dark:text-sky-300">
             <Receipt className="h-3.5 w-3.5" />
             Quote Flow
           </div>
-          <h3 className="mt-3 text-lg font-semibold text-slate-950">Review scope and send the quote</h3>
-          <p className="mt-1 text-sm text-slate-600">
+          <h3 className="mt-3 text-lg font-semibold text-slate-950 dark:text-gray-100">Review scope and send the quote</h3>
+          <p className="mt-1 text-sm text-slate-600 dark:text-gray-400">
             {context
               ? `For ${context.counterpartyName} on ${context.taskTitle}. Keep it clear, line-itemed, and easy to approve.`
               : "Prepare the quote, save your draft, and send when it is ready."}
@@ -346,12 +346,12 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
 
         <div className="flex flex-wrap items-center gap-2">
           {context?.currentStatus ? (
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
               {context.currentStatus.replace(/_/g, " ")}
             </span>
           ) : null}
           {context?.suggestedAmount ? (
-            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
               Suggested {formatCurrency(context.suggestedAmount)}
             </span>
           ) : null}
@@ -359,7 +359,7 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
             <button
               type="button"
               onClick={handleGenerate}
-              className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 transition hover:bg-violet-100"
+              className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-900/30 dark:text-violet-300 dark:hover:bg-violet-900/50"
             >
               <Sparkles className="h-3.5 w-3.5" />
               Generate draft
@@ -369,11 +369,11 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
       </div>
 
       {errorMessage ? (
-        <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
+        <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-300">{errorMessage}</div>
       ) : null}
 
       {successMessage ? (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
           {successMessage}
         </div>
       ) : null}
@@ -384,47 +384,47 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
         <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2 text-sm">
-              <span className="font-semibold text-slate-800">Quote summary</span>
+              <span className="font-semibold text-slate-800 dark:text-gray-200">Quote summary</span>
               <input
                 value={summary}
                 onChange={(event) => setSummary(event.target.value)}
                 disabled={!canEdit}
                 maxLength={120}
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:disabled:bg-gray-700 dark:disabled:text-gray-500"
                 placeholder="What is this quote for?"
               />
             </label>
 
             <label className="space-y-2 text-sm">
-              <span className="font-semibold text-slate-800">Valid until</span>
+              <span className="font-semibold text-slate-800 dark:text-gray-200">Valid until</span>
               <input
                 type="date"
                 value={expiresAt}
                 onChange={(event) => setExpiresAt(event.target.value)}
                 disabled={!canEdit}
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:disabled:bg-gray-700 dark:disabled:text-gray-500"
               />
             </label>
           </div>
 
           <label className="space-y-2 text-sm">
-            <span className="font-semibold text-slate-800">Notes</span>
+            <span className="font-semibold text-slate-800 dark:text-gray-200">Notes</span>
             <textarea
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               disabled={!canEdit}
               rows={3}
               maxLength={600}
-              className="w-full rounded-[1.4rem] border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
+              className="w-full rounded-[1.4rem] border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:disabled:bg-gray-700 dark:disabled:text-gray-500"
               placeholder="Timelines, assumptions, what is included, or what needs approval."
             />
           </label>
 
-          <div className="rounded-[1.45rem] border border-slate-200 bg-slate-50/80 p-4">
+          <div className="rounded-[1.45rem] border border-slate-200 bg-slate-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/80">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-sm font-semibold text-slate-900">Line items</p>
-                <p className="text-xs text-slate-500">Break the quote into clean, approval-friendly scope items.</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-gray-100">Line items</p>
+                <p className="text-xs text-slate-500 dark:text-gray-400">Break the quote into clean, approval-friendly scope items.</p>
               </div>
               {canEdit ? (
                 <button
@@ -441,7 +441,7 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
                       },
                     ])
                   }
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-sky-300 hover:text-sky-700"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-sky-300 hover:text-sky-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-sky-700 dark:hover:text-sky-300"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Add item
@@ -456,7 +456,7 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
                 const amount = Number.isFinite(quantity * unitPrice) ? quantity * unitPrice : 0;
 
                 return (
-                  <div key={item.id} className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
+                  <div key={item.id} className="rounded-[1.25rem] border border-slate-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                     <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_110px_140px_auto]">
                       <div className="space-y-3">
                         <input
@@ -470,7 +470,7 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
                           }
                           disabled={!canEdit}
                           maxLength={80}
-                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
+                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:disabled:bg-gray-700 dark:disabled:text-gray-500"
                           placeholder={`Line item ${index + 1}`}
                         />
                         <textarea
@@ -485,7 +485,7 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
                           disabled={!canEdit}
                           rows={2}
                           maxLength={240}
-                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
+                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:disabled:bg-gray-700 dark:disabled:text-gray-500"
                           placeholder="Optional detail or deliverable note"
                         />
                       </div>
@@ -503,7 +503,7 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
                           )
                         }
                         disabled={!canEdit}
-                        className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:disabled:bg-gray-700 dark:disabled:text-gray-500"
                         placeholder="Qty"
                       />
 
@@ -520,12 +520,12 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
                           )
                         }
                         disabled={!canEdit}
-                        className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:disabled:bg-gray-700 dark:disabled:text-gray-500"
                         placeholder="Unit price"
                       />
 
                       <div className="flex items-start justify-between gap-2 lg:flex-col lg:items-end">
-                        <div className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
+                        <div className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 dark:bg-gray-700 dark:text-gray-300">
                           {formatCurrency(amount)}
                         </div>
                         {canEdit ? (
@@ -535,7 +535,7 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
                               setLineItems((current) => (current.length === 1 ? current : current.filter((entry) => entry.id !== item.id)))
                             }
                             disabled={lineItems.length === 1}
-                            className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/50"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                             Remove
@@ -551,20 +551,20 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
         </div>
 
         <aside className="space-y-4">
-          <div className="rounded-[1.45rem] border border-slate-200 bg-slate-50/80 p-4">
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+          <div className="rounded-[1.45rem] border border-slate-200 bg-slate-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/80">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
               <FileText className="h-3.5 w-3.5" />
               Quote totals
             </div>
 
             <div className="mt-4 space-y-3 text-sm">
-              <div className="flex items-center justify-between gap-3 text-slate-600">
+              <div className="flex items-center justify-between gap-3 text-slate-600 dark:text-gray-400">
                 <span>Subtotal</span>
-                <span className="font-semibold text-slate-900">{formatCurrency(totals.subtotal)}</span>
+                <span className="font-semibold text-slate-900 dark:text-gray-100">{formatCurrency(totals.subtotal)}</span>
               </div>
 
               <label className="space-y-2">
-                <span className="block font-medium text-slate-700">Tax or fees</span>
+                <span className="block font-medium text-slate-700 dark:text-gray-300">Tax or fees</span>
                 <input
                   type="number"
                   min="0"
@@ -572,29 +572,29 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
                   value={taxAmount}
                   onChange={(event) => setTaxAmount(event.target.value)}
                   disabled={!canEdit}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:disabled:bg-gray-700 dark:disabled:text-gray-500"
                 />
               </label>
 
-              <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
+              <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-slate-700">Total</span>
-                  <span className="text-lg font-semibold text-slate-950">{formatCurrency(totals.total)}</span>
+                  <span className="text-sm font-semibold text-slate-700 dark:text-gray-300">Total</span>
+                  <span className="text-lg font-semibold text-slate-950 dark:text-gray-100">{formatCurrency(totals.total)}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="rounded-[1.45rem] border border-slate-200 bg-white p-4">
-            <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+          <div className="rounded-[1.45rem] border border-slate-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+            <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
               <DollarSign className="h-3.5 w-3.5" />
               Approval ready
             </div>
 
-            <div className="mt-4 space-y-3 text-sm text-slate-600">
+            <div className="mt-4 space-y-3 text-sm text-slate-600 dark:text-gray-400">
               <p>Keep the scope plain-language, the numbers clean, and the expiry explicit so the customer can say yes quickly.</p>
               {context?.locationLabel ? (
-                <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+                <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                   Location: {context.locationLabel}
                 </p>
               ) : null}
@@ -605,7 +605,7 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
                 type="button"
                 onClick={() => void saveCurrentDraft("save")}
                 disabled={!canEdit || saving || sending}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-sky-700 dark:hover:text-sky-300"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
                 {saving ? "Saving draft..." : "Save draft"}
@@ -615,7 +615,7 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
                 type="button"
                 onClick={() => void saveCurrentDraft("send")}
                 disabled={!canEdit || saving || sending}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-sky-600 dark:hover:bg-sky-700"
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 {sending ? "Sending quote..." : "Send quote"}
@@ -625,7 +625,7 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
                 <button
                   type="button"
                   onClick={onOpenChat}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-900/30 dark:text-sky-300 dark:hover:bg-sky-900/50"
                 >
                   <MessageCircle className="h-4 w-4" />
                   Continue in chat
@@ -649,16 +649,16 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
                     type="button"
                     onClick={onReject}
                     disabled={accepting}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/50"
                   >
                     <XCircle className="h-4 w-4" />
                     Reject or request changes
                   </button>
                 )}
-                <p className="text-xs text-slate-500 text-center">Accepting will notify the provider and move the job into active work.</p>
+                <p className="text-xs text-slate-500 dark:text-gray-400 text-center">Accepting will notify the provider and move the job into active work.</p>
               </div>
             ) : !canEdit ? (
-              <p className="mt-4 text-xs text-slate-500">This quote is view-only here. The assigned provider controls edits and sending.</p>
+              <p className="mt-4 text-xs text-slate-500 dark:text-gray-400">This quote is view-only here. The assigned provider controls edits and sending.</p>
             ) : null}
           </div>
         </aside>

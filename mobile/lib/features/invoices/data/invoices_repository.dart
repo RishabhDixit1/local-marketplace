@@ -26,4 +26,32 @@ class InvoicesRepository {
         .map(InvoiceRecord.fromJson)
         .toList();
   }
+
+  Future<InvoiceDetail> fetchInvoice({String? invoiceId, String? orderId}) async {
+    final params = <String, String>{};
+    if (invoiceId != null) params['invoiceId'] = invoiceId;
+    if (orderId != null) params['orderId'] = orderId;
+
+    final payload = await _apiClient.getJson(
+      '/api/invoices',
+      queryParameters: params,
+    );
+
+    final invoice = payload['invoice'];
+    if (invoice is! Map<String, dynamic>) {
+      throw Exception('Invoice not found.');
+    }
+    return InvoiceDetail.fromJson(invoice);
+  }
+
+  Future<InvoiceGenerateResult> generateInvoice(String orderId) async {
+    final payload = await _apiClient.postJson(
+      '/api/invoices/generate',
+      body: {'orderId': orderId},
+    );
+    return InvoiceGenerateResult(
+      invoiceId: payload['invoiceId'] as String? ?? '',
+      invoiceNumber: payload['invoiceNumber'] as String? ?? '',
+    );
+  }
 }

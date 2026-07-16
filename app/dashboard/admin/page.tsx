@@ -80,11 +80,12 @@ type SystemHealth = {
   summary: { total: number; present: number; missing: number };
 };
 
-type TabId = "overview" | "reports" | "users" | "providers" | "orders" | "system" | "disputes" | "verifications" | "payouts";
+type TabId = "overview" | "reports" | "listings" | "users" | "providers" | "orders" | "system" | "disputes" | "verifications" | "payouts";
 
 const TAB_LABELS: Record<TabId, string> = {
   overview: "Overview",
   reports: "Reports",
+  listings: "Listings",
   users: "Users",
   providers: "Providers",
   orders: "Orders",
@@ -116,6 +117,10 @@ export default function AdminPage() {
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [disputes, setDisputes] = useState<DisputeRow[]>([]);
   const [verifications, setVerifications] = useState<Record<string, unknown>[]>([]);
+
+  const [listings, setListings] = useState<Record<string, unknown>[]>([]);
+  const [listingsTable, setListingsTable] = useState<"posts" | "service_listings" | "product_catalog">("posts");
+  const [listingsFilter, setListingsFilter] = useState<"all" | "flagged" | "removed">("all");
 
   const [orders, setOrders] = useState<Record<string, unknown>[]>([]);
   const [userQuery, setUserQuery] = useState("");
@@ -176,6 +181,13 @@ export default function AdminPage() {
     if (data) setVerifications(data.verifications);
   }, []);
 
+  const fetchListings = useCallback(async (table?: string, filter?: string) => {
+    const t = table || listingsTable;
+    const f = filter || listingsFilter;
+    const data = await tryFetch<{ listings: Record<string, unknown>[] }>(`/api/admin/listings?table=${t}&filter=${f}&limit=50`);
+    if (data) setListings(data.listings);
+  }, [listingsTable, listingsFilter]);
+
   const fetchOrders = useCallback(async (overrides?: {
     status?: string; deliveryStatus?: string; providerId?: string;
     from?: string; to?: string;
@@ -210,7 +222,8 @@ export default function AdminPage() {
     void fetchDisputes();
     void fetchSystem();
     void fetchVerifications();
-  }, [isAdmin, fetchStats, fetchReports, fetchOrders, fetchProviders, fetchDisputes, fetchSystem, fetchVerifications]);
+    void fetchListings();
+  }, [isAdmin, fetchStats, fetchReports, fetchOrders, fetchProviders, fetchDisputes, fetchSystem, fetchVerifications, fetchListings]);
 
   const handleDismiss = async (id: string) => {
     setBusyId(id);
@@ -267,6 +280,26 @@ export default function AdminPage() {
       }
     } catch {
       setError(`Failed to ${action}.`);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleListingModeration = async (id: string, table: string, action: "flag" | "unflag" | "remove" | "restore", reason?: string) => {
+    setBusyId(`${id}_${action}`);
+    setError("");
+    try {
+      const json = await fetchAuthedJson<{ ok: boolean; message?: string }>(supabase, "/api/admin/listings", {
+        method: "PATCH",
+        body: JSON.stringify({ id, table, action, reason }),
+      });
+      if (json?.ok) {
+        await fetchListings();
+      } else {
+        setError(json?.message || `Failed to ${action} listing.`);
+      }
+    } catch {
+      setError(`Failed to ${action} listing.`);
     } finally {
       setBusyId(null);
     }
@@ -525,6 +558,134 @@ export default function AdminPage() {
               </div>
             );
           })
+          )}
+        </div>
+      ) : null}
+
+      {activeTab === "listings" ? (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={listingsTable}
+              onChange={(e) => {
+                const t = e.target.value as typeof listingsTable;
+                setListingsTable(t);
+                void fetchListings(t, listingsFilter);
+              }}
+              className="rounded-lg border border-[var(--surface-border)] px-3 py-1.5 text-xs font-medium text-[var(--ink-700)]"
+            >
+              <option value="posts">Posts</option>
+              <option value="service_listings">Service Listings</option>
+              <option value="product_catalog">Product Catalog</option>
+            </select>
+            <select
+              value={listingsFilter}
+              onChange={(e) => {
+                const f = e.target.value as typeof listingsFilter;
+                setListingsFilter(f);
+                void fetchListings(listingsTable, f);
+              }}
+              className="rounded-lg border border-[var(--surface-border)] px-3 py-1.5 text-xs font-medium text-[var(--ink-700)]"
+            >
+              <option value="all">All</option>
+              <option value="flagged">Flagged</option>
+              <option value="removed">Removed</option>
+            </select>
+            <span className="text-sm text-[var(--ink-500)]">
+              {listings.length} listing{listings.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          {listings.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] p-8 text-center text-sm text-[var(--ink-500)]">
+              No listings match the current filter.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-[var(--surface-border)]">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--surface-border)] bg-[var(--surface-soft)]">
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Title</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Owner</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Category</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Status</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Created</th>
+                    <th className="px-4 py-3 font-semibold text-[var(--ink-700)]">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {listings.map((item) => {
+                    const id = item.id as string;
+                    const title = (item.title || item.name || "—") as string;
+                    const owner = (item.provider_id || item.user_id || item.author_id || item.created_by || "—") as string;
+                    const category = (item.category || "—") as string;
+                    const isFlagged = item.is_flagged === true;
+                    const isRemoved = item.removed_at != null;
+                    return (
+                      <tr key={id} className="border-b border-slate-100 last:border-0">
+                        <td className="max-w-[200px] truncate px-4 py-3 font-medium text-[var(--ink-950)]">{title}</td>
+                        <td className="max-w-[120px] truncate px-4 py-3 font-mono text-xs text-[var(--ink-500)]">{owner}</td>
+                        <td className="px-4 py-3 text-[var(--ink-700)]">{category}</td>
+                        <td className="px-4 py-3">
+                          {isRemoved ? (
+                            <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">Removed</span>
+                          ) : isFlagged ? (
+                            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Flagged</span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Active</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-[var(--ink-500)]">{formatDate(item.created_at as string | null)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            {isRemoved ? (
+                              <button
+                                type="button"
+                                disabled={busyId === `${id}_restore`}
+                                onClick={() => void handleListingModeration(id, listingsTable, "restore")}
+                                className="inline-flex items-center gap-1 rounded-full border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
+                              >
+                                {busyId === `${id}_restore` ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                                Restore
+                              </button>
+                            ) : isFlagged ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={busyId === `${id}_remove`}
+                                  onClick={() => void handleListingModeration(id, listingsTable, "remove")}
+                                  className="inline-flex items-center gap-1 rounded-full border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
+                                >
+                                  {busyId === `${id}_remove` ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
+                                  Remove
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busyId === `${id}_unflag`}
+                                  onClick={() => void handleListingModeration(id, listingsTable, "unflag")}
+                                  className="inline-flex items-center gap-1 rounded-full border border-[var(--surface-border)] px-2 py-1 text-xs font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
+                                >
+                                  Unflag
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={busyId === `${id}_flag`}
+                                onClick={() => void handleListingModeration(id, listingsTable, "flag", "Flagged by admin")}
+                                className="inline-flex items-center gap-1 rounded-full border border-amber-200 px-2 py-1 text-xs font-semibold text-amber-700 transition hover:bg-amber-50 disabled:opacity-50"
+                              >
+                                {busyId === `${id}_flag` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Flag className="h-3 w-3" />}
+                                Flag
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       ) : null}

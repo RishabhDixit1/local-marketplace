@@ -63,12 +63,10 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
         elevation: 0,
       ),
       body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF7F8F4), Color(0xFFE6F7F4), Color(0xFFFFF7E8)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomRight,
-          ),
+        decoration: BoxDecoration(
+          gradient: Theme.of(context)
+              .extension<ServiqThemeTokens>()!
+              .authGradient,
         ),
         child: SafeArea(
           child: Center(

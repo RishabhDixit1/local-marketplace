@@ -55,9 +55,9 @@ class OfflineSyncManager {
     final client = _ref.read(mobileApiClientProvider);
     switch (op.type) {
       case OfflineOperationType.sendMessage:
-        await client.postJson('/api/chat/send', body: op.payload);
+        await client.postJson('/api/chat/messages', body: op.payload);
       case OfflineOperationType.createNeed:
-        await client.postJson('/api/listings', body: op.payload);
+        await client.postJson('/api/needs/publish', body: op.payload);
       case OfflineOperationType.updateTask:
         await client.patchJson(
           '/api/tasks/${op.payload['taskId']}',

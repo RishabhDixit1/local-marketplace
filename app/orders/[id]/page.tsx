@@ -256,7 +256,7 @@ export default function OrderStatusPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f4f2ee]">
+      <div className="flex min-h-screen items-center justify-center bg-[#f4f2ee] dark:bg-slate-900">
         <Loader2 className="h-8 w-8 animate-spin text-[var(--ink-500)]" />
       </div>
     );
@@ -264,7 +264,7 @@ export default function OrderStatusPage() {
 
   if (!order) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#f4f2ee] gap-4 px-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#f4f2ee] dark:bg-slate-900 gap-4 px-4">
         <XCircle className="h-12 w-12 text-rose-400" />
         <p className="font-semibold text-[var(--ink-700)]">Order not found or access denied.</p>
         <Link href="/dashboard/tasks" className="text-sm font-medium text-blue-600 hover:underline">Back to tasks</Link>
@@ -305,7 +305,7 @@ export default function OrderStatusPage() {
   const timelineIdx = TIMELINE.indexOf(status);
 
   return (
-    <div className="min-h-screen bg-[#f4f2ee]">
+    <div className="min-h-screen bg-[#f4f2ee] dark:bg-slate-900">
       <PageMeta title={order ? `Order #${order.id.slice(0, 8)}` : "Order"} path={`/orders/${id}`} />
       {/* Top bar */}
       <div className="sticky top-0 z-40 border-b border-[var(--surface-border)] bg-[var(--surface-elevated)]/90 backdrop-blur-sm">
@@ -569,10 +569,10 @@ export default function OrderStatusPage() {
               }}
               className="space-y-3"
             >
-              <input name="driverName" placeholder="Driver name" className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
-              <input name="driverPhone" placeholder="Driver phone" className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
-              <input name="trackingNumber" placeholder="Tracking number" className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
-              <input name="carrier" placeholder="Carrier (e.g. Delhivery, Shadowfax)" className="w-full rounded-xl border border-[var(--surface-border)] px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+              <input name="driverName" placeholder="Driver name" className="w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] dark:text-white px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+              <input name="driverPhone" placeholder="Driver phone" className="w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] dark:text-white px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+              <input name="trackingNumber" placeholder="Tracking number" className="w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] dark:text-white px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+              <input name="carrier" placeholder="Carrier (e.g. Delhivery, Shadowfax)" className="w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] dark:text-white px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
               <button type="submit" disabled={busy} className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2">
                 {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : <>Start Delivery</>}
               </button>

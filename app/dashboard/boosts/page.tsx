@@ -129,29 +129,29 @@ export default function BoostsPage() {
           <Zap className="w-6 h-6 text-amber-500" />
           Boost Promotions
         </h1>
-        <p className="text-gray-600 mt-1">
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
           Get featured in search results. Premium plan includes up to 10 active boosts.
         </p>
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
+        <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg text-sm">{error}</div>
       )}
 
       {data && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {Object.entries(data.plans).map(([duration, plan]) => (
-              <div key={duration} className="border rounded-xl p-6 flex flex-col">
+              <div key={duration} className="border dark:border-gray-700 rounded-xl p-6 flex flex-col">
                 <h3 className="text-lg font-semibold">{plan.label}</h3>
                 <p className="text-3xl font-bold mt-2">
                   ₹{plan.pricePaise / 100}
                 </p>
-                <p className="text-sm text-gray-500 mt-1">one-time payment</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">one-time payment</p>
                 <button
                   onClick={() => handlePurchase(duration)}
                   disabled={purchasing === duration}
-                  className="mt-4 w-full bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                  className="mt-4 w-full bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                 >
                   {purchasing === duration ? "Processing..." : "Boost Now"}
                 </button>
@@ -159,7 +159,7 @@ export default function BoostsPage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-4 py-3 rounded-lg">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-4 py-3 rounded-lg">
             <Crown className="w-4 h-4 text-amber-500" />
             <span>
               Remaining boost slots: <strong>{data.remainingBoosts}</strong> / 10
@@ -174,14 +174,14 @@ export default function BoostsPage() {
               </h2>
               <div className="space-y-2">
                 {data.active.map((p) => (
-                  <div key={p.id} className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center justify-between">
+                  <div key={p.id} className="bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800 rounded-lg px-4 py-3 flex items-center justify-between">
                     <div>
                       <p className="font-medium text-sm">{p.placement_type}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         Until {new Date(p.ends_at).toLocaleDateString()}
                       </p>
                     </div>
-                    <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded">Active</span>
+                    <span className="text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/40 px-2 py-1 rounded">Active</span>
                   </div>
                 ))}
               </div>
@@ -195,10 +195,10 @@ export default function BoostsPage() {
               </h2>
               <div className="space-y-2">
                 {data.upcoming.map((p) => (
-                  <div key={p.id} className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center justify-between">
+                  <div key={p.id} className="bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 rounded-lg px-4 py-3 flex items-center justify-between">
                     <div>
                       <p className="font-medium text-sm">Starts {new Date(p.starts_at).toLocaleDateString()}</p>
-                      <p className="text-xs text-gray-500">Until {new Date(p.ends_at).toLocaleDateString()}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Until {new Date(p.ends_at).toLocaleDateString()}</p>
                     </div>
                   </div>
                 ))}
@@ -213,7 +213,7 @@ export default function BoostsPage() {
               </h2>
               <div className="space-y-1">
                 {data.expired.slice(0, 5).map((p) => (
-                  <div key={p.id} className="text-sm text-gray-500 px-4 py-2">
+                  <div key={p.id} className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2">
                     {new Date(p.starts_at).toLocaleDateString()} – {new Date(p.ends_at).toLocaleDateString()} · ₹{p.price_paise / 100}
                   </div>
                 ))}

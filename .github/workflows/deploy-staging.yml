@@ -91,30 +91,10 @@ jobs:
 
             cd /home/ec2-user/serviq-staging
 
-            # Create .env.staging from secrets
-            cat > .env.staging << 'ENVEOF'
-            NODE_ENV=production
-            SUPABASE_URL=${{ secrets.STAGING_SUPABASE_URL }}
-            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
-            RAZORPAY_WEBHOOK_SECRET=${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
-            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_URL }}
-            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-            NEXT_PUBLIC_SITE_URL=${{ secrets.STAGING_NEXT_PUBLIC_SITE_URL }}
-            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
-            BACKUP_EMAIL_API_KEY=${{ secrets.BACKUP_EMAIL_API_KEY }}
-            SENTRY_DSN=${{ secrets.SENTRY_DSN }}
-            RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
-            RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
-            SERVIQ_INTERNAL_PUSH_KEY=${{ secrets.SERVIQ_INTERNAL_PUSH_KEY }}
-            VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}
-            VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
-            VAPID_EMAIL=${{ secrets.VAPID_EMAIL }}
-            FIREBASE_PROJECT_ID=${{ secrets.STAGING_FIREBASE_PROJECT_ID }}
-            FIREBASE_SERVICE_ACCOUNT_JSON=${{ secrets.STAGING_FIREBASE_SERVICE_ACCOUNT_JSON }}
-            ENVEOF
-
             docker system prune -f --all 2>/dev/null || true
+
+            # Remove any previously written .env.staging (credentials now injected via -e flags)
+            rm -f /home/ec2-user/serviq-staging/.env.staging 2>/dev/null || true
 
             gzip -d -f serviq-staging-docker.tar.gz
             docker load -i serviq-staging-docker.tar
@@ -128,7 +108,25 @@ jobs:
               --name serviq-staging \
               --restart unless-stopped \
               -p 3001:3000 \
-              --env-file .env.staging \
+              -e NODE_ENV=production \
+              -e SUPABASE_URL=${{ secrets.STAGING_SUPABASE_URL }} \
+              -e SUPABASE_SERVICE_ROLE_KEY=${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }} \
+              -e RAZORPAY_WEBHOOK_SECRET=${{ secrets.RAZORPAY_WEBHOOK_SECRET }} \
+              -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+              -e NEXT_PUBLIC_SUPABASE_URL=${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_URL }} \
+              -e NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY }} \
+              -e NEXT_PUBLIC_SITE_URL=${{ secrets.STAGING_NEXT_PUBLIC_SITE_URL }} \
+              -e RESEND_API_KEY=${{ secrets.RESEND_API_KEY }} \
+              -e BACKUP_EMAIL_API_KEY=${{ secrets.BACKUP_EMAIL_API_KEY }} \
+              -e SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
+              -e RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }} \
+              -e RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }} \
+              -e SERVIQ_INTERNAL_PUSH_KEY=${{ secrets.SERVIQ_INTERNAL_PUSH_KEY }} \
+              -e VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }} \
+              -e VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }} \
+              -e VAPID_EMAIL=${{ secrets.VAPID_EMAIL }} \
+              -e FIREBASE_PROJECT_ID=${{ secrets.STAGING_FIREBASE_PROJECT_ID }} \
+              -e FIREBASE_SERVICE_ACCOUNT_JSON=${{ secrets.STAGING_FIREBASE_SERVICE_ACCOUNT_JSON }} \
               serviq:staging
 
             sleep 2

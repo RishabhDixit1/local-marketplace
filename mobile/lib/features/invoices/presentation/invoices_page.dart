@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/design_tokens.dart';
@@ -125,53 +127,57 @@ class _InvoiceTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final fmt = DateFormat('d MMM yyyy');
     return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => context.push(AppRoutes.invoiceDetail(invoice.id)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    invoice.invoiceNumber,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                _StatusChip(status: invoice.status),
+              ],
+            ),
+            const SizedBox(height: 6),
+            if (invoice.serviceLabel != null && invoice.serviceLabel!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
                 child: Text(
-                  invoice.invoiceNumber,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+                  invoice.serviceLabel!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.inkSubtle,
                   ),
                 ),
               ),
-              _StatusChip(status: invoice.status),
-            ],
-          ),
-          const SizedBox(height: 6),
-          if (invoice.serviceLabel != null && invoice.serviceLabel!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                invoice.serviceLabel!,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.inkSubtle,
+            Row(
+              children: [
+                Icon(Icons.calendar_today_rounded, size: 12, color: AppColors.inkFaint),
+                const SizedBox(width: 4),
+                Text(
+                  fmt.format(invoice.invoiceDate),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.inkSubtle,
+                  ),
                 ),
-              ),
+                const Spacer(),
+                Text(
+                  invoice.amountLabel,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-          Row(
-            children: [
-              Icon(Icons.calendar_today_rounded, size: 12, color: AppColors.inkFaint),
-              const SizedBox(width: 4),
-              Text(
-                fmt.format(invoice.invoiceDate),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.inkSubtle,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                invoice.amountLabel,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

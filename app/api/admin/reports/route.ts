@@ -57,7 +57,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, code: "CONFIG", message: "No DB client." }, { status: 500 });
   }
 
-  let body: { id: string; action: "dismiss" | "snooze" | "remove_content" | "suspend_user" };
+  let body: { id: string; action: "dismiss" | "snooze" | "remove_content" | "suspend_user" | "unsuspend_user"; userId?: string };
   try {
     body = await request.json();
   } catch {
@@ -79,17 +79,40 @@ export async function PATCH(request: Request) {
   if (body.action === "remove_content" || body.action === "suspend_user") {
     const { data: report } = await db
       .from("feed_card_feedback")
-      .select("metadata")
+      .select("metadata, user_id")
       .eq("id", body.id)
-      .maybeSingle<{ metadata: Record<string, unknown> | null }>();
+      .maybeSingle<{ metadata: Record<string, unknown> | null; user_id: string | null }>();
     if (!report) {
       return NextResponse.json({ ok: false, code: "NOT_FOUND", message: "Report not found." }, { status: 404 });
     }
     const adminAction = body.action === "remove_content" ? "content_removed" : "user_suspended";
+
+    // If suspending the user, actually set the suspension flag on their profile
+    if (body.action === "suspend_user" && report.user_id) {
+      await db.from("profiles").update({
+        is_suspended: true,
+        suspended_at: new Date().toISOString(),
+        suspended_reason: `Suspended via report ${body.id}`,
+      }).eq("id", report.user_id);
+    }
+
     await db.from("feed_card_feedback").update({
       metadata: { ...(report.metadata ?? {}), admin_action: adminAction, resolved_at: new Date().toISOString() },
     }).eq("id", body.id);
     return NextResponse.json({ ok: true, action: adminAction });
+  }
+
+  if (body.action === "unsuspend_user") {
+    const userId = body.userId;
+    if (!userId) {
+      return NextResponse.json({ ok: false, code: "INVALID_PAYLOAD", message: "userId is required for unsuspend." }, { status: 400 });
+    }
+    await db.from("profiles").update({
+      is_suspended: false,
+      suspended_at: null,
+      suspended_reason: null,
+    }).eq("id", userId);
+    return NextResponse.json({ ok: true, action: "unsuspended" });
   }
 
   return NextResponse.json({ ok: false, code: "INVALID_PAYLOAD", message: "Unsupported action." }, { status: 400 });

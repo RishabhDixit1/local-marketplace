@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/design_tokens.dart';
+
 class Booking {
   const Booking({
     required this.id,
@@ -78,33 +80,35 @@ class Booking {
       ? 'Order #${orderId.length > 8 ? orderId.substring(0, 8) : orderId}'
       : orderTitle!;
 
-  Color get statusColor {
+  Color statusColor({Brightness brightness = Brightness.light}) {
+    final isDark = brightness == Brightness.dark;
     switch (status) {
       case 'confirmed':
-        return const Color(0xFF0F766E);
+        return isDark ? AppColors.primary : AppColors.primary;
       case 'completed':
-        return const Color(0xFF158463);
+        return isDark ? AppColors.success : AppColors.success;
       case 'cancelled':
-        return const Color(0xFFC2415A);
+        return isDark ? AppColors.danger : AppColors.danger;
       case 'rescheduled':
-        return const Color(0xFFAD6B00);
+        return isDark ? AppColors.warning : AppColors.warning;
       default:
-        return const Color(0xFF55616B);
+        return isDark ? AppColors.darkInkSubtle : AppColors.inkSubtle;
     }
   }
 
-  Color get statusBgColor {
+  Color statusBgColor({Brightness brightness = Brightness.light}) {
+    final isDark = brightness == Brightness.dark;
     switch (status) {
       case 'confirmed':
-        return const Color(0xFFCCFBF1);
+        return isDark ? const Color(0xFF0D2E2A) : AppColors.primarySoft;
       case 'completed':
-        return const Color(0xFFE2F6EE);
+        return isDark ? const Color(0xFF0D2418) : AppColors.successSoft;
       case 'cancelled':
-        return const Color(0xFFFFE6EC);
+        return isDark ? const Color(0xFF2D0F17) : AppColors.dangerSoft;
       case 'rescheduled':
-        return const Color(0xFFFFF4D8);
+        return isDark ? const Color(0xFF2D2008) : AppColors.warningSoft;
       default:
-        return const Color(0xFFF0F3F7);
+        return isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt;
     }
   }
 }

@@ -51,6 +51,7 @@ class ProfileRepository {
     required String website,
     required String avatarUrl,
     required String availability,
+    List<String>? interests,
   }) async {
     final payload = await _apiClient.postJson(
       '/api/profile/save',
@@ -63,6 +64,7 @@ class ProfileRepository {
         website: website,
         avatarUrl: avatarUrl,
         availability: availability,
+        interests: interests,
       ),
     );
     if (payload['ok'] != true) {
@@ -122,6 +124,7 @@ class ProfileRepository {
     String? website,
     String? avatarUrl,
     String? availability,
+    List<String>? interests,
   }) {
     final p = snapshot.profile;
     final role = snapshot.roleFamily == 'provider' ? 'provider' : 'seeker';
@@ -145,7 +148,7 @@ class ProfileRepository {
         'longitude': null,
         'role': role,
         'bio': bio ?? p.bio,
-        'interests': <String>[],
+        'interests': interests ?? <String>[],
         'email': snapshot.email,
         'phone': phone ?? p.phone,
         'website': website ?? p.website,
