@@ -79,10 +79,10 @@ export default function WhatHappensNext({ kind, className = "" }: WhatHappensNex
                 <Icon className="h-3.5 w-3.5 text-[var(--brand-700)]" />
               </span>
               <div className="min-w-0">
-                <span className="text-xs font-semibold text-slate-900">
+                <span className="text-xs font-semibold text-[var(--ink-950)]">
                   {index + 1}. {step.label}
                 </span>
-                <p className="text-xs leading-5 text-slate-500">{step.description}</p>
+                <p className="text-xs leading-5 text-[var(--ink-500)]">{step.description}</p>
               </div>
             </div>
           );

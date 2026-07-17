@@ -319,7 +319,7 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
                 : "border-slate-200 shadow-[0_10px_26px_-22px_rgba(var(--shadow-rgb),0.45)]"
             }`}
           >
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ink-500)]" />
 
             <input
               value={effectivePrompt.value}
@@ -327,14 +327,14 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
               onFocus={showFocusControls}
               onBlur={hideFocusControls}
               placeholder={effectivePrompt.placeholder}
-              className="h-11 w-full bg-transparent px-9 pr-14 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 sm:h-10 sm:pr-16"
+              className="h-11 w-full bg-transparent px-9 pr-14 text-sm font-medium text-[var(--ink-950)] outline-none placeholder:text-[var(--ink-500)] sm:h-10 sm:pr-16"
               aria-label="Dashboard prompt"
             />
 
             <button
               type="submit"
               disabled={submitting}
-              className="absolute right-1.5 top-1/2 inline-flex h-8 -translate-y-1/2 items-center gap-1 rounded-lg bg-slate-900 px-2.5 text-[11px] font-semibold text-white transition hover:bg-slate-800 disabled:opacity-70"
+              className="absolute right-1.5 top-1/2 inline-flex h-8 -translate-y-1/2 items-center gap-1 rounded-lg bg-[var(--ink-950)] px-2.5 text-[11px] font-semibold text-white transition hover:bg-[var(--ink)] disabled:opacity-70"
             >
               <Sparkles size={11} />
               <span className="hidden sm:inline lg:inline">{submitting ? "Working..." : "Search"}</span>
@@ -421,7 +421,7 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
           }`}
         >
           <div className="pointer-events-none absolute inset-y-0 left-0 w-14 bg-gradient-to-r from-slate-100/90 to-transparent" />
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--ink-500)]" />
 
           <input
             value={effectivePrompt.value}
@@ -429,14 +429,14 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
             onFocus={showFocusControls}
             onBlur={hideFocusControls}
             placeholder={effectivePrompt.placeholder}
-            className="h-12 w-full bg-transparent px-12 pr-24 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 sm:h-14 sm:text-base"
+            className="h-12 w-full bg-transparent px-12 pr-24 text-sm font-medium text-[var(--ink-950)] outline-none placeholder:text-[var(--ink-500)] sm:h-14 sm:text-base"
             aria-label="Dashboard prompt"
           />
 
           <button
             type="submit"
             disabled={submitting}
-            className="absolute right-2 top-1/2 inline-flex min-h-8 -translate-y-1/2 items-center gap-1 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-70"
+            className="absolute right-2 top-1/2 inline-flex min-h-8 -translate-y-1/2 items-center gap-1 rounded-lg bg-[var(--ink-950)] px-3 text-xs font-semibold text-white transition hover:bg-[var(--ink)] disabled:opacity-70"
           >
             <Sparkles size={12} />
             {submitting ? "Working..." : "Search"}

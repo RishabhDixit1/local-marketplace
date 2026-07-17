@@ -229,7 +229,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
                     ? null
                     : () => _requestPayout(availablePoints),
                 child: _requestingPayout
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary))
                     : const Text('Request'),
               ),
             ],

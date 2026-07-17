@@ -87,7 +87,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
             onPressed: controller.text == 'DELETE' ? () => Navigator.pop(ctx, true) : null,
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            child: const Text('Delete'),
           ),
         ],
       ),

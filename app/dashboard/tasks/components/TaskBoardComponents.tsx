@@ -72,17 +72,17 @@ const timelineStateClassNames: Record<TaskTimelineStep["state"], { dot: string; 
   done: {
     dot: "border-emerald-200 bg-emerald-100 text-emerald-700",
     line: "bg-emerald-200",
-    text: "text-slate-700",
+    text: "text-[var(--ink-700)]",
   },
   active: {
     dot: "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]",
     line: "bg-[var(--brand-300)]",
-    text: "text-slate-950",
+    text: "text-[var(--ink-950)]",
   },
   upcoming: {
-    dot: "border-slate-200 bg-white text-slate-400",
+    dot: "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-500)]",
     line: "bg-slate-200",
-    text: "text-slate-500",
+    text: "text-[var(--ink-500)]",
   },
   blocked: {
     dot: "border-amber-200 bg-amber-100 text-amber-700",
@@ -97,7 +97,7 @@ const timelineStateClassNames: Record<TaskTimelineStep["state"], { dot: string; 
 };
 
 const nextActionToneClassNames: Record<NonNullable<NextActionPanelProps["tone"]>, string> = {
-  default: "border-slate-200 bg-slate-50 text-slate-700",
+  default: "border-[var(--surface-border)] bg-[var(--surface-soft)] text-[var(--ink-700)]",
   progress: "border-sky-200 bg-sky-50 text-sky-800",
   success: "border-emerald-200 bg-emerald-50 text-emerald-800",
   warning: "border-amber-200 bg-amber-50 text-amber-900",
@@ -117,7 +117,7 @@ export function TaskStatusTabs({
     <div
       role="tablist"
       aria-label="Task status"
-      className="grid grid-cols-2 gap-1 rounded-[var(--radius-card)] border border-slate-200 bg-slate-100/80 p-1 sm:flex sm:w-fit sm:max-w-full sm:overflow-x-auto"
+      className="grid grid-cols-2 gap-1 rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface-soft)]/80 p-1 sm:flex sm:w-fit sm:max-w-full sm:overflow-x-auto"
     >
       {tabs.map((tab) => {
         const active = selected === tab.value;
@@ -130,14 +130,14 @@ export function TaskStatusTabs({
             onClick={() => onSelect(tab.value)}
             className={`inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-[var(--radius-control)] px-3 text-sm font-semibold transition sm:min-w-[8rem] ${
               active
-                ? "bg-white text-slate-950 shadow-[var(--shadow-soft)]"
-                : "text-slate-500 hover:bg-white/70 hover:text-slate-900"
+                ? "bg-[var(--surface-elevated)] text-[var(--ink-950)] shadow-[var(--shadow-soft)]"
+                : "text-[var(--ink-500)] hover:bg-[var(--surface-elevated)]/70 hover:text-[var(--ink-950)]"
             }`}
           >
             <span className="truncate">{tab.label}</span>
             <span
               className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
-                active ? "bg-[var(--brand-900)] text-white" : "bg-white text-slate-500"
+                active ? "bg-[var(--brand-900)] text-white" : "bg-[var(--surface-elevated)] text-[var(--ink-500)]"
               }`}
             >
               {tabCountLabel(tab.count)}
@@ -173,7 +173,7 @@ export function NextActionPanel({
             type="button"
             onClick={onAction}
             disabled={busy || disabled}
-            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-slate-950 px-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--ink-950)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ActionIcon className="h-4 w-4" />}
             <span className="truncate">{busy ? "Updating..." : actionLabel}</span>
@@ -187,10 +187,10 @@ export function NextActionPanel({
 
 export function TaskTimeline({ steps }: { steps: TaskTimelineStep[] }) {
   return (
-    <div className="rounded-[var(--radius-card)] border border-slate-200 bg-white px-3 py-3">
+    <div className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Timeline</p>
-        <p className="text-xs font-medium text-slate-400">{steps.filter((step) => step.state === "done").length}/{steps.length}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-500)]">Timeline</p>
+        <p className="text-xs font-medium text-[var(--ink-500)]">{steps.filter((step) => step.state === "done").length}/{steps.length}</p>
       </div>
 
       <div className="mt-3 space-y-3">
@@ -211,7 +211,7 @@ export function TaskTimeline({ steps }: { steps: TaskTimelineStep[] }) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className={`text-sm font-semibold leading-5 ${state.text}`}>{step.label}</p>
-                    {step.helper ? <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-500">{step.helper}</p> : null}
+                    {step.helper ? <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-[var(--ink-500)]">{step.helper}</p> : null}
                   </div>
                   {step.action ? (
                     <button
@@ -257,14 +257,14 @@ export function TaskCard({
   setNode,
 }: TaskCardProps) {
   const profileButtonClassName =
-    "truncate text-left text-sm font-semibold text-slate-900 transition hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2";
+    "truncate text-left text-sm font-semibold text-[var(--ink-950)] transition hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2";
 
   return (
     <article
       id={id}
       ref={setNode}
-      className={`relative min-w-0 overflow-hidden rounded-[var(--radius-card-lg)] border bg-white p-3 shadow-[var(--shadow-card)] transition hover:border-slate-300 sm:p-4 ${
-        focused ? "border-[var(--brand-500)] ring-4 ring-[var(--brand-ring)]" : "border-slate-200"
+      className={`relative min-w-0 overflow-hidden rounded-[var(--radius-card-lg)] border bg-[var(--surface-elevated)] p-3 shadow-[var(--shadow-card)] transition hover:border-[var(--border-strong)] sm:p-4 ${
+        focused ? "border-[var(--brand-500)] ring-4 ring-[var(--brand-ring)]" : "border-[var(--surface-border)]"
       }`}
     >
       <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accentClassName}`} />
@@ -273,13 +273,13 @@ export function TaskCard({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             {sourceLabel ? (
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+              <span className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-700)]">
                 {sourceLabel}
               </span>
             ) : null}
             <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusClassName}`}>{statusLabel}</span>
             {referenceLabel ? (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+              <span className="rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-500)]">
                 {referenceLabel}
               </span>
             ) : null}
@@ -297,31 +297,31 @@ export function TaskCard({
                 >
                   {/^(data:image\/|blob:)/i.test(avatarUrl) ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={avatarUrl} alt={avatarAlt} className="h-12 w-12 rounded-[var(--radius-control)] border border-slate-200 object-cover" />
+                    <img src={avatarUrl} alt={avatarAlt} className="h-12 w-12 rounded-[var(--radius-control)] border border-[var(--surface-border)] object-cover" />
                   ) : (
-                    <Image src={avatarUrl} alt={avatarAlt} width={48} height={48} className="h-12 w-12 rounded-[var(--radius-control)] border border-slate-200 object-cover" />
+                    <Image src={avatarUrl} alt={avatarAlt} width={48} height={48} className="h-12 w-12 rounded-[var(--radius-control)] border border-[var(--surface-border)] object-cover" />
                   )}
                 </button>
               ) : (
                 /^(data:image\/|blob:)/i.test(avatarUrl) ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={avatarUrl} alt={avatarAlt} className="h-12 w-12 shrink-0 rounded-[var(--radius-control)] border border-slate-200 object-cover" />
+                  <img src={avatarUrl} alt={avatarAlt} className="h-12 w-12 shrink-0 rounded-[var(--radius-control)] border border-[var(--surface-border)] object-cover" />
                 ) : (
-                  <Image src={avatarUrl} alt={avatarAlt} width={48} height={48} className="h-12 w-12 shrink-0 rounded-[var(--radius-control)] border border-slate-200 object-cover" />
+                  <Image src={avatarUrl} alt={avatarAlt} width={48} height={48} className="h-12 w-12 shrink-0 rounded-[var(--radius-control)] border border-[var(--surface-border)] object-cover" />
                 )
               )}
 
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{ownerSummary}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-500)]">{ownerSummary}</p>
                 {onProfileClick ? (
                   <button type="button" onClick={onProfileClick} className={profileButtonClassName}>
                     {ownerName}
                   </button>
                 ) : (
-                  <p className="truncate text-sm font-semibold text-slate-900">{ownerName}</p>
+                  <p className="truncate text-sm font-semibold text-[var(--ink-950)]">{ownerName}</p>
                 )}
-                <h3 className="mt-1 break-words text-[1.04rem] font-semibold leading-tight text-slate-950 sm:text-lg">{title}</h3>
-                <p className="mt-1.5 line-clamp-2 break-words text-sm leading-6 text-slate-600">{description}</p>
+                <h3 className="mt-1 break-words text-[1.04rem] font-semibold leading-tight text-[var(--ink-950)] sm:text-lg">{title}</h3>
+                <p className="mt-1.5 line-clamp-2 break-words text-sm leading-6 text-[var(--ink-700)]">{description}</p>
               </div>
             </div>
 
@@ -329,9 +329,9 @@ export function TaskCard({
               {meta.map((item) => (
                 <span
                   key={`${id}-${item.label}`}
-                  className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700"
+                  className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--ink-700)]"
                 >
-                  <item.icon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <item.icon className="h-3.5 w-3.5 shrink-0 text-[var(--ink-500)]" />
                   <span className="truncate">{item.label}</span>
                 </span>
               ))}
@@ -343,9 +343,9 @@ export function TaskCard({
           <TaskTimeline steps={timelineSteps} />
         </div>
 
-        {actions ? <div className="border-t border-slate-200 pt-3">{actions}</div> : null}
+        {actions ? <div className="border-t border-[var(--surface-border)] pt-3">{actions}</div> : null}
 
-        {expanded && children ? <div className="rounded-[var(--radius-card)] border border-slate-200 bg-slate-50 p-3 sm:p-4">{children}</div> : null}
+        {expanded && children ? <div className="rounded-[var(--radius-card)] border border-[var(--surface-border)] bg-[var(--surface-soft)] p-3 sm:p-4">{children}</div> : null}
       </div>
     </article>
   );

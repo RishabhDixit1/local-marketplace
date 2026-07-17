@@ -54,11 +54,11 @@ type FeedCardProps = {
 };
 
 const buttonToneClassNames: Record<MarketplaceCardActionButton<MarketplacePrimaryActionKind>["tone"], string> = {
-  primary: "border-slate-900 bg-slate-900 text-white hover:bg-slate-800",
-  secondary: "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white",
-  success: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
-  status: "border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400",
-  destructive: "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
+  primary: "border-[var(--ink-950)] bg-[var(--ink-950)] text-[var(--ink-50)] hover:bg-[var(--ink)]",
+  secondary: "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--border-strong)] hover:text-[var(--ink-950)] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white",
+  success: "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50",
+  status: "border-[var(--surface-border)] bg-[var(--surface-soft)] text-[var(--ink-500)] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400",
+  destructive: "border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50",
 };
 
 const buttonBusyLabels: Record<MarketplacePrimaryActionKind, string> = {

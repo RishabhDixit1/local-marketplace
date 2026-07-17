@@ -36,8 +36,8 @@ const presenceClasses: Record<PresenceTone, string> = {
 const actionButtonClassName =
   "inline-flex w-full min-h-9 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-65 sm:min-h-10 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm";
 
-const primaryActionClassName = `${actionButtonClassName} border border-[#1f6fd1] bg-white text-[#1f6fd1] hover:bg-[#edf5ff]`;
-const secondaryActionClassName = `${actionButtonClassName} border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900`;
+const primaryActionClassName = `${actionButtonClassName} border border-[var(--brand-500)] bg-[var(--surface-elevated)] text-[var(--brand-700)] hover:bg-[var(--brand-50)]`;
+const secondaryActionClassName = `${actionButtonClassName} border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--brand-300)] hover:text-[var(--ink-950)]`;
 
 const ProviderCard = (props: Props) => {
   const {

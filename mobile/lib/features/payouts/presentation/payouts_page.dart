@@ -286,7 +286,7 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
             child: FilledButton(
               onPressed: _submitting ? null : () => _requestPayout(availablePaise),
               child: _submitting
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary))
                   : const Text('Withdraw'),
             ),
           ),
@@ -430,7 +430,7 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
             child: FilledButton(
               onPressed: _addingAccount ? null : _addAccount,
               child: _addingAccount
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary))
                   : const Text('Save account'),
             ),
           ),

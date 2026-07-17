@@ -70,14 +70,14 @@ const contentByMode: Record<MarketplaceJourneyMode, JourneyContent> = {
         title: "Need help",
         description: "Post once, compare replies, and keep status updates in one place.",
         icon: ClipboardList,
-        iconClassName: "bg-slate-900 text-white",
+        iconClassName: "bg-[var(--ink-950)] text-white",
       },
       {
         id: "earn-nearby",
         title: "Earn nearby",
         description: "You can still switch later and start offering services or products too.",
         icon: Store,
-        iconClassName: "bg-white text-slate-900 ring-1 ring-slate-200",
+        iconClassName: "bg-[var(--surface-elevated)] text-[var(--ink-950)] ring-1 ring-[var(--surface-border)]",
       },
     ],
   },
@@ -115,14 +115,14 @@ const contentByMode: Record<MarketplaceJourneyMode, JourneyContent> = {
         title: "Need help",
         description: "You can post your own needs too if you want help from the network.",
         icon: ClipboardList,
-        iconClassName: "bg-white text-slate-900 ring-1 ring-slate-200",
+        iconClassName: "bg-[var(--surface-elevated)] text-[var(--ink-950)] ring-1 ring-[var(--surface-border)]",
       },
       {
         id: "earn-nearby",
         title: "Earn nearby",
         description: "Publish a clear offer, build trust, and turn fast replies into bookings.",
         icon: Store,
-        iconClassName: "bg-slate-900 text-white",
+        iconClassName: "bg-[var(--ink-950)] text-white",
       },
     ],
   },
@@ -160,14 +160,14 @@ const contentByMode: Record<MarketplaceJourneyMode, JourneyContent> = {
         title: "Need help",
         description: "Post local tasks, compare replies, and keep the job moving clearly.",
         icon: ClipboardList,
-        iconClassName: "bg-slate-900 text-white",
+        iconClassName: "bg-[var(--ink-950)] text-white",
       },
       {
         id: "earn-nearby",
         title: "Earn nearby",
         description: "List your services or products, reply fast, and build repeat trust.",
         icon: Store,
-        iconClassName: "bg-slate-900 text-white",
+        iconClassName: "bg-[var(--ink-950)] text-white",
       },
     ],
   },
@@ -188,7 +188,7 @@ export default function MarketplaceJourneyGuide({
 }: MarketplaceJourneyGuideProps) {
   const content = contentByMode[mode];
   const rootClassName = [
-    "rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_50px_-38px_rgba(var(--shadow-rgb),0.55)]",
+    "rounded-[28px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-[0_18px_50px_-38px_rgba(var(--shadow-rgb),0.55)]",
     className,
   ]
     .filter(Boolean)
@@ -200,10 +200,10 @@ export default function MarketplaceJourneyGuide({
         <span className="inline-flex items-center rounded-full bg-[var(--brand-50)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-700)]">
           {content.eyebrow}
         </span>
-        <h2 className={compact ? "mt-3 text-lg font-semibold text-slate-900" : "mt-4 text-[1.65rem] font-semibold text-slate-900"}>
+        <h2 className={compact ? "mt-3 text-lg font-semibold text-[var(--ink-950)]" : "mt-4 text-[1.65rem] font-semibold text-[var(--ink-950)]"}>
           {content.title}
         </h2>
-        <p className={compact ? "mt-2 text-sm leading-6 text-slate-600" : "mt-2.5 text-sm leading-6 text-slate-600 sm:text-[0.95rem]"}>
+        <p className={compact ? "mt-2 text-sm leading-6 text-[var(--ink-700)]" : "mt-2.5 text-sm leading-6 text-[var(--ink-700)] sm:text-[0.95rem]"}>
           {content.description}
         </p>
 
@@ -214,16 +214,16 @@ export default function MarketplaceJourneyGuide({
             return (
               <article
                 key={step.id}
-                className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4"
+                className="rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-soft)]/80 p-4"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl ${step.iconClassName}`}>
                     <StepIcon className="h-5 w-5" />
                   </div>
-                  <span className="text-[11px] font-semibold text-slate-400">0{index + 1}</span>
+                  <span className="text-[11px] font-semibold text-[var(--ink-500)]">0{index + 1}</span>
                 </div>
-                <h3 className="mt-4 text-sm font-semibold text-slate-900">{step.title}</h3>
-                <p className="mt-1.5 text-xs leading-5 text-slate-600">{step.description}</p>
+                <h3 className="mt-4 text-sm font-semibold text-[var(--ink-950)]">{step.title}</h3>
+                <p className="mt-1.5 text-xs leading-5 text-[var(--ink-700)]">{step.description}</p>
               </article>
             );
           })}
@@ -237,15 +237,15 @@ export default function MarketplaceJourneyGuide({
               return (
                 <article
                   key={card.id}
-                  className="rounded-3xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-4"
+                  className="rounded-3xl border border-[var(--surface-border)] bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-4"
                 >
                   <div className="flex items-start gap-3">
                     <div className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl ${card.iconClassName}`}>
                       <CardIcon className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="text-sm font-semibold text-slate-900">{card.title}</h3>
-                      <p className="mt-1 text-xs leading-5 text-slate-600">{card.description}</p>
+                      <h3 className="text-sm font-semibold text-[var(--ink-950)]">{card.title}</h3>
+                      <p className="mt-1 text-xs leading-5 text-[var(--ink-700)]">{card.description}</p>
                     </div>
                   </div>
                 </article>

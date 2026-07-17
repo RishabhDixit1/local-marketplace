@@ -219,7 +219,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
               child: FilledButton.icon(
                 onPressed: _saving ? null : _save,
                 icon: _saving
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary))
                     : const Icon(Icons.save_outlined, size: 16),
                 label: Text(_saving ? 'Saving...' : 'Save Availability'),
               ),

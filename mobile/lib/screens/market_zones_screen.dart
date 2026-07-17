@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/mobile_api_provider.dart';
 import '../core/theme/app_theme.dart';
+import '../core/theme/design_tokens.dart';
+import '../shared/components/loading_shimmer.dart';
 import '../models/locality.dart';
 import 'locality_providers_screen.dart';
 
@@ -126,12 +128,34 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: localitiesAsync.when(
-        loading: () => const SingleChildScrollView(
-          physics: AlwaysScrollableScrollPhysics(),
-          child: Center(
-            child: Padding(
-              padding: EdgeInsets.all(32),
-              child: CircularProgressIndicator(),
+        loading: () => ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.pageInset),
+          itemCount: 4,
+          itemBuilder: (context, index) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadii.lg),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  LoadingShimmer(
+                    height: 14,
+                    width: MediaQuery.of(context).size.width * 0.5,
+                    borderRadius: AppRadii.xs,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  LoadingShimmer(
+                    height: 12,
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    borderRadius: AppRadii.xs,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

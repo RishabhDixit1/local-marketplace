@@ -28,8 +28,8 @@ export default function InterestsChipsInput({
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <label className="text-sm font-semibold text-slate-900">{label}</label>
-        <p className="text-sm leading-6 text-slate-600">{description}</p>
+        <label className="text-sm font-semibold text-[var(--ink-950)]">{label}</label>
+        <p className="text-sm leading-6 text-[var(--ink-700)]">{description}</p>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -43,8 +43,8 @@ export default function InterestsChipsInput({
               onAdd();
             }
           }}
-          className={`min-h-12 flex-1 rounded-2xl border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 ${
-            error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : "border-slate-200"
+          className={`min-h-12 flex-1 rounded-2xl border bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--ink-950)] outline-none transition placeholder:text-[var(--ink-500)] focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 ${
+            error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : "border-[var(--surface-border)]"
           }`}
           placeholder={placeholder}
         />
@@ -61,12 +61,12 @@ export default function InterestsChipsInput({
 
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
-      <div className="flex min-h-14 flex-wrap gap-2 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-3">
+      <div className="flex min-h-14 flex-wrap gap-2 rounded-[24px] border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] p-3">
         {values.length > 0 ? (
           values.map((value) => (
             <span
               key={value}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--ink-950)] shadow-sm"
             >
               <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
               {value}
@@ -74,7 +74,7 @@ export default function InterestsChipsInput({
                 type="button"
                 disabled={disabled}
                 onClick={() => onRemove(value)}
-                className="rounded-full p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-full p-0.5 text-[var(--ink-500)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink-700)]"
                 aria-label={`Remove ${value}`}
               >
                 <X className="h-3.5 w-3.5" />
@@ -82,7 +82,7 @@ export default function InterestsChipsInput({
             </span>
           ))
         ) : (
-          <p className="text-sm text-slate-500">No tags added yet.</p>
+          <p className="text-sm text-[var(--ink-500)]">No tags added yet.</p>
         )}
       </div>
     </div>

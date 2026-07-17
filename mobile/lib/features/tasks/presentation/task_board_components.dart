@@ -95,12 +95,12 @@ class TaskStatusTabs extends StatelessWidget {
                             child: Text(
                               tab.count > 99 ? '99+' : tab.count.toString(),
                               textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.labelMedium
-                                  ?.copyWith(
-                                    color: selected
-                                        ? Colors.white
-                                        : AppColors.inkMuted,
-                                  ),
+                                  style: Theme.of(context).textTheme.labelMedium
+                                      ?.copyWith(
+                                        color: selected
+                                            ? Colors.white
+                                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                      ),
                             ),
                           ),
                         ],
@@ -412,8 +412,8 @@ class _TrackerStep extends StatelessWidget {
         ? AppColors.success
         : isActive
         ? AppColors.accent
-        : AppColors.border;
-    final foreground = isDone || isActive ? Colors.white : AppColors.inkMuted;
+        : Theme.of(context).colorScheme.outline;
+    final foreground = isDone || isActive ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
 
     return Padding(
       padding: EdgeInsets.only(bottom: showConnector ? 2 : 0),
@@ -441,7 +441,7 @@ class _TrackerStep extends StatelessWidget {
                     child: Container(
                       width: 2,
                       margin: const EdgeInsets.symmetric(vertical: 4),
-                      color: AppColors.border,
+                      color: Theme.of(context).colorScheme.outline,
                     ),
                   ),
               ],
@@ -457,7 +457,7 @@ class _TrackerStep extends StatelessWidget {
                       step.title,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: isActive ? AppColors.ink : null,
+                        color: isActive ? Theme.of(context).colorScheme.onSurface : null,
                       ),
                     ),
                     const SizedBox(height: 2),

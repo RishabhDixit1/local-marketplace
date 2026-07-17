@@ -66,8 +66,8 @@ export function OnboardingServiceWizard({ open, onClose }: OnboardingServiceWiza
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100">
                   <Package className="h-8 w-8 text-indigo-600" />
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900">Welcome to your store!</h1>
-                <p className="mt-2 text-sm text-slate-600">
+                <h1 className="text-2xl font-bold text-[var(--ink-950)]">Welcome to your store!</h1>
+                <p className="mt-2 text-sm text-[var(--ink-700)]">
                   Let&apos;s add your first service or product to start reaching customers.
                 </p>
               </div>
@@ -83,7 +83,7 @@ export function OnboardingServiceWizard({ open, onClose }: OnboardingServiceWiza
                 </button>
               </div>
 
-              <div className="grid gap-3 pt-2 text-xs text-slate-600">
+              <div className="grid gap-3 pt-2 text-xs text-[var(--ink-700)]">
                 <div className="flex gap-2">
                   <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
                   <span>Reach local customers looking for your service</span>
@@ -104,36 +104,36 @@ export function OnboardingServiceWizard({ open, onClose }: OnboardingServiceWiza
           {step === "service_or_product" && (
             <div className="space-y-4 p-6 sm:p-8">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">What do you offer?</h2>
-                <p className="mt-1 text-sm text-slate-600">Choose what you&apos;d like to add first.</p>
+                <h2 className="text-lg font-bold text-[var(--ink-950)]">What do you offer?</h2>
+                <p className="mt-1 text-sm text-[var(--ink-700)]">Choose what you&apos;d like to add first.</p>
               </div>
 
               <div className="grid gap-3">
                 <button
                   type="button"
                   onClick={handleStartService}
-                  className="group flex items-start gap-3 rounded-lg border-2 border-slate-200 p-4 text-left transition hover:border-indigo-500 hover:bg-indigo-50"
+                  className="group flex items-start gap-3 rounded-lg border-2 border-[var(--surface-border)] p-4 text-left transition hover:border-indigo-500 hover:bg-indigo-50"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 group-hover:bg-indigo-100 group-hover:text-indigo-600">
                     <Briefcase className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-900">Service</p>
-                    <p className="text-xs text-slate-600">Hourly work, consulting, repairs</p>
+                    <p className="font-semibold text-[var(--ink-950)]">Service</p>
+                    <p className="text-xs text-[var(--ink-700)]">Hourly work, consulting, repairs</p>
                   </div>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleStartProduct}
-                  className="group flex items-start gap-3 rounded-lg border-2 border-slate-200 p-4 text-left transition hover:border-indigo-500 hover:bg-indigo-50"
+                  className="group flex items-start gap-3 rounded-lg border-2 border-[var(--surface-border)] p-4 text-left transition hover:border-indigo-500 hover:bg-indigo-50"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 text-purple-600 group-hover:bg-indigo-100 group-hover:text-indigo-600">
                     <Package className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-900">Product</p>
-                    <p className="text-xs text-slate-600">Items, goods, physical products</p>
+                    <p className="font-semibold text-[var(--ink-950)]">Product</p>
+                    <p className="text-xs text-[var(--ink-700)]">Items, goods, physical products</p>
                   </div>
                 </button>
               </div>
@@ -141,7 +141,7 @@ export function OnboardingServiceWizard({ open, onClose }: OnboardingServiceWiza
               <button
                 type="button"
                 onClick={handleSkip}
-                className="w-full text-sm font-semibold text-slate-600 transition hover:text-slate-900 py-2"
+                className="w-full text-sm font-semibold text-[var(--ink-700)] transition hover:text-[var(--ink-950)] py-2"
               >
                 I&apos;ll do this later
               </button>
@@ -155,8 +155,8 @@ export function OnboardingServiceWizard({ open, onClose }: OnboardingServiceWiza
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
                   <CheckCircle className="h-8 w-8 text-emerald-600" />
                 </div>
-                <h2 className="text-lg font-bold text-slate-900">Ready to add!</h2>
-                <p className="mt-2 text-sm text-slate-600">We&apos;re opening the form for you now.</p>
+                <h2 className="text-lg font-bold text-[var(--ink-950)]">Ready to add!</h2>
+                <p className="mt-2 text-sm text-[var(--ink-700)]">We&apos;re opening the form for you now.</p>
               </div>
             </div>
           )}

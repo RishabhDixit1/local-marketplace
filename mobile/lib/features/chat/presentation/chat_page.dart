@@ -1075,7 +1075,7 @@ class _ChatThread extends ConsumerWidget {
                               style: Theme.of(context).textTheme.bodyLarge
                                   ?.copyWith(
                                     color: isMine
-                                        ? Colors.white
+                                        ? Theme.of(context).colorScheme.onPrimary
                                         : AppColors.ink,
                                   ),
                             ),
@@ -1087,7 +1087,7 @@ class _ChatThread extends ConsumerWidget {
                                   Icon(
                                     Icons.done_rounded,
                                     size: 14,
-                                    color: Colors.white.withValues(alpha: 0.72),
+                                    color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.72),
                                   ),
                                 if (isMine) const SizedBox(width: 4),
                                 Text(
@@ -1099,7 +1099,7 @@ class _ChatThread extends ConsumerWidget {
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
                                         color: isMine
-                                            ? Colors.white70
+                                            ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7)
                                             : AppColors.inkMuted,
                                       ),
                                 ),

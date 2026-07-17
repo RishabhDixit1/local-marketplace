@@ -205,7 +205,7 @@ export default function PublicProfileAvatarEdit({
                 type="button"
                 onClick={closeDialog}
                 disabled={uploading}
-                className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200 hover:text-slate-900 disabled:opacity-50 sm:h-14 sm:w-14"
+                className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-soft)] text-[var(--ink-700)] transition hover:bg-[var(--surface-border)] hover:text-[var(--ink-950)] disabled:opacity-50 sm:h-14 sm:w-14"
                 aria-label="Close picture dialog"
               >
                 <X className="h-6 w-6 sm:h-7 sm:w-7" />
@@ -237,7 +237,7 @@ export default function PublicProfileAvatarEdit({
                       type="button"
                       onClick={() => inputRef.current?.click()}
                       disabled={uploading}
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-400 bg-white px-5 py-2.5 text-base font-semibold text-slate-700 transition hover:border-slate-500 hover:text-slate-900 disabled:opacity-60"
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-400 bg-white px-5 py-2.5 text-base font-semibold text-[var(--ink-700)] transition hover:border-slate-500 hover:text-[var(--ink-950)] disabled:opacity-60"
                     >
                       <Upload className="h-4.5 w-4.5" />
                       Upload photo
@@ -268,7 +268,7 @@ export default function PublicProfileAvatarEdit({
                   type="button"
                   onClick={closeDialog}
                   disabled={uploading}
-                  className="inline-flex min-h-12 items-center rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+                  className="inline-flex min-h-12 items-center rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
                 >
                   Cancel
                 </button>

@@ -119,9 +119,9 @@ export default function ConnectionsPanel({
                         />
                       </span>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-900">{preview.name}</p>
-                        <p className="mt-0.5 text-[11px] text-slate-500">{preview.role}</p>
-                        <p className="mt-1 text-[11px] text-slate-500">{formatWhen(entry.updatedAt)}</p>
+                        <p className="truncate text-sm font-semibold text-[var(--ink-950)]">{preview.name}</p>
+                        <p className="mt-0.5 text-[11px] text-[var(--ink-500)]">{preview.role}</p>
+                        <p className="mt-1 text-[11px] text-[var(--ink-500)]">{formatWhen(entry.updatedAt)}</p>
                       </div>
                     </div>
                   </div>

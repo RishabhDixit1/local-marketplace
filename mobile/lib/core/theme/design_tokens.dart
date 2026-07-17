@@ -71,6 +71,20 @@ class AppColors {
   /// Skeleton / shimmer tracks (tokenized — avoid one-off grays in loaders).
   static const shimmerBase = Color(0xFFE7EBF1);
   static const shimmerHighlight = Color(0xFFF4F6FA);
+
+  /// Semi-transparent overlay on hero images / gradients.
+  static const heroOverlay = Color(0xAA090F17);
+  static const heroOverlayDeep = Color(0xB0090F17);
+
+  /// Avatar fallback circle (light / dark).
+  static const avatarFallback = Color(0xFFE7EEF6);
+  static const darkAvatarFallback = darkSurfaceAlt;
+
+  /// Dark-mode status chip backgrounds (booking / order status).
+  static const darkConfirmed = Color(0xFF0D2E2A);
+  static const darkCompleted = Color(0xFF0D2418);
+  static const darkCancelled = Color(0xFF2D0F17);
+  static const darkRescheduled = Color(0xFF2D2008);
 }
 
 class AppSpacing {

@@ -230,7 +230,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
             child: FilledButton.icon(
               onPressed: (!hasPending || _submitting) ? null : _submit,
               icon: _submitting
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary))
                   : const Icon(Icons.send_rounded, size: 16),
               label: Text(_submitting ? 'Submitting...' : 'Submit for Review'),
             ),
@@ -320,7 +320,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
               FilledButton(
                 onPressed: (!hasFile || busy) ? null : () => _upload(index),
                 child: busy
-                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary))
                     : const Text('Upload', style: TextStyle(fontSize: 12)),
               ),
             ],

@@ -523,7 +523,7 @@ class _StepIndicator extends StatelessWidget {
                         ? AppColors.success
                         : isActive
                             ? Theme.of(context).colorScheme.primary
-                            : AppColors.border,
+                            : Theme.of(context).colorScheme.outline,
                   ),
                   child: Center(
                     child: isComplete
@@ -531,7 +531,7 @@ class _StepIndicator extends StatelessWidget {
                         : Text(
                             '${index + 1}',
                             style: TextStyle(
-                              color: isActive ? Colors.white : AppColors.inkMuted,
+                              color: isActive ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
@@ -546,10 +546,10 @@ class _StepIndicator extends StatelessWidget {
                       fontSize: 12,
                       fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                       color: isActive
-                          ? AppColors.ink
+                          ? Theme.of(context).colorScheme.onSurface
                           : isComplete
                               ? AppColors.success
-                              : AppColors.inkMuted,
+                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),

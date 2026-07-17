@@ -46,7 +46,7 @@ export default function TopMatchesBanner({ helpRequestId }: { helpRequestId: str
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+      <div className="flex items-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--ink-500)]">
         <Loader2 className="h-4 w-4 animate-spin" />
         Finding nearby providers...
       </div>
@@ -67,9 +67,9 @@ export default function TopMatchesBanner({ helpRequestId }: { helpRequestId: str
         {matches.map((provider) => (
           <div
             key={provider.providerId}
-            className="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 shadow-sm"
+            className="flex items-center gap-3 rounded-xl bg-[var(--surface-elevated)] px-3 py-2.5 shadow-sm"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-xs font-semibold text-[var(--ink-700)]">
               <SafeImage
                 src={provider.avatarUrl}
                 alt=""
@@ -81,7 +81,7 @@ export default function TopMatchesBanner({ helpRequestId }: { helpRequestId: str
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <span className="text-sm font-semibold text-slate-900 truncate">
+                <span className="text-sm font-semibold text-[var(--ink-950)] truncate">
                   {provider.name}
                 </span>
                 {provider.verificationStatus === "verified" && (
@@ -89,13 +89,13 @@ export default function TopMatchesBanner({ helpRequestId }: { helpRequestId: str
                 )}
               </div>
               {provider.location && (
-                <div className="flex items-center gap-1 text-xs text-slate-500">
+                <div className="flex items-center gap-1 text-xs text-[var(--ink-500)]">
                   <MapPin className="h-3 w-3" />
                   {provider.location}
                 </div>
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-1 text-xs text-slate-500">
+            <div className="flex shrink-0 items-center gap-1 text-xs text-[var(--ink-500)]">
               {provider.trustScore != null && (
                 <span className="flex items-center gap-0.5">
                   <Star className="h-3 w-3 text-amber-400" />

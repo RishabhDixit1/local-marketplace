@@ -179,8 +179,8 @@ class ProviderDirectoryCard extends StatelessWidget {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: Theme.of(context).brightness == Brightness.dark
-                    ? AppColors.darkSurfaceAlt
-                    : const Color(0xFFE7EEF6),
+                    ? AppColors.darkAvatarFallback
+                    : AppColors.avatarFallback,
                 foregroundImage: person.avatarUrl.trim().isEmpty
                     ? null
                     : NetworkImage(person.avatarUrl),

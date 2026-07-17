@@ -247,7 +247,7 @@ class _FeedPreviewState extends State<_FeedPreview> {
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.transparent, Color(0xAA090F17)],
+                colors: [Colors.transparent, AppColors.heroOverlay],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),

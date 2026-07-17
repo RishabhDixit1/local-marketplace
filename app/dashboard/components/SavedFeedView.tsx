@@ -98,10 +98,10 @@ const formatSavedAgo = (createdAt: string) => {
 };
 
 const buttonToneClassNames = {
-  primary: "border-slate-900 bg-slate-900 text-white hover:bg-slate-800",
-  secondary: "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900",
+  primary: "border-slate-900 bg-[var(--ink-950)] text-white hover:bg-[var(--ink)]",
+  secondary: "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--border-strong)] hover:text-[var(--ink-950)]",
   success: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
-  status: "border-slate-200 bg-slate-100 text-slate-500",
+  status: "border-[var(--surface-border)] bg-[var(--surface-soft)] text-[var(--ink-500)]",
   destructive: "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
 } as const;
 
@@ -815,25 +815,25 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
       <section
         className={`overflow-hidden rounded-3xl border ${
           embedded
-            ? "border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_38%),linear-gradient(135deg,#ffffff_0%,#eff6ff_55%,#f8fafc_100%)] p-5 shadow-sm"
-            : "border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#0f766e_48%,#082f49_100%)] p-5 text-white shadow-xl sm:p-7"
+            ? "border-[var(--surface-border)] bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_38%),linear-gradient(135deg,#ffffff_0%,#eff6ff_55%,#f8fafc_100%)] p-5 shadow-sm"
+            : "border-[var(--surface-border)] bg-[linear-gradient(135deg,#0f172a_0%,#0f766e_48%,#082f49_100%)] p-5 text-white shadow-xl sm:p-7"
         }`}
       >
         <p
           className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${
             embedded
-              ? "border border-slate-200 bg-white/80 text-slate-700"
-              : "border border-white/25 bg-white/10 text-white/90"
+              ? "border border-[var(--surface-border)] bg-[var(--surface-elevated)]/80 text-[var(--ink-700)]"
+              : "border border-white/25 bg-[var(--surface-elevated)]/10 text-white/90"
           }`}
         >
           <Bookmark size={13} />
           Saved
         </p>
 
-        <h1 className={`mt-3 text-2xl font-semibold tracking-tight sm:text-3xl ${embedded ? "text-slate-950" : "text-white"}`}>
+        <h1 className={`mt-3 text-2xl font-semibold tracking-tight sm:text-3xl ${embedded ? "text-[var(--ink-950)]" : "text-white"}`}>
           {embedded ? "Saved posts from Welcome and Explore" : "Your saved local opportunities"}
         </h1>
-        <p className={`mt-1.5 max-w-2xl text-sm sm:text-base ${embedded ? "text-slate-600" : "text-white/80"}`}>
+        <p className={`mt-1.5 max-w-2xl text-sm sm:text-base ${embedded ? "text-[var(--ink-700)]" : "text-white/80"}`}>
           Revisit posts you bookmarked, compare opportunities quickly, and jump back into the exact feed context when you are ready.
         </p>
 
@@ -847,10 +847,10 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
             <div
               key={stat.label}
               className={`rounded-2xl border px-3 py-2.5 ${
-                embedded ? "border-slate-200 bg-white/85 text-slate-900" : "border-white/20 bg-white/10 text-white"
+                embedded ? "border-[var(--surface-border)] bg-[var(--surface-elevated)]/85 text-[var(--ink-950)]" : "border-white/20 bg-[var(--surface-elevated)]/10 text-white"
               }`}
             >
-              <p className={embedded ? "text-slate-500" : "text-white/75"}>{stat.label}</p>
+              <p className={embedded ? "text-[var(--ink-500)]" : "text-white/75"}>{stat.label}</p>
               <p className="mt-1 text-lg font-semibold">{stat.value}</p>
             </div>
           ))}
@@ -862,16 +862,16 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
       )}
 
       {loading ? (
-        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-600">
+        <section className="rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-sm sm:p-5">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-1.5 text-sm text-[var(--ink-700)]">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading saved feed...
           </div>
         </section>
       ) : savedCards.length === 0 ? (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">No saved cards yet</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+        <section className="rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-[var(--ink-950)]">No saved cards yet</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--ink-700)]">
             Save posts from Welcome or Explore to build your shortlist of needs, services, and products.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -886,7 +886,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
             <button
               type="button"
               onClick={() => router.push("/dashboard")}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2.5 text-sm font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
             >
               Open Explore
             </button>
@@ -949,7 +949,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                 key={card.id}
                 data-testid="saved-feed-card"
                 data-card-id={card.card_id}
-                className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-3.5 shadow-[0_18px_32px_-26px_rgba(var(--shadow-rgb),0.45)] transition hover:border-[var(--brand-500)]/28 hover:shadow-[0_26px_42px_-28px_rgba(14,165,164,0.32)]"
+                className="overflow-hidden rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-3.5 shadow-[0_18px_32px_-26px_rgba(var(--shadow-rgb),0.45)] transition hover:border-[var(--brand-500)]/28 hover:shadow-[0_26px_42px_-28px_rgba(14,165,164,0.32)]"
               >
                 <header className="flex items-center gap-3">
                   <button
@@ -964,7 +964,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                       width={44}
                       height={44}
                       sizes="44px"
-                      className="h-11 w-11 rounded-full border border-slate-200 object-cover"
+                      className="h-11 w-11 rounded-full border border-[var(--surface-border)] object-cover"
                       fallback={<InitialsAvatar name={displayCreator} size="md" />}
                     />
                   </button>
@@ -974,7 +974,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                       <button
                         type="button"
                         onClick={() => handleOpenProfile(resolvedItem)}
-                        className="min-w-0 max-w-full truncate text-left text-base font-semibold text-slate-900 transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+                        className="min-w-0 max-w-full truncate text-left text-base font-semibold text-[var(--ink-950)] transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
                         aria-label={`Open ${displayCreator} profile`}
                       >
                         {displayCreator}
@@ -986,7 +986,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                       ) : null}
                     </div>
 
-                    <div className="mt-1 flex flex-wrap items-center gap-2 overflow-hidden text-[11px] text-slate-500">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 overflow-hidden text-[11px] text-[var(--ink-500)]">
                       <span className="inline-flex items-center gap-1 truncate">
                         <Clock3 size={11} />
                         {formatSavedAgo(card.created_at)}
@@ -1005,8 +1005,8 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                 </div>
 
                 <div className="mt-2.5">
-                  <h3 className="line-clamp-2 text-base font-semibold leading-tight text-slate-900">{card.title}</h3>
-                  <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-600">
+                  <h3 className="line-clamp-2 text-base font-semibold leading-tight text-[var(--ink-950)]">{card.title}</h3>
+                  <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-[var(--ink-700)]">
                     {card.subtitle || "Saved from your local feed so you can come back to it later."}
                   </p>
 
@@ -1022,7 +1022,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                     >
                       {typeBadgeLabel[card.card_type]}
                     </span>
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                    <span className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--ink-700)]">
                       {categoryLabel}
                     </span>
                     {priceLabel ? (
@@ -1102,7 +1102,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                     data-testid="saved-feed-open"
                     aria-label="Open saved post"
                     title="Open saved post"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink-950)]"
                   >
                     <ArrowRight className="h-4 w-4" />
                   </button>
@@ -1113,7 +1113,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                       onClick={() => void handleShareCard(card)}
                       disabled={isSharing}
                       data-testid="saved-feed-share"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-65"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink-950)] disabled:cursor-not-allowed disabled:opacity-65"
                       aria-label={isSharing ? "Sharing saved post" : "Share saved post"}
                       title={isSharing ? "Sharing..." : "Share"}
                     >
@@ -1134,7 +1134,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                 </div>
 
                 {(locationLabel || audienceName) ? (
-                  <p className="mt-2 truncate text-[11px] text-slate-400">
+                  <p className="mt-2 truncate text-[11px] text-[var(--ink-500)]">
                     {displayCreator}
                     {(locationLabel || audienceName) ? ` · ${locationLabel || audienceName}` : ""}
                   </p>

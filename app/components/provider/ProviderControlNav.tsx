@@ -42,7 +42,7 @@ export default function ProviderControlNav() {
             className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-2.5 text-[13px] font-semibold transition ${
               active
                 ? "border-[var(--brand-900)] bg-[var(--brand-900)] text-white shadow-[0_10px_24px_-18px_rgba(var(--shadow-rgb),0.85)]"
-                : "border-slate-200 bg-white text-slate-600 hover:border-[var(--brand-500)]/35 hover:text-slate-900"
+                : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--brand-500)]/35 hover:text-[var(--ink-950)]"
             }`}
           >
             <Icon className="h-3.5 w-3.5" />

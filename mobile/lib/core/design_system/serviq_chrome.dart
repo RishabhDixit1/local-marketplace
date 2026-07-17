@@ -435,15 +435,15 @@ class _ServiqStepTile<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = selected ? Colors.white : AppColors.ink;
-    final background = selected ? AppColors.inkStrong : AppColors.surface;
+    final foreground = selected ? Colors.white : Theme.of(context).colorScheme.onSurface;
+    final background = selected ? AppColors.inkStrong : Theme.of(context).colorScheme.surface;
 
     return Material(
       color: background,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.md),
         side: BorderSide(
-          color: selected ? AppColors.inkStrong : AppColors.border,
+          color: selected ? AppColors.inkStrong : Theme.of(context).colorScheme.outline,
         ),
       ),
       child: InkWell(
@@ -460,7 +460,7 @@ class _ServiqStepTile<T> extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: selected
                       ? Colors.white.withValues(alpha: 0.14)
-                      : AppColors.surfaceAlt,
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(AppRadii.md),
                 ),
                 child: Icon(item.icon, size: 16, color: foreground),
@@ -476,7 +476,7 @@ class _ServiqStepTile<T> extends StatelessWidget {
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: selected
                             ? Colors.white.withValues(alpha: 0.70)
-                            : AppColors.inkSubtle,
+                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
                     ),
                     Text(

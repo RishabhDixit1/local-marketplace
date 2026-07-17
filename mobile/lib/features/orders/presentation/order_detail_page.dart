@@ -242,7 +242,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                       height: 18,
                       width: 18,
                       child:
-                          CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
                   : const Text('Start Delivery'),
             ),
@@ -314,7 +314,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                                   : Icons.star_outline_rounded,
                               color: star <= rating
                                   ? AppColors.warning
-                                  : AppColors.inkMuted,
+                                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                               size: 36,
                             ),
                             onPressed: () =>
@@ -331,7 +331,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                         decoration: BoxDecoration(
                           color: AppColors.surfaceAlt,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: Theme.of(context).colorScheme.outline),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,7 +342,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                                   .textTheme
                                   .labelSmall
                                   ?.copyWith(
-                                    color: AppColors.inkMuted,
+                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                     letterSpacing: 1.2,
                                   ),
                             ),
@@ -369,7 +369,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                             horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: Theme.of(context).colorScheme.outline),
                         ),
                         child: Row(
                           children: [
@@ -465,14 +465,14 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: AppColors.border,
+                                      color: Theme.of(context).colorScheme.outline,
                                       width: 2,
                                       strokeAlign: BorderSide.strokeAlignInside,
                                     ),
                                     color: AppColors.surfaceAlt,
                                   ),
                                   child: Icon(Icons.camera_alt_outlined,
-                                      color: AppColors.inkMuted, size: 28),
+                                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), size: 28),
                                 ),
                               ),
                           ],
@@ -486,7 +486,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                             style: Theme.of(context)
                                 .textTheme
                                 .labelSmall
-                                ?.copyWith(color: AppColors.inkMuted),
+                                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                           ),
                         ),
                       const SizedBox(height: 12),
@@ -516,7 +516,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                               Text(
                                 uploadProgress.isEmpty ? 'Submitting...' : uploadProgress,
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.inkMuted,
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                               ),
                             ],
@@ -589,7 +589,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                           child: submitting
                               ? const SizedBox(
                                   height: 18, width: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                                 )
                               : const Text('Submit'),
                         ),
@@ -635,7 +635,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                 star <= value
                     ? Icons.star_rounded
                     : Icons.star_outline_rounded,
-                color: star <= value ? AppColors.warning : AppColors.inkMuted,
+                color: star <= value ? AppColors.warning : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 size: 22,
               ),
             );
@@ -854,8 +854,8 @@ class _OrderTrackerStep extends StatelessWidget {
             ? AppColors.success
             : isActive
                 ? AppColors.primary
-                : AppColors.border;
-    final foreground = (isDone || isActive || isError) ? Colors.white : AppColors.inkMuted;
+                : Theme.of(context).colorScheme.outline;
+    final foreground = (isDone || isActive || isError) ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
 
     return Padding(
       padding: EdgeInsets.only(bottom: showConnector ? 2 : 0),
@@ -889,7 +889,7 @@ class _OrderTrackerStep extends StatelessWidget {
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       color: step.state == _StepState.done
                           ? AppColors.success
-                          : AppColors.border,
+                          : Theme.of(context).colorScheme.outline,
                     ),
                   ),
               ],
@@ -905,7 +905,7 @@ class _OrderTrackerStep extends StatelessWidget {
                       step.title,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: isActive ? AppColors.ink : null,
+                        color: isActive ? Theme.of(context).colorScheme.onSurface : null,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -1155,12 +1155,12 @@ class _DeliveryCard extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: AppColors.surfaceAlt,
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: Theme.of(context).colorScheme.outline),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.local_shipping_outlined,
-                      size: 18, color: AppColors.inkMuted),
+                  Icon(Icons.local_shipping_outlined,
+                      size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                   const SizedBox(width: 8),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1172,7 +1172,7 @@ class _DeliveryCard extends StatelessWidget {
                       if (delivery.carrier.isNotEmpty)
                         Text('via ${delivery.carrier}',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.inkMuted,
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                 )),
                     ],
                   ),
@@ -1204,8 +1204,8 @@ class _DeliveryCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                           color: AppColors.surfaceAlt,
                         ),
-                        child: const Icon(Icons.broken_image_outlined,
-                            size: 24, color: AppColors.inkMuted),
+                        child: Icon(Icons.broken_image_outlined,
+                            size: 24, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                       ),
                     ),
                   );
@@ -1237,11 +1237,11 @@ class _DeliveryCard extends StatelessWidget {
                           height: 22,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: done ? AppColors.primary : Colors.white,
+                            color: done ? AppColors.primary : Theme.of(context).colorScheme.surface,
                             border: Border.all(
                               color: done
                                   ? AppColors.primary
-                                  : AppColors.border,
+                                   : Theme.of(context).colorScheme.outline,
                               width: 2,
                             ),
                           ),
@@ -1265,7 +1265,7 @@ class _DeliveryCard extends StatelessWidget {
                               width: 2,
                               color: done
                                   ? AppColors.primary
-                                  : AppColors.border,
+                                  : Theme.of(context).colorScheme.outline,
                             ),
                           ),
                       ],
@@ -1286,9 +1286,9 @@ class _DeliveryCard extends StatelessWidget {
                                 ?.copyWith(
                                   fontWeight:
                                       done ? FontWeight.w600 : FontWeight.normal,
-                                  color: done
-                                      ? AppColors.ink
-                                      : AppColors.inkMuted,
+                                   color: done
+                                       ? Theme.of(context).colorScheme.onSurface
+                                       : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                           ),
                           const SizedBox(height: 2),
@@ -1297,7 +1297,7 @@ class _DeliveryCard extends StatelessWidget {
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall
-                                ?.copyWith(color: AppColors.inkMuted),
+                                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                           ),
                           if (update.isNotEmpty)
                             Padding(
@@ -1307,7 +1307,7 @@ class _DeliveryCard extends StatelessWidget {
                                 style: Theme.of(context)
                                     .textTheme
                                     .labelSmall
-                                    ?.copyWith(color: AppColors.inkMuted),
+                                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                               ),
                             ),
                         ],
@@ -1450,7 +1450,7 @@ class _AssignDeliveryCard extends StatelessWidget {
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
-                ?.copyWith(color: AppColors.inkMuted),
+                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -1462,7 +1462,7 @@ class _AssignDeliveryCard extends StatelessWidget {
                       height: 18,
                       width: 18,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
                   : const Icon(Icons.local_shipping_outlined, size: 18),
               label: Text(busy ? 'Saving...' : 'Assign Delivery Partner'),
@@ -1539,7 +1539,7 @@ class _OrderActions extends StatelessWidget {
             Text(
               'Need help?',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppColors.inkMuted,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(height: 8),
@@ -1572,7 +1572,7 @@ class _InfoRow extends StatelessWidget {
             label,
             style: Theme.of(
               context,
-            ).textTheme.labelLarge?.copyWith(color: AppColors.inkMuted),
+            ).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
           const SizedBox(height: 4),
           Text(value, style: Theme.of(context).textTheme.bodyLarge),

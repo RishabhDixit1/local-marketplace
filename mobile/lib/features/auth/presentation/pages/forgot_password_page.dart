@@ -153,7 +153,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
                                     height: 20,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      color: Colors.white,
+                                      color: Theme.of(context).colorScheme.onPrimary,
                                     ),
                                   )
                                 : Text(
@@ -162,7 +162,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
                                         .textTheme
                                         .labelLarge
                                         ?.copyWith(
-                                          color: Colors.white,
+                                          color: Theme.of(context).colorScheme.onPrimary,
                                           fontWeight: FontWeight.w700,
                                         ),
                                   ),

@@ -100,13 +100,13 @@ class Booking {
     final isDark = brightness == Brightness.dark;
     switch (status) {
       case 'confirmed':
-        return isDark ? const Color(0xFF0D2E2A) : AppColors.primarySoft;
+        return isDark ? AppColors.darkConfirmed : AppColors.primarySoft;
       case 'completed':
-        return isDark ? const Color(0xFF0D2418) : AppColors.successSoft;
+        return isDark ? AppColors.darkCompleted : AppColors.successSoft;
       case 'cancelled':
-        return isDark ? const Color(0xFF2D0F17) : AppColors.dangerSoft;
+        return isDark ? AppColors.darkCancelled : AppColors.dangerSoft;
       case 'rescheduled':
-        return isDark ? const Color(0xFF2D2008) : AppColors.warningSoft;
+        return isDark ? AppColors.darkRescheduled : AppColors.warningSoft;
       default:
         return isDark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt;
     }

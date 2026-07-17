@@ -56,8 +56,8 @@ const StaticMapFallback = ({ items }: { items: MapItem[] }) => (
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-[var(--brand-700)] shadow-sm">
         <MapPin className="h-6 w-6" />
       </div>
-      <p className="mt-4 text-base font-semibold text-slate-900">People are still listed below</p>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="mt-4 text-base font-semibold text-[var(--ink-950)]">People are still listed below</p>
+      <p className="mt-1 text-sm text-[var(--ink-500)]">
         {items.length > 0
           ? "Map rendering is unavailable in this browser session, but all nearby profiles remain available in the directory."
           : "Location pins will appear here when profiles include usable location data."}

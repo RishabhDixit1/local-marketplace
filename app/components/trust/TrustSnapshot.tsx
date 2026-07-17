@@ -13,9 +13,9 @@ type TrustSnapshotProps = {
 };
 
 const toneClassNames: Record<NonNullable<TrustSnapshotItem["tone"]>, string> = {
-  neutral: "border-slate-200 bg-slate-50 text-slate-600",
-  good: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  caution: "border-amber-200 bg-amber-50 text-amber-700",
+  neutral: "border-[var(--surface-border)] bg-[var(--surface-soft)] text-[var(--ink-700)]",
+  good: "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300",
+  caution: "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300",
 };
 
 export default function TrustSnapshot({
@@ -37,7 +37,7 @@ export default function TrustSnapshot({
 
   return (
     <div className={`space-y-1.5 ${className}`.trim()}>
-      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:text-[11px]">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--ink-500)] sm:text-[11px]">
         <ShieldCheck
           className={
             compact
@@ -66,7 +66,7 @@ export default function TrustSnapshot({
           );
         })}
         {hiddenItemCount > 0 ? (
-          <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500 sm:hidden">
+          <span className="inline-flex items-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-medium text-[var(--ink-500)] sm:hidden">
             +{hiddenItemCount} more
           </span>
         ) : null}

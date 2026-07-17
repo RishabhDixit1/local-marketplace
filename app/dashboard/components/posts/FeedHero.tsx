@@ -21,14 +21,14 @@ const statCards: Array<{ key: keyof MarketplaceFeedStats; label: string }> = [
 
 export default function FeedHero({ stats, realtime }: FeedHeroProps) {
   return (
-    <section className="rounded-3xl border border-slate-200/90 bg-white p-4 shadow-[0_18px_36px_-28px_rgba(var(--shadow-rgb),0.45)] sm:p-5">
+    <section className="rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-[0_18px_36px_-28px_rgba(var(--shadow-rgb),0.45)] sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--brand-700)]">Marketplace feed</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink-950)] sm:text-[2rem]">
             Posts, offers, and local demand in one working view
           </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-[15px]">
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-700)] sm:text-[15px]">
             The feed is the operating surface. Search from the header, open the profiles that matter, and move directly
             into connection, chat, or task acceptance from each card.
           </p>
@@ -45,9 +45,9 @@ export default function FeedHero({ stats, realtime }: FeedHeroProps) {
 
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
         {statCards.map((stat) => (
-          <div key={stat.key} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-            <p className="text-[11px] font-medium text-slate-500">{stat.label}</p>
-            <p className="mt-1 text-lg font-semibold text-slate-900">{stats[stat.key]}</p>
+          <div key={stat.key} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-3">
+            <p className="text-[11px] font-medium text-[var(--ink-500)]">{stat.label}</p>
+            <p className="mt-1 text-lg font-semibold text-[var(--ink-950)]">{stats[stat.key]}</p>
           </div>
         ))}
       </div>

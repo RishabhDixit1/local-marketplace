@@ -101,10 +101,10 @@ function PersonRow({
           />
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900 group-hover:text-slate-950">
+          <p className="truncate text-sm font-semibold text-[var(--ink-950)] group-hover:text-[var(--ink)]">
             {preview.name}
           </p>
-          <p className="truncate text-[11px] text-slate-500">{meta}</p>
+          <p className="truncate text-[11px] text-[var(--ink-500)]">{meta}</p>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">{actions}</div>
@@ -128,15 +128,15 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-slate-200/80 bg-white/98 shadow-[0_32px_80px_-24px_rgba(var(--shadow-rgb),0.22)] ring-1 ring-slate-900/[0.04] backdrop-blur-sm sm:rounded-[1.45rem]">
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5">
+    <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)]/98 shadow-[0_32px_80px_-24px_rgba(var(--shadow-rgb),0.22)] ring-1 ring-slate-900/[0.04] backdrop-blur-sm sm:rounded-[1.45rem]">
+      <div className="flex items-center justify-between border-b border-[var(--surface-border)] px-4 py-3 sm:px-5">
         <div className="flex items-center gap-3">
           <div>
             <p className={`text-[10px] font-bold uppercase tracking-[0.18em] ${labelColor}`}>{label}</p>
-            <p className="mt-0.5 text-sm font-semibold text-slate-900">{title}</p>
+            <p className="mt-0.5 text-sm font-semibold text-[var(--ink-950)]">{title}</p>
           </div>
           {count > 0 && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-900 px-1.5 text-[10px] font-bold text-white">
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--ink-950)] px-1.5 text-[10px] font-bold text-[var(--ink-50)]">
               {count}
             </span>
           )}

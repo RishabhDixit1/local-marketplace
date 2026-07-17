@@ -251,9 +251,9 @@ class _LoginPageState extends ConsumerState<LoginPage>
                 child: state.isSubmitting
                     ? const SizedBox(
                         width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                       )
-                    : Text('Verify code', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                    : Text('Verify code', style: theme.textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w700)),
               ),
             ),
             const SizedBox(height: 10),
@@ -290,7 +290,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
             child: FilledButton(
               onPressed: state.isSubmitting
                   ? null
-                  : () => notifier.sendEmailOtp(context),
+                    : () => notifier.sendEmailOtp(context),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.inkStrong,
                 foregroundColor: Colors.white,
@@ -303,9 +303,9 @@ class _LoginPageState extends ConsumerState<LoginPage>
               child: state.isSubmitting
                   ? const SizedBox(
                       width: 20, height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
-                  : Text('Send code', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                  : Text('Send code', style: theme.textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w700)),
             ),
           ),
         ],
@@ -348,9 +348,9 @@ class _LoginPageState extends ConsumerState<LoginPage>
                 child: state.isSubmitting
                     ? const SizedBox(
                         width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                       )
-                    : Text('Verify code', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                    : Text('Verify code', style: theme.textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w700)),
               ),
             ),
             const SizedBox(height: 10),
@@ -387,7 +387,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
             child: FilledButton(
               onPressed: state.isSubmitting
                   ? null
-                  : () => notifier.sendPhoneOtp(context),
+                    : () => notifier.sendPhoneOtp(context),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.inkStrong,
                 foregroundColor: Colors.white,
@@ -400,9 +400,9 @@ class _LoginPageState extends ConsumerState<LoginPage>
               child: state.isSubmitting
                   ? const SizedBox(
                       width: 20, height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
-                  : Text('Send code', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                  : Text('Send code', style: theme.textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w700)),
             ),
           ),
         ],
@@ -452,9 +452,9 @@ class _LoginPageState extends ConsumerState<LoginPage>
               child: state.isSubmitting
                   ? const SizedBox(
                       width: 20, height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
-                  : Text('Sign in', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                  : Text('Sign in', style: theme.textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w700)),
             ),
           ),
           const SizedBox(height: 8),

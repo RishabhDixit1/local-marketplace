@@ -210,13 +210,13 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                       ),
                     )
-                  : Text(
+                    : Text(
                       'Create account',
                       style: theme.textTheme.labelLarge?.copyWith(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

@@ -177,7 +177,7 @@ export default function PublicProfileCoverEdit({
                 type="button"
                 onClick={closeDialog}
                 disabled={uploading}
-                className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200 hover:text-slate-900 disabled:opacity-50 sm:h-14 sm:w-14"
+                className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-soft)] text-[var(--ink-700)] transition hover:bg-[var(--surface-border)] hover:text-[var(--ink-950)] disabled:opacity-50 sm:h-14 sm:w-14"
                 aria-label="Close cover dialog"
               >
                 <X className="h-6 w-6 sm:h-7 sm:w-7" />
@@ -192,7 +192,7 @@ export default function PublicProfileCoverEdit({
                       <img src={previewUrl || coverImageUrl} alt={`${displayName} cover`} className="h-56 w-full object-cover sm:h-72" />
                     ) : (
                       <div className="flex h-56 w-full items-center justify-center bg-[linear-gradient(125deg,#eff6ff_0%,#dbeafe_24%,#c7d2fe_58%,#e0e7ff_100%)] sm:h-72">
-                        <span className="rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700">
+                        <span className="rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm font-semibold text-[var(--ink-700)]">
                           No cover image yet
                         </span>
                       </div>
@@ -210,7 +210,7 @@ export default function PublicProfileCoverEdit({
                       type="button"
                       onClick={() => inputRef.current?.click()}
                       disabled={uploading}
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-400 bg-white px-5 py-2.5 text-base font-semibold text-slate-700 transition hover:border-slate-500 hover:text-slate-900 disabled:opacity-60"
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-400 bg-white px-5 py-2.5 text-base font-semibold text-[var(--ink-700)] transition hover:border-slate-500 hover:text-[var(--ink-950)] disabled:opacity-60"
                     >
                       <Upload className="h-4.5 w-4.5" />
                       Choose cover image
@@ -244,7 +244,7 @@ export default function PublicProfileCoverEdit({
                 type="button"
                 onClick={closeDialog}
                 disabled={uploading}
-                className="inline-flex min-h-11 items-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+                className="inline-flex min-h-11 items-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
               >
                 Cancel
               </button>

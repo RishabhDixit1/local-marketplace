@@ -495,7 +495,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          border: Border(top: BorderSide(color: AppColors.border)),
+          border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline)),
         ),
         child: Row(
           children: [
@@ -803,7 +803,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
               Text(
                 'Your order has been placed successfully.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.inkSubtle,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -820,7 +820,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                     style: TextStyle(
                       fontSize: 13,
                       fontFamily: 'monospace',
-                      color: AppColors.inkMuted,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ),
@@ -874,12 +874,12 @@ class _StepIndicator extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+        border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outline)),
       ),
       child: Row(
         children: [
           for (var i = 0; i < steps.length; i++) ...[
-            if (i > 0) Expanded(child: Divider(height: 1, color: AppColors.border)),
+            if (i > 0) Expanded(child: Divider(height: 1, color: Theme.of(context).colorScheme.outline)),
             _StepDot(
               label: _stepLabel(steps[i]),
               active: steps[i] == currentStep,
@@ -920,11 +920,12 @@ class _StepDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final color = completed
         ? AppColors.primary
         : active
             ? AppColors.primary
-            : AppColors.inkFaint;
+            : cs.onSurface.withValues(alpha: 0.3);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -958,7 +959,7 @@ class _StepDot extends StatelessWidget {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: active || completed ? AppColors.ink : AppColors.inkFaint,
+              color: active || completed ? cs.onSurface : cs.onSurface.withValues(alpha: 0.4),
             ),
           ),
         ],
@@ -1010,7 +1011,7 @@ class _ItemRow extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 'INR ${item.price.round()} each',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkMuted),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
               ),
             ],
           ),
@@ -1042,7 +1043,7 @@ class _ItemRow extends StatelessWidget {
         else
           Text(
             '×${item.quantity}',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkMuted),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
         const SizedBox(width: 8),
         Text(
@@ -1053,7 +1054,7 @@ class _ItemRow extends StatelessWidget {
           const SizedBox(width: 4),
           IconButton(
             onPressed: onRemove,
-            icon: Icon(Icons.close_rounded, size: 18, color: AppColors.inkFaint),
+            icon: Icon(Icons.close_rounded, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
             visualDensity: VisualDensity.compact,
           ),
         ],
@@ -1125,7 +1126,7 @@ class _PaymentMethodCard extends StatelessWidget {
           color: selected ? AppColors.primarySoft : AppColors.surfaceAlt,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? AppColors.primary : AppColors.border,
+            color: selected ? AppColors.primary : Theme.of(context).colorScheme.outline,
             width: selected ? 2 : 1,
           ),
         ),
@@ -1135,7 +1136,7 @@ class _PaymentMethodCard extends StatelessWidget {
               method == MobileOrderPaymentMethod.cod
                   ? Icons.payments_outlined
                   : Icons.credit_card_rounded,
-              color: selected ? AppColors.primary : AppColors.inkSubtle,
+              color: selected ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               size: 24,
             ),
             const SizedBox(width: 12),
@@ -1147,7 +1148,7 @@ class _PaymentMethodCard extends StatelessWidget {
                     method.label,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: selected ? AppColors.primaryDeep : AppColors.ink,
+                      color: selected ? AppColors.primaryDeep : Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Text(
@@ -1155,7 +1156,7 @@ class _PaymentMethodCard extends StatelessWidget {
                         ? 'Pay when you receive'
                         : 'UPI, Cards, NetBanking',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.inkMuted,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -1205,14 +1206,14 @@ class _PriceRow extends StatelessWidget {
             label,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
-              color: bold ? AppColors.ink : AppColors.inkMuted,
+              color: bold ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           Text(
             value,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
-              color: bold ? AppColors.primary : AppColors.ink,
+              color: bold ? AppColors.primary : Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ],

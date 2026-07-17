@@ -169,7 +169,7 @@ class _ListingHeroGallery extends StatelessWidget {
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.transparent, Color(0xB0090F17)],
+                  colors: [Colors.transparent, AppColors.heroOverlayDeep],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
