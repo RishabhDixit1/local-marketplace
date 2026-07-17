@@ -126,7 +126,7 @@ Windows
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: AppColors.inkStrong,
+                      color: Theme.of(context).colorScheme.onSurface,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     padding: const EdgeInsets.all(16),
@@ -234,7 +234,7 @@ class _ChecklistItem extends StatelessWidget {
               '$index',
               style: Theme.of(
                 context,
-              ).textTheme.labelLarge?.copyWith(color: AppColors.inkStrong),
+              ).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface),
             ),
           ),
           const SizedBox(width: 12),

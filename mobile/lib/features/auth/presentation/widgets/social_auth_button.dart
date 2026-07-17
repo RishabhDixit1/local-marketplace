@@ -23,13 +23,13 @@ class SocialAuthButton extends StatelessWidget {
         Icons.g_mobiledata_rounded,
         'Continue with Google',
         AppColors.surface,
-        AppColors.ink,
-        AppColors.border,
+        Theme.of(context).colorScheme.onSurface,
+        Theme.of(context).colorScheme.outline,
       ),
       SocialAuthProvider.apple => (
         Icons.apple_rounded,
         'Continue with Apple',
-        AppColors.ink,
+        Theme.of(context).colorScheme.onSurface,
         Colors.white,
         Colors.transparent,
       ),
@@ -60,7 +60,7 @@ class SocialAuthButton extends StatelessWidget {
                   strokeWidth: 2,
                   color: provider == SocialAuthProvider.apple
                       ? Colors.white
-                      : AppColors.ink,
+                      : Theme.of(context).colorScheme.onSurface,
                 ),
               )
             else
@@ -71,7 +71,7 @@ class SocialAuthButton extends StatelessWidget {
               style: theme.textTheme.labelLarge?.copyWith(
                 color: provider == SocialAuthProvider.apple
                     ? Colors.white
-                    : AppColors.ink,
+                    : Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w700,
               ),
             ),

@@ -150,7 +150,7 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
                               child: Text(
                                 workspace.description!,
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: AppColors.inkSubtle,
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                               ),
                             ),
@@ -160,12 +160,12 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
                     Column(
                       children: [
                         Icon(Icons.people_outline_rounded,
-                            size: 18, color: AppColors.inkFaint),
+                            size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                         const SizedBox(height: 2),
                         Text(
                           '${membersAsync.hasValue ? membersAsync.value!.length : 0}/${workspace.maxMembers}',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.inkFaint,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                           ),
                         ),
                       ],
@@ -202,7 +202,7 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
                                       BoxShadow(
                                         color: Colors.black.withValues(alpha: 0.06),
                                         blurRadius: 4,
-                                        offset: const Offset(0, 2),
+                                        offset: Offset(0, 2),
                                       ),
                                     ]
                                   : null,
@@ -212,8 +212,8 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
                               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                                 fontWeight: selected ? FontWeight.bold : FontWeight.w500,
                                 color: selected
-                                    ? AppColors.ink
-                                    : AppColors.inkSubtle,
+                                    ? Theme.of(context).colorScheme.onSurface
+                                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                               ),
                             ),
                           ),
@@ -321,7 +321,7 @@ class _StatCard extends StatelessWidget {
                 Text(
                   label,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.inkSubtle,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -329,7 +329,7 @@ class _StatCard extends StatelessWidget {
                   value,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: valueColor ?? AppColors.ink,
+                    color: valueColor ?? Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -363,7 +363,7 @@ class _MembersTab extends ConsumerWidget {
               Text(
                 '${members.length} member${members.length == 1 ? '' : 's'}',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: AppColors.inkSubtle,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -426,7 +426,7 @@ class _MemberTile extends StatelessWidget {
                 Text(
                   '${member.role} · ${member.isActive ? 'Active' : 'Inactive'}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.inkSubtle,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -491,7 +491,7 @@ class _BranchesTab extends StatelessWidget {
               Text(
                 '${branches.length} branch${branches.length == 1 ? '' : 'es'}',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: AppColors.inkSubtle,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
               TextButton.icon(
@@ -580,8 +580,8 @@ class _BranchTile extends StatelessWidget {
               color: AppColors.surfaceAlt,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.location_on_outlined,
-                size: 20, color: AppColors.inkSubtle),
+            child: Icon(Icons.location_on_outlined,
+                size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -598,7 +598,7 @@ class _BranchTile extends StatelessWidget {
                   Text(
                     branch.address!,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.inkSubtle,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -606,7 +606,7 @@ class _BranchTile extends StatelessWidget {
                 Text(
                   '${branch.serviceAreaRadiusKm.toStringAsFixed(0)} km radius',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.inkFaint,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                   ),
                 ),
               ],
@@ -653,7 +653,7 @@ class _RulesTab extends StatelessWidget {
               Text(
                 '${rules.length} rule${rules.length == 1 ? '' : 's'}',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: AppColors.inkSubtle,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
               TextButton.icon(
@@ -750,7 +750,7 @@ class _RuleTile extends StatelessWidget {
               Text(
                 'Priority ${rule.priority}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.inkFaint,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                 ),
               ),
             ],
@@ -789,7 +789,7 @@ class _Tag extends StatelessWidget {
       child: Text(
         text,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: AppColors.inkSubtle,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           fontSize: 10,
         ),
       ),
@@ -864,7 +864,7 @@ class _AnalyticsTab extends StatelessWidget {
                       Container(
                         width: 8,
                         height: 8,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: AppColors.primary,
                           shape: BoxShape.circle,
                         ),
@@ -882,7 +882,7 @@ class _AnalyticsTab extends StatelessWidget {
                               Text(
                                 _dateLabel(a.createdAt),
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.inkFaint,
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                                   fontSize: 10,
                                 ),
                               ),
@@ -916,7 +916,7 @@ class _MiniStatCard extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.inkSubtle,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 4),
@@ -940,7 +940,7 @@ Widget _emptyHint(String message) {
     child: Center(
       child: Text(
         message,
-        style: const TextStyle(color: AppColors.inkFaint),
+        style: TextStyle(color: AppColors.inkFaint),
       ),
     ),
   );

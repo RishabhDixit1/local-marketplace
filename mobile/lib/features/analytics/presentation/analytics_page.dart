@@ -26,7 +26,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
     ref.invalidate(analyticsProvider(_selectedYear));
   }
 
-  static const _chartColors = [
+  static final _chartColors = [
     AppColors.ink,
     AppColors.primary,
     AppColors.success,
@@ -51,7 +51,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
               Text('Your performance and earnings overview.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSubtle)),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               const SizedBox(height: 16),
               ServiqAsyncBody<AnalyticsData>(
                 value: asyncData,
@@ -125,7 +125,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
           children: [
             SizedBox(width: half, child: _metricCard(Icons.account_balance_wallet_outlined, 'Total Earned', _inr(summary.totalEarnedPaise ~/ 100), AppColors.success)),
             SizedBox(width: half, child: _metricCard(Icons.trending_up, 'Revenue', _inr(summary.totalRevenuePaise ~/ 100), AppColors.primary)),
-            SizedBox(width: half, child: _metricCard(Icons.shopping_cart_outlined, 'Orders', '${summary.totalOrders}', AppColors.ink)),
+            SizedBox(width: half, child: _metricCard(Icons.shopping_cart_outlined, 'Orders', '${summary.totalOrders}', Theme.of(context).colorScheme.onSurface)),
             SizedBox(width: half, child: _metricCard(Icons.people_outline, 'Customers', '${summary.uniqueCustomers}', AppColors.accent)),
             SizedBox(width: half, child: _metricCard(Icons.star_outline, 'Rating', summary.avgRating != null ? '${summary.avgRating?.toStringAsFixed(1) ?? '?'}/5' : '—', AppColors.warning)),
           ],
@@ -140,16 +140,16 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 20, color: color),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+          Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
           const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.ink)),
+          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
         ],
       ),
     );
@@ -167,14 +167,14 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(12)),
-                  child: Text('${data.conversionRate}% conversion', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.accent)),
+                  child: Text('${data.conversionRate}% conversion', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.accent)),
                 ),
             ],
           ),
           const SizedBox(height: 6),
           Row(
             children: [
-              _legendDot(AppColors.ink, 'Earned'),
+              _legendDot(Theme.of(context).colorScheme.onSurface, 'Earned'),
               const SizedBox(width: 14),
               _legendDot(AppColors.primary, 'Revenue'),
             ],
@@ -190,20 +190,20 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     final month = data.earningsChart[groupIndex].month;
                     final label = rodIndex == 0 ? 'Earned' : 'Revenue';
-                    return BarTooltipItem('$month\n$label: ${_inr(rod.toY.round() ~/ 100)}', const TextStyle(color: Colors.white, fontSize: 11));
+                    return BarTooltipItem('$month\n$label: ${_inr(rod.toY.round() ~/ 100)}', TextStyle(color: Colors.white, fontSize: 11));
                   },
                 )),
                 titlesData: FlTitlesData(
                   show: true,
                   topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 36, getTitlesWidget: (v, _) => Text('${(v ~/ 100).toInt()}', style: const TextStyle(fontSize: 9, color: AppColors.inkSubtle)))),
+                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 36, getTitlesWidget: (v, _) => Text('${(v ~/ 100).toInt()}', style: TextStyle(fontSize: 9, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))))),
                   bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (v, _) {
                     final i = v.toInt();
                     if (i < 0 || i >= data.earningsChart.length) return const SizedBox.shrink();
                     return Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text(data.earningsChart[i].month.substring(0, 3), style: const TextStyle(fontSize: 9, color: AppColors.inkSubtle)),
+                      child: Text(data.earningsChart[i].month.substring(0, 3), style: TextStyle(fontSize: 9, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                     );
                   })),
                 ),
@@ -212,7 +212,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
                 barGroups: List.generate(data.earningsChart.length, (i) {
                   final month = data.earningsChart[i];
                   return BarChartGroupData(x: i, barRods: [
-                    BarChartRodData(toY: month.earnedPaise.toDouble(), color: AppColors.ink, width: 10, borderRadius: const BorderRadius.only(topLeft: Radius.circular(3), topRight: Radius.circular(3))),
+                    BarChartRodData(toY: month.earnedPaise.toDouble(), color: Theme.of(context).colorScheme.onSurface, width: 10, borderRadius: const BorderRadius.only(topLeft: Radius.circular(3), topRight: Radius.circular(3))),
                     BarChartRodData(toY: month.revenuePaise.toDouble(), color: AppColors.primary, width: 10, borderRadius: const BorderRadius.only(topLeft: Radius.circular(3), topRight: Radius.circular(3))),
                   ], barsSpace: 3);
                 }),
@@ -246,7 +246,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
                     color: _chartColors[i % _chartColors.length],
                     radius: 28,
                     title: '${entries[i].value}',
-                    titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                    titleStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                   );
                 }),
               ),
@@ -261,8 +261,8 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
                 children: [
                   Container(width: 8, height: 8, decoration: BoxDecoration(color: _chartColors[ci], shape: BoxShape.circle)),
                   const SizedBox(width: 6),
-                  Expanded(child: Text(e.key, style: const TextStyle(fontSize: 10, color: AppColors.inkSubtle))),
-                  Text('${e.value}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
+                  Expanded(child: Text(e.key, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)))),
+                  Text('${e.value}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
                 ],
               ),
             );
@@ -288,7 +288,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
                 lineTouchData: LineTouchData(enabled: true, touchTooltipData: LineTouchTooltipData(getTooltipItems: (spots) {
                   return spots.map((s) {
                     final month = data.earningsChart[s.spotIndex].month;
-                    return LineTooltipItem('$month: ${s.y.toInt()} orders', const TextStyle(color: Colors.white, fontSize: 10));
+                    return LineTooltipItem('$month: ${s.y.toInt()} orders', TextStyle(color: Colors.white, fontSize: 10));
                   }).toList();
                 })),
                 titlesData: FlTitlesData(
@@ -301,7 +301,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
                     if (i < 0 || i >= data.earningsChart.length) return const SizedBox.shrink();
                     return Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text(data.earningsChart[i].month.substring(0, 3), style: const TextStyle(fontSize: 8, color: AppColors.inkSubtle)),
+                      child: Text(data.earningsChart[i].month.substring(0, 3), style: TextStyle(fontSize: 8, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                     );
                   })),
                 ),
@@ -345,20 +345,20 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
                     width: 28, height: 28,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(8)),
-                    child: Text('${i + 1}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary)),
+                    child: Text('${i + 1}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary)),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        Text(c.name, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                         const SizedBox(height: 1),
-                        Text('${c.orders} orders', style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+                        Text('${c.orders} orders', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                       ],
                     ),
                   ),
-                  Text(_inr(c.spentPaise ~/ 100), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.ink)),
+                  Text(_inr(c.spentPaise ~/ 100), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Theme.of(context).colorScheme.onSurface)),
                 ],
               ),
             );
@@ -374,7 +374,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
       children: [
         Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+        Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
       ],
     );
   }

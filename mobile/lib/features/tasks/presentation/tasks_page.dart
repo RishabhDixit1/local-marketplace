@@ -286,7 +286,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                                 : Icons.star_outline_rounded,
                             color: star <= rating
                                 ? AppColors.warning
-                                : AppColors.inkMuted,
+                                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                             size: 36,
                           ),
                           onPressed: () =>
@@ -786,7 +786,7 @@ class _TasksHero extends StatelessWidget {
                   color: AppColors.primarySoft,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.fact_check_outlined,
                   color: AppColors.primary,
                 ),
@@ -861,12 +861,12 @@ class _HeroBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: AppColors.inkMuted, size: 16),
+          Icon(icon, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), size: 16),
           const SizedBox(width: 8),
           Text(label, style: Theme.of(context).textTheme.labelLarge),
         ],
@@ -927,7 +927,7 @@ class _WorkBoardSummary extends StatelessWidget {
                   minimumSize: const Size(0, 44),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
-                icon: const Icon(Icons.tune_rounded),
+                icon: Icon(Icons.tune_rounded),
                 label: const Text('Filters'),
               ),
             ],
@@ -938,7 +938,7 @@ class _WorkBoardSummary extends StatelessWidget {
               width: double.infinity,
               child: TextButton.icon(
                 onPressed: onShowNextActions,
-                icon: const Icon(Icons.flash_on_rounded),
+                icon: Icon(Icons.flash_on_rounded),
                 label: const Text('Back to next actions'),
               ),
             ),
@@ -952,7 +952,7 @@ class _WorkBoardSummary extends StatelessWidget {
                 label: '${snapshot.items.length} total',
                 icon: Icons.dashboard_outlined,
                 backgroundColor: AppColors.surfaceMuted,
-                foregroundColor: AppColors.ink,
+                foregroundColor: Theme.of(context).colorScheme.onSurface,
               ),
               TrustBadge(
                 label: '$nextActionCount next',

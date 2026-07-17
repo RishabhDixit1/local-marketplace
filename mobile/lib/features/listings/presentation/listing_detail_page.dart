@@ -148,7 +148,7 @@ class _ListingHeroGallery extends StatelessWidget {
       decoration: BoxDecoration(
         color: tint.background,
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: AspectRatio(
         aspectRatio: 1.35,
@@ -294,7 +294,7 @@ class _HeroPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: AppColors.ink),
+          Icon(icon, size: 15, color: Theme.of(context).colorScheme.onSurface),
           const SizedBox(width: AppSpacing.xs),
           Flexible(
             child: Text(
@@ -334,7 +334,7 @@ class _ListingSummaryCard extends StatelessWidget {
                 label: item.sourceTypeLabel,
                 icon: Icons.explore_outlined,
                 backgroundColor: AppColors.surfaceMuted,
-                foregroundColor: AppColors.ink,
+                foregroundColor: Theme.of(context).colorScheme.onSurface,
               ),
             ],
           ),
@@ -650,9 +650,9 @@ class _ListingStickyActions extends StatelessWidget {
         AppSpacing.md,
         AppSpacing.sm + MediaQuery.paddingOf(context).bottom,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
+        border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline)),
         boxShadow: AppShadows.floating,
       ),
       child: Row(

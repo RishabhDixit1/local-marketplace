@@ -612,11 +612,11 @@ class _TopActionButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.md),
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 72),
+          constraints: BoxConstraints(minHeight: 72),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -766,7 +766,7 @@ class _HubTile extends StatelessWidget {
     final background = data.emphasized
         ? AppColors.primarySoft
         : AppColors.surface;
-    final iconColor = data.emphasized ? AppColors.primary : AppColors.inkSubtle;
+    final iconColor = data.emphasized ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
 
     return Material(
       key: ValueKey(data.key),
@@ -776,11 +776,11 @@ class _HubTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.md),
         onTap: () => context.push(data.route),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 82),
+          constraints: BoxConstraints(minHeight: 82),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             border: Border.all(
-              color: data.emphasized ? AppColors.primary : AppColors.border,
+              color: data.emphasized ? AppColors.primary : Theme.of(context).colorScheme.outline,
             ),
             borderRadius: BorderRadius.circular(AppRadii.md),
           ),
@@ -817,9 +817,9 @@ class _HubTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.inkMuted,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ],
           ),
@@ -1278,7 +1278,7 @@ class _PublicProfilePreviewCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
-            children: const [
+            children: [
               PremiumPill(
                 label: 'Public profile preview',
                 icon: Icons.visibility_outlined,
@@ -1331,7 +1331,7 @@ class _PublicProfilePreviewCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.inkSubtle,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   ],
@@ -1365,7 +1365,7 @@ class _PublicProfilePreviewCard extends StatelessWidget {
                     : profile.location,
                 icon: Icons.location_on_outlined,
                 backgroundColor: AppColors.surfaceMuted,
-                foregroundColor: AppColors.ink,
+                foregroundColor: Theme.of(context).colorScheme.onSurface,
               ),
               TrustBadge(
                 label: previewOffer,
@@ -1676,7 +1676,7 @@ class _ReadinessRow extends StatelessWidget {
         children: [
           Icon(
             done ? Icons.check_circle_rounded : Icons.radio_button_off_rounded,
-            color: done ? AppColors.success : AppColors.inkMuted,
+            color: done ? AppColors.success : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             size: 20,
           ),
           const SizedBox(width: 10),
@@ -1690,7 +1690,7 @@ class _ReadinessRow extends StatelessWidget {
                   detail.isEmpty ? 'Missing' : detail,
                   style: Theme.of(
                     context,
-                  ).textTheme.bodySmall?.copyWith(color: AppColors.inkSubtle),
+                  ).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                 ),
               ],
             ),
@@ -1858,7 +1858,7 @@ class _ProfileHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PremiumPill(
+          PremiumPill(
             label: 'Profile Hub',
             icon: Icons.dashboard_customize_outlined,
             backgroundColor: AppColors.surfaceAlt,
@@ -1903,7 +1903,7 @@ class _ProfileHero extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.inkSubtle,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   ],
@@ -2107,12 +2107,12 @@ class _HeroChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: AppColors.ink,
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -2231,7 +2231,7 @@ class _CompletionCard extends StatelessWidget {
                   label: snapshot.profile.location,
                   icon: Icons.location_on_outlined,
                   backgroundColor: AppColors.surfaceMuted,
-                  foregroundColor: AppColors.ink,
+                  foregroundColor: Theme.of(context).colorScheme.onSurface,
                 ),
             ],
           ),
@@ -2315,9 +2315,9 @@ class _ActionRow extends StatelessWidget {
                   style: Theme.of(context).textTheme.labelLarge,
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.inkMuted,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ],
           ),
@@ -2563,7 +2563,7 @@ class _PreviewRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2627,7 +2627,7 @@ class _SignInMethodsCard extends StatelessWidget {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.open_in_new_rounded),
+                  : Icon(Icons.open_in_new_rounded),
               label: Text(
                 googleSubmitting
                     ? 'Opening Google...'
@@ -2745,7 +2745,7 @@ class _PasswordCard extends StatelessWidget {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.lock_reset_rounded),
+                  : Icon(Icons.lock_reset_rounded),
               label: Text(passwordSubmitting ? 'Saving...' : 'Save password'),
             ),
             _ProfileMessage(
@@ -2783,7 +2783,7 @@ class _AccountCard extends StatelessWidget {
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: onSignOut,
-            icon: const Icon(Icons.logout_rounded),
+            icon: Icon(Icons.logout_rounded),
             label: const Text('Sign out'),
           ),
         ],
@@ -2809,7 +2809,7 @@ class _InfoRow extends StatelessWidget {
             label,
             style: Theme.of(
               context,
-            ).textTheme.labelLarge?.copyWith(color: AppColors.inkSubtle),
+            ).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
           const SizedBox(height: 4),
           Text(

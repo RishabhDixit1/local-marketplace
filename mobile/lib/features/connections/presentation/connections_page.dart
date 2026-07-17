@@ -54,7 +54,7 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.cloud_off, size: 40, color: AppColors.inkFaint),
+              Icon(Icons.cloud_off, size: 40, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
               const SizedBox(height: 12),
               Text('Unable to load connections'),
               const SizedBox(height: 12),
@@ -182,7 +182,7 @@ class _ConnectionsList extends StatelessWidget {
               child: (person?.avatarUrl.isNotEmpty ?? false)
                   ? null
                   : Text(name[0].toUpperCase(),
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                      style: TextStyle(fontWeight: FontWeight.bold)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -190,12 +190,12 @@ class _ConnectionsList extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(name,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontWeight: FontWeight.w600, fontSize: 14)),
                   Text(
                     row.statusLabel,
                     style: TextStyle(
-                        fontSize: 12, color: AppColors.inkSubtle),
+                        fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                   ),
                 ],
               ),

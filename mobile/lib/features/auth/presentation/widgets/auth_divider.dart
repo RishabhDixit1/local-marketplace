@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/design_tokens.dart';
 
 class AuthDivider extends StatelessWidget {
   const AuthDivider({super.key, this.label = 'or'});
@@ -11,18 +10,18 @@ class AuthDivider extends StatelessWidget {
     final theme = Theme.of(context);
     return Row(
       children: [
-        const Expanded(child: Divider(color: AppColors.border)),
+        Expanded(child: Divider(color: Theme.of(context).colorScheme.outline)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.inkFaint,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
               fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        const Expanded(child: Divider(color: AppColors.border)),
+        Expanded(child: Divider(color: Theme.of(context).colorScheme.outline)),
       ],
     );
   }

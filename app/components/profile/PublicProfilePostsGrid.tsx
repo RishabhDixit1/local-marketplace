@@ -612,6 +612,7 @@ export default function PublicProfilePostsGrid({
 
   const handleAddToCart = useCallback(
     (post: PublicProfilePost) => {
+      if (post.price == null || post.price <= 0) return;
       cart.addItem({
         itemType: post.type === "service" ? "service" : "product",
         itemId: post.id,
@@ -628,6 +629,7 @@ export default function PublicProfilePostsGrid({
 
   const handleBuyNow = useCallback(
     (post: PublicProfilePost) => {
+      if (post.price == null || post.price <= 0) return;
       cart.replaceItems([
         {
           itemType: post.type === "service" ? "service" : "product",
@@ -847,21 +849,23 @@ export default function PublicProfilePostsGrid({
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button"
-                    onClick={() => handleAddToCart(post)}
+                    disabled={post.price == null || post.price <= 0}
+                    onClick={() => post.price != null && post.price > 0 && handleAddToCart(post)}
                     aria-label={`Add ${post.title} to cart`}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] disabled:pointer-events-none disabled:opacity-50"
                   >
                     <ShoppingCart className="h-3.5 w-3.5" />
-                    {addedToCart === post.id ? "Added!" : "Add to Cart"}
+                    {addedToCart === post.id ? "Added!" : (post.price != null && post.price > 0) ? "Add to Cart" : "Price on request"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleBuyNow(post)}
+                    disabled={post.price == null || post.price <= 0}
+                    onClick={() => post.price != null && post.price > 0 && handleBuyNow(post)}
                     aria-label={`Buy ${post.title}`}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[var(--brand-700)]"
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:pointer-events-none disabled:opacity-50"
                   >
                     <ShoppingBag className="h-3.5 w-3.5" />
-                    {post.type === "service" ? "Hire Now" : "Buy Now"}
+                    {(post.price != null && post.price > 0) ? (post.type === "service" ? "Hire Now" : "Buy Now") : "Price on request"}
                   </button>
                 </div>
               )}

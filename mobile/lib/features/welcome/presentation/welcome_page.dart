@@ -809,7 +809,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
           decoration: BoxDecoration(
             color: AppColors.surfaceAlt,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
           ),
           child: Row(
             children: [
@@ -818,7 +818,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
               Text('Discover on Map',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
               const Spacer(),
-              Icon(Icons.chevron_right, size: 16, color: AppColors.inkFaint),
+              Icon(Icons.chevron_right, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
             ],
           ),
         ),

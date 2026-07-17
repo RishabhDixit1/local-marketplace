@@ -32,15 +32,15 @@ class LocalityProvidersScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(localityName,
-            style: const TextStyle(
+            style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
-                color: AppColors.inkStrong)),
+                color: Theme.of(context).colorScheme.onSurface)),
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -55,14 +55,14 @@ class LocalityProvidersScreen extends ConsumerWidget {
                 Icon(Icons.error_outline_rounded,
                     size: 48, color: AppColors.danger),
                 const SizedBox(height: 16),
-                const Text('Could not load providers',
+                Text('Could not load providers',
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.inkStrong)),
+                        color: Theme.of(context).colorScheme.onSurface)),
                 const SizedBox(height: 8),
                 Text('$err',
-                    style: const TextStyle(
-                        fontSize: 13, color: AppColors.inkSubtle),
+                    style: TextStyle(
+                        fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                     textAlign: TextAlign.center),
               ],
             ),
@@ -77,17 +77,17 @@ class LocalityProvidersScreen extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.store_rounded,
-                        size: 48, color: AppColors.inkFaint),
+                        size: 48, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                     const SizedBox(height: 16),
-                    const Text('No providers yet',
+                    Text('No providers yet',
                         style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: AppColors.inkStrong)),
+                            color: Theme.of(context).colorScheme.onSurface)),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                         'Be the first to offer services in this area.',
                         style: TextStyle(
-                            fontSize: 13, color: AppColors.inkSubtle),
+                            fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                         textAlign: TextAlign.center),
                   ],
                 ),
@@ -113,7 +113,7 @@ class LocalityProvidersScreen extends ConsumerWidget {
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadii.xl),
-                  side: BorderSide(color: AppColors.border),
+                  side: BorderSide(color: Theme.of(context).colorScheme.outline),
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(AppRadii.xl),
@@ -129,7 +129,7 @@ class LocalityProvidersScreen extends ConsumerWidget {
                           backgroundColor: AppColors.primarySoft,
                           child: Text(
                             name.isNotEmpty ? name[0].toUpperCase() : '?',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primaryDeep),
                           ),
@@ -140,21 +140,21 @@ class LocalityProvidersScreen extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
-                                      color: AppColors.inkStrong)),
+                                      color: Theme.of(context).colorScheme.onSurface)),
                           if (localityName.isNotEmpty) ...[
                             const SizedBox(height: 2),
                             Row(
                               children: [
-                                Icon(Icons.location_on_rounded, size: 12, color: AppColors.inkFaint),
+                                Icon(Icons.location_on_rounded, size: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(localityName,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+                                      style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                                 ),
                               ],
                             ),
@@ -166,22 +166,22 @@ class LocalityProvidersScreen extends ConsumerWidget {
                                 Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
                                 const SizedBox(width: 4),
                                 Text(score.toStringAsFixed(1),
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.inkSubtle)),
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                                 const SizedBox(width: 12),
                               ],
                               if (jobs > 0) ...[
-                                Icon(Icons.work_history_rounded, size: 12, color: AppColors.inkFaint),
+                                Icon(Icons.work_history_rounded, size: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                                 const SizedBox(width: 4),
                                 Text('$jobs job${jobs == 1 ? '' : 's'}',
-                                    style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+                                    style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                               ],
                             ],
                           ),
                             ],
                           ),
                         ),
-                        const Icon(Icons.chevron_right_rounded,
-                            color: AppColors.inkFaint),
+                        Icon(Icons.chevron_right_rounded,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                       ],
                     ),
                   ),

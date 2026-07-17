@@ -84,7 +84,7 @@ export default function BookingSlotPicker({ orderId, providerId, onBooked }: Pro
 
   if (booked) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+      <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
         <CheckCircle2 className="h-4 w-4 shrink-0" />
         Appointment booked! Check the order for details.
       </div>
@@ -128,10 +128,10 @@ export default function BookingSlotPicker({ orderId, providerId, onBooked }: Pro
                   }}
                   className={`rounded-xl border p-2 text-center text-xs transition ${
                     isSelected
-                      ? "border-blue-400 bg-blue-50 text-blue-700"
+                      ? "border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300"
                       : isPast || !hasSlots
-                      ? "border-slate-100 text-[var(--ink-500)] cursor-not-allowed"
-                      : "border-[var(--surface-border)] text-[var(--ink-700)] hover:border-blue-200 hover:bg-blue-50"
+                      ? "border-slate-100 dark:border-[var(--surface-border)] text-[var(--ink-500)] cursor-not-allowed"
+                      : "border-[var(--surface-border)] text-[var(--ink-700)] hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30"
                   }`}
                 >
                   <p className="font-semibold">{date.toLocaleDateString("en-IN", { weekday: "short" })}</p>
@@ -143,8 +143,8 @@ export default function BookingSlotPicker({ orderId, providerId, onBooked }: Pro
           </div>
 
           {selectedDate && (
-            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-              <p className="text-xs font-semibold text-blue-700">
+            <div className="rounded-2xl border border-blue-100 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-950/30 p-4">
+              <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">
                 {new Date(selectedDate).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -158,8 +158,8 @@ export default function BookingSlotPicker({ orderId, providerId, onBooked }: Pro
                     }}
                     className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                       selectedStart === slot.start && selectedEnd === slot.end
-                        ? "border-blue-400 bg-blue-100 text-blue-800"
-                        : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-blue-200"
+                        ? "border-blue-400 dark:border-blue-500 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200"
+                        : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-blue-200 dark:hover:border-blue-700"
                     }`}
                   >
                     <Clock className="h-3 w-3" />

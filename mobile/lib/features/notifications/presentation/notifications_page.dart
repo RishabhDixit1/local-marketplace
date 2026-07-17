@@ -427,14 +427,14 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             Icon(
               _sectionIcon(kind),
               size: 18,
-              color: AppColors.inkSubtle,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
             const SizedBox(width: AppSpacing.sm),
             Text(
               _sectionLabel(kind),
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: AppColors.inkStrong,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
             ),
             const SizedBox(width: AppSpacing.xs),
@@ -446,10 +446,10 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
               ),
               child: Text(
                 '$count',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.inkSubtle,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ),
@@ -459,7 +459,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                   ? Icons.keyboard_arrow_down_rounded
                   : Icons.keyboard_arrow_up_rounded,
               size: 20,
-              color: AppColors.inkSubtle,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ],
         ),
@@ -527,7 +527,7 @@ class _NotificationCard extends StatelessWidget {
                 ),
                 child: Icon(
                   icon,
-                  color: item.unread ? AppColors.verified : AppColors.inkSubtle,
+                  color: item.unread ? AppColors.verified : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -549,7 +549,7 @@ class _NotificationCard extends StatelessWidget {
                           Container(
                             width: 10,
                             height: 10,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: AppColors.accent,
                               shape: BoxShape.circle,
                             ),
@@ -562,7 +562,7 @@ class _NotificationCard extends StatelessWidget {
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.inkSubtle,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                     ),
                   ],
@@ -578,7 +578,7 @@ class _NotificationCard extends StatelessWidget {
               Text(
                 item.timeLabel,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.inkSubtle,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
               ),
             ],

@@ -70,17 +70,17 @@ class AppFilterChip extends StatelessWidget {
           : Icon(
               leading,
               size: 16,
-              color: selected ? AppColors.primary : AppColors.inkSubtle,
+              color: selected ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
       onSelected: onSelected,
       selectedColor: AppColors.primarySoft,
       checkmarkColor: AppColors.primary,
       backgroundColor: AppColors.surfaceAlt,
       side: BorderSide(
-        color: selected ? AppColors.primarySoft : AppColors.border,
+        color: selected ? AppColors.primarySoft : Theme.of(context).colorScheme.outline,
       ),
       labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
-        color: selected ? AppColors.primaryDeep : AppColors.ink,
+        color: selected ? AppColors.primaryDeep : Theme.of(context).colorScheme.onSurface,
       ),
       showCheckmark: false,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),

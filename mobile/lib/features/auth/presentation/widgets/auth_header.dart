@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/design_tokens.dart';
 import '../../../../shared/components/premium_primitives.dart';
 
 class AuthHeader extends StatelessWidget {
@@ -21,8 +20,8 @@ class AuthHeader extends StatelessWidget {
       children: [
         ServiqBrandLockup(
           compact: compact,
-          foregroundColor: AppColors.ink,
-          subtleColor: AppColors.inkFaint,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          subtleColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
         ),
         SizedBox(height: compact ? 24 : 32),
         if (title != null) ...[
@@ -42,7 +41,7 @@ class AuthHeader extends StatelessWidget {
               subtitle!,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.inkFaint,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                 height: 1.4,
               ),
             ),

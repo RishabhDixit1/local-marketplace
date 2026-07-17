@@ -104,12 +104,12 @@ class _CartSheetBody extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Column(
                 children: [
-                  Icon(Icons.shopping_cart_outlined, size: 48, color: AppColors.inkFaint),
+                  Icon(Icons.shopping_cart_outlined, size: 48, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                   const SizedBox(height: 12),
                   Text(
                     'Your cart is empty',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.inkSubtle,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -117,7 +117,7 @@ class _CartSheetBody extends StatelessWidget {
                   Text(
                     'Add services or products from the feed.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.inkFaint,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                     ),
                   ),
                 ],
@@ -148,7 +148,7 @@ class _CartSheetBody extends StatelessWidget {
                             item.itemType == 'product'
                                 ? Icons.inventory_2_outlined
                                 : Icons.build_outlined,
-                            color: AppColors.inkSubtle,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                             size: 20,
                           ),
                         ),
@@ -171,7 +171,7 @@ class _CartSheetBody extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.inkMuted,
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                               ),
                             ],
@@ -185,7 +185,7 @@ class _CartSheetBody extends StatelessWidget {
                               onPressed: item.quantity <= 1
                                   ? null
                                   : () => onQuantity(item.key, item.quantity - 1),
-                              icon: const Icon(Icons.remove_rounded, size: 18),
+                              icon: Icon(Icons.remove_rounded, size: 18),
                               visualDensity: VisualDensity.compact,
                             ),
                             SizedBox(
@@ -201,13 +201,13 @@ class _CartSheetBody extends StatelessWidget {
                             IconButton(
                               onPressed: () =>
                                   onQuantity(item.key, item.quantity + 1),
-                              icon: const Icon(Icons.add_rounded, size: 18),
+                              icon: Icon(Icons.add_rounded, size: 18),
                               visualDensity: VisualDensity.compact,
                             ),
                             const SizedBox(width: 4),
                             IconButton(
                               onPressed: () => onRemove(item.key),
-                              icon: Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.inkFaint),
+                              icon: Icon(Icons.delete_outline_rounded, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                               visualDensity: VisualDensity.compact,
                             ),
                           ],
@@ -232,7 +232,7 @@ class _CartSheetBody extends StatelessWidget {
                   Text(
                     'Subtotal',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppColors.inkSubtle,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   Text(

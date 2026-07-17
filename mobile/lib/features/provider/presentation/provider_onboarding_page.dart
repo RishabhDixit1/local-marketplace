@@ -147,7 +147,7 @@ class _ChecklistCard extends StatelessWidget {
             child: Icon(
               item.done ? Icons.check_rounded : Icons.circle_outlined,
               size: 16,
-              color: item.done ? AppColors.success : AppColors.inkMuted,
+              color: item.done ? AppColors.success : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(width: 12),

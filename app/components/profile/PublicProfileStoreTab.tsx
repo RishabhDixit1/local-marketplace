@@ -64,15 +64,15 @@ type Props = {
   displayName: string;
 };
 
-const INR = (value: number) =>
-  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+const INR = (value: number | null) =>
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value ?? 0);
 
 const INPUT_CLS =
-  "min-h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#0a66c2] focus:ring-4 focus:ring-[#0a66c2]/10";
+  "min-h-11 w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2.5 text-sm text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-500)]/10";
 const TEXTAREA_CLS =
-  "w-full rounded-[20px] border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition focus:border-[#0a66c2] focus:ring-4 focus:ring-[#0a66c2]/10";
+  "w-full rounded-[20px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3 text-sm leading-6 text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-500)]/10";
 const SELECT_CLS =
-  "min-h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#0a66c2] focus:ring-4 focus:ring-[#0a66c2]/10";
+  "min-h-11 w-full rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2.5 text-sm text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-500)]/10";
 
 export default function PublicProfileStoreTab({ profileUserId, displayName }: Props) {
   const router = useRouter();
@@ -465,7 +465,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
       <div className="space-y-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-[2rem] font-semibold tracking-tight text-slate-950">Store</h2>
+            <h2 className="text-[2rem] font-semibold tracking-tight text-[var(--ink-950)]">Store</h2>
             <p className="mt-2 text-sm text-slate-600">
               {isOwner ? "Manage your services and products." : `Browse and buy from ${displayName}.`}
             </p>
@@ -478,7 +478,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                   setAddError(null);
                   setAddModal("service");
                 }}
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[var(--surface-border)] px-4 py-2 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-slate-100"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <Briefcase className="h-3.5 w-3.5" />
@@ -490,7 +490,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                   setAddError(null);
                   setAddModal("product");
                 }}
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[#0a66c2] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0959aa]"
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[var(--brand-500)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-600)]"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <Package className="h-3.5 w-3.5" />
@@ -502,14 +502,14 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
 
         {/* Empty state */}
         {totalItems === 0 && (
-          <div className="rounded-[24px] border border-dashed border-slate-200 bg-[#f8fafc] p-8 text-center">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#edf3f8] text-[#0a66c2]">
+          <div className="rounded-[24px] border border-dashed border-[var(--surface-border)] bg-[#f8fafc] p-8 text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--brand-50)] text-[var(--brand-700)]">
               <ShoppingBag className="h-6 w-6" />
             </div>
-            <p className="font-semibold text-slate-800">
+            <p className="font-semibold text-[var(--ink-950)]">
               {isOwner ? "Your store is empty" : "No listings yet"}
             </p>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-[var(--ink-500)]">
               {isOwner
                 ? "Add your first service or product to start selling."
                 : `${displayName} hasn't listed any services or products yet.`}
@@ -519,14 +519,14 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
 
         {/* Sub-tabs */}
         {services.length > 0 && products.length > 0 && (
-          <div className="flex gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
+          <div className="flex gap-1 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] p-1">
             {(["services", "products"] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setStoreTab(t)}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold capitalize transition ${
-                  storeTab === t ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-900"
+                  storeTab === t ? "bg-[var(--surface-elevated)] shadow-sm text-[var(--ink-950)]" : "text-[var(--ink-500)] hover:text-[var(--ink-950)]"
                 }`}
               >
                 {t === "services" ? <Briefcase className="h-3.5 w-3.5" /> : <Package className="h-3.5 w-3.5" />}
@@ -540,7 +540,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
         {(storeTab === "services" || products.length === 0) && services.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2">
             {services.map((svc) => {
-              const price = Number(svc.price ?? 0);
+              const price = svc.price != null && svc.price > 0 ? Number(svc.price) : null;
               const offline =
                 svc.availability?.toLowerCase() === "offline" ||
                 svc.availability?.toLowerCase() === "unavailable";
@@ -548,20 +548,20 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
               return (
                 <article
                   key={svc.id}
-                  className="flex flex-col justify-between gap-3 overflow-hidden rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_1px_3px_rgba(var(--shadow-rgb),0.06)]"
+                  className="flex flex-col justify-between gap-3 overflow-hidden rounded-[20px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-[0_1px_3px_rgba(var(--shadow-rgb),0.06)]"
                 >
                   <div>
                     <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#edf3f8] text-[#0a66c2]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-50)] text-[var(--brand-700)]">
                         <Briefcase className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold text-slate-950">{svc.title ?? "Untitled Service"}</p>
-                        <p className="text-xs text-slate-500">{svc.category ?? "Service"}</p>
+                        <p className="truncate font-semibold text-[var(--ink-950)]">{svc.title ?? "Untitled Service"}</p>
+                        <p className="text-xs text-[var(--ink-500)]">{svc.category ?? "Service"}</p>
                       </div>
                       <span
                         className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          offline ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-700"
+                          offline ? "bg-slate-100 text-[var(--ink-500)]" : "bg-emerald-50 text-emerald-700"
                         }`}
                       >
                         {offline ? "Unavailable" : "Available"}
@@ -571,10 +571,10 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                       <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{svc.description}</p>
                     ) : null}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <p className="text-base font-semibold text-[#0a66c2]">
+                      <p className="text-base font-semibold text-[var(--brand-700)]">
                         {formatServicePriceLabel(price, svc.pricing_type)}
                       </p>
-                      <span className="rounded-full bg-[#edf3f8] px-2.5 py-1 text-[11px] font-semibold text-[#0a66c2]">
+                      <span className="rounded-full bg-[var(--brand-50)] px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-700)]">
                         {formatServicePricingTypeLabel(svc.pricing_type)}
                       </span>
                     </div>
@@ -591,12 +591,12 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                               title: svc.title ?? "",
                               category: svc.category ?? "",
                               description: svc.description ?? "",
-                              price,
+                              price: price ?? 0,
                               availability: (svc.availability as "available" | "busy" | "offline") ?? "available",
                               pricingType: svc.pricing_type ?? "fixed",
                             })
                           }
-                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--surface-border)] py-2 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]"
                         >
                           <Pencil className="h-3.5 w-3.5" /> Edit
                         </button>
@@ -628,20 +628,20 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                       <>
                         <button
                           type="button"
-                          disabled={offline}
-                          onClick={() => handleAddToCart(key, "service", svc.id, svc.title ?? "Service", price)}
-                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[#0a66c2] hover:text-[#0a66c2] disabled:pointer-events-none disabled:opacity-50"
+                          disabled={offline || price == null}
+                          onClick={() => price != null && handleAddToCart(key, "service", svc.id, svc.title ?? "Service", price)}
+                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--surface-border)] py-2.5 text-sm font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-500)] hover:text-[var(--brand-700)] disabled:pointer-events-none disabled:opacity-50"
                         >
                           <ShoppingCart className="h-3.5 w-3.5" />
-                          {added === key ? "Added ✓" : "Add to Cart"}
+                          {added === key ? "Added ✓" : price != null ? "Add to Cart" : "Price on request"}
                         </button>
                         <button
                           type="button"
-                          disabled={offline}
-                          onClick={() => handleBuyNow("service", svc.id, svc.title ?? "Service", price)}
-                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#0a66c2] py-2.5 text-sm font-semibold text-white transition hover:bg-[#0959aa] disabled:pointer-events-none disabled:opacity-50"
+                          disabled={offline || price == null}
+                          onClick={() => price != null && handleBuyNow("service", svc.id, svc.title ?? "Service", price)}
+                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--brand-500)] py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-600)] disabled:pointer-events-none disabled:opacity-50"
                         >
-                          <Zap className="h-3.5 w-3.5" /> Hire Now
+                          <Zap className="h-3.5 w-3.5" /> {price != null ? "Hire Now" : "Price on request"}
                         </button>
                       </>
                     )}
@@ -656,14 +656,14 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
         {(storeTab === "products" || services.length === 0) && products.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2">
             {products.map((prod) => {
-              const price = Number(prod.price ?? 0);
+              const price = prod.price != null && prod.price > 0 ? Number(prod.price) : null;
               const outOfStock = (prod.stock ?? 0) <= 0;
               const key = `product:${prod.id}`;
               const imgUrl = resolveListingImageUrl(prod.image_path ?? prod.image_url);
               return (
                 <article
                   key={prod.id}
-                  className="flex flex-col justify-between overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_1px_3px_rgba(var(--shadow-rgb),0.06)]"
+                  className="flex flex-col justify-between overflow-hidden rounded-[20px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-[0_1px_3px_rgba(var(--shadow-rgb),0.06)]"
                 >
                   {imgUrl ? (
                     <div className="relative h-44 w-full overflow-hidden">
@@ -685,7 +685,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                   <div className="flex flex-col gap-3 p-4">
                     <div>
                       <div className="flex items-start justify-between gap-2">
-                        <p className="font-semibold text-slate-950">{prod.title ?? "Untitled Product"}</p>
+                        <p className="font-semibold text-[var(--ink-950)]">{prod.title ?? "Untitled Product"}</p>
                         <span
                           className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                             outOfStock ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-700"
@@ -694,11 +694,11 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                           {outOfStock ? "Out of stock" : "In stock"}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500">{prod.category ?? "Product"}</p>
+                      <p className="text-xs text-[var(--ink-500)]">{prod.category ?? "Product"}</p>
                       {prod.description ? (
                         <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-slate-600">{prod.description}</p>
                       ) : null}
-                      <p className="mt-2 text-base font-semibold text-[#0a66c2]">{INR(price)}</p>
+                      <p className="mt-2 text-base font-semibold text-[var(--brand-700)]">{INR(price)}</p>
                     </div>
 
                     <div className="flex gap-2">
@@ -712,13 +712,13 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                                 title: prod.title ?? "",
                                 category: prod.category ?? "",
                                 description: prod.description ?? "",
-                                price,
+                                price: price ?? 0,
                                 stock: Number(prod.stock ?? 0),
                                 deliveryMethod: "pickup",
                                 imageUrl: prod.image_path ?? prod.image_url ?? "",
                               })
                             }
-                            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--surface-border)] py-2 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)]"
                           >
                             <Pencil className="h-3.5 w-3.5" /> Edit
                           </button>
@@ -752,20 +752,20 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                         <>
                           <button
                             type="button"
-                            disabled={outOfStock}
-                            onClick={() => handleAddToCart(key, "product", prod.id, prod.title ?? "Product", price)}
-                            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[#0a66c2] hover:text-[#0a66c2] disabled:pointer-events-none disabled:opacity-50"
+                            disabled={outOfStock || price == null}
+                            onClick={() => price != null && handleAddToCart(key, "product", prod.id, prod.title ?? "Product", price)}
+                            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--surface-border)] py-2.5 text-sm font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-500)] hover:text-[var(--brand-700)] disabled:pointer-events-none disabled:opacity-50"
                           >
                             <ShoppingCart className="h-3.5 w-3.5" />
-                            {added === key ? "Added ✓" : "Add to Cart"}
+                            {added === key ? "Added ✓" : price != null ? "Add to Cart" : "Price on request"}
                           </button>
                           <button
                             type="button"
-                            disabled={outOfStock}
-                            onClick={() => handleBuyNow("product", prod.id, prod.title ?? "Product", price)}
-                            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#0a66c2] py-2.5 text-sm font-semibold text-white transition hover:bg-[#0959aa] disabled:pointer-events-none disabled:opacity-50"
+                            disabled={outOfStock || price == null}
+                            onClick={() => price != null && handleBuyNow("product", prod.id, prod.title ?? "Product", price)}
+                            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--brand-500)] py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-600)] disabled:pointer-events-none disabled:opacity-50"
                           >
-                            <ShoppingBag className="h-3.5 w-3.5" /> Buy Now
+                            <ShoppingBag className="h-3.5 w-3.5" /> {price != null ? "Buy Now" : "Price on request"}
                           </button>
                         </>
                       )}
@@ -782,8 +782,8 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
       {deleteTarget ? (
         <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => setDeleteTarget(null)} />
-          <div className="relative z-[1] w-full max-w-sm rounded-[28px] bg-white p-6 shadow-2xl">
-            <h3 className="text-base font-semibold text-slate-950">Remove listing?</h3>
+          <div className="relative z-[1] w-full max-w-sm rounded-[28px] bg-[var(--surface-elevated)] p-6 shadow-2xl">
+            <h3 className="text-base font-semibold text-[var(--ink-950)]">Remove listing?</h3>
             <p className="mt-2 text-sm text-slate-600">
               &ldquo;{deleteTarget.title}&rdquo; will be permanently removed from your store.
             </p>
@@ -791,7 +791,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
               <button
                 type="button"
                 onClick={() => setDeleteTarget(null)}
-                className="flex-1 rounded-full border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="flex-1 rounded-full border border-[var(--surface-border)] py-2.5 text-sm font-semibold text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
               >
                 Cancel
               </button>
@@ -816,24 +816,24 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
       {editService ? (
         <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => !editBusy && setEditService(null)} />
-          <div className="relative z-[1] flex max-h-[88vh] w-full max-w-lg flex-col overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl">
+          <div className="relative z-[1] flex max-h-[88vh] w-full max-w-lg flex-col overflow-y-auto rounded-[28px] bg-[var(--surface-elevated)] p-6 shadow-2xl">
             <div className="mb-5 flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Service</p>
-                <h3 className="mt-1 text-xl font-semibold text-slate-950">Edit listing</h3>
+                <h3 className="mt-1 text-xl font-semibold text-[var(--ink-950)]">Edit listing</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setEditService(null)}
                 disabled={editBusy}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-border)] text-[var(--ink-500)] hover:bg-slate-100 disabled:opacity-50"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="grid gap-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Title</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Title</label>
                 <input
                   value={editService.title}
                   onChange={(e) => setEditService((s) => s ? { ...s, title: e.target.value } : s)}
@@ -841,7 +841,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Category</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Category</label>
                 <input
                   value={editService.category}
                   onChange={(e) => setEditService((s) => s ? { ...s, category: e.target.value } : s)}
@@ -849,7 +849,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Description</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Description</label>
                 <textarea
                   value={editService.description}
                   onChange={(e) => setEditService((s) => s ? { ...s, description: e.target.value } : s)}
@@ -859,7 +859,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-slate-800">Price (INR)</label>
+                  <label className="text-sm font-semibold text-[var(--ink-950)]">Price (INR)</label>
                   <input
                     type="number"
                     min="0"
@@ -869,7 +869,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-slate-800">Availability</label>
+                  <label className="text-sm font-semibold text-[var(--ink-950)]">Availability</label>
                   <select
                     value={editService.availability}
                     onChange={(e) => setEditService((s) => s ? { ...s, availability: e.target.value as "available" | "busy" | "offline" } : s)}
@@ -888,7 +888,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 type="button"
                 onClick={() => setEditService(null)}
                 disabled={editBusy}
-                className="flex-1 rounded-full border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="flex-1 rounded-full border border-[var(--surface-border)] py-2.5 text-sm font-semibold text-[var(--ink-700)] hover:bg-[var(--surface-soft)] disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -896,7 +896,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 type="button"
                 onClick={() => void saveServiceEdit()}
                 disabled={editBusy}
-                className="flex-1 rounded-full bg-[#0a66c2] py-2.5 text-sm font-semibold text-white hover:bg-[#0959aa] disabled:opacity-60"
+                className="flex-1 rounded-full bg-[var(--brand-500)] py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-600)] disabled:opacity-60"
               >
                 {editBusy ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Save changes"}
               </button>
@@ -909,24 +909,24 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
       {editProduct ? (
         <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => !editBusy && setEditProduct(null)} />
-          <div className="relative z-[1] flex max-h-[88vh] w-full max-w-lg flex-col overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl">
+          <div className="relative z-[1] flex max-h-[88vh] w-full max-w-lg flex-col overflow-y-auto rounded-[28px] bg-[var(--surface-elevated)] p-6 shadow-2xl">
             <div className="mb-5 flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Product</p>
-                <h3 className="mt-1 text-xl font-semibold text-slate-950">Edit listing</h3>
+                <h3 className="mt-1 text-xl font-semibold text-[var(--ink-950)]">Edit listing</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setEditProduct(null)}
                 disabled={editBusy}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-border)] text-[var(--ink-500)] hover:bg-slate-100 disabled:opacity-50"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="grid gap-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Title</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Title</label>
                 <input
                   value={editProduct.title}
                   onChange={(e) => setEditProduct((p) => p ? { ...p, title: e.target.value } : p)}
@@ -934,7 +934,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Category</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Category</label>
                 <input
                   value={editProduct.category}
                   onChange={(e) => setEditProduct((p) => p ? { ...p, category: e.target.value } : p)}
@@ -942,7 +942,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Description</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Description</label>
                 <textarea
                   value={editProduct.description}
                   onChange={(e) => setEditProduct((p) => p ? { ...p, description: e.target.value } : p)}
@@ -952,7 +952,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-slate-800">Price (INR)</label>
+                  <label className="text-sm font-semibold text-[var(--ink-950)]">Price (INR)</label>
                   <input
                     type="number"
                     min="0"
@@ -962,7 +962,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-slate-800">Stock quantity</label>
+                  <label className="text-sm font-semibold text-[var(--ink-950)]">Stock quantity</label>
                   <input
                     type="number"
                     min="0"
@@ -973,14 +973,14 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Product Image</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Product Image</label>
                 <ImageUploadField
                   value={editProduct.imageUrl}
                   onChange={(url) => setEditProduct((p) => p ? { ...p, imageUrl: url } : p)}
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Delivery method</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Delivery method</label>
                 <select
                   value={editProduct.deliveryMethod}
                   onChange={(e) => setEditProduct((p) => p ? { ...p, deliveryMethod: e.target.value as ProductDeliveryMethod } : p)}
@@ -998,7 +998,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 type="button"
                 onClick={() => setEditProduct(null)}
                 disabled={editBusy}
-                className="flex-1 rounded-full border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="flex-1 rounded-full border border-[var(--surface-border)] py-2.5 text-sm font-semibold text-[var(--ink-700)] hover:bg-[var(--surface-soft)] disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1006,7 +1006,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 type="button"
                 onClick={() => void saveProductEdit()}
                 disabled={editBusy}
-                className="flex-1 rounded-full bg-[#0a66c2] py-2.5 text-sm font-semibold text-white hover:bg-[#0959aa] disabled:opacity-60"
+                className="flex-1 rounded-full bg-[var(--brand-500)] py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-600)] disabled:opacity-60"
               >
                 {editBusy ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Save changes"}
               </button>
@@ -1019,24 +1019,24 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
       {addModal === "service" ? (
         <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => !addBusy && setAddModal(null)} />
-          <div className="relative z-[1] flex max-h-[88vh] w-full max-w-lg flex-col overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl">
+          <div className="relative z-[1] flex max-h-[88vh] w-full max-w-lg flex-col overflow-y-auto rounded-[28px] bg-[var(--surface-elevated)] p-6 shadow-2xl">
             <div className="mb-5 flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">New listing</p>
-                <h3 className="mt-1 text-xl font-semibold text-slate-950">Add a service</h3>
+                <h3 className="mt-1 text-xl font-semibold text-[var(--ink-950)]">Add a service</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setAddModal(null)}
                 disabled={addBusy}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-border)] text-[var(--ink-500)] hover:bg-slate-100 disabled:opacity-50"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="grid gap-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Service title *</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Service title *</label>
                 <input
                   ref={addSvcTitleRef}
                   value={addSvcTitle}
@@ -1046,7 +1046,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Category</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Category</label>
                 <input
                   value={addSvcCategory}
                   onChange={(e) => setAddSvcCategory(e.target.value)}
@@ -1055,7 +1055,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Description</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Description</label>
                 <textarea
                   value={addSvcDescription}
                   onChange={(e) => setAddSvcDescription(e.target.value)}
@@ -1065,7 +1065,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Price (INR)</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Price (INR)</label>
                 <input
                   type="number"
                   min="0"
@@ -1082,7 +1082,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 type="button"
                 onClick={() => setAddModal(null)}
                 disabled={addBusy}
-                className="flex-1 rounded-full border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="flex-1 rounded-full border border-[var(--surface-border)] py-2.5 text-sm font-semibold text-[var(--ink-700)] hover:bg-[var(--surface-soft)] disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1090,7 +1090,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 type="button"
                 onClick={() => void handleAddService()}
                 disabled={addBusy || !addSvcTitle.trim()}
-                className="flex-1 rounded-full bg-[#0a66c2] py-2.5 text-sm font-semibold text-white hover:bg-[#0959aa] disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="flex-1 rounded-full bg-[var(--brand-500)] py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-600)] disabled:cursor-not-allowed disabled:bg-[var(--surface-soft)]"
               >
                 {addBusy ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Add service"}
               </button>
@@ -1103,24 +1103,24 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
       {addModal === "product" ? (
         <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => !addBusy && setAddModal(null)} />
-          <div className="relative z-[1] flex max-h-[88vh] w-full max-w-lg flex-col overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl">
+          <div className="relative z-[1] flex max-h-[88vh] w-full max-w-lg flex-col overflow-y-auto rounded-[28px] bg-[var(--surface-elevated)] p-6 shadow-2xl">
             <div className="mb-5 flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">New listing</p>
-                <h3 className="mt-1 text-xl font-semibold text-slate-950">Add a product</h3>
+                <h3 className="mt-1 text-xl font-semibold text-[var(--ink-950)]">Add a product</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setAddModal(null)}
                 disabled={addBusy}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-border)] text-[var(--ink-500)] hover:bg-slate-100 disabled:opacity-50"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="grid gap-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Product name *</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Product name *</label>
                 <input
                   ref={addProdTitleRef}
                   value={addProdTitle}
@@ -1130,7 +1130,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Category</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Category</label>
                 <input
                   value={addProdCategory}
                   onChange={(e) => setAddProdCategory(e.target.value)}
@@ -1139,7 +1139,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Description</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Description</label>
                 <textarea
                   value={addProdDescription}
                   onChange={(e) => setAddProdDescription(e.target.value)}
@@ -1150,7 +1150,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-slate-800">Price (INR)</label>
+                  <label className="text-sm font-semibold text-[var(--ink-950)]">Price (INR)</label>
                   <input
                     type="number"
                     min="0"
@@ -1161,7 +1161,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-slate-800">Initial stock</label>
+                  <label className="text-sm font-semibold text-[var(--ink-950)]">Initial stock</label>
                   <input
                     type="number"
                     min="0"
@@ -1172,7 +1172,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-800">Product Image</label>
+                <label className="text-sm font-semibold text-[var(--ink-950)]">Product Image</label>
                 <ImageUploadField
                   value={addProdImageUrl}
                   onChange={setAddProdImageUrl}
@@ -1185,7 +1185,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 type="button"
                 onClick={() => setAddModal(null)}
                 disabled={addBusy}
-                className="flex-1 rounded-full border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="flex-1 rounded-full border border-[var(--surface-border)] py-2.5 text-sm font-semibold text-[var(--ink-700)] hover:bg-[var(--surface-soft)] disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1193,7 +1193,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                 type="button"
                 onClick={() => void handleAddProduct()}
                 disabled={addBusy || !addProdTitle.trim()}
-                className="flex-1 rounded-full bg-[#0a66c2] py-2.5 text-sm font-semibold text-white hover:bg-[#0959aa] disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="flex-1 rounded-full bg-[var(--brand-500)] py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-600)] disabled:cursor-not-allowed disabled:bg-[var(--surface-soft)]"
               >
                 {addBusy ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Add product"}
               </button>

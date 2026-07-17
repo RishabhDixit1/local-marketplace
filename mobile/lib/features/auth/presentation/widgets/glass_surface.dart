@@ -35,7 +35,7 @@ class GlassSurface extends StatelessWidget {
             border: Border.all(
               color: isDark
                   ? AppColors.darkBorder.withValues(alpha: borderOpacity)
-                  : AppColors.border.withValues(alpha: borderOpacity),
+                  : Theme.of(context).colorScheme.outline.withValues(alpha: borderOpacity),
             ),
           ),
           child: Padding(padding: padding, child: child),

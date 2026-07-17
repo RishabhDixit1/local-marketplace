@@ -370,7 +370,7 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
         actions: [
           IconButton(
             onPressed: () => context.push(AppRoutes.notifications),
-            icon: const Icon(Icons.notifications_none_rounded),
+            icon: Icon(Icons.notifications_none_rounded),
           ),
         ],
       ),
@@ -412,20 +412,30 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
         final filtered = data.people.where((person) {
           if (_filters.contains('online') && !person.isOnline) return false;
           if (_filters.contains('verified') &&
-              person.completionPercent < 80) return false;
+              person.completionPercent < 80) {
+            return false;
+          }
           if (_filters.contains('top_rated') &&
               ((person.averageRating ?? 0) < 4.5 ||
-                  person.reviewCount < 1)) return false;
+                  person.reviewCount < 1)) {
+            return false;
+          }
           if (_filters.contains('connected') &&
-              !person.isAcceptedConnection) return false;
+              !person.isAcceptedConnection) {
+            return false;
+          }
           if (_filters.contains('fast') &&
               !person.isOnline &&
-              !person.activityLabel.toLowerCase().contains('min')) return false;
+              !person.activityLabel.toLowerCase().contains('min')) {
+            return false;
+          }
           if (_selectedCategory != 'All' &&
               !person.primaryTags.any(
                 (tag) =>
                     tag.toLowerCase() == _selectedCategory.toLowerCase(),
-              )) return false;
+              )) {
+            return false;
+          }
           if (_selectedLocalityId != null) {
             final locName = _localities
                 .where((l) => l['id'] == _selectedLocalityId)
@@ -504,7 +514,7 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                   height: 40,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppRadii.xl),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline),
                     color: AppColors.surface,
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -513,8 +523,8 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                       value: _selectedLocalityId,
                       hint: const Text('All localities',
                           style: TextStyle(fontSize: 13)),
-                      style: const TextStyle(
-                          fontSize: 13, color: AppColors.inkStrong),
+                      style: TextStyle(
+                          fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
                       isExpanded: true,
                       isDense: true,
                       items: [
@@ -800,7 +810,7 @@ class _PeopleDiscoverySummary extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Row(
         children: [
@@ -813,7 +823,7 @@ class _PeopleDiscoverySummary extends StatelessWidget {
                   label: label,
                   icon: Icons.check_rounded,
                   backgroundColor: AppColors.surface,
-                  foregroundColor: AppColors.ink,
+                  foregroundColor: Theme.of(context).colorScheme.onSurface,
                 );
               }).toList(),
             ),
@@ -947,9 +957,9 @@ class _ProviderComparePanel extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.ink, AppColors.accentDeep],
+                colors: [Theme.of(context).colorScheme.onSurface, AppColors.accentDeep],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -1054,7 +1064,7 @@ class _CompareRow extends StatelessWidget {
                           label: person.priceLabel,
                           icon: Icons.payments_outlined,
                           backgroundColor: AppColors.surface,
-                          foregroundColor: AppColors.ink,
+                          foregroundColor: Theme.of(context).colorScheme.onSurface,
                         ),
                         TrustBadge(
                           label: person.ratingLabel,
@@ -1085,9 +1095,9 @@ class _CompareRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.inkMuted,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ],
           ),

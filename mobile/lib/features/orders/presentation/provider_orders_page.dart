@@ -7,7 +7,6 @@ import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
-import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
@@ -261,12 +260,12 @@ class _OrderCard extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              Icon(Icons.access_time_rounded, size: 14, color: AppColors.inkSubtle),
+              Icon(Icons.access_time_rounded, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
               const SizedBox(width: 4),
               Text(
                 order.createdLabel,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.inkSubtle,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ],

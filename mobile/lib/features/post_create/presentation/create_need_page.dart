@@ -1066,7 +1066,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
               maxLines: 5,
               maxLength: 160,
               textInputAction: TextInputAction.newline,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Need',
                 hintText: 'Need electrician for switch repair today',
                 alignLabelWithHint: true,
@@ -1219,7 +1219,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
               maxLines: 5,
               maxLength: 1200,
               textInputAction: TextInputAction.newline,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Extra details',
                 hintText: 'Access notes, photos needed, exact issue...',
                 alignLabelWithHint: true,
@@ -1266,7 +1266,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                     label: _category,
                     icon: Icons.category_outlined,
                     backgroundColor: AppColors.surfaceMuted,
-                    foregroundColor: AppColors.ink,
+                    foregroundColor: Theme.of(context).colorScheme.onSurface,
                   ),
                   TrustBadge(
                     label: _neededWithin,
@@ -1286,7 +1286,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                         ? Icons.wifi_tethering_outlined
                         : Icons.location_on_outlined,
                     backgroundColor: AppColors.surfaceMuted,
-                    foregroundColor: AppColors.ink,
+                    foregroundColor: Theme.of(context).colorScheme.onSurface,
                   ),
                 ],
               ),
@@ -1364,7 +1364,7 @@ class _CreateNeedHero extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadii.lg),
         color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1382,7 +1382,7 @@ class _CreateNeedHero extends StatelessWidget {
                 '$step/$_totalSteps',
                 style: Theme.of(
                   context,
-                ).textTheme.labelLarge?.copyWith(color: AppColors.inkSubtle),
+                ).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
               ),
             ],
           ),
@@ -1450,12 +1450,12 @@ class _HeroSignal extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: AppColors.inkSubtle, size: 14),
+          Icon(icon, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), size: 14),
           const SizedBox(width: 6),
           Flexible(
             child: Text(
@@ -1463,7 +1463,7 @@ class _HeroSignal extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppColors.ink,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -1555,7 +1555,7 @@ class _StepIndicator extends StatelessWidget {
         color: active ? AppColors.primarySoft : AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(
-          color: active ? AppColors.primarySoft : AppColors.border,
+          color: active ? AppColors.primarySoft : Theme.of(context).colorScheme.outline,
         ),
       ),
       child: Text(
@@ -1564,7 +1564,7 @@ class _StepIndicator extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: active ? AppColors.primaryDeep : AppColors.inkSubtle,
+          color: active ? AppColors.primaryDeep : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
         ),
       ),
     );
@@ -1593,7 +1593,7 @@ class _DraftRecoveredBanner extends StatelessWidget {
               color: AppColors.primarySoft,
               borderRadius: BorderRadius.circular(AppRadii.md),
             ),
-            child: const Icon(Icons.save_outlined, color: AppColors.primary),
+            child: Icon(Icons.save_outlined, color: AppColors.primary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1643,7 +1643,7 @@ class _PreviewRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: AppColors.inkMuted),
+          Icon(icon, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -1705,7 +1705,7 @@ class _PublishedState extends StatelessWidget {
                   color: AppColors.primarySoft,
                   borderRadius: BorderRadius.circular(AppRadii.md),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.check_circle_rounded,
                   color: AppColors.primary,
                 ),
@@ -1744,7 +1744,7 @@ class _PublishedState extends StatelessWidget {
                 label: draft.locationLabel,
                 icon: Icons.location_on_outlined,
                 backgroundColor: AppColors.surfaceMuted,
-                foregroundColor: AppColors.ink,
+                foregroundColor: Theme.of(context).colorScheme.onSurface,
               ),
               TrustBadge(
                 label: draft.neededWithin,
@@ -1757,7 +1757,7 @@ class _PublishedState extends StatelessWidget {
                   label: '${draft.media.length} media',
                   icon: Icons.perm_media_outlined,
                   backgroundColor: AppColors.surfaceMuted,
-                  foregroundColor: AppColors.ink,
+                  foregroundColor: Theme.of(context).colorScheme.onSurface,
                 ),
             ],
           ),
@@ -1777,7 +1777,7 @@ class _PublishedState extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 10),
-          const MarketplaceLoopSteps(activeIndex: 1),
+          MarketplaceLoopSteps(activeIndex: 1),
           const SizedBox(height: 14),
           const _NextStepRow(
             icon: Icons.person_search_outlined,
@@ -2105,7 +2105,7 @@ class _CreateNeedMediaSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surfaceRaised,
               borderRadius: BorderRadius.circular(AppRadii.md),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2173,7 +2173,7 @@ class _ComposerMediaCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
           boxShadow: AppShadows.card,
         ),
         child: Column(
@@ -2250,7 +2250,7 @@ class _ComposerMediaCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(
                       context,
-                    ).textTheme.bodySmall?.copyWith(color: AppColors.ink),
+                    ).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -2330,7 +2330,7 @@ class _FallbackMediaSurface extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: AppColors.inkMuted),
+          Icon(icon, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           const SizedBox(height: 8),
           Text(
             label,

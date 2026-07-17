@@ -92,7 +92,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
             height: 4,
             child: Stack(
               children: [
-                Container(color: AppColors.border.withValues(alpha: 0.3)),
+                Container(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   width: (strength.fraction * 200).clamp(0, 200),

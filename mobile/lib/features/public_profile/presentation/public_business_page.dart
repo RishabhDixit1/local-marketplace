@@ -72,7 +72,7 @@ class _PublicBusinessPageState extends ConsumerState<PublicBusinessPage> {
       appBar: AppBar(
         title: const Text('Public Business Page'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
         ),
       ),
@@ -85,7 +85,7 @@ class _PublicBusinessPageState extends ConsumerState<PublicBusinessPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.cloud_off_rounded,
-                    size: 48, color: AppColors.inkFaint),
+                    size: 48, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                 const SizedBox(height: AppSpacing.md),
                 const Text(
                   'Could not load your profile',
@@ -157,7 +157,7 @@ class _PublicBusinessContent extends StatelessWidget {
                     maxLines: 8,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: AppColors.inkSubtle)),
+                        ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               ],
             ),
           ),
@@ -165,13 +165,13 @@ class _PublicBusinessContent extends StatelessWidget {
         ],
         PrimaryButton(
           label: 'Share Profile',
-          icon: const Icon(Icons.ios_share_rounded),
+          icon: Icon(Icons.ios_share_rounded),
           onPressed: onShare,
         ),
         const SizedBox(height: AppSpacing.sm),
         SecondaryButton(
           label: 'Open in Browser',
-          icon: const Icon(Icons.open_in_new_rounded),
+          icon: Icon(Icons.open_in_new_rounded),
           onPressed: onOpenBrowser,
         ),
         const SizedBox(height: AppSpacing.md),
@@ -179,7 +179,7 @@ class _PublicBusinessContent extends StatelessWidget {
           child: Text(
             _publicUrlDisplay(snapshot.publicPath),
             style: theme.textTheme.bodySmall
-                ?.copyWith(color: AppColors.inkFaint),
+                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
             textAlign: TextAlign.center,
           ),
         ),
@@ -216,7 +216,7 @@ class _HeroSection extends StatelessWidget {
           height: 88,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: AppColors.border, width: 2),
+            border: Border.all(color: Theme.of(context).colorScheme.outline, width: 2),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(44),
@@ -224,16 +224,16 @@ class _HeroSection extends StatelessWidget {
                 ? CachedNetworkImage(
                     imageUrl: avatarUrl,
                     fit: BoxFit.cover,
-                    errorWidget: (_, _, _) => const Icon(
+                    errorWidget: (_, _, _) => Icon(
                       Icons.person_rounded,
                       size: 44,
-                      color: AppColors.inkFaint,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                     ),
                   )
-                : const Icon(
+                : Icon(
                     Icons.person_rounded,
                     size: 44,
-                    color: AppColors.inkFaint,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                   ),
           ),
         ),
@@ -253,7 +253,7 @@ class _HeroSection extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodyLarge
-                ?.copyWith(color: AppColors.inkSubtle),
+                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             textAlign: TextAlign.center,
           ),
         ],
@@ -263,7 +263,7 @@ class _HeroSection extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.location_on_outlined,
-                  size: 16, color: AppColors.inkFaint),
+                  size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
               const SizedBox(width: AppSpacing.xxs),
               Flexible(
                 child: Text(
@@ -271,7 +271,7 @@ class _HeroSection extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall
-                    ?.copyWith(color: AppColors.inkFaint),
+                    ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                 ),
               ),
             ],
@@ -375,7 +375,7 @@ class _StatCell extends StatelessWidget {
         Text(
           label,
           style: theme.textTheme.bodySmall
-              ?.copyWith(color: AppColors.inkFaint),
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
         ),
       ],
     );

@@ -81,7 +81,7 @@ class _ProviderSubscriptionsPageState
                           ? 'You are not subscribed yet. Pick a plan to get started.'
                           : 'Upgrade or switch your plan anytime.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.inkSubtle,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -230,7 +230,7 @@ class _CurrentSubscriptionBanner extends StatelessWidget {
                 Text(
                   'Renews on $fmt',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.inkSubtle,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -300,7 +300,7 @@ class _PlanCard extends StatelessWidget {
                     Text(
                       plan.intervalLabel,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.inkSubtle,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                 ],

@@ -117,7 +117,7 @@ export function SignInModal({ show, contactProvider, onClose, onAuthComplete }: 
         return;
       }
     } catch (goTrueError) {
-      const { data: { session } } = await supabase.retrieveSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         await completeAuth(session.user);
         return;
@@ -126,7 +126,7 @@ export function SignInModal({ show, contactProvider, onClose, onAuthComplete }: 
     }
 
     try {
-      const response = fetch("/api/auth/verify-link", {
+      const response = await fetch("/api/auth/verify-link", {
         method: "POST",
         headers: { "Content-Type" : "application/json" },
         body: JSON.stringify({ email, otp: code }),

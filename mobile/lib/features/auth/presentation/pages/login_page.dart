@@ -35,7 +35,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
       curve: Curves.easeOutCubic,
     );
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.08),
+      begin: Offset(0, 0.08),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _fadeController,
@@ -103,7 +103,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
-                                ?.copyWith(color: AppColors.inkFaint),
+                                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                           ),
                           GestureDetector(
                             onTap: () => context.push(AppRoutes.signUp),
@@ -127,7 +127,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
-                            ?.copyWith(color: AppColors.inkFaint),
+                            ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                       ),
                     ],
                   ),
@@ -192,7 +192,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                   tab.$2,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: selected ? AppColors.ink : AppColors.inkFaint,
+                    color: selected ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                   ),
                 ),
@@ -240,7 +240,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                     ? null
                     : () => notifier.verifyEmailOtp(context),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.inkStrong,
+                  backgroundColor: Theme.of(context).colorScheme.onSurface,
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: AppColors.surfacePressed,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -249,7 +249,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                   ),
                 ),
                 child: state.isSubmitting
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 20, height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                       )
@@ -262,7 +262,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
               child: Text(
                 'Use a different email',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.inkFaint,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -292,7 +292,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                   ? null
                     : () => notifier.sendEmailOtp(context),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.inkStrong,
+                backgroundColor: Theme.of(context).colorScheme.onSurface,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: AppColors.surfacePressed,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -301,7 +301,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                 ),
               ),
               child: state.isSubmitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
@@ -337,7 +337,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                     ? null
                     : () => notifier.verifyPhoneOtp(context),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.inkStrong,
+                  backgroundColor: Theme.of(context).colorScheme.onSurface,
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: AppColors.surfacePressed,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -346,7 +346,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                   ),
                 ),
                 child: state.isSubmitting
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 20, height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                       )
@@ -359,7 +359,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
               child: Text(
                 'Use a different number',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.inkFaint,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -389,7 +389,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                   ? null
                     : () => notifier.sendPhoneOtp(context),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.inkStrong,
+                backgroundColor: Theme.of(context).colorScheme.onSurface,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: AppColors.surfacePressed,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -398,7 +398,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                 ),
               ),
               child: state.isSubmitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
@@ -441,7 +441,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                   ? null
                   : () => notifier.signInWithPassword(context),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.inkStrong,
+                backgroundColor: Theme.of(context).colorScheme.onSurface,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: AppColors.surfacePressed,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -450,7 +450,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                 ),
               ),
               child: state.isSubmitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
@@ -463,7 +463,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
             child: Text(
               'Forgot password?',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.inkFaint,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                 fontWeight: FontWeight.w600,
               ),
             ),

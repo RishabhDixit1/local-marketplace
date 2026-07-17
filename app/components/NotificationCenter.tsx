@@ -47,28 +47,28 @@ const kindStyles: Record<
 > = {
   order: {
     icon: Truck,
-    iconClassName: "text-blue-600",
-    badgeClassName: "bg-blue-100 text-blue-700",
+    iconClassName: "text-blue-600 dark:text-blue-400",
+    badgeClassName: "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300",
   },
   message: {
     icon: MessageCircle,
-    iconClassName: "text-violet-600",
-    badgeClassName: "bg-violet-100 text-violet-700",
+    iconClassName: "text-violet-600 dark:text-violet-400",
+    badgeClassName: "bg-violet-100 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300",
   },
   review: {
     icon: Star,
-    iconClassName: "text-amber-600",
-    badgeClassName: "bg-amber-100 text-amber-700",
+    iconClassName: "text-amber-600 dark:text-amber-400",
+    badgeClassName: "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300",
   },
   system: {
     icon: ShieldCheck,
-    iconClassName: "text-emerald-600",
-    badgeClassName: "bg-emerald-100 text-emerald-700",
+    iconClassName: "text-emerald-600 dark:text-emerald-400",
+    badgeClassName: "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300",
   },
   connection: {
     icon: UserCheck,
-    iconClassName: "text-rose-600",
-    badgeClassName: "bg-rose-100 text-rose-700",
+    iconClassName: "text-rose-600 dark:text-rose-400",
+    badgeClassName: "bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300",
   },
 };
 
@@ -649,7 +649,7 @@ export default function NotificationCenter({
           <button
             type="button"
             onClick={() => void clearNotification(item.id)}
-            className="mt-1 rounded-lg p-1.5 text-[var(--ink-500)] hover:bg-slate-200 hover:text-[var(--ink-700)] transition-colors"
+            className="mt-1 rounded-lg p-1.5 text-[var(--ink-500)] hover:bg-slate-200 dark:hover:bg-[var(--surface-soft)] hover:text-[var(--ink-700)] transition-colors"
             aria-label="Clear notification"
             title="Clear"
           >
@@ -676,8 +676,8 @@ export default function NotificationCenter({
         <div
           className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
             demoMode
-              ? "bg-amber-100 text-amber-700"
-              : "bg-emerald-100 text-emerald-700"
+              ? "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300"
+              : "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300"
           }`}
         >
           <span
@@ -698,8 +698,8 @@ export default function NotificationCenter({
           {/* Unread group */}
           {unreadItems.length > 0 && (
             <>
-              <li className="sticky top-0 z-10 flex items-center gap-2 bg-sky-50 px-3 py-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-sky-600">
+              <li className="sticky top-0 z-10 flex items-center gap-2 bg-sky-50 dark:bg-sky-950/40 px-3 py-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">
                   Unread
                 </span>
               </li>
@@ -743,8 +743,8 @@ export default function NotificationCenter({
         <div
           className={`px-3 py-2 text-[11px] leading-5 ${
             demoMode
-              ? "bg-amber-50 text-amber-700 border-t border-amber-200"
-              : "bg-rose-50 text-rose-700 border-t border-rose-200"
+              ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-t border-amber-200 dark:border-amber-800/50"
+              : "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-t border-rose-200 dark:border-rose-800/50"
           }`}
         >
           {errorMessage}
@@ -768,7 +768,7 @@ export default function NotificationCenter({
               type="button"
               onClick={() => void loadNotifications()}
               disabled={loading}
-              className="rounded-lg bg-amber-500 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600 disabled:opacity-40"
+              className="rounded-lg bg-amber-500 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 disabled:opacity-40"
             >
               Retry live
             </button>
@@ -777,7 +777,7 @@ export default function NotificationCenter({
             type="button"
             onClick={() => void clearAll()}
             disabled={notifications.length === 0 || loading}
-            className="rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg bg-slate-800 dark:bg-[var(--surface-soft)] px-2.5 py-1.5 text-xs font-semibold text-white dark:text-[var(--ink-700)] transition hover:bg-slate-700 dark:hover:bg-[var(--surface-border)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             Clear all
           </button>

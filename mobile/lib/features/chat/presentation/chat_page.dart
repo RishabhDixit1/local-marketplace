@@ -612,9 +612,9 @@ class _InboxStartAction extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
-                  color: AppColors.inkMuted,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ],
             ),
@@ -790,7 +790,7 @@ class _RequestContextCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
         color: AppColors.primarySoft,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+        border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outline)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -802,7 +802,7 @@ class _RequestContextCard extends StatelessWidget {
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.assignment_outlined,
               size: 18,
               color: AppColors.primary,
@@ -851,7 +851,7 @@ class _RequestContextCard extends StatelessWidget {
                         label: 'Task linked',
                         icon: Icons.link_rounded,
                         backgroundColor: AppColors.surface,
-                        foregroundColor: AppColors.ink,
+                        foregroundColor: Theme.of(context).colorScheme.onSurface,
                       ),
                   ],
                 ),
@@ -915,7 +915,7 @@ class _SafetyNote extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: AppColors.inkMuted),
+        Icon(icon, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
         const SizedBox(width: 8),
         Expanded(
           child: Text(text, style: Theme.of(context).textTheme.bodySmall),
@@ -974,7 +974,7 @@ class _ChatThread extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               decoration: BoxDecoration(
                 color: AppColors.surface,
-                border: Border(bottom: BorderSide(color: AppColors.border)),
+                border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outline)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1001,13 +1001,13 @@ class _ChatThread extends ConsumerWidget {
                             : AppColors.surfaceMuted,
                         foregroundColor: conversation.isOnline
                             ? AppColors.primary
-                            : AppColors.inkMuted,
+                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                       TrustBadge(
                         label: conversation.subtitle,
                         icon: Icons.place_outlined,
                         backgroundColor: AppColors.surfaceMuted,
-                        foregroundColor: AppColors.ink,
+                        foregroundColor: Theme.of(context).colorScheme.onSurface,
                       ),
                     ],
                   ),
@@ -1055,14 +1055,14 @@ class _ChatThread extends ConsumerWidget {
                           ? Alignment.centerRight
                           : Alignment.centerLeft,
                       child: Container(
-                        constraints: const BoxConstraints(maxWidth: 300),
+                        constraints: BoxConstraints(maxWidth: 300),
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isMine ? AppColors.ink : AppColors.surface,
+                          color: isMine ? Theme.of(context).colorScheme.onSurface : AppColors.surface,
                           borderRadius: BorderRadius.circular(AppRadii.md),
                           border: Border.all(
-                            color: isMine ? AppColors.ink : AppColors.border,
+                            color: isMine ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.outline,
                           ),
                         ),
                         child: Column(
@@ -1076,7 +1076,7 @@ class _ChatThread extends ConsumerWidget {
                                   ?.copyWith(
                                     color: isMine
                                         ? Theme.of(context).colorScheme.onPrimary
-                                        : AppColors.ink,
+                                        : Theme.of(context).colorScheme.onSurface,
                                   ),
                             ),
                             const SizedBox(height: 8),
@@ -1100,7 +1100,7 @@ class _ChatThread extends ConsumerWidget {
                                       ?.copyWith(
                                         color: isMine
                                             ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7)
-                                            : AppColors.inkMuted,
+                                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                       ),
                                 ),
                               ],
@@ -1123,7 +1123,7 @@ class _ChatThread extends ConsumerWidget {
             ),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              border: Border(top: BorderSide(color: AppColors.border)),
+              border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline)),
             ),
             child: SafeArea(
               top: false,
@@ -1216,7 +1216,7 @@ class _ChatThread extends ConsumerWidget {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Icon(Icons.send_rounded),
+                              : Icon(Icons.send_rounded),
                         ),
                       ),
                     ],
@@ -1250,7 +1250,7 @@ class _QuoteRoomShortcut extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+        border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outline)),
       ),
       child: Row(
         children: [
@@ -1314,7 +1314,7 @@ class _ConversationTile extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: conversation.isOnline
                           ? AppColors.primary
-                          : AppColors.border,
+                          : Theme.of(context).colorScheme.outline,
                       shape: BoxShape.circle,
                       border: Border.all(color: AppColors.surface, width: 2),
                     ),
@@ -1359,7 +1359,7 @@ class _ConversationTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
-                                color: AppColors.ink,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontWeight: conversation.unreadCount > 0
                                     ? FontWeight.w700
                                     : FontWeight.w500,

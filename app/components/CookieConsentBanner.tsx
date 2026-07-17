@@ -36,9 +36,9 @@ export default function CookieConsentBanner() {
   if (!show) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[var(--layer-toast)] border-t border-slate-200 bg-white px-4 py-4 shadow-2xl shadow-black/10 sm:px-6">
+    <div className="fixed bottom-0 left-0 right-0 z-[var(--layer-toast)] border-t border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-4 shadow-2xl shadow-black/10 sm:px-6">
       <div className="mx-auto flex max-w-5xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
-        <p className="text-sm leading-relaxed text-slate-600">
+        <p className="text-sm leading-relaxed text-[var(--ink-700)]">
           We use essential cookies for authentication and security. We also use
           anonymous analytics to improve the experience.{" "}
           <Link
@@ -52,7 +52,7 @@ export default function CookieConsentBanner() {
           <button
             type="button"
             onClick={reject}
-            className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+            className="rounded-xl border border-[var(--surface-border)] px-4 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-soft)]"
           >
             Reject non-essential
           </button>

@@ -441,7 +441,7 @@ export default function AdminPage() {
       </div>
 
       {error ? (
-        <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div>
+        <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/30 px-4 py-3 text-sm font-medium text-rose-700 dark:text-rose-300">{error}</div>
       ) : null}
 
       {activeTab === "overview" ? (
@@ -498,8 +498,8 @@ export default function AdminPage() {
                 : "Unknown";
               const reasonBadgeColor =
                 report.reason === "spam" ? "bg-[var(--surface-soft)] text-[var(--ink-700)]" :
-                report.reason === "harassment" ? "bg-rose-100 text-rose-700" :
-                report.reason === "scam" || report.reason === "fake" ? "bg-amber-100 text-amber-700" :
+                report.reason === "harassment" ? "bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300" :
+                report.reason === "scam" || report.reason === "fake" ? "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300" :
                 "bg-[var(--surface-soft)] text-[var(--ink-700)]";
 
               return (
@@ -627,11 +627,11 @@ export default function AdminPage() {
                         <td className="px-4 py-3 text-[var(--ink-700)]">{category}</td>
                         <td className="px-4 py-3">
                           {isRemoved ? (
-                            <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">Removed</span>
+                            <span className="inline-flex items-center rounded-full bg-rose-100 dark:bg-rose-950/50 px-2 py-0.5 text-xs font-medium text-rose-700 dark:text-rose-300">Removed</span>
                           ) : isFlagged ? (
-                            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Flagged</span>
+                            <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-950/50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">Flagged</span>
                           ) : (
-                            <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Active</span>
+                            <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-950/50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">Active</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-xs text-[var(--ink-500)]">{formatDate(item.created_at as string | null)}</td>
@@ -742,7 +742,7 @@ export default function AdminPage() {
                       <td className="px-4 py-3 text-[var(--ink-700)]">{user.trust_score ?? "—"}</td>
                       <td className="px-4 py-3">
                         {user.abuse_reports && user.abuse_reports > 0 ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-medium text-rose-700">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 dark:bg-rose-950/50 px-2.5 py-0.5 text-xs font-medium text-rose-700 dark:text-rose-300">
                             <AlertTriangle className="h-3 w-3" />
                             {user.abuse_reports}
                           </span>
@@ -801,8 +801,8 @@ export default function AdminPage() {
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                           (p.verification_status as string) === "verified"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-amber-100 text-amber-800"
+                            ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300"
+                            : "bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300"
                         }`}>
                           {(p.verification_status as string) || "unverified"}
                         </span>
@@ -884,7 +884,7 @@ export default function AdminPage() {
                           type="button"
                           disabled={busyId === `${dispute.id}_resolve_for_provider`}
                           onClick={() => void handleResolveDispute(dispute.id, "resolve_for_provider")}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 dark:border-blue-700 px-3 py-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300 transition hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:opacity-50"
                         >
                           {busyId === `${dispute.id}_resolve_for_provider` ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
                           For provider
@@ -1058,9 +1058,9 @@ export default function AdminPage() {
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                            orderStatus === "completed" ? "bg-emerald-100 text-emerald-800" :
-                            orderStatus === "cancelled" ? "bg-rose-100 text-rose-800" :
-                            orderStatus === "in_progress" ? "bg-blue-100 text-blue-800" :
+                            orderStatus === "completed" ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300" :
+                            orderStatus === "cancelled" ? "bg-rose-100 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300" :
+                            orderStatus === "in_progress" ? "bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300" :
                             "bg-[var(--surface-soft)] text-[var(--ink-950)]"
                           }`}>
                             {orderStatus.replace(/_/g, " ") || "—"}
@@ -1069,9 +1069,9 @@ export default function AdminPage() {
                         <td className="px-4 py-3">
                           {deliveryStatus ? (
                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                              deliveryStatus === "delivered" ? "bg-emerald-100 text-emerald-800" :
-                              deliveryStatus === "failed" ? "bg-rose-100 text-rose-800" :
-                              deliveryStatus === "in_transit" ? "bg-blue-100 text-blue-800" :
+                              deliveryStatus === "delivered" ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300" :
+                              deliveryStatus === "failed" ? "bg-rose-100 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300" :
+                              deliveryStatus === "in_transit" ? "bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300" :
                               "bg-[var(--surface-soft)] text-[var(--ink-950)]"
                             }`}>
                               {deliveryStatus.replace(/_/g, " ")}
@@ -1241,11 +1241,11 @@ function TrendChart({ title, data, icon, barColor }: { title: string; data: DayB
 }
 
 const PAYOUT_STATUS_STYLES: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-200",
-  approved: "bg-blue-50 text-blue-700 border-blue-200",
-  processing: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  failed: "bg-rose-50 text-rose-700 border-rose-200",
+  pending: "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50",
+  approved: "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50",
+  processing: "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50",
+  completed: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50",
+  failed: "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/50",
   cancelled: "bg-[var(--surface-soft)] text-[var(--ink-500)] border-[var(--surface-border)]",
 };
 
@@ -1326,7 +1326,7 @@ function AdminPayoutsTab() {
               setBatchRunning(false);
             }
           }}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-50"
+          className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-blue-200 dark:border-blue-700 px-3 py-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300 transition hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:opacity-50"
         >
           {batchRunning ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
           Process All Pending Payouts
@@ -1334,7 +1334,7 @@ function AdminPayoutsTab() {
       </div>
 
       {batchResult ? (
-        <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">{batchResult}</div>
+        <div className="rounded-2xl bg-blue-50 dark:bg-blue-950/30 px-4 py-3 text-sm font-medium text-blue-700 dark:text-blue-300">{batchResult}</div>
       ) : null}
 
       {loading ? (

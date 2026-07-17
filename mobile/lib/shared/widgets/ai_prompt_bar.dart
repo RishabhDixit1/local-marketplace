@@ -96,7 +96,7 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
               Text(
                 e.toString(),
                 style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                  color: AppColors.inkSubtle,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -147,7 +147,7 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(AppRadii.xl),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
             boxShadow: AppShadows.soft,
           ),
           child: TextField(
@@ -156,7 +156,7 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
             decoration: InputDecoration(
               hintText: widget.placeholder,
               hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.inkFaint,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
               ),
               prefixIcon: _loading
                   ? Padding(
@@ -170,10 +170,10 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
                         ),
                       ),
                     )
-                  : const Padding(
+                  : Padding(
                       padding: EdgeInsets.all(12),
                       child: Icon(Icons.auto_awesome_rounded,
-                          size: 18, color: AppColors.inkFaint),
+                          size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                     ),
               suffixIcon: _controller.text.isNotEmpty
                   ? IconButton(
@@ -231,7 +231,7 @@ class _AiResultSheet extends StatelessWidget {
               width: 32,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.inkFaint.withValues(alpha: 0.4),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45).withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -326,7 +326,7 @@ class _AiResultSheet extends StatelessWidget {
                   Text(
                     'Try asking',
                     style: Theme.of(ctx).textTheme.labelLarge?.copyWith(
-                      color: AppColors.inkSubtle,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -336,7 +336,7 @@ class _AiResultSheet extends StatelessWidget {
                       leading: Icon(
                         Icons.trending_up_rounded,
                         size: 16,
-                        color: AppColors.inkFaint,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                       ),
                       title: Text(s, style: const TextStyle(fontSize: 14)),
                       trailing: Icon(

@@ -35,7 +35,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
       curve: Curves.easeOutCubic,
     );
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.08),
+      begin: Offset(0, 0.08),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _fadeController,
@@ -58,7 +58,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
         ),
         backgroundColor: Colors.transparent,
@@ -116,7 +116,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
-                                ?.copyWith(color: AppColors.inkFaint),
+                                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                           ),
                           GestureDetector(
                             onTap: () => context.pop(),
@@ -196,7 +196,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
                   ? null
                   : () => notifier.signUp(context),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.inkStrong,
+                backgroundColor: Theme.of(context).colorScheme.onSurface,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: AppColors.surfacePressed,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -205,7 +205,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
                 ),
               ),
               child: state.isSubmitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(

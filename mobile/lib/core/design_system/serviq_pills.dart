@@ -29,7 +29,7 @@ class ServiqStatusPill extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: urgent ? AppColors.danger : AppColors.ink,
+          color: urgent ? AppColors.danger : Theme.of(context).colorScheme.onSurface,
         ),
       ),
     );
@@ -50,11 +50,11 @@ class ServiqLocationPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 200),
+      constraints: BoxConstraints(maxWidth: 200),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.inkMuted),
+          Icon(icon, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           const SizedBox(width: 5),
           Flexible(
             child: Text(
@@ -79,7 +79,7 @@ class ServiqPricePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 180),
+      constraints: BoxConstraints(maxWidth: 180),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(

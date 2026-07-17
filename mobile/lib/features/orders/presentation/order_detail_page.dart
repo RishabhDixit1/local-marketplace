@@ -238,7 +238,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                       _updateDeliveryStatus('assigned', extra: extra);
                     },
               child: _busy
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 18,
                       width: 18,
                       child:
@@ -587,7 +587,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                             }
                           },
                           child: submitting
-                              ? const SizedBox(
+                              ? SizedBox(
                                   height: 18, width: 18,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                                 )
@@ -1458,7 +1458,7 @@ class _AssignDeliveryCard extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: busy ? null : onAssign,
               icon: busy
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 18,
                       width: 18,
                       child: CircularProgressIndicator(

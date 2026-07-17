@@ -693,22 +693,22 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                       color: AppColors.primarySoft,
                       borderRadius: BorderRadius.circular(AppRadii.lg),
                     ),
-                    child: const Icon(Icons.explore_rounded, color: AppColors.primaryDeep),
+                    child: Icon(Icons.explore_rounded, color: AppColors.primaryDeep),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Explore Local Zones',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.inkStrong)),
+                        Text('Explore Local Zones',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Theme.of(context).colorScheme.onSurface)),
                         const SizedBox(height: 2),
                         Text('Browse societies, markets, and supply areas in your locality',
-                            style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
+                  Icon(Icons.chevron_right_rounded, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                 ],
               ),
             ),
@@ -935,7 +935,7 @@ class _ExploreIntentPanel extends StatelessWidget {
                     side: BorderSide(
                       color: selectedLocalityName != null
                           ? AppColors.primary.withValues(alpha: 0.4)
-                          : AppColors.border,
+                          : Theme.of(context).colorScheme.outline,
                     ),
                     visualDensity: VisualDensity.compact,
                   ),

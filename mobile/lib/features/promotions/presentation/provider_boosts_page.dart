@@ -84,7 +84,7 @@ class _ProviderBoostsPageState extends ConsumerState<ProviderBoostsPage> {
                     placements: data.expired,
                     emptyMessage: 'No expired boosts.',
                     icon: Icons.history_rounded,
-                    color: AppColors.inkFaint,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                   ),
                   const SizedBox(height: 20),
                   Text(
@@ -281,7 +281,7 @@ class _PlacementSection extends StatelessWidget {
             child: Text(
               emptyMessage,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.inkSubtle,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           )
@@ -309,7 +309,7 @@ class _PlacementTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Row(
         children: [
@@ -322,7 +322,7 @@ class _PlacementTile extends StatelessWidget {
                 Text(
                   '${fmt.format(placement.startsAt)} – ${fmt.format(placement.endsAt)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.inkSubtle,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],

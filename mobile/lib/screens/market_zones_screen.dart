@@ -95,7 +95,7 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
                 controller: _tabController,
                 isScrollable: true,
                 labelColor: AppColors.primaryDeep,
-                unselectedLabelColor: AppColors.inkSubtle,
+                unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 indicatorColor: AppColors.primaryDeep,
                 tabs: _tabs,
               ),
@@ -200,7 +200,7 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.search_off_rounded, size: 48,
-                        color: AppColors.inkFaint),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
                       _searchQuery.isNotEmpty
@@ -248,8 +248,8 @@ class _CategoryStrip extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Popular Services',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.inkSubtle)),
+          Text('Popular Services',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
           const SizedBox(height: 8),
           SizedBox(
             height: 72,
@@ -278,7 +278,7 @@ class _CategoryStrip extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(name,
-                              style: const TextStyle(fontSize: 10, color: AppColors.inkSubtle)),
+                style: TextStyle(fontSize: 10, color: AppColors.inkSubtle)),
                         ],
                       );
                     },
@@ -317,7 +317,7 @@ class _CategoryStrip extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(label,
-                style: const TextStyle(fontSize: 10, color: AppColors.inkSubtle)),
+                style: TextStyle(fontSize: 10, color: AppColors.inkSubtle)),
           ],
         );
       },
@@ -377,7 +377,7 @@ class _LocalityCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.xl),
-        side: BorderSide(color: AppColors.border),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadii.xl),
@@ -410,9 +410,9 @@ class _LocalityCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(locality.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 14,
-                            color: AppColors.inkStrong)),
+                            color: Theme.of(context).colorScheme.onSurface)),
                     const SizedBox(height: 2),
                     Row(
                       children: [
@@ -443,12 +443,12 @@ class _LocalityCard extends StatelessWidget {
                             locality.providerCount! > 0) ...[
                           const SizedBox(width: AppSpacing.xs),
                           Icon(Icons.people_rounded, size: 12,
-                              color: AppColors.inkFaint),
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                           const SizedBox(width: 2),
                           Text(
                             '${locality.providerCount}',
-                            style: const TextStyle(
-                                fontSize: 11, color: AppColors.inkSubtle),
+                            style: TextStyle(
+                                fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                           ),
                         ],
                       ],
@@ -456,8 +456,8 @@ class _LocalityCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.inkFaint),
+              Icon(Icons.chevron_right_rounded,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
             ],
           ),
         ),

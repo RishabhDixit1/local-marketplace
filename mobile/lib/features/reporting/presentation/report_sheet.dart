@@ -150,7 +150,7 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
                     const SizedBox(height: AppSpacing.xs),
                     TextField(
                       controller: _descriptionController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: 'Describe the issue...',
                         border: OutlineInputBorder(),
                       ),
@@ -170,9 +170,9 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
                 AppSpacing.md,
                 MediaQuery.paddingOf(context).bottom + AppSpacing.sm,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.surface,
-                border: Border(top: BorderSide(color: AppColors.border)),
+                border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline)),
               ),
               child: FilledButton(
                 onPressed: canSubmit && _phase != _SheetPhase.submitting
@@ -202,14 +202,14 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
         bottom: MediaQuery.paddingOf(context).bottom,
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(
+        constraints: BoxConstraints(
           maxHeight: 280,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Spacer(),
-            const Icon(
+            Icon(
               Icons.check_circle_outline_rounded,
               size: 56,
               color: AppColors.success,
@@ -223,7 +223,7 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
             Text(
               'Thanks for helping keep the community safe.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.inkSubtle,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
               textAlign: TextAlign.center,
             ),

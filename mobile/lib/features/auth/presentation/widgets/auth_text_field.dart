@@ -48,14 +48,14 @@ class AuthTextField extends StatelessWidget {
       maxLength: maxLength,
       textAlign: textAlign,
       style: theme.textTheme.bodyLarge?.copyWith(
-        color: AppColors.ink,
+        color: Theme.of(context).colorScheme.onSurface,
         fontWeight: FontWeight.w600,
       ),
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
         prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon, color: AppColors.inkFaint, size: 20)
+            ? Icon(prefixIcon, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45), size: 20)
             : null,
         suffixIcon: suffixIcon,
         filled: true,
@@ -116,18 +116,18 @@ class _PasswordFieldState extends State<PasswordField> {
       textInputAction: widget.textInputAction,
       autofillHints: widget.autofillHints,
       style: theme.textTheme.bodyLarge?.copyWith(
-        color: AppColors.ink,
+        color: Theme.of(context).colorScheme.onSurface,
         fontWeight: FontWeight.w600,
       ),
       decoration: InputDecoration(
         labelText: widget.label,
-        prefixIcon: Icon(Icons.lock_outline_rounded, color: AppColors.inkFaint, size: 20),
+        prefixIcon: Icon(Icons.lock_outline_rounded, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45), size: 20),
         suffixIcon: IconButton(
           icon: Icon(
             (widget.onToggleVisibility != null ? widget.obscureText : _localObscure)
                 ? Icons.visibility_outlined
                 : Icons.visibility_off_outlined,
-            color: AppColors.inkFaint,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
             size: 20,
           ),
           onPressed: widget.onToggleVisibility ?? () {

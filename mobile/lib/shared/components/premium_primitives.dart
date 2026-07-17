@@ -1,3 +1,4 @@
+// ignore_for_file: prefer_const_constructors_in_immutables
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -26,19 +27,21 @@ class PremiumScaffold extends StatelessWidget {
 }
 
 class ServiqBrandLockup extends StatelessWidget {
-  const ServiqBrandLockup({
+  ServiqBrandLockup({
     super.key,
     this.compact = false,
-    this.foregroundColor = AppColors.inkStrong,
-    this.subtleColor = AppColors.inkSubtle,
+    this.foregroundColor,
+    this.subtleColor,
   });
 
   final bool compact;
-  final Color foregroundColor;
-  final Color subtleColor;
+  final Color? foregroundColor;
+  final Color? subtleColor;
 
   @override
   Widget build(BuildContext context) {
+    final fg = foregroundColor ?? Theme.of(context).colorScheme.onSurface;
+    final sc = subtleColor ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
     final textTheme = Theme.of(context).textTheme;
     final markSize = compact ? 38.0 : 44.0;
 
@@ -49,7 +52,7 @@ class ServiqBrandLockup extends StatelessWidget {
           width: markSize,
           height: markSize,
           decoration: BoxDecoration(
-            color: AppColors.inkStrong,
+            color: Theme.of(context).colorScheme.onSurface,
             borderRadius: BorderRadius.circular(AppRadii.md),
             boxShadow: AppShadows.glow,
           ),
@@ -92,7 +95,7 @@ class ServiqBrandLockup extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: textTheme.titleLarge?.copyWith(
-                  color: foregroundColor,
+                  color: fg,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -101,7 +104,7 @@ class ServiqBrandLockup extends StatelessWidget {
                   'Local help, handled cleanly',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: textTheme.labelSmall?.copyWith(color: subtleColor),
+                  style: textTheme.labelSmall?.copyWith(color: sc),
                 ),
             ],
           ),
@@ -112,12 +115,12 @@ class ServiqBrandLockup extends StatelessWidget {
 }
 
 class PremiumSurface extends StatelessWidget {
-  const PremiumSurface({
+  PremiumSurface({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(AppSpacing.lg),
     this.backgroundColor = AppColors.surface,
-    this.borderColor = AppColors.border,
+    this.borderColor,
     this.gradient,
     this.onTap,
     this.shadows = AppShadows.card,
@@ -126,20 +129,21 @@ class PremiumSurface extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final Color backgroundColor;
-  final Color borderColor;
+  final Color? borderColor;
   final Gradient? gradient;
   final VoidCallback? onTap;
   final List<BoxShadow> shadows;
 
   @override
   Widget build(BuildContext context) {
+    final bd = borderColor ?? Theme.of(context).colorScheme.outline;
     final radius = BorderRadius.circular(AppRadii.md);
     final content = DecoratedBox(
       decoration: BoxDecoration(
         color: gradient == null ? backgroundColor : null,
         gradient: gradient,
         borderRadius: radius,
-        border: Border.all(color: borderColor),
+        border: Border.all(color: bd),
         boxShadow: shadows,
       ),
       child: Padding(padding: padding, child: child),
@@ -157,35 +161,37 @@ class PremiumSurface extends StatelessWidget {
 }
 
 class PremiumPill extends StatelessWidget {
-  const PremiumPill({
+  PremiumPill({
     super.key,
     required this.label,
     this.icon,
     this.backgroundColor = AppColors.surfaceAlt,
-    this.foregroundColor = AppColors.ink,
-    this.borderColor = AppColors.border,
+    this.foregroundColor,
+    this.borderColor,
   });
 
   final String label;
   final IconData? icon;
   final Color backgroundColor;
-  final Color foregroundColor;
-  final Color borderColor;
+  final Color? foregroundColor;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
+    final fg = foregroundColor ?? Theme.of(context).colorScheme.onSurface;
+    final bd = borderColor ?? Theme.of(context).colorScheme.outline;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: borderColor),
+        border: Border.all(color: bd),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: foregroundColor),
+            Icon(icon, size: 14, color: fg),
             const SizedBox(width: 6),
           ],
           Flexible(
@@ -194,7 +200,7 @@ class PremiumPill extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: foregroundColor,
+                color: fg,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -224,10 +230,10 @@ class PremiumTrustSignal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final labelColor = color == Colors.white ? Colors.white : AppColors.ink;
+    final labelColor = color == Colors.white ? Colors.white : Theme.of(context).colorScheme.onSurface;
     final captionColor = color == Colors.white
         ? Colors.white.withValues(alpha: 0.72)
-        : AppColors.inkSubtle;
+        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,14 +295,14 @@ class PremiumIntentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final color = selected ? accentColor : AppColors.inkSubtle;
+    final color = selected ? accentColor : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
 
     return Material(
       color: selected ? accentColor.withValues(alpha: 0.10) : AppColors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.md),
         side: BorderSide(
-          color: selected ? accentColor : AppColors.border,
+          color: selected ? accentColor : Theme.of(context).colorScheme.outline,
           width: selected ? 1.4 : 1,
         ),
       ),
@@ -318,7 +324,7 @@ class PremiumIntentTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: textTheme.labelLarge?.copyWith(
-                        color: AppColors.ink,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xxxs),
@@ -327,7 +333,7 @@ class PremiumIntentTile extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: textTheme.bodySmall?.copyWith(
-                        color: AppColors.inkSubtle,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         fontWeight: FontWeight.w600,
                       ),
                     ),

@@ -117,7 +117,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: [
             Text('Manage account, notifications, and appearance.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSubtle)),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
             const SizedBox(height: 16),
             _buildNotificationsSection(notifAsync),
             const SizedBox(height: 16),
@@ -174,7 +174,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           if (_saveMessage != null) ...[
             const SizedBox(height: 8),
-            Text(_saveMessage!, style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+            Text(_saveMessage!, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
           ],
         ],
       ),
@@ -190,8 +190,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return SwitchListTile(
       value: value,
       onChanged: _saving ? null : onChanged,
-      title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+      title: Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
       contentPadding: EdgeInsets.zero,
     );
   }
@@ -225,18 +225,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: selected ? AppColors.primary : AppColors.border),
+            border: Border.all(color: selected ? AppColors.primary : Theme.of(context).colorScheme.outline),
           ),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: selected ? AppColors.primary : AppColors.inkSubtle),
+              Icon(icon, size: 20, color: selected ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: selected ? AppColors.primary : AppColors.ink)),
-                    Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+                    Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: selected ? AppColors.primary : Theme.of(context).colorScheme.onSurface)),
+                    Text(subtitle, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                   ],
                 ),
               ),
@@ -262,7 +262,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
@@ -281,12 +281,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   return ListTile(
                     leading: Icon(
                       selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                      color: selected ? AppColors.primary : AppColors.inkSubtle,
+                      color: selected ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                     title: Text(label,
                         style: TextStyle(
                           fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                          color: selected ? AppColors.primary : AppColors.ink,
+                          color: selected ? AppColors.primary : Theme.of(context).colorScheme.onSurface,
                         )),
                     onTap: () {
                       ref.read(localeProvider.notifier).setLocale(locale);
@@ -311,7 +311,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 10),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.language_rounded, color: AppColors.ink),
+            leading: Icon(Icons.language_rounded, color: Theme.of(context).colorScheme.onSurface),
             title: const Text('Language', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             subtitle: Consumer(
               builder: (context, ref, _) {
@@ -326,11 +326,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 };
                 return Text(
                   labels[currentLocale.languageCode] ?? 'English',
-                  style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle),
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                 );
               },
             ),
-            trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.inkSubtle),
+            trailing: Icon(Icons.chevron_right_rounded, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             onTap: () {
               _showLanguagePicker(context, ref);
             },
@@ -338,16 +338,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const Divider(height: 1),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.info_outline_rounded, color: AppColors.ink),
+            leading: Icon(Icons.info_outline_rounded, color: Theme.of(context).colorScheme.onSurface),
             title: const Text('App Version', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            subtitle: const Text('1.0.0+1', style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+            subtitle: Text('1.0.0+1', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
           ),
           const Divider(height: 1),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.description_outlined, color: AppColors.ink),
+            leading: Icon(Icons.description_outlined, color: Theme.of(context).colorScheme.onSurface),
             title: const Text('Privacy Policy', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            trailing: const Icon(Icons.open_in_new_rounded, size: 18, color: AppColors.inkSubtle),
+            trailing: Icon(Icons.open_in_new_rounded, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             onTap: () async {
               final uri = Uri.parse('https://serviq.app/privacy');
               if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -356,9 +356,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const Divider(height: 1),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.description_outlined, color: AppColors.ink),
+            leading: Icon(Icons.description_outlined, color: Theme.of(context).colorScheme.onSurface),
             title: const Text('Terms of Service', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            trailing: const Icon(Icons.open_in_new_rounded, size: 18, color: AppColors.inkSubtle),
+            trailing: Icon(Icons.open_in_new_rounded, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             onTap: () async {
               final uri = Uri.parse('https://serviq.app/terms');
               if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -378,9 +378,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 10),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.logout_rounded, color: AppColors.ink),
+            leading: Icon(Icons.logout_rounded, color: Theme.of(context).colorScheme.onSurface),
             title: const Text('Sign out', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            subtitle: const Text('Sign out of this device', style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+            subtitle: Text('Sign out of this device', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
             onTap: () async {
               await Supabase.instance.client.auth.signOut();
               if (mounted) context.go('/');
@@ -389,17 +389,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const Divider(height: 1),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.devices_other_rounded, color: AppColors.warning),
+            leading: Icon(Icons.devices_other_rounded, color: AppColors.warning),
             title: const Text('Sign out of all devices', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            subtitle: const Text('Revoke all active sessions', style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+            subtitle: Text('Revoke all active sessions', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
             onTap: _signOutOfAllDevices,
           ),
           const Divider(height: 1),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.delete_forever_rounded, color: AppColors.danger),
+            leading: Icon(Icons.delete_forever_rounded, color: AppColors.danger),
             title: Text('Delete account', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.danger)),
-            subtitle: const Text('Permanently remove your account and data', style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+            subtitle: Text('Permanently remove your account and data', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
             onTap: _deleteAccount,
           ),
         ],

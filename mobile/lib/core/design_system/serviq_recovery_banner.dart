@@ -24,7 +24,7 @@ class ServiqRecoveryBanner extends StatelessWidget {
     final (Color bg, Color fg) = switch (tone) {
       ServiqRecoveryTone.neutral => (
         AppColors.surfaceMuted,
-        AppColors.ink,
+        Theme.of(context).colorScheme.onSurface,
       ),
       ServiqRecoveryTone.warning => (AppColors.warningSoft, AppColors.warning),
       ServiqRecoveryTone.danger => (AppColors.dangerSoft, AppColors.danger),
@@ -41,7 +41,7 @@ class ServiqRecoveryBanner extends StatelessWidget {
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,7 +52,7 @@ class ServiqRecoveryBanner extends StatelessWidget {
               child: Text(
                 message,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.ink,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
               ),

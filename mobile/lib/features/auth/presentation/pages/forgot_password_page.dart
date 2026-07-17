@@ -33,7 +33,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
       curve: Curves.easeOutCubic,
     );
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.08),
+      begin: Offset(0, 0.08),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _fadeController,
@@ -56,7 +56,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
         ),
         backgroundColor: Colors.transparent,
@@ -136,7 +136,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
                                 : () =>
                                     notifier.sendForgotPasswordEmail(context),
                             style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.inkStrong,
+                              backgroundColor: Theme.of(context).colorScheme.onSurface,
                               foregroundColor: Colors.white,
                               disabledBackgroundColor:
                                   AppColors.surfacePressed,
@@ -148,7 +148,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
                               ),
                             ),
                             child: state.isSubmitting
-                                ? const SizedBox(
+                                ? SizedBox(
                                     width: 20,
                                     height: 20,
                                     child: CircularProgressIndicator(

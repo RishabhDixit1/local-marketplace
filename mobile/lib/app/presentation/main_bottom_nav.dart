@@ -119,7 +119,7 @@ class MainNavigationRail extends StatelessWidget {
                 height: 46,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.inkStrong,
+                  color: Theme.of(context).colorScheme.onSurface,
                   borderRadius: BorderRadius.circular(AppRadii.md),
                   boxShadow: AppShadows.glow,
                 ),
@@ -203,7 +203,7 @@ class _NavRailIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = selected ? AppColors.accentDeep : AppColors.inkSubtle;
+    final foreground = selected ? AppColors.accentDeep : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
     final icon = selected ? destination.selectedIcon : destination.icon;
 
     return Tooltip(
@@ -242,7 +242,7 @@ class _NavDestinationButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = selected ? AppColors.primaryDeep : AppColors.inkSubtle;
+    final foreground = selected ? AppColors.primaryDeep : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
     final icon = selected ? destination.selectedIcon : destination.icon;
     final selectedBackground = selected
         ? AppColors.primarySoft

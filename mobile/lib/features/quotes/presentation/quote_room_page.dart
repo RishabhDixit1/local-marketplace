@@ -576,7 +576,7 @@ class _TimelineStepRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = step.done || step.active
         ? AppColors.primary
-        : AppColors.inkMuted;
+        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
     final background = step.done || step.active
         ? AppColors.primarySoft
         : AppColors.surfaceMuted;
@@ -694,7 +694,7 @@ class _QuoteForm extends StatelessWidget {
                       const SizedBox(height: 6),
                       SecondaryButton(
                         label: 'Generate draft',
-                        icon: const Icon(Icons.auto_awesome_rounded),
+                        icon: Icon(Icons.auto_awesome_rounded),
                         expanded: false,
                         onPressed: saving || sending ? null : onGenerateDraft,
                       ),
@@ -707,7 +707,7 @@ class _QuoteForm extends StatelessWidget {
             TextFormField(
               controller: summaryController,
               enabled: canEdit,
-              decoration: const InputDecoration(labelText: 'Summary'),
+              decoration: InputDecoration(labelText: 'Summary'),
               validator: _required('Add a quote summary.'),
             ),
             const SizedBox(height: 12),
@@ -716,7 +716,7 @@ class _QuoteForm extends StatelessWidget {
               enabled: canEdit,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Notes'),
+              decoration: InputDecoration(labelText: 'Notes'),
             ),
             const SizedBox(height: 16),
             Text('Line items', style: Theme.of(context).textTheme.titleMedium),
@@ -837,7 +837,7 @@ class _QuoteAttachmentGuidance extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -896,7 +896,7 @@ class _LineItemCardState extends State<_LineItemCard> {
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         children: [
@@ -934,7 +934,7 @@ class _LineItemCardState extends State<_LineItemCard> {
                   controller: item.quantity,
                   enabled: widget.enabled,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Qty'),
+                  decoration: InputDecoration(labelText: 'Qty'),
                 ),
               ),
               const SizedBox(width: 10),
@@ -943,7 +943,7 @@ class _LineItemCardState extends State<_LineItemCard> {
                   controller: item.unitPrice,
                   enabled: widget.enabled,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Unit price'),
+                  decoration: InputDecoration(labelText: 'Unit price'),
                 ),
               ),
             ],

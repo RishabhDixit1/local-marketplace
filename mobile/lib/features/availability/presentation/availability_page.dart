@@ -206,7 +206,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: [
             Text('Set your weekly service hours.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSubtle)),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
             const SizedBox(height: 16),
             ...List.generate(7, (i) => _buildDayRow(i)),
             const SizedBox(height: 16),
@@ -220,7 +220,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
                 onPressed: _saving ? null : _save,
                 icon: _saving
                     ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary))
-                    : const Icon(Icons.save_outlined, size: 16),
+                    : Icon(Icons.save_outlined, size: 16),
                 label: Text(_saving ? 'Saving...' : 'Save Availability'),
               ),
             ),
@@ -232,7 +232,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
                   color: AppColors.surfaceAlt,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(_message!, style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+                child: Text(_message!, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               ),
             ],
           ],
@@ -245,7 +245,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
     return SectionCard(
       child: Row(
         children: [
-          const Icon(Icons.access_time, size: 16, color: AppColors.inkSubtle),
+          Icon(Icons.access_time, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           const SizedBox(width: 8),
           Text('Timezone', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(width: 8),
@@ -256,7 +256,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
                 isExpanded: true,
                 items: _commonTimezones.map((tz) => DropdownMenuItem(
                   value: tz,
-                  child: Text(tz.replaceAll('_', ' '), style: const TextStyle(fontSize: 12)),
+                  child: Text(tz.replaceAll('_', ' '), style: TextStyle(fontSize: 12)),
                 )).toList(),
                 onChanged: (v) {
                   if (v != null) setState(() => _timezone = v);
@@ -276,7 +276,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
         children: [
           Row(
             children: [
-              const Icon(Icons.block, size: 16, color: AppColors.danger),
+              Icon(Icons.block, size: 16, color: AppColors.danger),
               const SizedBox(width: 6),
               Text('Days off / exceptions',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
@@ -304,7 +304,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
           ),
           const SizedBox(height: 4),
           Text('Mark specific dates when you are unavailable.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkFaint, fontSize: 11)),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45), fontSize: 11)),
           if (_exceptions.isNotEmpty) ...[
             const SizedBox(height: 8),
             ..._exceptions.map((ex) => Container(
@@ -328,7 +328,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
                   const Spacer(),
                   InkWell(
                     onTap: () => _removeException(ex.exceptionDate),
-                    child: const Icon(Icons.close, size: 14, color: AppColors.danger),
+                    child: Icon(Icons.close, size: 14, color: AppColors.danger),
                   ),
                 ],
               ),
@@ -389,21 +389,21 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
                 decoration: BoxDecoration(
                   color: AppColors.surfaceAlt,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: Theme.of(context).colorScheme.outline),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.schedule, size: 14, color: AppColors.primary),
+                    Icon(Icons.schedule, size: 14, color: AppColors.primary),
                     const SizedBox(width: 6),
-                    Text(slot.startTime, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                    Text(slot.startTime, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                   ],
                 ),
               ),
             ),
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(horizontal: 6),
-            child: Text('to', style: TextStyle(color: AppColors.inkSubtle, fontSize: 12)),
+            child: Text('to', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 12)),
           ),
           Expanded(
             child: InkWell(
@@ -413,7 +413,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
                 decoration: BoxDecoration(
                   color: AppColors.surfaceAlt,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: Theme.of(context).colorScheme.outline),
                 ),
                 child: Row(
                   children: [

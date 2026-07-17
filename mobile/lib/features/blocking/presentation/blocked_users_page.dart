@@ -63,14 +63,14 @@ class _BlockedUsersPageState extends ConsumerState<BlockedUsersPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.shield_outlined,
-                        size: 48, color: AppColors.inkMuted),
+                        size: 48, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                     const SizedBox(height: 12),
                     Text(
                       'No blocked users',
                       style: Theme.of(context)
                           .textTheme
                           .titleMedium
-                          ?.copyWith(color: AppColors.inkMuted),
+                          ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -78,7 +78,7 @@ class _BlockedUsersPageState extends ConsumerState<BlockedUsersPage> {
                       style: Theme.of(context)
                           .textTheme
                           .bodySmall
-                          ?.copyWith(color: AppColors.inkSubtle),
+                          ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -103,8 +103,8 @@ class _BlockedUsersPageState extends ConsumerState<BlockedUsersPage> {
                       children: [
                         CircleAvatar(
                           backgroundColor: AppColors.surfaceAlt,
-                          child: const Icon(Icons.person_outline,
-                              color: AppColors.inkMuted),
+                          child: Icon(Icons.person_outline,
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -127,7 +127,7 @@ class _BlockedUsersPageState extends ConsumerState<BlockedUsersPage> {
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodySmall
-                                    ?.copyWith(color: AppColors.inkMuted),
+                                    ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                               ),
                             ],
                           ),

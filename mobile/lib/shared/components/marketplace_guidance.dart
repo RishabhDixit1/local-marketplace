@@ -1,3 +1,4 @@
+// ignore_for_file: prefer_const_constructors_in_immutables
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -127,23 +128,27 @@ class MarketplaceLoopHero extends StatelessWidget {
 }
 
 class MarketplaceLoopSteps extends StatelessWidget {
-  const MarketplaceLoopSteps({
+  MarketplaceLoopSteps({
     super.key,
     this.activeIndex,
-    this.foregroundColor = AppColors.ink,
-    this.mutedColor = AppColors.inkMuted,
+    this.foregroundColor,
+    this.mutedColor,
     this.surfaceColor = AppColors.surfaceMuted,
-    this.borderColor = AppColors.border,
+    this.borderColor,
   });
 
   final int? activeIndex;
-  final Color foregroundColor;
-  final Color mutedColor;
+  final Color? foregroundColor;
+  final Color? mutedColor;
   final Color surfaceColor;
-  final Color borderColor;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
+    final fg = foregroundColor ?? Theme.of(context).colorScheme.onSurface;
+    final mt = mutedColor ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+    final bd = borderColor ?? Theme.of(context).colorScheme.outline;
+
     const steps = [
       _LoopStep(Icons.search_rounded, 'Search'),
       _LoopStep(Icons.add_circle_outline_rounded, 'Post'),
@@ -162,10 +167,10 @@ class MarketplaceLoopSteps extends StatelessWidget {
                   step: steps[index],
                   active: activeIndex == index,
                   compact: compact,
-                  foregroundColor: foregroundColor,
-                  mutedColor: mutedColor,
+                  foregroundColor: fg,
+                  mutedColor: mt,
                   surfaceColor: surfaceColor,
-                  borderColor: borderColor,
+                  borderColor: bd,
                 ),
               ),
               if (index < steps.length - 1)
@@ -208,7 +213,7 @@ class _HeroSearchButton extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.search_rounded, color: AppColors.inkMuted),
+              Icon(Icons.search_rounded, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
@@ -217,13 +222,13 @@ class _HeroSearchButton extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(
                     context,
-                  ).textTheme.bodyMedium?.copyWith(color: AppColors.inkMuted),
+                  ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 14,
-                color: AppColors.inkMuted,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ],
           ),

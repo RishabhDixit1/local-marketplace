@@ -115,7 +115,7 @@ class _HeroSection extends StatelessWidget {
             style: Theme.of(context)
                 .textTheme
                 .bodyLarge
-                ?.copyWith(color: AppColors.inkSubtle),
+                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
           const SizedBox(height: 14),
           SizedBox(
@@ -200,7 +200,7 @@ class _QuickCategoryRow extends StatelessWidget {
                   avatar: Icon(
                     _categoryIcon(category),
                     size: 16,
-                    color: AppColors.ink,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   label: Text(category),
                   onPressed: () => onPressed(category),
@@ -320,7 +320,7 @@ class _TrustedConnectionRailCard extends StatelessWidget {
                         label:
                             '${item.mutualConnectionsCount} mutual${item.mutualConnectionsCount == 1 ? '' : 's'}',
                         backgroundColor: AppColors.surfaceMuted,
-                        foregroundColor: AppColors.ink,
+                        foregroundColor: Theme.of(context).colorScheme.onSurface,
                       ),
                     if (item.urgent)
                       Container(
@@ -346,7 +346,7 @@ class _TrustedConnectionRailCard extends StatelessWidget {
               const SizedBox(width: 8),
               IconButton(
                 onPressed: onMore,
-                icon: const Icon(Icons.more_horiz_rounded),
+                icon: Icon(Icons.more_horiz_rounded),
               ),
             ],
           ),
@@ -375,7 +375,7 @@ class _TrustedConnectionRailCard extends StatelessWidget {
                 message: 'Message',
                 child: IconButton.outlined(
                   onPressed: onMessage,
-                  icon: const Icon(Icons.chat_bubble_outline_rounded),
+                  icon: Icon(Icons.chat_bubble_outline_rounded),
                 ),
               ),
             ],
@@ -596,7 +596,7 @@ class _CardPreviewMedia extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Stack(
         fit: StackFit.expand,
@@ -673,7 +673,7 @@ class _PreviewFallback extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.photo_library_outlined, color: AppColors.inkMuted),
+          Icon(Icons.photo_library_outlined, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -833,7 +833,7 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
                             color: AppColors.dangerSoft,
                             borderRadius: BorderRadius.circular(18),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.wifi_tethering_error_rounded,
                             color: AppColors.danger,
                           ),
@@ -865,7 +865,7 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: AppColors.surface.withValues(alpha: 0.72),
                               borderRadius: BorderRadius.circular(AppRadii.md),
-                              border: Border.all(color: AppColors.border),
+                              border: Border.all(color: Theme.of(context).colorScheme.outline),
                             ),
                             child: Text(
                               'Debug hint: $debugMessage',

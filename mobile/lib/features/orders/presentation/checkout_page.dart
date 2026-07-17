@@ -561,7 +561,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.shopping_bag_outlined, size: 20, color: AppColors.inkSubtle),
+                  Icon(Icons.shopping_bag_outlined, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                   const SizedBox(width: 8),
                   Text(
                     'Order summary',
@@ -628,7 +628,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.local_shipping_outlined, size: 20, color: AppColors.inkSubtle),
+              Icon(Icons.local_shipping_outlined, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
               const SizedBox(width: 8),
               Text('Fulfillment', style: Theme.of(context).textTheme.titleLarge),
             ],
@@ -661,7 +661,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
             enabled: !_placing,
             minLines: 2,
             maxLines: 4,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Notes (optional)',
               hintText: 'Landmark, gate code, timing preferences...',
               border: OutlineInputBorder(),
@@ -683,7 +683,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.credit_card_outlined, size: 20, color: AppColors.inkSubtle),
+                  Icon(Icons.credit_card_outlined, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                   const SizedBox(width: 8),
                   Text('Payment method', style: Theme.of(context).textTheme.titleLarge),
                 ],
@@ -735,7 +735,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.receipt_long_outlined, size: 20, color: AppColors.inkSubtle),
+                  Icon(Icons.receipt_long_outlined, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                   const SizedBox(width: 8),
                   Text('Order summary', style: Theme.of(context).textTheme.titleLarge),
                 ],
@@ -790,7 +790,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                   color: AppColors.successSoft,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check_rounded, color: AppColors.success, size: 44),
+                child: Icon(Icons.check_rounded, color: AppColors.success, size: 44),
               ),
               const SizedBox(height: 24),
               Text(
@@ -845,7 +845,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () => context.go(AppRoutes.welcome),
-                  icon: const Icon(Icons.home_outlined),
+                  icon: Icon(Icons.home_outlined),
                   label: const Text('Back to home'),
                 ),
               ),
@@ -993,7 +993,7 @@ class _ItemRow extends StatelessWidget {
           ),
           child: Icon(
             item.itemType == 'product' ? Icons.inventory_2_outlined : Icons.build_outlined,
-            color: AppColors.inkSubtle,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             size: 22,
           ),
         ),
@@ -1022,7 +1022,7 @@ class _ItemRow extends StatelessWidget {
             children: [
                   IconButton(
                     onPressed: item.quantity <= 1 ? null : () => onQuantityChange!(item.quantity - 1),
-                    icon: const Icon(Icons.remove_rounded, size: 20),
+                    icon: Icon(Icons.remove_rounded, size: 20),
                     visualDensity: VisualDensity.compact,
                   ),
                   SizedBox(
@@ -1035,7 +1035,7 @@ class _ItemRow extends StatelessWidget {
                   ),
                   IconButton(
                     onPressed: () => onQuantityChange!(item.quantity + 1),
-                    icon: const Icon(Icons.add_rounded, size: 20),
+                    icon: Icon(Icons.add_rounded, size: 20),
                     visualDensity: VisualDensity.compact,
                   ),
                   ],
@@ -1168,13 +1168,13 @@ class _PaymentMethodCard extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: selected ? AppColors.primary : AppColors.borderStrong,
+                  color: selected ? AppColors.primary : Theme.of(context).colorScheme.outlineVariant,
                   width: selected ? 2 : 1.5,
                 ),
                 color: selected ? AppColors.primary : Colors.transparent,
               ),
               child: selected
-                  ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                  ? Icon(Icons.check_rounded, size: 14, color: Colors.white)
                   : null,
             ),
           ],
@@ -1243,7 +1243,7 @@ class _DetailRow extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.inkMuted,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ),

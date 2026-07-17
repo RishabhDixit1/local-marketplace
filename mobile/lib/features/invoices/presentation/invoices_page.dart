@@ -87,7 +87,7 @@ class _Summary extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.receipt_long_rounded, size: 20, color: AppColors.primary),
+          Icon(Icons.receipt_long_rounded, size: 20, color: AppColors.primary),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -96,7 +96,7 @@ class _Summary extends StatelessWidget {
                 Text(
                   'Total invoiced',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.inkSubtle,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -111,7 +111,7 @@ class _Summary extends StatelessWidget {
           ),
           Text(
             '${invoices.length} invoice${invoices.length == 1 ? '' : 's'}',
-            style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle),
+            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
         ],
       ),
@@ -153,18 +153,18 @@ class _InvoiceTile extends StatelessWidget {
                 child: Text(
                   invoice.serviceLabel!,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.inkSubtle,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ),
             Row(
               children: [
-                Icon(Icons.calendar_today_rounded, size: 12, color: AppColors.inkFaint),
+                Icon(Icons.calendar_today_rounded, size: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                 const SizedBox(width: 4),
                 Text(
                   fmt.format(invoice.invoiceDate),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.inkSubtle,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const Spacer(),

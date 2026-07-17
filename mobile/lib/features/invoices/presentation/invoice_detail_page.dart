@@ -90,7 +90,7 @@ class _InvoiceDetail extends StatelessWidget {
               Text(
                 fmt.format(invoice.invoiceDate),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.inkSubtle,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
               if (invoice.serviceLabel != null &&
@@ -99,7 +99,7 @@ class _InvoiceDetail extends StatelessWidget {
                 Text(
                   invoice.serviceLabel!,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.inkSubtle,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -121,7 +121,7 @@ class _InvoiceDetail extends StatelessWidget {
               Text(
                 'Valid under GST',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.inkSubtle,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 16),

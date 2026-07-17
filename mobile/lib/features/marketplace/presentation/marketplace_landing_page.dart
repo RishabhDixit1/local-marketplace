@@ -110,8 +110,8 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
-                  const Flexible(
-                    child: Text('ServiQ', overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.inkStrong)),
+                  Flexible(
+                    child: Text('ServiQ', overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Theme.of(context).colorScheme.onSurface)),
                   ),
                 ],
               ),
@@ -121,7 +121,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
               child: FilledButton.tonalIcon(
                 onPressed: () => context.push(AppRoutes.signIn),
                 label: const Text('Sign In'),
-                icon: const Icon(Icons.login_rounded, size: 18),
+                icon: Icon(Icons.login_rounded, size: 18),
               ),
             ),
           ],
@@ -146,7 +146,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('How ServiQ works', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.inkStrong)),
+                    Text('How ServiQ works', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Theme.of(context).colorScheme.onSurface)),
                     const SizedBox(height: AppSpacing.xs),
                     Wrap(
                       spacing: AppSpacing.md,
@@ -162,7 +162,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
               ),
               GestureDetector(
                 onTap: () => setState(() => _showBanner = false),
-                child: const Icon(Icons.close_rounded, size: 20, color: AppColors.inkSubtle),
+                child: Icon(Icons.close_rounded, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
               ),
             ],
           ),
@@ -182,10 +182,10 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
             color: AppColors.primaryDeep,
             borderRadius: BorderRadius.circular(AppRadii.pill),
           ),
-          child: Center(child: Text(number, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))),
+          child: Center(child: Text(number, style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))),
         ),
         const SizedBox(width: 4),
-        Flexible(child: Text(text, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle))),
+        Flexible(child: Text(text, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)))),
       ],
     );
   }
@@ -200,8 +200,8 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('What do you need done?',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: AppColors.inkStrong)),
+            Text('What do you need done?',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -237,7 +237,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                   selectedColor: AppColors.primarySoft,
                   checkmarkColor: AppColors.primaryDeep,
                   onSelected: (val) => setState(() => _selectedCategory = val ? name : null),
-                  side: BorderSide(color: selected ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border),
+                  side: BorderSide(color: selected ? AppColors.primary.withValues(alpha: 0.4) : Theme.of(context).colorScheme.outline),
                 );
               }).toList(),
             ),
@@ -248,7 +248,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                   _selectedCategory != null
                       ? 'Showing "$_selectedCategory" providers'
                       : 'Showing results for all',
-                  style: const TextStyle(fontSize: 13, color: AppColors.inkFaint),
+                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                 ),
                 const Spacer(),
                 if (_selectedCategory != null)
@@ -261,8 +261,8 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
             ),
             if (showActions) ...[
               const SizedBox(height: 12),
-              const Text('Covering all service categories in your area.',
-                  style: TextStyle(fontSize: 12, color: AppColors.inkMuted)),
+              Text('Covering all service categories in your area.',
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
@@ -387,16 +387,16 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
             children: [
               Icon(Icons.store_rounded, size: 32, color: AppColors.primaryDeep),
               const SizedBox(height: AppSpacing.sm),
-              const Text('Are you a service provider?',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.inkStrong)),
+              Text('Are you a service provider?',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.onSurface)),
               const SizedBox(height: AppSpacing.xxs),
-              const Text('List your business on ServiQ and get more customers from your neighborhood.',
-                  style: TextStyle(fontSize: 13, color: AppColors.inkSubtle), textAlign: TextAlign.center),
+              Text('List your business on ServiQ and get more customers from your neighborhood.',
+                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)), textAlign: TextAlign.center),
               const SizedBox(height: AppSpacing.md),
               FilledButton.icon(
                 onPressed: () => context.push(AppRoutes.signIn),
                 label: const Text('List Your Business'),
-                icon: const Icon(Icons.store_rounded, size: 18),
+                icon: Icon(Icons.store_rounded, size: 18),
               ),
             ],
           ),
@@ -409,9 +409,9 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(AppSpacing.pageInset, AppSpacing.lg, AppSpacing.pageInset, AppSpacing.xxxl),
-        child: const Text(
+        child: Text(
           'ServiQ — Local marketplace · Built for the community',
-          style: TextStyle(fontSize: 11, color: AppColors.inkFaint),
+          style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
           textAlign: TextAlign.center,
         ),
       ),
@@ -456,16 +456,16 @@ class _HeroSearchField extends StatelessWidget {
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
         hintText: 'Try "AC repair", "electrician", "plumber nearby"...',
-        prefixIcon: const Icon(Icons.search_rounded, color: AppColors.inkFaint),
+        prefixIcon: Icon(Icons.search_rounded, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
         filled: true,
         fillColor: AppColors.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.xl),
-          borderSide: BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.xl),
-          borderSide: BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.xl),
@@ -500,7 +500,7 @@ class _ProviderLandingCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.xl),
-        side: BorderSide(color: AppColors.border),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
       ),
       child: InkWell(
         onTap: onTap,
@@ -515,7 +515,7 @@ class _ProviderLandingCard extends StatelessWidget {
                 backgroundColor: AppColors.primarySoft,
                 child: Text(
                   provider.name.isNotEmpty ? provider.name[0].toUpperCase() : '?',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primaryDeep),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primaryDeep),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -527,7 +527,7 @@ class _ProviderLandingCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(provider.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.inkStrong)),
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Theme.of(context).colorScheme.onSurface)),
                         ),
                         if (provider.verified)
                           const Padding(
@@ -537,7 +537,7 @@ class _ProviderLandingCard extends StatelessWidget {
                       ],
                     ),
                     Text(provider.location.isNotEmpty ? provider.location : 'Location not set',
-                        style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+                        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                     const SizedBox(height: AppSpacing.xxs),
                     Wrap(
                       spacing: AppSpacing.sm,
@@ -565,14 +565,14 @@ class _ProviderLandingCard extends StatelessWidget {
                           _SignalChip(
                             icon: Icons.location_on_rounded,
                             label: '${provider.distanceKm?.toStringAsFixed(1) ?? '?'} km',
-                            color: AppColors.inkSubtle,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                       ],
                     ),
                     if (provider.bio.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.xxs),
                       Text(provider.bio, maxLines: 2, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, color: AppColors.inkMuted)),
+                          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                     ],
                     const SizedBox(height: AppSpacing.sm),
                     Row(
@@ -585,7 +585,7 @@ class _ProviderLandingCard extends StatelessWidget {
                         FilledButton.icon(
                           onPressed: onContact,
                           label: const Text('Contact', style: TextStyle(fontSize: 11)),
-                          icon: const Icon(Icons.phone_rounded, size: 14),
+                          icon: Icon(Icons.phone_rounded, size: 14),
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             minimumSize: Size.zero,
@@ -618,7 +618,7 @@ class _SignalChip extends StatelessWidget {
       children: [
         Icon(icon, size: 12, color: color),
         const SizedBox(width: 2),
-        Text(label, style: TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+        Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
       ],
     );
   }
@@ -640,7 +640,7 @@ class _ProviderDetailSheet extends StatelessWidget {
             width: 36,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.border,
+              color: Theme.of(context).colorScheme.outline,
               borderRadius: BorderRadius.circular(AppRadii.pill),
             ),
           ),
@@ -653,7 +653,7 @@ class _ProviderDetailSheet extends StatelessWidget {
               backgroundColor: AppColors.primarySoft,
               child: Text(
                 provider.name.isNotEmpty ? provider.name[0].toUpperCase() : '?',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: AppColors.primaryDeep),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: AppColors.primaryDeep),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -667,7 +667,7 @@ class _ProviderDetailSheet extends StatelessWidget {
                         child: Text(provider.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.inkStrong)),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Theme.of(context).colorScheme.onSurface)),
                       ),
                       if (provider.verified) ...[
                         const SizedBox(width: AppSpacing.xxs),
@@ -676,7 +676,7 @@ class _ProviderDetailSheet extends StatelessWidget {
                     ],
                   ),
                   Text(provider.location.isNotEmpty ? provider.location : 'Location not set',
-                      style: const TextStyle(fontSize: 13, color: AppColors.inkSubtle)),
+                      style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                 ],
               ),
             ),
@@ -697,21 +697,21 @@ class _ProviderDetailSheet extends StatelessWidget {
         ),
         if (provider.bio.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
-          const Text('ABOUT',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2, color: AppColors.inkFaint)),
+          Text('ABOUT',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))),
           const SizedBox(height: AppSpacing.xxs),
-          Text(provider.bio, style: const TextStyle(fontSize: 14, color: AppColors.ink, height: 1.5)),
+          Text(provider.bio, style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface, height: 1.5)),
         ],
         if (provider.services.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
-          const Text('SERVICES',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2, color: AppColors.inkFaint)),
+          Text('SERVICES',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))),
           const SizedBox(height: AppSpacing.xs),
           Wrap(
             spacing: AppSpacing.xs,
             runSpacing: AppSpacing.xs,
             children: provider.services.map((s) => Chip(
-              label: Text(s, style: const TextStyle(fontSize: 12)),
+              label: Text(s, style: TextStyle(fontSize: 12)),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               visualDensity: VisualDensity.compact,
             )).toList(),
@@ -719,8 +719,8 @@ class _ProviderDetailSheet extends StatelessWidget {
         ],
         if (provider.listings.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
-          const Text('AVAILABLE LISTINGS',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2, color: AppColors.inkFaint)),
+          Text('AVAILABLE LISTINGS',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))),
           const SizedBox(height: AppSpacing.xs),
           ...provider.listings.map((l) => Container(
             margin: const EdgeInsets.only(bottom: AppSpacing.xxs),
@@ -728,11 +728,11 @@ class _ProviderDetailSheet extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(AppRadii.lg),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
             ),
             child: Row(
               children: [
-                Expanded(child: Text(l.title, style: const TextStyle(fontSize: 13, color: AppColors.ink))),
+                Expanded(child: Text(l.title, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface))),
                 if (l.price != null)
                   Text('₹${l.price}',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primaryDeep)),
@@ -746,7 +746,7 @@ class _ProviderDetailSheet extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: onContact,
             label: const Text('Contact'),
-            icon: const Icon(Icons.phone_rounded, size: 18),
+            icon: Icon(Icons.phone_rounded, size: 18),
           ),
         ),
       ],
@@ -775,8 +775,8 @@ class _DetailStat extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: AppColors.accent),
             const SizedBox(height: AppSpacing.xxs),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.inkStrong)),
-            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.inkFaint)),
+            Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Theme.of(context).colorScheme.onSurface)),
+            Text(label, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))),
           ],
         ),
       ),
@@ -795,7 +795,7 @@ class _ProviderListShimmer extends StatelessWidget {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.xl),
-            side: BorderSide(color: AppColors.border),
+            side: BorderSide(color: Theme.of(context).colorScheme.outline),
           ),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.sm),

@@ -115,13 +115,13 @@ class _DisputeSheetState extends ConsumerState<DisputeSheet> {
                   Text(
                     'Reason',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: AppColors.inkMuted,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Container(
                     decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(color: Theme.of(context).colorScheme.outline),
                       borderRadius: BorderRadius.circular(AppRadii.sm),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
@@ -145,13 +145,13 @@ class _DisputeSheetState extends ConsumerState<DisputeSheet> {
                   Text(
                     'Description',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: AppColors.inkMuted,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   TextField(
                     controller: _descriptionController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Describe the issue in detail (min 10 characters)...',
                       border: OutlineInputBorder(),
                     ),
@@ -165,7 +165,7 @@ class _DisputeSheetState extends ConsumerState<DisputeSheet> {
                     child: Text(
                       '${_descriptionController.text.length}/2000',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.inkFaint,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                       ),
                     ),
                   ),
@@ -179,7 +179,7 @@ class _DisputeSheetState extends ConsumerState<DisputeSheet> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: AppColors.danger, size: 20),
+                          Icon(Icons.error_outline, color: AppColors.danger, size: 20),
                           const SizedBox(width: AppSpacing.xs),
                           Expanded(
                             child: Text(
@@ -204,9 +204,9 @@ class _DisputeSheetState extends ConsumerState<DisputeSheet> {
                 AppSpacing.md,
                 MediaQuery.paddingOf(context).bottom + AppSpacing.sm,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.surface,
-                border: Border(top: BorderSide(color: AppColors.border)),
+                border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline)),
               ),
               child: FilledButton(
                 onPressed: canSubmit && _phase != _SheetPhase.submitting
@@ -236,12 +236,12 @@ class _DisputeSheetState extends ConsumerState<DisputeSheet> {
         bottom: MediaQuery.paddingOf(context).bottom,
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 280),
+        constraints: BoxConstraints(maxHeight: 280),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Spacer(),
-            const Icon(
+            Icon(
               Icons.check_circle_outline_rounded,
               size: 56,
               color: AppColors.success,
@@ -255,7 +255,7 @@ class _DisputeSheetState extends ConsumerState<DisputeSheet> {
             Text(
               'An admin will review and follow up.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.inkSubtle,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
               textAlign: TextAlign.center,
             ),

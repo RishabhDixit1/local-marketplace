@@ -301,7 +301,7 @@ class ProviderProfilePage extends ConsumerWidget {
                     Text(
                       'Why are you reporting this user?',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.inkMuted,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                     ),
                     const SizedBox(height: 12),
@@ -414,7 +414,7 @@ class ProviderProfilePage extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.shield_outlined, size: 48),
+                    Icon(Icons.shield_outlined, size: 48),
                     const SizedBox(height: 12),
                     Text(
                       'Block ${provider.name}?',
@@ -425,7 +425,7 @@ class ProviderProfilePage extends ConsumerWidget {
                       'They won\'t be able to message you or interact with your content.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.inkMuted,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                     ),
                     const SizedBox(height: 20),
@@ -554,7 +554,7 @@ class ProviderProfilePage extends ConsumerWidget {
                                 : Icons.star_outline_rounded,
                             color: star <= rating
                                 ? AppColors.warning
-                                : AppColors.inkMuted,
+                                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                             size: 36,
                           ),
                           onPressed: () =>
@@ -721,7 +721,7 @@ class _StorefrontHero extends StatelessWidget {
                               ),
                               foregroundColor: provider.isOnline
                                   ? AppColors.primary
-                                  : AppColors.ink,
+                                  : Theme.of(context).colorScheme.onSurface,
                               borderColor: Colors.white.withValues(alpha: 0.32),
                             ),
                             PremiumPill(
@@ -780,7 +780,7 @@ class _StorefrontHero extends StatelessWidget {
                       label: provider.locationLabel,
                       icon: Icons.place_outlined,
                       backgroundColor: AppColors.surfaceMuted,
-                      foregroundColor: AppColors.ink,
+                      foregroundColor: Theme.of(context).colorScheme.onSurface,
                     ),
                     TrustBadge(
                       label: provider.priceLabel,
@@ -800,7 +800,7 @@ class _StorefrontHero extends StatelessWidget {
                           (tag) => PremiumPill(
                             label: tag,
                             backgroundColor: AppColors.surfaceAlt,
-                            foregroundColor: AppColors.ink,
+                            foregroundColor: Theme.of(context).colorScheme.onSurface,
                           ),
                         )
                         .toList(),
@@ -917,7 +917,7 @@ class _SquareStorefrontButton extends StatelessWidget {
         color: AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
-          side: const BorderSide(color: AppColors.border),
+          side: BorderSide(color: Theme.of(context).colorScheme.outline),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.md),
@@ -925,7 +925,7 @@ class _SquareStorefrontButton extends StatelessWidget {
           child: SizedBox(
             width: 48,
             height: 48,
-            child: Icon(icon, color: AppColors.ink),
+            child: Icon(icon, color: Theme.of(context).colorScheme.onSurface),
           ),
         ),
       ),
@@ -1131,7 +1131,7 @@ class _OfferTile extends StatelessWidget {
       color: AppColors.surfaceAlt,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.md),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadii.md),
@@ -1160,7 +1160,7 @@ class _OfferTile extends StatelessWidget {
                         imageUrl: offer.thumbnailUrl,
                         fit: BoxFit.cover,
                         errorWidget: (context, url, error) =>
-                            const Icon(
+                            Icon(
                               Icons.storefront_outlined,
                               color: AppColors.primary,
                             ),
@@ -1199,7 +1199,7 @@ class _OfferTile extends StatelessWidget {
                           label: offer.distanceLabel,
                           icon: Icons.route_rounded,
                           backgroundColor: AppColors.surface,
-                          foregroundColor: AppColors.ink,
+                          foregroundColor: Theme.of(context).colorScheme.onSurface,
                         ),
                       ],
                     ),
@@ -1207,9 +1207,9 @@ class _OfferTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.inkMuted,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ],
           ),

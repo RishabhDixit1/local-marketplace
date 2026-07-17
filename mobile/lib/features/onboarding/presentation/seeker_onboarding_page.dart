@@ -222,7 +222,7 @@ class _SeekerOnboardingPageState
             'Post what you need, get replies from vetted providers in your area.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.inkMuted,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               height: 1.5,
             ),
           ),
@@ -264,7 +264,7 @@ class _SeekerOnboardingPageState
           Text(
             'This helps nearby providers know who they\'re talking to.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.inkMuted,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 20),
@@ -282,7 +282,7 @@ class _SeekerOnboardingPageState
           const SizedBox(height: 14),
           TextField(
             controller: _locationController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Location',
               hintText: 'City or area (e.g. "Andheri West, Mumbai")',
               prefixIcon: Icon(Icons.location_on_outlined),
@@ -294,7 +294,7 @@ class _SeekerOnboardingPageState
           const SizedBox(height: 14),
           TextField(
             controller: _phoneController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Phone number',
               hintText: '10-digit mobile number',
               prefixIcon: Icon(Icons.phone_outlined),
@@ -314,7 +314,7 @@ class _SeekerOnboardingPageState
           Text(
             'Select categories you might need help with.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.inkMuted,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 12),
@@ -374,7 +374,7 @@ class _SeekerOnboardingPageState
               color: AppColors.success.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(24),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.check_circle_rounded,
               size: 48,
               color: AppColors.success,
@@ -392,7 +392,7 @@ class _SeekerOnboardingPageState
             'Your profile is ready. Here are the fastest ways to get started.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.inkMuted,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               height: 1.5,
             ),
           ),
@@ -527,7 +527,7 @@ class _StepIndicator extends StatelessWidget {
                   ),
                   child: Center(
                     child: isComplete
-                        ? const Icon(Icons.check, size: 16, color: Colors.white)
+                        ? Icon(Icons.check, size: 16, color: Colors.white)
                         : Text(
                             '${index + 1}',
                             style: TextStyle(
@@ -582,7 +582,7 @@ class _InfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Row(
         children: [
@@ -606,7 +606,7 @@ class _InfoCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                   ),
@@ -615,7 +615,7 @@ class _InfoCard extends StatelessWidget {
                 Text(
                   description,
                   style: TextStyle(
-                    color: AppColors.inkMuted,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     fontSize: 13,
                     height: 1.4,
                   ),
@@ -655,7 +655,7 @@ class _ActionCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
           ),
           child: Row(
             children: [
@@ -682,7 +682,7 @@ class _ActionCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                       ),
@@ -691,7 +691,7 @@ class _ActionCard extends StatelessWidget {
                     Text(
                       description,
                       style: TextStyle(
-                        color: AppColors.inkMuted,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         fontSize: 13,
                         height: 1.4,
                       ),
@@ -701,7 +701,7 @@ class _ActionCard extends StatelessWidget {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.inkMuted,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ],
           ),

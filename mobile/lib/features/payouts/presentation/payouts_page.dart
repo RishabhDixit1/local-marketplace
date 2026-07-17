@@ -232,7 +232,7 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
           children: [
             Expanded(child: PayoutSummaryCard(label: 'Total earned', paise: s.totalEarnedPaise, accentColor: AppColors.primary)),
             const SizedBox(width: 10),
-            Expanded(child: PayoutSummaryCard(label: 'Paid out', paise: s.totalPaidOutPaise, accentColor: AppColors.inkSubtle)),
+            Expanded(child: PayoutSummaryCard(label: 'Paid out', paise: s.totalPaidOutPaise, accentColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
           ],
         ),
         const SizedBox(height: 10),
@@ -262,7 +262,7 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
               hintText: 'e.g. 500',
               border: const OutlineInputBorder(),
               suffixText: 'Available: ${_inr(availablePaise)}',
-              suffixStyle: const TextStyle(fontSize: 11, color: AppColors.inkSubtle),
+              suffixStyle: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             ),
           ),
           const SizedBox(height: 10),
@@ -275,7 +275,7 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
             onChanged: (v) {
               if (v != null) setState(() => _selectedMethod = v);
             },
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Payout method',
               border: OutlineInputBorder(),
             ),
@@ -315,9 +315,9 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
                 ],
               ),
               if (list.isEmpty && !_showAddAccount.value)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Text('No payout accounts yet.', style: TextStyle(color: AppColors.inkSubtle, fontSize: 13)),
+                  child: Text('No payout accounts yet.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 13)),
                 ),
               ...list.map((a) => _accountTile(a)),
               ValueListenableBuilder<bool>(
@@ -355,7 +355,7 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
           Icon(
             a.accountType == 'upi' ? Icons.mobile_friendly_rounded : Icons.account_balance_rounded,
             size: 20,
-            color: AppColors.inkSubtle,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -364,7 +364,7 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
               children: [
                 Row(
                   children: [
-                    Text(a.displayName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text(a.displayName, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                     if (a.isDefault) ...[
                       const SizedBox(width: 6),
                       Container(
@@ -379,7 +379,7 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
                   ],
                 ),
                 if (a.accountHolderName != null && a.accountHolderName!.isNotEmpty)
-                  Text(a.accountHolderName!, style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+                  Text(a.accountHolderName!, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               ],
             ),
           ),
@@ -418,11 +418,11 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
             const SizedBox(height: 8),
             TextField(controller: _bankNameController, decoration: const InputDecoration(labelText: 'Bank name', border: OutlineInputBorder()),),
             const SizedBox(height: 8),
-            TextField(controller: _accountNumController, decoration: const InputDecoration(labelText: 'Account number', border: OutlineInputBorder()), keyboardType: TextInputType.number,),
+            TextField(controller: _accountNumController, decoration: InputDecoration(labelText: 'Account number', border: OutlineInputBorder()), keyboardType: TextInputType.number,),
             const SizedBox(height: 8),
-            TextField(controller: _ifscController, decoration: const InputDecoration(labelText: 'IFSC code', border: OutlineInputBorder()),),
+            TextField(controller: _ifscController, decoration: InputDecoration(labelText: 'IFSC code', border: OutlineInputBorder()),),
           ] else ...[
-            TextField(controller: _upiController, decoration: const InputDecoration(labelText: 'UPI handle (e.g. name@upi)', border: OutlineInputBorder()),),
+            TextField(controller: _upiController, decoration: InputDecoration(labelText: 'UPI handle (e.g. name@upi)', border: OutlineInputBorder()),),
           ],
           const SizedBox(height: 12),
           SizedBox(
@@ -446,9 +446,9 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
         onPressed: () => setState(() => _newAccountType = value),
         style: OutlinedButton.styleFrom(
           backgroundColor: selected ? AppColors.primarySoft : null,
-          side: BorderSide(color: selected ? AppColors.primary : AppColors.border),
+          side: BorderSide(color: selected ? AppColors.primary : Theme.of(context).colorScheme.outline),
         ),
-        child: Text(label, style: TextStyle(color: selected ? AppColors.primary : AppColors.inkSubtle)),
+        child: Text(label, style: TextStyle(color: selected ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
       ),
     );
   }
@@ -461,9 +461,9 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
           Text('Withdrawal history', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
           if (payouts.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text('No withdrawals yet.', style: TextStyle(color: AppColors.inkSubtle, fontSize: 13)),
+              child: Text('No withdrawals yet.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 13)),
             )
           else
             ...payouts.map((p) => _historyRow(p)),
@@ -486,11 +486,11 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_inr(p.amountPaise), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                Text(_inr(p.amountPaise), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 const SizedBox(height: 2),
                 Text(
                   '${_methodLabel(p.payoutMethod)} · ${_formatDate(p.createdAt)}',
-                  style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle),
+                  style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                 ),
               ],
             ),

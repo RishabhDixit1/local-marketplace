@@ -124,7 +124,7 @@ class _ProviderLaunchpadReviewPageState
                       Text(
                         'Live inventory · ${data.summary.totalServices} services / ${data.summary.totalProducts} products',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.inkMuted,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                       if ((data.summary.profilePath ?? '').trim().isNotEmpty)
@@ -157,7 +157,7 @@ class _ProviderLaunchpadReviewPageState
                       Text(
                         '${readiness.completedCount} of ${readiness.totalCount} complete',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.inkMuted,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -173,7 +173,7 @@ class _ProviderLaunchpadReviewPageState
                                     : Icons.circle_outlined,
                                 color: item.done
                                     ? AppColors.success
-                                    : AppColors.inkMuted,
+                                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                 size: 22,
                               ),
                               const SizedBox(width: 10),
@@ -195,7 +195,7 @@ class _ProviderLaunchpadReviewPageState
                                           .textTheme
                                           .bodySmall
                                           ?.copyWith(
-                                            color: AppColors.inkMuted,
+                                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                           ),
                                     ),
                                   ],
@@ -258,7 +258,7 @@ class _ProviderLaunchpadReviewPageState
                 const SizedBox(height: 10),
                 SecondaryButton(
                   label: 'Open Business AI Launchpad',
-                  icon: const Icon(Icons.edit_outlined),
+                  icon: Icon(Icons.edit_outlined),
                   onPressed: () =>
                       context.push(AppRoutes.providerLaunchpad),
                 ),
@@ -286,7 +286,7 @@ class _GeneratedItemTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

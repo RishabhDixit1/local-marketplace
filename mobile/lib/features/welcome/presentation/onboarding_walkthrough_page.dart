@@ -141,10 +141,10 @@ class _OnboardingWalkthroughPageState
           if (_currentPage < _pages.length - 1)
             TextButton(
               onPressed: _onSkip,
-              child: const Text(
+              child: Text(
                 'Skip',
                 style: TextStyle(
-                  color: AppColors.inkSubtle,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -200,7 +200,7 @@ class _OnboardingWalkthroughPageState
           width: isActive ? 24 : 8,
           height: 8,
           decoration: BoxDecoration(
-            color: isActive ? AppColors.primary : AppColors.border,
+            color: isActive ? AppColors.primary : Theme.of(context).colorScheme.outline,
             borderRadius: BorderRadius.circular(4),
           ),
         );
@@ -247,7 +247,7 @@ class _WalkthroughPageContent extends StatelessWidget {
             data.headline,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: AppColors.inkStrong,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
             textAlign: TextAlign.center,
           ),
@@ -255,7 +255,7 @@ class _WalkthroughPageContent extends StatelessWidget {
           Text(
             data.subtitle,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppColors.inkSubtle,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               height: 1.4,
             ),
             textAlign: TextAlign.center,

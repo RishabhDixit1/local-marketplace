@@ -96,7 +96,7 @@ class FeedCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.inkSubtle,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 height: 1.35,
               ),
             ),
@@ -221,7 +221,7 @@ class _FeedPreviewState extends State<_FeedPreview> {
       decoration: BoxDecoration(
         color: _typeTint(item.type).background,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Stack(
         fit: StackFit.expand,
@@ -369,9 +369,9 @@ class _InlinePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 210),
+      constraints: BoxConstraints(maxWidth: 210),
       child: Container(
-        constraints: const BoxConstraints(minHeight: 36),
+        constraints: BoxConstraints(minHeight: 36),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.sm,
           vertical: AppSpacing.xs,
@@ -383,7 +383,7 @@ class _InlinePill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 15, color: AppColors.inkMuted),
+            Icon(icon, size: 15, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             const SizedBox(width: AppSpacing.xs),
             Flexible(
               child: Text(

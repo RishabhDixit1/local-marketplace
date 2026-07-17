@@ -578,7 +578,7 @@ class _ListingCardBody extends StatelessWidget {
                 imageUrl: imageUrl,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Container(color: AppColors.surfaceAlt),
-                errorWidget: (context, url, error) => Container(color: AppColors.surfaceAlt, child: Icon(Icons.broken_image, color: AppColors.inkMuted)),
+                errorWidget: (context, url, error) => Container(color: AppColors.surfaceAlt, child: Icon(Icons.broken_image, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               ),
             ),
           ),

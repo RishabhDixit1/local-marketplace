@@ -153,9 +153,9 @@ class ServiqBottomSheet extends StatelessWidget {
                     AppSpacing.md,
                     bottomPadding + AppSpacing.sm,
                   ),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.surface,
-                    border: Border(top: BorderSide(color: AppColors.border)),
+                    border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline)),
                   ),
                   child: footer,
                 )
@@ -314,16 +314,16 @@ class _TrustSnapshotTile extends StatelessWidget {
       TrustSnapshotTone.success => (AppColors.successSoft, AppColors.success),
       TrustSnapshotTone.warning => (AppColors.warningSoft, AppColors.warning),
       TrustSnapshotTone.danger => (AppColors.dangerSoft, AppColors.danger),
-      TrustSnapshotTone.neutral => (AppColors.surfaceMuted, AppColors.inkMuted),
+      TrustSnapshotTone.neutral => (AppColors.surfaceMuted, Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
     };
 
     return Container(
-      constraints: const BoxConstraints(minHeight: AppTouchTargets.minimum),
+      constraints: BoxConstraints(minHeight: AppTouchTargets.minimum),
       padding: EdgeInsets.all(dense ? AppSpacing.xs : AppSpacing.sm),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Row(
         children: [
@@ -340,7 +340,7 @@ class _TrustSnapshotTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(
                     context,
-                  ).textTheme.labelLarge?.copyWith(color: AppColors.ink),
+                  ).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface),
                 ),
                 if (!dense) ...[
                   const SizedBox(height: AppSpacing.xxxs),
@@ -436,14 +436,14 @@ class _ServiqStepTile<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final foreground = selected ? Colors.white : Theme.of(context).colorScheme.onSurface;
-    final background = selected ? AppColors.inkStrong : Theme.of(context).colorScheme.surface;
+    final background = selected ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.surface;
 
     return Material(
       color: background,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.md),
         side: BorderSide(
-          color: selected ? AppColors.inkStrong : Theme.of(context).colorScheme.outline,
+          color: selected ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.outline,
         ),
       ),
       child: InkWell(
@@ -518,7 +518,7 @@ class ServiqToast {
             ServiqToastTone.success => AppColors.success,
             ServiqToastTone.warning => AppColors.warning,
             ServiqToastTone.danger => AppColors.danger,
-            ServiqToastTone.neutral => AppColors.ink,
+            ServiqToastTone.neutral => Theme.of(context).colorScheme.onSurface,
           },
         ),
       );

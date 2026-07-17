@@ -115,7 +115,7 @@ class _WorkspacesPageState extends ConsumerState<WorkspacesPage> {
                     const SizedBox(height: 16),
                     TextField(
                       controller: _typeController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Business type (optional)',
                         hintText: 'e.g. Plumbing, Design, Consulting',
                         border: OutlineInputBorder(),
@@ -132,9 +132,9 @@ class _WorkspacesPageState extends ConsumerState<WorkspacesPage> {
                   20, 12, 20,
                   MediaQuery.paddingOf(ctx).bottom + 12,
                 ),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.surface,
-                  border: Border(top: BorderSide(color: AppColors.border)),
+                  border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline)),
                 ),
                 child: FilledButton(
                   onPressed: _creating || _nameController.text.trim().isEmpty
@@ -168,7 +168,7 @@ class _WorkspacesPageState extends ConsumerState<WorkspacesPage> {
         title: const Text('Team Workspaces'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_rounded),
+            icon: Icon(Icons.add_rounded),
             onPressed: _showCreateSheet,
             tooltip: 'New workspace',
           ),
@@ -262,7 +262,7 @@ class _WorkspaceCard extends StatelessWidget {
                       child: Text(
                         workspace.description!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.inkSubtle,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -272,12 +272,12 @@ class _WorkspaceCard extends StatelessWidget {
                   Row(
                     children: [
                       Icon(Icons.people_outline_rounded,
-                          size: 14, color: AppColors.inkFaint),
+                          size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                       const SizedBox(width: 4),
                       Text(
                         'Max ${workspace.maxMembers} members',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.inkFaint,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                         ),
                       ),
                       if (workspace.businessType != null) ...[
@@ -285,7 +285,7 @@ class _WorkspaceCard extends StatelessWidget {
                         Text(
                           workspace.businessType!,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.inkFaint,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                           ),
                         ),
                       ],
@@ -294,7 +294,7 @@ class _WorkspaceCard extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
+            Icon(Icons.chevron_right_rounded, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
           ],
         ),
       ),
@@ -316,7 +316,7 @@ class _EmptyWorkspaces extends StatelessWidget {
           Icon(
             Icons.business_outlined,
             size: 64,
-            color: AppColors.inkFaint,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
           ),
           const SizedBox(height: 16),
           Text(
@@ -330,7 +330,7 @@ class _EmptyWorkspaces extends StatelessWidget {
             'Create a workspace to add team members\nand branches.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.inkSubtle,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 24),

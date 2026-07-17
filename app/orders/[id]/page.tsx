@@ -63,25 +63,25 @@ const STATUS_LABEL: Record<CanonicalOrderStatus, string> = {
 };
 
 const STATUS_COLOR: Record<CanonicalOrderStatus, string> = {
-  new_lead: "bg-amber-100 text-amber-700 border-amber-200",
-  quoted: "bg-blue-100 text-blue-700 border-blue-200",
-  accepted: "bg-indigo-100 text-indigo-700 border-indigo-200",
-  paid: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  payment_failed: "bg-rose-100 text-rose-700 border-rose-200",
-  in_progress: "bg-purple-100 text-purple-700 border-purple-200",
-  completed: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  closed: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  cancelled: "bg-rose-100 text-rose-700 border-rose-200",
-  rejected: "bg-rose-100 text-rose-700 border-rose-200",
-  countered: "bg-amber-100 text-amber-700 border-amber-200",
+  new_lead: "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50",
+  quoted: "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50",
+  accepted: "bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50",
+  paid: "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50",
+  payment_failed: "bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/50",
+  in_progress: "bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/50",
+  completed: "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50",
+  closed: "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50",
+  cancelled: "bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/50",
+  rejected: "bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/50",
+  countered: "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50",
 };
 
 const TIMELINE: CanonicalOrderStatus[] = ["new_lead", "accepted", "in_progress", "completed"];
 
 const PAYMENT_TONE_STYLES: Record<PaymentStatusTone, string> = {
-  emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  amber: "border-amber-200 bg-amber-50 text-amber-700",
-  blue: "border-blue-200 bg-blue-50 text-blue-700",
+  emerald: "border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300",
+  amber: "border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300",
+  blue: "border-blue-200 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300",
   slate: "border-[var(--surface-border)] bg-[var(--surface-soft)] text-[var(--ink-700)]",
 };
 
@@ -315,7 +315,7 @@ export default function OrderStatusPage() {
           </button>
           <span className="font-semibold text-[var(--ink-950)]">Order</span>
           {orderRealtimeHealth === "degraded" && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 dark:border-rose-800/50 bg-rose-50 dark:bg-rose-950/30 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:text-rose-300">
               <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
               Reconnecting
             </span>
@@ -483,7 +483,7 @@ export default function OrderStatusPage() {
             {/* Upload photo button (provider only, not final) */}
             {isProvider && !isFinal && (
               <div className="mb-3">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 px-4 py-2 text-xs font-semibold text-blue-700 dark:text-blue-300 transition hover:bg-blue-100 dark:hover:bg-blue-900/50">
                   <Camera className="h-4 w-4" />
                   Add Photo
                   <input
@@ -591,7 +591,7 @@ export default function OrderStatusPage() {
                   type="button"
                   disabled={busy}
                   onClick={() => void updateDeliveryStatus(nextStatus)}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-60"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 py-3 text-sm font-semibold text-blue-700 dark:text-blue-300 transition hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-60"
                 >
                   {nextStatus === "delivered" ? <CheckCircle2 className="h-4 w-4" /> : null}
                   {nextStatus === "picked_up" ? <Package className="h-4 w-4" /> : null}
@@ -674,18 +674,18 @@ export default function OrderStatusPage() {
         )}
 
         {isFinal && !disputeSent ? (
-          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-800">
+          <section className="rounded-2xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 p-5 shadow-sm">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
               <Gavel className="h-4 w-4" /> Need help?
             </h2>
-            <p className="mt-1 text-xs text-amber-700">
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
               If something went wrong with this order, you can file a dispute for review.
             </p>
             <button
               type="button"
               disabled={disputeLoading}
               onClick={() => void raiseDispute()}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-[var(--surface-elevated)] px-4 py-2 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-50"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-300 dark:border-amber-700 bg-[var(--surface-elevated)] px-4 py-2 text-xs font-semibold text-amber-800 dark:text-amber-300 transition hover:bg-amber-100 dark:hover:bg-amber-950/40 disabled:opacity-50"
             >
               {disputeLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Gavel className="h-3.5 w-3.5" />}
               Raise Dispute
@@ -694,7 +694,7 @@ export default function OrderStatusPage() {
         ) : null}
 
         {disputeSent ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+          <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/30 p-4 text-sm text-emerald-700 dark:text-emerald-300">
             Dispute submitted. An admin will review and follow up.
           </div>
         ) : null}

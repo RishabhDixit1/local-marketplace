@@ -120,7 +120,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
               Text('Get verified to build trust with customers.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSubtle)),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               const SizedBox(height: 16),
               ServiqAsyncBody<VerificationBundle>(
                 value: bundleAsync,
@@ -173,7 +173,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
       default:
         icon = Icons.gpp_maybe_outlined;
         bg = AppColors.surfaceAlt;
-        fg = AppColors.inkSubtle;
+        fg = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
         label = 'Not Submitted';
     }
 
@@ -213,15 +213,15 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
         children: [
           Text('Upload Documents', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
-          const Text('Upload identity, address, or business documents (max 10MB each).',
-              style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+          Text('Upload identity, address, or business documents (max 10MB each).',
+              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
           const SizedBox(height: 14),
           ...List.generate(_uploadFields.length, (i) => _buildUploadRow(i, hasPending)),
           const SizedBox(height: 8),
           if (_uploadFields.length < 3)
             TextButton.icon(
               onPressed: _uploading ? null : _addField,
-              icon: const Icon(Icons.add, size: 16),
+              icon: Icon(Icons.add, size: 16),
               label: const Text('Add another document'),
             ),
           const SizedBox(height: 12),
@@ -231,15 +231,15 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
               onPressed: (!hasPending || _submitting) ? null : _submit,
               icon: _submitting
                   ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary))
-                  : const Icon(Icons.send_rounded, size: 16),
+                  : Icon(Icons.send_rounded, size: 16),
               label: Text(_submitting ? 'Submitting...' : 'Submit for Review'),
             ),
           ),
           if (!hasPending && bundle.documents.isNotEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text('All documents have been reviewed. Upload new ones and submit again.',
-                  style: TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+                  style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
             ),
           if (_message != null) ...[
             const SizedBox(height: 10),
@@ -249,7 +249,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
                 color: AppColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(_message!, style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+              child: Text(_message!, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
             ),
           ],
         ],
@@ -308,11 +308,11 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: busy ? null : () => _pickFile(index),
-                  icon: const Icon(Icons.image_outlined, size: 16),
+                  icon: Icon(Icons.image_outlined, size: 16),
                   label: Text(
                     hasFile ? field.xFile!.name : 'Choose file',
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12),
+                    style: TextStyle(fontSize: 12),
                   ),
                 ),
               ),
@@ -370,10 +370,10 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(doc.documentTypeLabel,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                     const SizedBox(height: 2),
                     Text('${doc.submittedAt.day}/${doc.submittedAt.month}/${doc.submittedAt.year}',
-                        style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+                        style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                   ],
                 ),
               ),

@@ -556,7 +556,7 @@ export function StoreSection({ services, products, providerId, providerName, pro
                       <button
                         type="button"
                         disabled={isDisabled}
-                        onClick={() => handleBuyNow("product", prod.id, prod.title || "Product", price, deliveryMethod)}
+                        onClick={() => handleBuyNow("product", prod.id, prod.title || "Product", price ?? 0, deliveryMethod)}
                         aria-label={`Buy ${prod.title}`}
                         className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:pointer-events-none disabled:opacity-50"
                       >

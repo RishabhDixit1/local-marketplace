@@ -123,7 +123,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                 const Spacer(),
                 if (review.formattedDate.isNotEmpty)
                   Text(review.formattedDate,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkFaint, fontSize: 11)),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45), fontSize: 11)),
               ],
             ),
             if (review.comment != null && review.comment!.trim().isNotEmpty) ...[
@@ -153,7 +153,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                           width: 72,
                           height: 72,
                           color: AppColors.surfaceAlt,
-                          child: const Icon(Icons.broken_image_outlined, size: 24, color: AppColors.inkFaint),
+                          child: Icon(Icons.broken_image_outlined, size: 24, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                         ),
                         placeholder: (context, url) => Container(
                           width: 72,
@@ -210,7 +210,7 @@ class _StarRating extends StatelessWidget {
         return Icon(
           filled ? Icons.star_rounded : Icons.star_border_rounded,
           size: 16,
-          color: filled ? AppColors.warm : AppColors.inkFaint,
+          color: filled ? AppColors.warm : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
         );
       }),
     );
@@ -253,7 +253,7 @@ class _VoteButton extends StatelessWidget {
               Icon(
                 isActive ? activeIcon : icon,
                 size: 14,
-                color: isActive ? AppColors.primary : AppColors.inkSubtle,
+                color: isActive ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             if (count > 0) ...[
               const SizedBox(width: 4),
@@ -262,7 +262,7 @@ class _VoteButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                  color: isActive ? AppColors.primary : AppColors.inkSubtle,
+                  color: isActive ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ],

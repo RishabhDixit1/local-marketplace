@@ -101,7 +101,7 @@ _providerSummarySignals(MobilePersonCard person) {
     background: person.isOnline
         ? AppColors.primarySoft
         : AppColors.surfaceMuted,
-    foreground: person.isOnline ? AppColors.primary : AppColors.inkMuted,
+    foreground: person.isOnline ? AppColors.primary : AppColors.inkSubtle,
   ));
 
   final rating = person.ratingLabel.trim();
@@ -209,7 +209,7 @@ class ProviderDirectoryCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.inkSubtle,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   ],
@@ -248,7 +248,7 @@ class ProviderDirectoryCard extends StatelessWidget {
                   label: person.priceLabel,
                   icon: Icons.payments_outlined,
                   backgroundColor: AppColors.surfaceMuted,
-                  foregroundColor: AppColors.ink,
+                  foregroundColor: Theme.of(context).colorScheme.onSurface,
                 ),
               if (showRating)
                 TrustBadge(
@@ -267,7 +267,7 @@ class ProviderDirectoryCard extends StatelessWidget {
                     : AppColors.surfaceMuted,
                 foregroundColor: person.isOnline
                     ? AppColors.primary
-                    : AppColors.inkMuted,
+                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ],
           ),
@@ -331,7 +331,7 @@ class ProviderDirectoryCard extends StatelessWidget {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.person_add_alt_1_outlined),
+                    : Icon(Icons.person_add_alt_1_outlined),
                 label: Text(connecting ? 'Sending…' : 'Connect'),
               ),
             ),
@@ -350,7 +350,7 @@ class _AvailabilityPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: AppTouchTargets.minimum),
+      constraints: BoxConstraints(minHeight: AppTouchTargets.minimum),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: online ? AppColors.primarySoft : AppColors.surfaceMuted,
@@ -359,7 +359,7 @@ class _AvailabilityPill extends StatelessWidget {
       child: Text(
         online ? 'Active' : 'Later',
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: online ? AppColors.primary : AppColors.inkMuted,
+          color: online ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
         ),
       ),
     );
@@ -440,7 +440,7 @@ class _ProviderActions extends StatelessWidget {
                     dimension: AppTouchTargets.minimum,
                     child: IconButton.outlined(
                       onPressed: onReport,
-                      icon: const Icon(Icons.outlined_flag_rounded),
+                      icon: Icon(Icons.outlined_flag_rounded),
                     ),
                   ),
                 ),
@@ -466,7 +466,7 @@ class _DirectoryMetaPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = emphasized ? AppColors.primary : AppColors.inkMuted;
+    final foreground = emphasized ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
 
     return Container(
       height: 32,

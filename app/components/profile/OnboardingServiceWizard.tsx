@@ -48,15 +48,15 @@ export function OnboardingServiceWizard({ open, onClose }: OnboardingServiceWiza
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="w-full max-w-md overflow-hidden rounded-2xl bg-[var(--surface-elevated)] shadow-2xl">
           {/* Welcome Step */}
           {step === "welcome" && (
-            <div className="space-y-6 bg-gradient-to-br from-indigo-50 to-blue-50 p-6 sm:p-8">
+            <div className="space-y-6 bg-gradient-to-br from-indigo-50 dark:from-indigo-950/30 to-blue-50 dark:to-blue-950/20 p-6 sm:p-8">
               <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={handleSkip}
-                  className="text-sm font-semibold text-slate-500 transition hover:text-slate-700"
+                  className="text-sm font-semibold text-slate-500 dark:text-[var(--ink-500)] transition hover:text-slate-700 dark:hover:text-[var(--ink-700)]"
                 >
                   Skip
                 </button>
@@ -114,7 +114,7 @@ export function OnboardingServiceWizard({ open, onClose }: OnboardingServiceWiza
                   onClick={handleStartService}
                   className="group flex items-start gap-3 rounded-lg border-2 border-[var(--surface-border)] p-4 text-left transition hover:border-indigo-500 hover:bg-indigo-50"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 group-hover:bg-indigo-100 group-hover:text-indigo-600">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-950/50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
                     <Briefcase className="h-5 w-5" />
                   </div>
                   <div>
@@ -128,7 +128,7 @@ export function OnboardingServiceWizard({ open, onClose }: OnboardingServiceWiza
                   onClick={handleStartProduct}
                   className="group flex items-start gap-3 rounded-lg border-2 border-[var(--surface-border)] p-4 text-left transition hover:border-indigo-500 hover:bg-indigo-50"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 text-purple-600 group-hover:bg-indigo-100 group-hover:text-indigo-600">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-950/50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
                     <Package className="h-5 w-5" />
                   </div>
                   <div>

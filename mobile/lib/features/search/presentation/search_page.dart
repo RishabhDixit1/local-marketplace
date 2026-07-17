@@ -199,7 +199,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
+        border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outline, width: 0.5)),
       ),
       child: Column(
         children: [
@@ -227,7 +227,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     child: FilterChip(
                       label: Text(
                         '${cat['name'] ?? ''}',
-                        style: const TextStyle(fontSize: 11),
+                        style: TextStyle(fontSize: 11),
                       ),
                       selected: _selectedCategory == cat['name'],
                       onSelected: (v) {
@@ -249,7 +249,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   height: 32,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: DropdownButtonHideUnderline(
@@ -257,10 +257,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       value: _sortBy,
                       isExpanded: true,
                       isDense: true,
-                      style: const TextStyle(fontSize: 11, color: AppColors.inkStrong),
+                      style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface),
                       items: _SortBy.values.map((s) => DropdownMenuItem(
                         value: s,
-                        child: Text(s.label, style: const TextStyle(fontSize: 11)),
+                        child: Text(s.label, style: TextStyle(fontSize: 11)),
                       )).toList(),
                       onChanged: (v) {
                         if (v != null) { setState(() => _sortBy = v); _doSearch(); }
@@ -278,16 +278,16 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: _onlineOnly ? AppColors.primary : AppColors.border,
+                      color: _onlineOnly ? AppColors.primary : Theme.of(context).colorScheme.outline,
                     ),
                     color: _onlineOnly ? AppColors.primarySoft : null,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.circle, size: 6, color: _onlineOnly ? AppColors.primary : AppColors.inkFaint),
+                      Icon(Icons.circle, size: 6, color: _onlineOnly ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                       const SizedBox(width: 4),
-                      Text('Online', style: TextStyle(fontSize: 11, color: _onlineOnly ? AppColors.primary : AppColors.inkSubtle)),
+                      Text('Online', style: TextStyle(fontSize: 11, color: _onlineOnly ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                     ],
                   ),
                 ),
@@ -303,18 +303,18 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: _minRating != null ? AppColors.primary : AppColors.border,
+                      color: _minRating != null ? AppColors.primary : Theme.of(context).colorScheme.outline,
                     ),
                     color: _minRating != null ? AppColors.primarySoft : null,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.star, size: 12, color: AppColors.warning),
+                      Icon(Icons.star, size: 12, color: AppColors.warning),
                       const SizedBox(width: 3),
                       Text(
                         _minRating != null ? '${_minRating!.toStringAsFixed(0)}+' : 'Rating',
-                        style: TextStyle(fontSize: 11, color: _minRating != null ? AppColors.primary : AppColors.inkSubtle),
+                        style: TextStyle(fontSize: 11, color: _minRating != null ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                       ),
                     ],
                   ),
@@ -336,7 +336,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 8),
-            Container(width: 32, height: 3, decoration: BoxDecoration(color: AppColors.inkFaint, borderRadius: BorderRadius.circular(2))),
+            Container(width: 32, height: 3, decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45), borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
             const Text('Minimum Rating', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
@@ -344,7 +344,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               final val = label == 'Any' ? null : double.tryParse(label.replaceAll('+', ''));
               return ListTile(
                 title: Text(label),
-                trailing: _minRating == val ? const Icon(Icons.check) : null,
+                trailing: _minRating == val ? Icon(Icons.check) : null,
                 onTap: () {
                   Navigator.pop(ctx);
                   setState(() => _minRating = val);
@@ -367,17 +367,17 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
               children: [
-                Icon(Icons.history_rounded, size: 14, color: AppColors.inkMuted),
+                Icon(Icons.history_rounded, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                 const SizedBox(width: 6),
                 Text('Recent searches',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.inkMuted)),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               ],
             ),
           ),
           ..._recent.map((s) => ListTile(
             dense: true,
-            leading: Icon(Icons.history_rounded, size: 18, color: AppColors.inkFaint),
-            title: Text(s, style: const TextStyle(fontSize: 14)),
+            leading: Icon(Icons.history_rounded, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
+            title: Text(s, style: TextStyle(fontSize: 14)),
             trailing: IconButton(
               icon: Icon(Icons.north_west_rounded, size: 16, color: AppColors.primary),
               onPressed: () {
@@ -397,10 +397,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
-              Icon(Icons.trending_up_rounded, size: 14, color: AppColors.inkMuted),
+              Icon(Icons.trending_up_rounded, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
               const SizedBox(width: 6),
               Text('Suggestions',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.inkMuted)),
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
             ],
           ),
         ),
@@ -435,7 +435,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             children: [
               Icon(Icons.error_outline, size: 40, color: AppColors.danger),
               const SizedBox(height: 12),
-              Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+              Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
               const SizedBox(height: 12),
               FilledButton.tonal(onPressed: _doSearch, child: const Text('Retry')),
             ],
@@ -459,7 +459,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               '${results.total} provider${results.total == 1 ? '' : 's'} found',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSubtle),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             ),
           ),
           ...results.providers.map((p) => _ProviderResultCard(
@@ -537,7 +537,7 @@ class _ProviderResultCard extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(provider.name,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                         ),
                         if (provider.verified)
                           const Padding(
@@ -554,7 +554,7 @@ class _ProviderResultCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     if (provider.location.isNotEmpty)
                       Text(provider.location,
-                          style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle),
+                          style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
@@ -575,12 +575,12 @@ class _ProviderResultCard extends StatelessWidget {
                     if (provider.priceLabel.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(provider.priceLabel,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.inkStrong)),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
                     ],
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, size: 16, color: AppColors.inkFaint),
+              Icon(Icons.chevron_right, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
             ],
           ),
         ),
@@ -601,17 +601,17 @@ class _Tag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: (color ?? AppColors.inkFaint).withValues(alpha: 0.1),
+        color: (color ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 10, color: color ?? AppColors.inkSubtle),
+            Icon(icon, size: 10, color: color ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             const SizedBox(width: 2),
           ],
-          Text(label, style: TextStyle(fontSize: 10, color: color ?? AppColors.inkSubtle)),
+          Text(label, style: TextStyle(fontSize: 10, color: color ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
         ],
       ),
     );

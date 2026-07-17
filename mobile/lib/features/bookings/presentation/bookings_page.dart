@@ -91,7 +91,7 @@ class _BookingsPageState extends ConsumerState<BookingsPage> {
               padding: const EdgeInsets.only(bottom: 10),
               child: Text('Upcoming',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppColors.inkSubtle, fontWeight: FontWeight.bold)),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontWeight: FontWeight.bold)),
             ),
             ...upcoming.map((b) => _BookingCard(booking: b)),
             const SizedBox(height: 16),
@@ -101,7 +101,7 @@ class _BookingsPageState extends ConsumerState<BookingsPage> {
               padding: const EdgeInsets.only(bottom: 10),
               child: Text('Past',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppColors.inkSubtle, fontWeight: FontWeight.bold)),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontWeight: FontWeight.bold)),
             ),
             ...past.map((b) => _BookingCard(booking: b)),
           ],
@@ -182,7 +182,7 @@ class _BookingCard extends StatelessWidget {
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall
-                              ?.copyWith(color: AppColors.inkSubtle),
+                              ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                         ),
                       ],
                     ),
@@ -200,7 +200,7 @@ class _BookingCard extends StatelessWidget {
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall
-                              ?.copyWith(color: AppColors.inkSubtle)),
+                              ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                     ],
                   ),
                 ],
@@ -208,14 +208,14 @@ class _BookingCard extends StatelessWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Icon(Icons.schedule, size: 14, color: AppColors.inkSubtle),
+                  Icon(Icons.schedule, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                   const SizedBox(width: 4),
                   Text(
                     '${booking.startTime.length >= 5 ? booking.startTime.substring(0, 5) : booking.startTime} - ${booking.endTime.length >= 5 ? booking.endTime.substring(0, 5) : booking.endTime}',
                     style: Theme.of(context)
                         .textTheme
                         .bodySmall
-                        ?.copyWith(color: AppColors.inkSubtle),
+                        ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                   ),
                 ],
               ),
@@ -226,7 +226,7 @@ class _BookingCard extends StatelessWidget {
                   style: Theme.of(context)
                       .textTheme
                       .bodySmall
-                      ?.copyWith(color: AppColors.inkFaint, fontStyle: FontStyle.italic),
+                      ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45), fontStyle: FontStyle.italic),
                 ),
               ],
             ],

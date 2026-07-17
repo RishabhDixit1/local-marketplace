@@ -29,7 +29,7 @@ class MapDiscoveryPage extends ConsumerWidget {
         title: const Text('Discover nearby'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search),
+            icon: Icon(Icons.search),
             onPressed: () => context.push(AppRoutes.search),
           ),
         ],
@@ -41,14 +41,14 @@ class MapDiscoveryPage extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.cloud_off, size: 40, color: AppColors.inkFaint),
+              Icon(Icons.cloud_off, size: 40, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
               const SizedBox(height: 12),
               Text(
                 'Unable to load nearby providers',
                 style: Theme.of(context)
                     .textTheme
                     .bodyMedium
-                    ?.copyWith(color: AppColors.inkSubtle),
+                    ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
               ),
               const SizedBox(height: 12),
               FilledButton.tonal(
@@ -178,13 +178,13 @@ class _MapContent extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.explore, size: 20, color: AppColors.primary),
+              Icon(Icons.explore, size: 20, color: AppColors.primary),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   '${providers.length} providers · ${withLocation.length} on map',
                   style:
-                      const TextStyle(fontSize: 12, color: AppColors.inkSubtle),
+                      TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                 ),
               ),
             ],
@@ -268,7 +268,7 @@ class _MapProviderTile extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(provider.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontWeight: FontWeight.w600, fontSize: 13)),
                         ),
                         if (provider.verified)
@@ -281,14 +281,14 @@ class _MapProviderTile extends StatelessWidget {
                     ),
                     if (provider.location.isNotEmpty)
                       Text(provider.location,
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.inkSubtle),
+                          style: TextStyle(
+                              fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
                     if (provider.listings.isNotEmpty)
                       Text(provider.listings.first.title,
-                          style: const TextStyle(
-                              fontSize: 10, color: AppColors.inkFaint),
+                          style: TextStyle(
+                              fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
                   ],

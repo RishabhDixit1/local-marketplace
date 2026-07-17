@@ -80,16 +80,16 @@ function RippleButton({ children, className, onClick }: { children: React.ReactN
 }
 
 const CATEGORIES = [
-  { label: "Electrician", icon: "⚡", color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
-  { label: "Plumber", icon: "🔧", color: "bg-blue-50 text-blue-700 border-blue-200" },
-  { label: "AC Repair", icon: "❄️", color: "bg-cyan-50 text-cyan-700 border-cyan-200" },
-  { label: "RO Repair", icon: "💧", color: "bg-teal-50 text-teal-700 border-teal-200" },
-  { label: "Carpenter", icon: "🪚", color: "bg-amber-50 text-amber-700 border-amber-200" },
-  { label: "Appliance Repair", icon: "🔌", color: "bg-rose-50 text-rose-700 border-rose-200" },
-  { label: "Mobile Repair", icon: "📱", color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-  { label: "Bike Repair", icon: "🏍️", color: "bg-orange-50 text-orange-700 border-orange-200" },
-  { label: "Hardware Shop", icon: "🏪", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  { label: "Electrical Shop", icon: "💡", color: "bg-violet-50 text-violet-700 border-violet-200" },
+  { label: "Electrician", icon: "⚡", color: "bg-yellow-50 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/50" },
+  { label: "Plumber", icon: "🔧", color: "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50" },
+  { label: "AC Repair", icon: "❄️", color: "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800/50" },
+  { label: "RO Repair", icon: "💧", color: "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800/50" },
+  { label: "Carpenter", icon: "🪚", color: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50" },
+  { label: "Appliance Repair", icon: "🔌", color: "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/50" },
+  { label: "Mobile Repair", icon: "📱", color: "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50" },
+  { label: "Bike Repair", icon: "🏍️", color: "bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800/50" },
+  { label: "Hardware Shop", icon: "🏪", color: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50" },
+  { label: "Electrical Shop", icon: "💡", color: "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/50" },
 ];
 
 function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCardData; onContact: (p: ProviderCardData) => void; onSelect: (p: ProviderCardData) => void }) {
@@ -279,7 +279,7 @@ export function LandingPageClient({
       <main className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
         {/* ── Dismissible "How it works" banner ── */}
         {showHowItWorks && (
-          <div className="relative mt-4 overflow-hidden rounded-2xl border border-[var(--brand-200)] bg-gradient-to-br from-[var(--brand-50)] to-white px-5 py-4 sm:px-6">
+          <div className="relative mt-4 overflow-hidden rounded-2xl border border-[var(--brand-200)] bg-gradient-to-br from-[var(--brand-50)] to-[var(--surface-elevated)] px-5 py-4 sm:px-6">
             <button
               type="button"
               onClick={() => setShowHowItWorks(false)}
@@ -391,7 +391,7 @@ export function LandingPageClient({
 
         {providers.length === 0 && !realProvidersLoading && !realProvidersError && (
           <div className="mt-12 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-[var(--surface-soft)]">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 dark:border-[var(--surface-border)] bg-[var(--surface-soft)]">
               <SearchX className="h-7 w-7 text-[var(--ink-500)]" />
             </div>
             <p className="text-sm font-semibold text-[var(--ink-700)]">{t("landing.noProviders")}</p>
@@ -438,7 +438,7 @@ export function LandingPageClient({
         </div>
 
         {/* ── CTA: List your business ── */}
-        <div className="mt-6 rounded-2xl border border-dashed border-[var(--brand-300)] bg-gradient-to-br from-[var(--brand-50)] to-white p-6 text-center">
+        <div className="mt-6 rounded-2xl border border-dashed border-[var(--brand-300)] bg-gradient-to-br from-[var(--brand-50)] to-[var(--surface-elevated)] p-6 text-center">
           <Store className="mx-auto h-8 w-8 text-[var(--brand-500)]" />
           <h3 className="mt-3 text-lg font-extrabold text-[var(--ink-950)]">{t("landing.areYouProvider")}</h3>
           <p className="mt-1 text-sm text-[var(--ink-500)]">{t("landing.listBusinessCTA", { appName })}</p>
@@ -503,28 +503,28 @@ export function LandingPageClient({
               {/* Trust signals summary */}
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {selectedProvider.avgRating != null && (
-                  <div className="rounded-xl border border-slate-100 bg-[var(--surface-soft)] p-3 text-center">
+                  <div className="rounded-xl border border-slate-100 dark:border-[var(--surface-border)] bg-[var(--surface-soft)] p-3 text-center">
                     <Star className="mx-auto h-4 w-4 text-amber-400" fill="currentColor" />
                     <p className="mt-1 text-sm font-bold text-[var(--ink-950)]">{selectedProvider.avgRating.toFixed(1)}</p>
                     <p className="text-[10px] text-[var(--ink-500)]">{selectedProvider.reviewCount} {t("landing.reviews")}</p>
                   </div>
                 )}
                 {selectedProvider.completedJobs > 0 && (
-                  <div className="rounded-xl border border-slate-100 bg-[var(--surface-soft)] p-3 text-center">
+                  <div className="rounded-xl border border-slate-100 dark:border-[var(--surface-border)] bg-[var(--surface-soft)] p-3 text-center">
                     <CheckCircle2 className="mx-auto h-4 w-4 text-[var(--ink-500)]" />
                     <p className="mt-1 text-sm font-bold text-[var(--ink-950)]">{selectedProvider.completedJobs}</p>
                     <p className="text-[10px] text-[var(--ink-500)]">{t("landing.jobsDone")}</p>
                   </div>
                 )}
                 {selectedProvider.responseMinutes != null && (
-                  <div className="rounded-xl border border-slate-100 bg-[var(--surface-soft)] p-3 text-center">
+                  <div className="rounded-xl border border-slate-100 dark:border-[var(--surface-border)] bg-[var(--surface-soft)] p-3 text-center">
                     <Zap className="mx-auto h-4 w-4 text-[var(--brand-500)]" />
                     <p className="mt-1 text-sm font-bold text-[var(--ink-950)]">{selectedProvider.responseMinutes} {t("landing.minutes")}</p>
                     <p className="text-[10px] text-[var(--ink-500)]">{t("landing.response")}</p>
                   </div>
                 )}
                 {selectedProvider.distanceKm != null && (
-                  <div className="rounded-xl border border-slate-100 bg-[var(--surface-soft)] p-3 text-center">
+                  <div className="rounded-xl border border-slate-100 dark:border-[var(--surface-border)] bg-[var(--surface-soft)] p-3 text-center">
                     <MapPin className="mx-auto h-4 w-4 text-[var(--ink-500)]" />
                     <p className="mt-1 text-sm font-bold text-[var(--ink-950)]">{selectedProvider.distanceKm}</p>
                     <p className="text-[10px] text-[var(--ink-500)]">{t("landing.kmAway")}</p>
@@ -558,7 +558,7 @@ export function LandingPageClient({
                   <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--ink-500)]">{t("landing.availableListings")}</p>
                   <div className="mt-2 space-y-2">
                     {selectedProvider.listings.map((l) => (
-                      <div key={l.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-[var(--surface-soft)] px-3.5 py-2.5">
+                      <div key={l.id} className="flex items-center justify-between rounded-xl border border-slate-100 dark:border-[var(--surface-border)] bg-[var(--surface-soft)] px-3.5 py-2.5">
                         <span className="text-sm text-[var(--ink-700)]">{l.title}</span>
                         {l.price != null && <span className="text-sm font-bold text-[var(--brand-700)]">₹{l.price}</span>}
                       </div>

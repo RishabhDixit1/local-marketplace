@@ -26,7 +26,7 @@ class TransactionsPage extends ConsumerWidget {
               Icon(Icons.error_outline, size: 40, color: AppColors.danger),
               const SizedBox(height: 12),
               Text('Unable to load transactions',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSubtle)),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               const SizedBox(height: 12),
               FilledButton.tonal(
                 onPressed: () => ref.invalidate(transactionHistoryProvider),
@@ -59,14 +59,14 @@ class TransactionsPage extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.account_balance_wallet, size: 20, color: AppColors.primary),
+                    Icon(Icons.account_balance_wallet, size: 20, color: AppColors.primary),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Total spent',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSubtle)),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                           const SizedBox(height: 2),
                           Text('₹${total.toStringAsFixed(0)}',
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
@@ -74,7 +74,7 @@ class TransactionsPage extends ConsumerWidget {
                       ),
                     ),
                     Text('${transactions.length} order${transactions.length == 1 ? '' : 's'}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+                        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                   ],
                 ),
               ),
@@ -118,7 +118,7 @@ class _TransactionTile extends StatelessWidget {
                 child: Icon(
                   transaction.isPaid ? Icons.check_circle : transaction.isRefunded ? Icons.replay : Icons.access_time,
                   size: 18,
-                  color: transaction.isPaid ? AppColors.primary : transaction.isRefunded ? AppColors.danger : AppColors.inkSubtle,
+                  color: transaction.isPaid ? AppColors.primary : transaction.isRefunded ? AppColors.danger : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(width: 10),
@@ -127,13 +127,13 @@ class _TransactionTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(transaction.title,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 2),
                     Text(
                       '${transaction.paymentMethod.toUpperCase()} · ${transaction.statusLabel}',
-                      style: TextStyle(fontSize: 11, color: transaction.isPaid ? AppColors.primary : transaction.isRefunded ? AppColors.danger : AppColors.inkSubtle),
+                      style: TextStyle(fontSize: 11, color: transaction.isPaid ? AppColors.primary : transaction.isRefunded ? AppColors.danger : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                     ),
                   ],
                 ),
@@ -142,11 +142,11 @@ class _TransactionTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text('₹${transaction.amount.toStringAsFixed(0)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   if (transaction.createdAt != null)
                     Text(
                       '${transaction.createdAt!.day}/${transaction.createdAt!.month}/${transaction.createdAt!.year}',
-                      style: const TextStyle(fontSize: 10, color: AppColors.inkFaint),
+                      style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                     ),
                 ],
               ),

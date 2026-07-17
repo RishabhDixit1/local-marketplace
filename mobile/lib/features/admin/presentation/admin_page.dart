@@ -110,7 +110,7 @@ class _OverviewTab extends ConsumerWidget {
               label: 'Orders',
               value: '${stats.totalOrders}',
               subValue: '${stats.completedOrders} completed',
-              color: AppColors.ink,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
             const SizedBox(height: 8),
             _StatCard(
@@ -155,7 +155,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Row(
         children: [
@@ -184,7 +184,7 @@ class _StatCard extends StatelessWidget {
                   Text(
                     subValue!,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.inkSubtle,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
               ],
@@ -234,7 +234,7 @@ class _UsersTab extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: Theme.of(context).colorScheme.outline),
               ),
               child: Row(
                 children: [
@@ -244,12 +244,12 @@ class _UsersTab extends ConsumerWidget {
                       children: [
                         Text(
                           user.name ?? '—',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                         if (user.email != null)
                           Text(user.email!,
                               style: TextStyle(
-                                  fontSize: 12, color: AppColors.inkSubtle)),
+                                  fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                         Row(
                           children: [
                             if (user.role != null)
@@ -324,9 +324,9 @@ class _ReportsTab extends ConsumerWidget {
       ),
       data: (reports) {
         if (reports.isEmpty) {
-          return const Center(
+          return Center(
             child: Text('No reports.',
-                style: TextStyle(color: AppColors.inkSubtle)),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
           );
         }
         return RefreshIndicator(
@@ -345,24 +345,24 @@ class _ReportsTab extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: Theme.of(context).colorScheme.outline),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(report.reason ?? '—',
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                        style: TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     Text(
                       '${report.cardType ?? '—'} · ${report.feedbackType ?? '—'}',
                       style: TextStyle(
-                          fontSize: 12, color: AppColors.inkSubtle),
+                          fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                     ),
                     if (report.createdAt != null)
                       Text(
                         '${report.createdAt!.day}/${report.createdAt!.month}/${report.createdAt!.year}',
                         style: TextStyle(
-                            fontSize: 11, color: AppColors.inkFaint),
+                            fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                       ),
                   ],
                 ),

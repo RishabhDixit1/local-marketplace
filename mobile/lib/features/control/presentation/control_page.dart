@@ -186,7 +186,7 @@ class _ControlHero extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.inkStrong,
+        color: Theme.of(context).colorScheme.onSurface,
         borderRadius: BorderRadius.circular(AppRadii.md),
         boxShadow: AppShadows.card,
       ),
@@ -766,7 +766,7 @@ class _ControlChecklistRow extends StatelessWidget {
         children: [
           Icon(
             done ? Icons.check_circle_rounded : Icons.radio_button_off_rounded,
-            color: done ? AppColors.success : AppColors.inkMuted,
+            color: done ? AppColors.success : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             size: 20,
           ),
           const SizedBox(width: 10),
@@ -822,9 +822,9 @@ class _ControlLinkRow extends StatelessWidget {
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
-                  color: AppColors.inkMuted,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ],
             ),

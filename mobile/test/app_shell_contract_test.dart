@@ -78,10 +78,9 @@ void main() {
     await tester.pump();
 
     expect(find.text('Home'), findsOneWidget);
-    expect(find.text('People'), findsOneWidget);
+    expect(find.text('Market'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget);
     expect(find.text('Inbox'), findsOneWidget);
-    expect(find.text('You'), findsOneWidget);
   });
 
   testWidgets('main rail keeps the same IA for wider layouts', (
@@ -105,9 +104,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Home'), findsOneWidget);
-    expect(find.text('People'), findsOneWidget);
+    expect(find.text('Market'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget);
     expect(find.text('Inbox'), findsOneWidget);
-    expect(find.text('You'), findsOneWidget);
   });
 }

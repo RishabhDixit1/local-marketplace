@@ -35,7 +35,7 @@ class TaskStatusTabs extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -72,21 +72,21 @@ class TaskStatusTabs extends StatelessWidget {
                               style: Theme.of(context).textTheme.labelLarge
                                   ?.copyWith(
                                     color: selected
-                                        ? AppColors.ink
-                                        : AppColors.inkMuted,
+                                        ? Theme.of(context).colorScheme.onSurface
+                                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                   ),
                             ),
                           ),
                           const SizedBox(width: 6),
                           Container(
-                            constraints: const BoxConstraints(minWidth: 22),
+                            constraints: BoxConstraints(minWidth: 22),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 6,
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
                               color: selected
-                                  ? AppColors.ink
+                                  ? Theme.of(context).colorScheme.onSurface
                                   : AppColors.surface,
                               borderRadius: BorderRadius.circular(
                                 AppRadii.pill,
@@ -159,7 +159,7 @@ class TaskCard extends StatelessWidget {
                         _TaskPill(
                           label: task.isProviderTask ? 'Helping' : 'Requested',
                           background: AppColors.surfaceMuted,
-                          foreground: AppColors.inkMuted,
+                          foreground: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                         if (task.needsDeliveryTracking &&
                             !task.isFinalDeliveryStatus)
@@ -249,7 +249,7 @@ class TaskTimeline extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -374,7 +374,7 @@ class NextActionPanel extends StatelessWidget {
                     Flexible(
                       flex: 0,
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 180),
+                        constraints: BoxConstraints(maxWidth: 180),
                         child: actionButton,
                       ),
                     ),
@@ -517,7 +517,7 @@ class _MetaPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 180),
+      constraints: BoxConstraints(maxWidth: 180),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
@@ -527,7 +527,7 @@ class _MetaPill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: AppColors.inkMuted),
+            Icon(icon, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             const SizedBox(width: 5),
             Flexible(
               child: Text(

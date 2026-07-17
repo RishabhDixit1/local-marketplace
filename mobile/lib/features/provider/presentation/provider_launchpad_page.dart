@@ -678,7 +678,7 @@ class _LaunchpadHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PremiumPill(
+          PremiumPill(
             label: 'Guided Business AI',
             icon: Icons.auto_awesome_rounded,
             backgroundColor: Color(0x22FFFFFF),
@@ -1259,7 +1259,7 @@ class _ReadinessItemTile extends StatelessWidget {
         border: Border.all(
           color: item.done
               ? AppColors.success.withValues(alpha: 0.14)
-              : AppColors.border,
+              : Theme.of(context).colorScheme.outline,
         ),
       ),
       child: Row(
@@ -1269,7 +1269,7 @@ class _ReadinessItemTile extends StatelessWidget {
             item.done
                 ? Icons.check_circle_rounded
                 : Icons.radio_button_unchecked_rounded,
-            color: item.done ? AppColors.success : AppColors.inkSubtle,
+            color: item.done ? AppColors.success : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             size: 20,
           ),
           const SizedBox(width: 10),
@@ -1318,7 +1318,7 @@ class _PublicProfilePreview extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1416,7 +1416,7 @@ class _PreviewTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1507,7 +1507,7 @@ class _LaunchpadActions extends StatelessWidget {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.save_outlined),
+                    : Icon(Icons.save_outlined),
                 onPressed: publishing ? null : onSave,
               ),
             ),
@@ -1529,7 +1529,7 @@ class _StatusPanel extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, color: AppColors.primary),
+          Icon(Icons.info_outline_rounded, color: AppColors.primary),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

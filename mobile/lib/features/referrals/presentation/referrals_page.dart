@@ -95,7 +95,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
               Text('Invite providers, earn \u{20B9}50 per signup.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSubtle)),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               const SizedBox(height: 16),
               ServiqAsyncBody<ReferralBundle>(
                 value: bundleAsync,
@@ -153,7 +153,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
           child: Column(
             children: [
               const Text('Available', style: TextStyle(fontSize: 10, color: AppColors.warning)),
-              Text(_inr(bundle.availablePoints), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.warning)),
+              Text(_inr(bundle.availablePoints), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.warning)),
             ],
           ),
         ),
@@ -179,15 +179,15 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         children: [
           Icon(icon, size: 24, color: AppColors.primary),
           const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+          Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
           const SizedBox(height: 2),
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.ink)),
+          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
         ],
       ),
     );
@@ -200,8 +200,8 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
         children: [
           Text('Request Payout', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
-          const Text('1 point = \u{20B9}1. Minimum 50 points to withdraw.',
-              style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+          Text('1 point = \u{20B9}1. Minimum 50 points to withdraw.',
+              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -214,7 +214,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
                     final parsed = int.tryParse(v);
                     if (parsed != null) setState(() => _payoutPoints = parsed < 50 ? 50 : parsed);
                   },
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   ),
@@ -222,7 +222,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
               ),
               const SizedBox(width: 10),
               Text('points = ${_inr(_payoutPoints)}',
-                  style: const TextStyle(fontSize: 13, color: AppColors.inkSubtle)),
+                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               const Spacer(),
               FilledButton(
                 onPressed: (_requestingPayout || _payoutPoints < 50 || _payoutPoints > availablePoints)
@@ -242,7 +242,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
                 color: AppColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(_payoutMsg, style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+              child: Text(_payoutMsg, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
             ),
           ],
         ],
@@ -298,21 +298,21 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(c.code, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary)),
+                Text(c.code, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary)),
                 const SizedBox(height: 2),
                 Text('${c.timesUsed} used · ${_inr(c.rewardPoints)} each',
-                    style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+                    style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               ],
             ),
           ),
           OutlinedButton.icon(
             onPressed: () => _shareCode(c.code),
-            icon: const Icon(Icons.share, size: 14),
+            icon: Icon(Icons.share, size: 14),
             label: const Text('Share'),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               minimumSize: Size.zero,
-              textStyle: const TextStyle(fontSize: 12),
+              textStyle: TextStyle(fontSize: 12),
             ),
           ),
         ],
@@ -348,10 +348,10 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('${r.referredName ?? "Someone"} joined',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 const SizedBox(height: 2),
                 Text('${r.createdAt.day}/${r.createdAt.month}/${r.createdAt.year}',
-                    style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+                    style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               ],
             ),
           ),
@@ -362,7 +362,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text('+${_inr(r.rewardPoints)}',
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.success)),
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.success)),
           ),
         ],
       ),
@@ -397,10 +397,10 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_inr(p.amountPaise ~/ 100),
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 const SizedBox(height: 2),
                 Text('${p.pointsRedeemed} pts · ${p.createdAt.day}/${p.createdAt.month}/${p.createdAt.year}',
-                    style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+                    style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               ],
             ),
           ),
@@ -423,7 +423,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
       case 'failed':
         bg = AppColors.dangerSoft; fg = AppColors.danger;
       default:
-        bg = AppColors.surfaceAlt; fg = AppColors.inkSubtle;
+        bg = AppColors.surfaceAlt; fg = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
     }
 
     return Container(
