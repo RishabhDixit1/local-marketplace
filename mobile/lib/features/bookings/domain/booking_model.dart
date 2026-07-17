@@ -80,7 +80,7 @@ class Booking {
       ? 'Order #${orderId.length > 8 ? orderId.substring(0, 8) : orderId}'
       : orderTitle!;
 
-  Color statusColor({Brightness brightness = Brightness.light}) {
+  Color statusColor({Brightness brightness = Brightness.light, Color? mutedColor}) {
     final isDark = brightness == Brightness.dark;
     switch (status) {
       case 'confirmed':
@@ -92,7 +92,7 @@ class Booking {
       case 'rescheduled':
         return isDark ? AppColors.warning : AppColors.warning;
       default:
-        return isDark ? AppColors.darkInkSubtle : AppColors.inkSubtle;
+        return isDark ? AppColors.darkInkSubtle : (mutedColor ?? AppColors.surfaceMuted);
     }
   }
 

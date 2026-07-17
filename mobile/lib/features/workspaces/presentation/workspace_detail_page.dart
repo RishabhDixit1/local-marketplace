@@ -370,7 +370,7 @@ class _MembersTab extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           if (members.isEmpty)
-            _emptyHint('No members yet.')
+            _emptyHint('No members yet.', Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))
           else
             ...members.map((m) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -551,7 +551,7 @@ class _BranchesTab extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           if (branches.isEmpty && !addingBranch)
-            _emptyHint('No branches added yet.')
+            _emptyHint('No branches added yet.', Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))
           else
             ...branches.map((b) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -713,7 +713,7 @@ class _RulesTab extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           if (rules.isEmpty && !addingRule)
-            _emptyHint('No assignment rules yet.')
+            _emptyHint('No assignment rules yet.', Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))
           else
             ...rules.map((r) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -934,13 +934,13 @@ class _MiniStatCard extends StatelessWidget {
 
 // ── Shared widgets ──
 
-Widget _emptyHint(String message) {
+Widget _emptyHint(String message, Color faintColor) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 24),
     child: Center(
       child: Text(
         message,
-        style: TextStyle(color: AppColors.inkFaint),
+        style: TextStyle(color: faintColor),
       ),
     ),
   );

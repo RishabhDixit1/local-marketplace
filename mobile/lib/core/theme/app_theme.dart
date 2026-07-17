@@ -5,6 +5,16 @@ export 'design_tokens.dart';
 
 import 'design_tokens.dart';
 
+// Private text/border tokens — only used inside this file to build the
+// ColorScheme and TextTheme. Feature code should use
+// Theme.of(context).colorScheme instead of referencing these directly.
+const _ink = Color(0xFF141A22);
+const _inkStrong = Color(0xFF090F17);
+const _inkSubtle = Color(0xFF55616B);
+const _inkFaint = Color(0xFF7A858E);
+const _border = Color(0xFFD8DEE6);
+const _borderStrong = Color(0xFFC2CBD6);
+
 @immutable
 class WelcomeThemeTokens extends ThemeExtension<WelcomeThemeTokens> {
   const WelcomeThemeTokens({
@@ -22,7 +32,7 @@ class WelcomeThemeTokens extends ThemeExtension<WelcomeThemeTokens> {
     heroStart: Color(0xFFE6F7F4),
     heroEnd: Color(0xFFFFF7E8),
     heroAccent: AppColors.primaryDeep,
-    heroStroke: AppColors.borderStrong,
+    heroStroke: _borderStrong,
     trustedTint: AppColors.successSoft,
     nearbyTint: AppColors.accentSoft,
     earnTint: AppColors.warmSoft,
@@ -119,10 +129,10 @@ class AppTheme {
           onError: Colors.white,
           errorContainer: AppColors.dangerSoft,
           surface: AppColors.surface,
-          onSurface: AppColors.ink,
+          onSurface: _ink,
           surfaceContainerHighest: AppColors.surfaceAlt,
-          outline: AppColors.border,
-          outlineVariant: AppColors.border,
+          outline: _border,
+          outlineVariant: _border,
           shadow: AppColors.shadow,
           scrim: AppColors.scrim,
         );
@@ -136,88 +146,88 @@ class AppTheme {
         fontSize: 34,
         fontWeight: FontWeight.w800,
         letterSpacing: 0,
-        color: AppColors.inkStrong,
+        color: _inkStrong,
       ),
       headlineLarge: display.headlineLarge?.copyWith(
         fontSize: 30,
         fontWeight: FontWeight.w800,
         letterSpacing: 0,
-        color: AppColors.inkStrong,
+        color: _inkStrong,
       ),
       headlineMedium: display.headlineMedium?.copyWith(
         fontSize: 24,
         fontWeight: FontWeight.w800,
         letterSpacing: 0,
-        color: AppColors.inkStrong,
+        color: _inkStrong,
       ),
       headlineSmall: display.headlineSmall?.copyWith(
         fontSize: 20,
         fontWeight: FontWeight.w800,
         letterSpacing: 0,
-        color: AppColors.inkStrong,
+        color: _inkStrong,
       ),
       titleLarge: baseText.titleLarge?.copyWith(
         fontSize: 18,
         fontWeight: FontWeight.w800,
         letterSpacing: 0,
-        color: AppColors.ink,
+        color: _ink,
       ),
       titleMedium: baseText.titleMedium?.copyWith(
         fontSize: 16,
         fontWeight: FontWeight.w800,
         letterSpacing: 0,
-        color: AppColors.ink,
+        color: _ink,
       ),
       titleSmall: baseText.titleSmall?.copyWith(
         fontSize: 14,
         fontWeight: FontWeight.w800,
         letterSpacing: 0,
-        color: AppColors.ink,
+        color: _ink,
       ),
       bodyLarge: baseText.bodyLarge?.copyWith(
         fontSize: 15,
         height: 1.45,
         letterSpacing: 0,
-        color: AppColors.ink,
+        color: _ink,
         fontWeight: FontWeight.w600,
       ),
       bodyMedium: baseText.bodyMedium?.copyWith(
         fontSize: 14,
         height: 1.45,
         letterSpacing: 0,
-        color: AppColors.inkSubtle,
+        color: _inkSubtle,
         fontWeight: FontWeight.w600,
       ),
       bodySmall: baseText.bodySmall?.copyWith(
         fontSize: 12,
         height: 1.4,
         letterSpacing: 0,
-        color: AppColors.inkSubtle,
+        color: _inkSubtle,
         fontWeight: FontWeight.w700,
       ),
       labelLarge: baseText.labelLarge?.copyWith(
         fontSize: 14,
         fontWeight: FontWeight.w800,
         letterSpacing: 0,
-        color: AppColors.ink,
+        color: _ink,
       ),
       labelMedium: baseText.labelMedium?.copyWith(
         fontSize: 12,
         fontWeight: FontWeight.w800,
         letterSpacing: 0,
-        color: AppColors.ink,
+        color: _ink,
       ),
       labelSmall: baseText.labelSmall?.copyWith(
         fontSize: 11,
         fontWeight: FontWeight.w800,
         letterSpacing: 0,
-        color: AppColors.inkSubtle,
+        color: _inkSubtle,
       ),
     );
 
     final inputBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppRadii.md),
-      borderSide: const BorderSide(color: AppColors.border),
+      borderSide: const BorderSide(color: _border),
     );
 
     return ThemeData(
@@ -231,7 +241,7 @@ class AppTheme {
       ],
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.background,
-        foregroundColor: AppColors.ink,
+        foregroundColor: _ink,
         centerTitle: false,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
@@ -243,11 +253,11 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
-          side: const BorderSide(color: AppColors.border),
+          side: const BorderSide(color: _border),
         ),
       ),
       dividerTheme: const DividerThemeData(
-        color: AppColors.border,
+        color: _border,
         thickness: 1,
         space: 1,
       ),
@@ -255,7 +265,7 @@ class AppTheme {
         backgroundColor: AppColors.surfaceAlt,
         selectedColor: AppColors.accentSoft,
         disabledColor: AppColors.surfacePressed,
-        side: const BorderSide(color: AppColors.border),
+        side: const BorderSide(color: _border),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.pill),
         ),
@@ -270,7 +280,7 @@ class AppTheme {
           horizontal: AppSpacing.md,
           vertical: AppSpacing.md,
         ),
-        hintStyle: textTheme.bodyMedium?.copyWith(color: AppColors.inkFaint),
+        hintStyle: textTheme.bodyMedium?.copyWith(color: _inkFaint),
         labelStyle: textTheme.bodyMedium,
         floatingLabelStyle: textTheme.labelMedium?.copyWith(
           color: AppColors.accentDeep,
@@ -293,7 +303,7 @@ class AppTheme {
           foregroundColor: Colors.white,
           backgroundColor: AppColors.primary,
           disabledBackgroundColor: AppColors.surfacePressed,
-          disabledForegroundColor: AppColors.inkFaint,
+          disabledForegroundColor: _inkFaint,
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
@@ -307,8 +317,8 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(50),
-          foregroundColor: AppColors.ink,
-          side: const BorderSide(color: AppColors.borderStrong),
+          foregroundColor: _ink,
+          side: const BorderSide(color: _borderStrong),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
@@ -335,7 +345,7 @@ class AppTheme {
           foregroundColor: WidgetStateProperty.resolveWith((states) {
             return states.contains(WidgetState.selected)
                 ? AppColors.primaryDeep
-                : AppColors.inkSubtle;
+                : _inkSubtle;
           }),
           backgroundColor: WidgetStateProperty.resolveWith((states) {
             return states.contains(WidgetState.selected)
@@ -345,13 +355,13 @@ class AppTheme {
           iconColor: WidgetStateProperty.resolveWith((states) {
             return states.contains(WidgetState.selected)
                 ? AppColors.primaryDeep
-                : AppColors.inkSubtle;
+                : _inkSubtle;
           }),
           side: WidgetStateProperty.resolveWith((states) {
             return BorderSide(
               color: states.contains(WidgetState.selected)
                   ? AppColors.primarySoft
-                  : AppColors.border,
+                  : _border,
             );
           }),
           shape: WidgetStateProperty.all(
@@ -362,7 +372,7 @@ class AppTheme {
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.ink,
+        backgroundColor: _ink,
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(AppRadii.md)),
@@ -387,7 +397,7 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.ink,
+        backgroundColor: _ink,
         contentTextStyle: textTheme.bodyMedium?.copyWith(color: Colors.white),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
@@ -401,14 +411,14 @@ class AppTheme {
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return textTheme.labelMedium?.copyWith(
-            color: selected ? AppColors.inkStrong : AppColors.inkSubtle,
+            color: selected ? _inkStrong : _inkSubtle,
             fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? AppColors.accentDeep : AppColors.inkSubtle,
+            color: selected ? AppColors.accentDeep : _inkSubtle,
             size: 24,
           );
         }),
@@ -425,15 +435,15 @@ class AppTheme {
           size: 24,
         ),
         unselectedIconTheme: const IconThemeData(
-          color: AppColors.inkSubtle,
+          color: _inkSubtle,
           size: 23,
         ),
         selectedLabelTextStyle: textTheme.labelMedium?.copyWith(
-          color: AppColors.inkStrong,
+          color: _inkStrong,
           fontWeight: FontWeight.w900,
         ),
         unselectedLabelTextStyle: textTheme.labelMedium?.copyWith(
-          color: AppColors.inkSubtle,
+          color: _inkSubtle,
           fontWeight: FontWeight.w700,
         ),
       ),

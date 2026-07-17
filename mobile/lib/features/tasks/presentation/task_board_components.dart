@@ -154,7 +154,7 @@ class TaskCard extends StatelessWidget {
                         _TaskPill(
                           label: task.statusLabel,
                           background: _statusTint(task.status),
-                          foreground: _statusInk(task.status),
+                          foreground: _statusInk(task.status, Theme.of(context).colorScheme.onSurface),
                         ),
                         _TaskPill(
                           label: task.isProviderTask ? 'Helping' : 'Requested',
@@ -705,10 +705,10 @@ Color _statusTint(MobileTaskStatus status) {
   }
 }
 
-Color _statusInk(MobileTaskStatus status) {
+Color _statusInk(MobileTaskStatus status, Color defaultColor) {
   switch (status) {
     case MobileTaskStatus.active:
-      return AppColors.ink;
+      return defaultColor;
     case MobileTaskStatus.inProgress:
       return AppColors.accent;
     case MobileTaskStatus.completed:

@@ -9,7 +9,7 @@ class PayoutStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = _statusColors(status);
+    final colors = _statusColors(status, Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6));
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -47,7 +47,7 @@ class PayoutStatusChip extends StatelessWidget {
     }
   }
 
-  (Color, Color) _statusColors(String s) {
+  (Color, Color) _statusColors(String s, Color mutedColor) {
     switch (s) {
       case 'pending':
         return (AppColors.warningSoft, AppColors.warning);
@@ -60,9 +60,9 @@ class PayoutStatusChip extends StatelessWidget {
       case 'failed':
         return (AppColors.dangerSoft, AppColors.danger);
       case 'cancelled':
-        return (AppColors.surfaceAlt, AppColors.inkSubtle);
+        return (AppColors.surfaceAlt, mutedColor);
       default:
-        return (AppColors.surfaceAlt, AppColors.inkSubtle);
+        return (AppColors.surfaceAlt, mutedColor);
     }
   }
 }

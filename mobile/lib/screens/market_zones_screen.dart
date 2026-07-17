@@ -254,7 +254,7 @@ class _CategoryStrip extends StatelessWidget {
           SizedBox(
             height: 72,
             child: categories.isEmpty
-                ? _defaultCategoryIcons()
+                ? _defaultCategoryIcons(context)
                 : ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: categories.length,
@@ -278,7 +278,7 @@ class _CategoryStrip extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(name,
-                style: TextStyle(fontSize: 10, color: AppColors.inkSubtle)),
+                style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                         ],
                       );
                     },
@@ -289,7 +289,7 @@ class _CategoryStrip extends StatelessWidget {
     );
   }
 
-  Widget _defaultCategoryIcons() {
+  Widget _defaultCategoryIcons(BuildContext context) {
     const fallback = [
       (Icons.electrical_services_rounded, 'Electrician'),
       (Icons.plumbing_rounded, 'Plumber'),
@@ -317,7 +317,7 @@ class _CategoryStrip extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(label,
-                style: TextStyle(fontSize: 10, color: AppColors.inkSubtle)),
+                style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
           ],
         );
       },

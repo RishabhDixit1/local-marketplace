@@ -301,7 +301,7 @@ class _StatsGrid extends StatelessWidget {
               icon: Icons.star_rounded,
             ),
           ),
-          _verticalDivider(),
+           _verticalDivider(context),
           Expanded(
             child: _StatCell(
               label: 'Reviews',
@@ -309,7 +309,7 @@ class _StatsGrid extends StatelessWidget {
               icon: Icons.rate_review_outlined,
             ),
           ),
-          _verticalDivider(),
+           _verticalDivider(context),
           Expanded(
             child: _StatCell(
               label: 'Services',
@@ -317,7 +317,7 @@ class _StatsGrid extends StatelessWidget {
               icon: Icons.work_outline,
             ),
           ),
-          _verticalDivider(),
+           _verticalDivider(context),
           Expanded(
             child: _StatCell(
               label: 'Trust',
@@ -330,11 +330,11 @@ class _StatsGrid extends StatelessWidget {
     );
   }
 
-  Widget _verticalDivider() {
+  Widget _verticalDivider(BuildContext context) {
     return Container(
       width: 1,
       height: 48,
-      color: AppColors.border,
+      color: Theme.of(context).colorScheme.outline,
     );
   }
 

@@ -26,8 +26,8 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
     ref.invalidate(analyticsProvider(_selectedYear));
   }
 
-  static final _chartColors = [
-    AppColors.ink,
+  List<Color> _chartColors(BuildContext context) => [
+    Theme.of(context).colorScheme.onSurface,
     AppColors.primary,
     AppColors.success,
     AppColors.warning,
@@ -234,32 +234,36 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
         children: [
           Text('Orders by Status', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          SizedBox(
-            height: 130,
-            child: PieChart(
-              PieChartData(
-                sectionsSpace: 2,
-                centerSpaceRadius: 30,
-                sections: List.generate(entries.length, (i) {
-                  return PieChartSectionData(
-                    value: entries[i].value.toDouble(),
-                    color: _chartColors[i % _chartColors.length],
-                    radius: 28,
-                    title: '${entries[i].value}',
-                    titleStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-                  );
-                }),
+          Builder(builder: (context) {
+            final colors = _chartColors(context);
+            return SizedBox(
+              height: 130,
+              child: PieChart(
+                PieChartData(
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 30,
+                  sections: List.generate(entries.length, (i) {
+                    return PieChartSectionData(
+                      value: entries[i].value.toDouble(),
+                      color: colors[i % colors.length],
+                      radius: 28,
+                      title: '${entries[i].value}',
+                      titleStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                    );
+                  }),
+                ),
               ),
-            ),
-          ),
+            );
+          }),
           const SizedBox(height: 6),
           ...entries.take(6).map((e) {
-            final ci = entries.indexOf(e) % _chartColors.length;
+            final colors = _chartColors(context);
+            final ci = entries.indexOf(e) % colors.length;
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Row(
                 children: [
-                  Container(width: 8, height: 8, decoration: BoxDecoration(color: _chartColors[ci], shape: BoxShape.circle)),
+                  Container(width: 8, height: 8, decoration: BoxDecoration(color: colors[ci], shape: BoxShape.circle)),
                   const SizedBox(width: 6),
                   Expanded(child: Text(e.key, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)))),
                   Text('${e.value}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),

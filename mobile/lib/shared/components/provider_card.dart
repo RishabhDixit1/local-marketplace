@@ -31,7 +31,7 @@ class ProviderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final signals = _providerSummarySignals(person);
+    final signals = _providerSummarySignals(person, Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6));
 
     return SectionCard(
       variant: ServiqSurfaceVariant.raised,
@@ -90,8 +90,8 @@ class ProviderCard extends StatelessWidget {
   }
 }
 
-List<({IconData icon, String label, Color background, Color foreground})>
-_providerSummarySignals(MobilePersonCard person) {
+ List<({IconData icon, String label, Color background, Color foreground})>
+_providerSummarySignals(MobilePersonCard person, Color mutedColor) {
   final signals =
       <({IconData icon, String label, Color background, Color foreground})>[];
 
@@ -101,7 +101,7 @@ _providerSummarySignals(MobilePersonCard person) {
     background: person.isOnline
         ? AppColors.primarySoft
         : AppColors.surfaceMuted,
-    foreground: person.isOnline ? AppColors.primary : AppColors.inkSubtle,
+    foreground: person.isOnline ? AppColors.primary : mutedColor,
   ));
 
   final rating = person.ratingLabel.trim();
@@ -126,7 +126,7 @@ _providerSummarySignals(MobilePersonCard person) {
       icon: Icons.payments_outlined,
       label: person.priceLabel,
       background: AppColors.surfaceMuted,
-      foreground: AppColors.ink,
+      foreground: mutedColor,
     ));
   }
 

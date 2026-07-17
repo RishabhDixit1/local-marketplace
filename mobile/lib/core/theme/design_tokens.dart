@@ -13,14 +13,7 @@ class AppColors {
   static const surfaceMuted = surfaceAlt;
   static const surfaceRaised = backgroundRaised;
 
-  static const ink = Color(0xFF141A22);
-  static const inkStrong = Color(0xFF090F17);
-  static const inkSubtle = Color(0xFF55616B);
-  static const inkMuted = inkSubtle;
-  static const inkFaint = Color(0xFF7A858E);
-
-  static const border = Color(0xFFD8DEE6);
-  static const borderStrong = Color(0xFFC2CBD6);
+  // Text/border tokens are private to app_theme.dart (Theme.of(context) preferred).
 
   /// Primary commerce / success-adjacent action (calmer blue-teal vs generic green).
   static const primary = Color(0xFF0F766E);

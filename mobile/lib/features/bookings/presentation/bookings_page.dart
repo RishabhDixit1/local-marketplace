@@ -168,8 +168,9 @@ class _BookingCard extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
-                                  color: booking.statusColor(
+                                   color: booking.statusColor(
                                     brightness: Theme.of(context).brightness,
+                                    mutedColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                   ),
                                 ),
                               ),
