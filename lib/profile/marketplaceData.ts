@@ -313,87 +313,84 @@ const toTrustScoreRecord = (row: TrustScoreRow | null, profileId: string, comput
   updated_at: row?.updated_at || null,
 });
 
+const PROFILE_LOOKUP_COLUMNS = "id,full_name,name,username,headline,location,role,bio,interests,services,email,phone,website,avatar_url,availability,verification_level,on_time_rate,response_time_minutes,repeat_clients_count,trust_score,onboarding_completed,profile_completion_percent,latitude,longitude,metadata,created_at,updated_at";
+
 const loadProfileByLookup = async (db: NonNullable<ReturnType<typeof getServerSupabase>>, lookup: string) => {
   const trimmed = lookup.trim();
   const profileId = extractProfileIdFromSlug(trimmed);
   const slugified = slugifyProfileName(trimmed);
 
-  const candidates = [
-    { column: "username", value: trimmed },
-    { column: "username", value: slugified },
-  ];
-
-  if (profileId) {
-    candidates.push({ column: "id", value: profileId });
+  const orParts = [`id.eq.${trimmed}`, `username.eq.${trimmed}`];
+  if (slugified && slugified !== trimmed) {
+    orParts.push(`username.eq.${slugified}`);
+  }
+  if (profileId && profileId !== trimmed) {
+    orParts.push(`id.eq.${profileId}`);
   }
 
-  for (const candidate of candidates) {
-    const { data, error } = await db
-      .from("profiles")
-      .select(
-        "id,full_name,name,username,headline,location,role,bio,interests,services,email,phone,website,avatar_url,availability,verification_level,on_time_rate,response_time_minutes,repeat_clients_count,trust_score,onboarding_completed,profile_completion_percent,latitude,longitude,metadata,created_at,updated_at"
-      )
-      .eq(candidate.column, candidate.value)
-      .maybeSingle();
+  const { data, error } = await db
+    .from("profiles")
+    .select(PROFILE_LOOKUP_COLUMNS)
+    .or(orParts.join(","))
+    .maybeSingle();
 
-    if (error) {
-      if (isMissingRelationError(error.message || "")) return null;
-      throw error;
-    }
+  if (error) {
+    if (isMissingRelationError(error.message || "")) return null;
+    throw error;
+  }
 
-    if (data) {
-      return normalizeProfileRecord(data as ProfileRow, {
-        id: normalizeString((data as ProfileRow).id) || profileId || trimmed,
-        email: typeof (data as ProfileRow).email === "string" ? (data as { email: string }).email : "",
-      });
-    }
+  if (data) {
+    return normalizeProfileRecord(data as ProfileRow, {
+      id: normalizeString((data as ProfileRow).id) || profileId || trimmed,
+      email: typeof (data as ProfileRow).email === "string" ? (data as { email: string }).email : "",
+    });
   }
 
   return null;
 };
 
 const loadServices = async (db: NonNullable<ReturnType<typeof getServerSupabase>>, profileId: string) => {
-  const newRows = await selectRows<ServiceLikeRow>({
-    db,
-    table: "services",
-    select: "*",
-    filters: [{ column: "profile_id", value: profileId }],
-    orderBy: "created_at",
-  });
+  const [newRows, oldRows] = await Promise.all([
+    selectRows<ServiceLikeRow>({
+      db,
+      table: "services",
+      select: "*",
+      filters: [{ column: "profile_id", value: profileId }],
+      orderBy: "created_at",
+    }),
+    selectRows<ServiceLikeRow>({
+      db,
+      table: "service_listings",
+      select: "id,provider_id,title,description,price,pricing_type,category,availability,metadata,created_at,updated_at",
+      filters: [{ column: "provider_id", value: profileId }],
+      orderBy: "created_at",
+    }),
+  ]);
 
-  const sourceRows =
-    newRows && newRows.length > 0
-      ? newRows
-        : (await selectRows<ServiceLikeRow>({
-          db,
-          table: "service_listings",
-          select: "id,provider_id,title,description,price,pricing_type,category,availability,metadata,created_at,updated_at",
-          filters: [{ column: "provider_id", value: profileId }],
-          orderBy: "created_at",
-        })) || [];
+  const sourceRows = newRows && newRows.length > 0 ? newRows : oldRows || [];
 
   return sourceRows.map((row) => toServiceRecord(row, profileId)).filter((row): row is MarketplaceServiceRecord => Boolean(row));
 };
 
 const loadProducts = async (db: NonNullable<ReturnType<typeof getServerSupabase>>, profileId: string) => {
-  const newRows = await selectRows<ProductLikeRow>({
-    db,
-    table: "products",
-    select: "*",
-    filters: [{ column: "profile_id", value: profileId }],
-    orderBy: "created_at",
-  });
+  const [newRows, oldRows] = await Promise.all([
+    selectRows<ProductLikeRow>({
+      db,
+      table: "products",
+      select: "*",
+      filters: [{ column: "profile_id", value: profileId }],
+      orderBy: "created_at",
+    }),
+    selectRows<ProductLikeRow>({
+      db,
+      table: "product_catalog",
+      select: "id,provider_id,title,description,price,stock,category,metadata,created_at,updated_at",
+      filters: [{ column: "provider_id", value: profileId }],
+      orderBy: "created_at",
+    }),
+  ]);
 
-  const sourceRows =
-    newRows && newRows.length > 0
-      ? newRows
-      : (await selectRows<ProductLikeRow>({
-          db,
-          table: "product_catalog",
-          select: "id,provider_id,title,description,price,stock,category,metadata,created_at,updated_at",
-          filters: [{ column: "provider_id", value: profileId }],
-          orderBy: "created_at",
-        })) || [];
+  const sourceRows = newRows && newRows.length > 0 ? newRows : oldRows || [];
 
   return sourceRows.map((row) => toProductRecord(row, profileId)).filter((row): row is NonNullable<ReturnType<typeof toProductRecord>> => Boolean(row));
 };

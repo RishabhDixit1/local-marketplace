@@ -402,21 +402,28 @@ function AuthForm() {
         await completeAuth(data.user);
         return;
       }
-    } catch {
-      // GoTrue unreachable — try custom fallback
+    } catch (goTrueError) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await completeAuth(session.user);
+        return;
+      }
+      if (goTrueError instanceof Error) console.warn("verifyOtp (GoTrue) failed, falling back to custom API:", goTrueError.message);
     }
 
     try {
       const response = await fetch("/api/auth/verify-link", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type" : "application/json" },
         body: JSON.stringify({ email, otp: code }),
       });
       const payload = (await response.json()) as {
         ok?: boolean;
         error?: string;
         user?: { id: string; email: string };
-        session?: Record<string, unknown>;
+        session?: Record<string, unknown>
+
+;
         accessToken?: string;
         refreshToken?: string;
       };

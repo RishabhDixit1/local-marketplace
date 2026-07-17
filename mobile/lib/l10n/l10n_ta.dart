@@ -42,6 +42,8 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get people => 'மக்கள்';
   @override
+  String get market => 'சந்தை';
+  @override
   String get work => 'வேலை';
   @override
   String get inbox => 'இன்பாக்ஸ்';

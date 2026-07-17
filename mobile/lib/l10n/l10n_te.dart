@@ -42,6 +42,8 @@ class AppLocalizationsTe extends AppLocalizations {
   @override
   String get people => 'ప్రజలు';
   @override
+  String get market => 'మార్కెట్';
+  @override
   String get work => 'పని';
   @override
   String get inbox => 'ఇన్బాక్స్';

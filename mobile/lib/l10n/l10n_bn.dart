@@ -42,6 +42,8 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get people => 'লোকজন';
   @override
+  String get market => 'বাজার';
+  @override
   String get work => 'কাজ';
   @override
   String get inbox => 'ইনবক্স';

@@ -84,7 +84,7 @@ function isOrderRequest(body: unknown): body is OrderRequest {
     (b.itemType === "service" || b.itemType === "product") &&
     typeof b.itemId === "string" && b.itemId.length > 0 &&
     typeof b.price === "number" &&
-    b.price >= 0 && b.price <= 999999
+    b.price > 0 && b.price <= 999999
   );
 }
 

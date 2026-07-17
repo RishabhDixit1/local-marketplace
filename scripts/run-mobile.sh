@@ -8,6 +8,7 @@ ENV_FILE=".env.local"
 APP_ENV="development"
 SYNC_ONLY=0
 PRINT_ONLY=0
+RUN_MODE="debug"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -26,6 +27,10 @@ while [[ $# -gt 0 ]]; do
     --app-env)
       APP_ENV="${2:?Missing value for --app-env}"
       shift 2
+      ;;
+    --profile)
+      RUN_MODE="profile"
+      shift
       ;;
     --sync-only)
       SYNC_ONLY=1
@@ -106,6 +111,7 @@ fi
 
 echo "Using env file: $ENV_PATH"
 echo "Device: $DEVICE_ID"
+echo "Run mode: $RUN_MODE"
 echo "Supabase host: $SUPABASE_URL"
 echo "Anon key: $MASKED_KEY"
 echo "API base URL: $API_BASE_URL"
@@ -115,6 +121,7 @@ echo "Mobile config path: $CONFIG_PATH"
 FLUTTER_ARGS=(
   run
   -d "$DEVICE_ID"
+  "--$RUN_MODE"
   "--dart-define=APP_ENV=$APP_ENV"
   "--dart-define=SUPABASE_URL=$SUPABASE_URL"
   "--dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
@@ -132,7 +139,7 @@ FLUTTER_ARGS=(
 if [[ $PRINT_ONLY -eq 1 ]]; then
   echo
   echo "Resolved flutter command:"
-  echo "flutter run -d $DEVICE_ID --dart-define=APP_ENV=$APP_ENV --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$MASKED_KEY --dart-define=API_BASE_URL=$API_BASE_URL --dart-define=AUTH_REDIRECT_SCHEME=serviq --dart-define=AUTH_REDIRECT_HOST=auth-callback --dart-define=ALLOW_BAD_CERTIFICATES=$ALLOW_BAD_CERTIFICATES"
+  echo "flutter run -d $DEVICE_ID --$RUN_MODE --dart-define=APP_ENV=$APP_ENV --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$MASKED_KEY --dart-define=API_BASE_URL=$API_BASE_URL --dart-define=AUTH_REDIRECT_SCHEME=serviq --dart-define=AUTH_REDIRECT_HOST=auth-callback --dart-define=ALLOW_BAD_CERTIFICATES=$ALLOW_BAD_CERTIFICATES"
   exit 0
 fi
 

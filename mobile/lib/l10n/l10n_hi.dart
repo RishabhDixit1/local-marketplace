@@ -44,6 +44,8 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get people => 'लोग';
   @override
+  String get market => 'बाज़ार';
+  @override
   String get work => 'कार्य';
   @override
   String get inbox => 'इनबॉक्स';

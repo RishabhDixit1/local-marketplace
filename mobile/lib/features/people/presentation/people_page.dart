@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
-import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/design_system/serviq_recovery_banner.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
@@ -380,216 +379,289 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
           onRefresh: _refresh,
           color: Theme.of(context).colorScheme.primary,
           backgroundColor: Theme.of(context).colorScheme.surface,
-          child: ListView(
-            controller: _scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 140),
-            children: [
-              SectionCard(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Find nearby help',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 12),
-                    AppSearchField(
-                      controller: _searchController,
-                      hintText: 'Search name, skill, area',
-                      onChanged: _onQueryChanged,
-                    ),
-                    const SizedBox(height: 8),
-                    _localityLoadError
-                        ? GestureDetector(
-                          onTap: _loadLocalities,
-                          child: Container(
-                            height: 40,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(AppRadii.xl),
-                              border: Border.all(color: AppColors.danger.withValues(alpha: 0.4)),
-                              color: AppColors.dangerSoft,
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: Row(
-                              children: [
-                                Icon(Icons.cloud_off_rounded, size: 14, color: AppColors.danger),
-                                const SizedBox(width: 6),
-                                const Expanded(child: Text('Localities unavailable — tap to retry', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
-                              ],
-                            ),
-                          ),
-                        )
-                        : Container(
-                      height: 40,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(AppRadii.xl),
-                        border: Border.all(color: AppColors.border),
-                        color: AppColors.surface,
+          child: _buildPeopleList(asyncState, categories),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPeopleList(
+    AsyncValue<PeopleListState> asyncState,
+    List<String> categories,
+  ) {
+    return asyncState.when(
+      loading: () => const _PeopleLoading(),
+      error: (err, _) => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 140),
+        children: [
+          _buildSearchCard(categories),
+          const SizedBox(height: 16),
+          SectionCard(
+            child: EmptyStateView(
+              title: 'Unable to load people',
+              message: AppErrorMapper.toMessage(err),
+              icon: Icons.cloud_off_rounded,
+              actionLabel: 'Retry',
+              onAction: () =>
+                  ref.read(peopleListNotifierProvider.notifier).loadInitial(),
+            ),
+          ),
+        ],
+      ),
+      data: (data) {
+        final filtered = data.people.where((person) {
+          if (_filters.contains('online') && !person.isOnline) return false;
+          if (_filters.contains('verified') &&
+              person.completionPercent < 80) return false;
+          if (_filters.contains('top_rated') &&
+              ((person.averageRating ?? 0) < 4.5 ||
+                  person.reviewCount < 1)) return false;
+          if (_filters.contains('connected') &&
+              !person.isAcceptedConnection) return false;
+          if (_filters.contains('fast') &&
+              !person.isOnline &&
+              !person.activityLabel.toLowerCase().contains('min')) return false;
+          if (_selectedCategory != 'All' &&
+              !person.primaryTags.any(
+                (tag) =>
+                    tag.toLowerCase() == _selectedCategory.toLowerCase(),
+              )) return false;
+          if (_selectedLocalityId != null) {
+            final locName = _localities
+                .where((l) => l['id'] == _selectedLocalityId)
+                .map((l) => (l['name'] as String? ?? '').toLowerCase())
+                .firstOrNull;
+            if (locName != null &&
+                !person.locationLabel.toLowerCase().contains(locName)) {
+              return false;
+            }
+          }
+          return person.matchesQuery(_query);
+        }).toList()
+          ..sort(
+            (left, right) =>
+                _compareFindPeopleForMode(left, right, _mode),
+          );
+
+        return ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 140),
+          itemCount: _peopleItemCount(data, filtered),
+          itemBuilder: (context, index) =>
+              _buildPeopleItem(context, data, filtered, index),
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchCard(List<String> categories) {
+    return SectionCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Find nearby help',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
+          AppSearchField(
+            controller: _searchController,
+            hintText: 'Search name, skill, area',
+            onChanged: _onQueryChanged,
+          ),
+          const SizedBox(height: 8),
+          _localityLoadError
+              ? GestureDetector(
+                  onTap: _loadLocalities,
+                  child: Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppRadii.xl),
+                      border: Border.all(
+                        color: AppColors.danger.withValues(alpha: 0.4),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String?>(
-                          value: _selectedLocalityId,
-                          hint: const Text('All localities', style: TextStyle(fontSize: 13)),
-                          style: const TextStyle(fontSize: 13, color: AppColors.inkStrong),
-                          isExpanded: true,
-                          isDense: true,
-                          items: [
-                            const DropdownMenuItem(value: null, child: Text('All localities', style: TextStyle(fontSize: 13))),
-                            ..._localities.map((loc) => DropdownMenuItem(
-                              value: loc['id'] as String?,
-                              child: Text(loc['name'] as String? ?? '', style: const TextStyle(fontSize: 13)),
-                            )),
-                          ],
-                          onChanged: (val) => setState(() => _selectedLocalityId = val),
-                        ),
-                      ),
+                      color: AppColors.dangerSoft,
                     ),
-                    const SizedBox(height: 12),
-                    _PeopleDiscoverySummary(
-                      mode: _mode,
-                      selectedCategory: _selectedCategory,
-                      filters: _filters,
-                      activeCount: _activeDiscoveryFilterCount,
-                      onOpenFilters: () => _showDiscoverySheet(categories),
-                      onClear: _activeDiscoveryFilterCount == 0
-                          ? null
-                          : _clearSearchAndFilters,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              ServiqAsyncBody<PeopleListState>(
-                value: asyncState,
-                errorTitle: 'Unable to load people',
-                errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
-                onRetry: () => ref.read(peopleListNotifierProvider.notifier).loadInitial(),
-                loadingBuilder: () => const _PeopleLoading(),
-                data: (data) {
-                  final filtered =
-                      data.people.where((person) {
-                        if (_filters.contains('online') && !person.isOnline) {
-                          return false;
-                        }
-                        if (_filters.contains('verified') &&
-                            person.completionPercent < 80) {
-                          return false;
-                        }
-                        if (_filters.contains('top_rated') &&
-                            ((person.averageRating ?? 0) < 4.5 ||
-                                person.reviewCount < 1)) {
-                          return false;
-                        }
-                        if (_filters.contains('connected') &&
-                            !person.isAcceptedConnection) {
-                          return false;
-                        }
-                        if (_filters.contains('fast') &&
-                            !person.isOnline &&
-                            !person.activityLabel.toLowerCase().contains(
-                              'min',
-                            )) {
-                          return false;
-                        }
-                        if (_selectedCategory != 'All' &&
-                            !person.primaryTags.any(
-                              (tag) =>
-                                  tag.toLowerCase() ==
-                                  _selectedCategory.toLowerCase(),
-                            )) {
-                          return false;
-                        }
-
-                        if (_selectedLocalityId != null) {
-                          final locName = _localities
-                              .where((l) => l['id'] == _selectedLocalityId)
-                              .map((l) => (l['name'] as String? ?? '').toLowerCase())
-                              .firstOrNull;
-                          if (locName != null &&
-                              !person.locationLabel.toLowerCase().contains(locName)) {
-                            return false;
-                          }
-                        }
-
-                        return person.matchesQuery(_query);
-                      }).toList()..sort(
-                        (left, right) =>
-                            _compareFindPeopleForMode(left, right, _mode),
-                      );
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (data.isStale)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: ServiqRecoveryBanner(
-                            message: 'Showing previously cached data. Pull to refresh for latest.',
-                            actionLabel: 'Refresh',
-                            onAction: _refresh,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        Icon(Icons.cloud_off_rounded,
+                            size: 14, color: AppColors.danger),
+                        const SizedBox(width: 6),
+                        const Expanded(
+                          child: Text(
+                            'Localities unavailable — tap to retry',
+                            style: TextStyle(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      if (_mode == _DiscoveryMode.compare &&
-                          filtered.isNotEmpty) ...[
-                        const SizedBox(height: 14),
-                        _ProviderComparePanel(
-                          providers: filtered.take(3).toList(),
-                          onOpenProvider: _openProvider,
                         ),
                       ],
-                      const SizedBox(height: 16),
-                      SectionHeader(
-                        title: 'Provider directory',
-                        subtitle:
-                            '${filtered.length} people match your current view.',
-                      ),
-                      const SizedBox(height: 12),
-                      if (filtered.isEmpty)
-                        SectionCard(
-                          child: EmptyStateView(
-                            title: 'No matching providers',
-                            message:
-                                'Broaden the search or clear a filter to widen the local network.',
-                            icon: Icons.search_off_rounded,
-                            actionLabel: 'Clear search',
-                            onAction: _clearSearchAndFilters,
-                          ),
-                        )
-                      else
-                        ...filtered.map(
-                          (person) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: ProviderDirectoryCard(
-                              person: person,
-                              onOpenProfile: () => _openProvider(person),
-                              onMessage: () => context.push(
-                                AppRoutes.chatDirect(
-                                  recipientId: person.id,
-                                  contextTitle: person.name,
-                                  source: 'people_provider_card',
-                                ),
-                              ),
-                              onConnect: person.isAcceptedConnection
-                                  ? null
-                                  : () => _connect(person),
-                              connecting: _busyConnectId == person.id,
-                            ),
-                          ),
+                    ),
+                  ),
+                )
+              : Container(
+                  height: 40,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadii.xl),
+                    border: Border.all(color: AppColors.border),
+                    color: AppColors.surface,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String?>(
+                      value: _selectedLocalityId,
+                      hint: const Text('All localities',
+                          style: TextStyle(fontSize: 13)),
+                      style: const TextStyle(
+                          fontSize: 13, color: AppColors.inkStrong),
+                      isExpanded: true,
+                      isDense: true,
+                      items: [
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('All localities',
+                              style: TextStyle(fontSize: 13)),
                         ),
-                      if (data.isLoadingMore)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Center(child: CircularProgressIndicator()),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ],
+                        ..._localities.map((loc) => DropdownMenuItem(
+                              value: loc['id'] as String?,
+                              child: Text(loc['name'] as String? ?? '',
+                                  style: const TextStyle(fontSize: 13)),
+                            )),
+                      ],
+                      onChanged: (val) =>
+                          setState(() => _selectedLocalityId = val),
+                    ),
+                  ),
+                ),
+          const SizedBox(height: 12),
+          _PeopleDiscoverySummary(
+            mode: _mode,
+            selectedCategory: _selectedCategory,
+            filters: _filters,
+            activeCount: _activeDiscoveryFilterCount,
+            onOpenFilters: () => _showDiscoverySheet(categories),
+            onClear: _activeDiscoveryFilterCount == 0
+                ? null
+                : _clearSearchAndFilters,
+          ),
+        ],
+      ),
+    );
+  }
+
+  int _peopleItemCount(PeopleListState data, List<MobilePersonCard> filtered) {
+    var count = 1; // search card
+    count += 1; // spacer
+    if (data.isStale) count += 1;
+    if (_mode == _DiscoveryMode.compare && filtered.isNotEmpty) count += 1;
+    count += 1; // section header
+    count += filtered.isEmpty ? 1 : filtered.length;
+    if (data.isLoadingMore) count += 1;
+    return count;
+  }
+
+  Widget _buildPeopleItem(
+    BuildContext context,
+    PeopleListState data,
+    List<MobilePersonCard> filtered,
+    int index,
+  ) {
+    var i = index;
+
+    // 0: search card
+    if (i == 0) return _buildSearchCard(_topCategories(data.people));
+    i -= 1;
+
+    // spacer
+    if (i == 0) return const SizedBox(height: 16);
+    i -= 1;
+
+    // stale banner
+    if (data.isStale) {
+      if (i == 0) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: ServiqRecoveryBanner(
+            message:
+                'Showing previously cached data. Pull to refresh for latest.',
+            actionLabel: 'Refresh',
+            onAction: _refresh,
+          ),
+        );
+      }
+      i -= 1;
+    }
+
+    // compare panel
+    if (_mode == _DiscoveryMode.compare && filtered.isNotEmpty) {
+      if (i == 0) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: _ProviderComparePanel(
+            providers: filtered.take(3).toList(),
+            onOpenProvider: _openProvider,
+          ),
+        );
+      }
+      i -= 1;
+    }
+
+    // section header
+    if (i == 0) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          SectionHeader(
+            title: 'Provider directory',
+            subtitle:
+                '${filtered.length} people match your current view.',
+          ),
+          const SizedBox(height: 12),
+        ],
+      );
+    }
+    i -= 1;
+
+    // provider cards or empty state
+    if (filtered.isEmpty) {
+      return SectionCard(
+        child: EmptyStateView(
+          title: 'No matching providers',
+          message:
+              'Broaden the search or clear a filter to widen the local network.',
+          icon: Icons.search_off_rounded,
+          actionLabel: 'Clear search',
+          onAction: _clearSearchAndFilters,
+        ),
+      );
+    }
+
+    // loading more indicator
+    if (i >= filtered.length) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final person = filtered[i];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: ProviderDirectoryCard(
+        person: person,
+        onOpenProfile: () => _openProvider(person),
+        onMessage: () => context.push(
+          AppRoutes.chatDirect(
+            recipientId: person.id,
+            contextTitle: person.name,
+            source: 'people_provider_card',
           ),
         ),
+        onConnect:
+            person.isAcceptedConnection ? null : () => _connect(person),
+        connecting: _busyConnectId == person.id,
       ),
     );
   }

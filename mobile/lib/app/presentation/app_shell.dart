@@ -72,6 +72,21 @@ class AppShell extends ConsumerWidget {
           body: Column(
             children: [
               const OfflineBanner(),
+              if (!useRail)
+                SafeArea(
+                  bottom: false,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      onPressed: () => context.push(AppRoutes.profile),
+                      icon: const CircleAvatar(
+                        radius: 16,
+                        child: Icon(Icons.person_rounded, size: 18),
+                      ),
+                      tooltip: AppLocalizations.of(context).profile,
+                    ),
+                  ),
+                ),
               Expanded(
                 child: useRail
                     ? Row(

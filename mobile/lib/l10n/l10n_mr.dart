@@ -42,6 +42,8 @@ class AppLocalizationsMr extends AppLocalizations {
   @override
   String get people => 'लोक';
   @override
+  String get market => 'बाजार';
+  @override
   String get work => 'काम';
   @override
   String get inbox => 'इनबॉक्स';

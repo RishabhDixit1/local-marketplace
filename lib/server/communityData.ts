@@ -1292,6 +1292,7 @@ export const loadCommunityPeopleSnapshot = async (
   } = {},
 ): Promise<Extract<CommunityPeopleResponse, { ok: true }>> => {
   const { limit = 2000 } = options;
+  const listingLimit = 500;
   const [
     currentUserProfileRow,
     discoverableProfileRowsRaw,
@@ -1301,7 +1302,7 @@ export const loadCommunityPeopleSnapshot = async (
     helpRequestRowsRaw,
   ] = await Promise.all([
     selectProfileById(db, currentUserId),
-    selectRowsWithFallback(db, "profiles", "*", {
+    selectRowsWithFallback(db, "profiles", PROFILE_FEED_COLUMNS, {
       orderBy: { column: "updated_at", ascending: false },
       limit,
       allowMissingRelation: true,
@@ -1312,6 +1313,8 @@ export const loadCommunityPeopleSnapshot = async (
       "provider_id,category,price,image_url,metadata,created_at,title",
       {
         allowMissingRelation: true,
+        orderBy: { column: "created_at", ascending: false },
+        limit: listingLimit,
       },
     ),
     selectRowsWithFallback(
@@ -1320,13 +1323,19 @@ export const loadCommunityPeopleSnapshot = async (
       "provider_id,category,price,image_url,metadata,created_at,title",
       {
         allowMissingRelation: true,
+        orderBy: { column: "created_at", ascending: false },
+        limit: listingLimit,
       },
     ),
     selectRowsWithFallback(
       db,
       "posts",
       "user_id,author_id,created_by,provider_id,category,status,state,visibility,metadata,created_at,title,description,type",
-      { allowMissingRelation: true },
+      {
+        allowMissingRelation: true,
+        orderBy: { column: "created_at", ascending: false },
+        limit: listingLimit,
+      },
     ),
     selectRowsWithFallback(
       db,
@@ -1334,6 +1343,8 @@ export const loadCommunityPeopleSnapshot = async (
       "requester_id,category,budget_min,budget_max,status",
       {
         allowMissingRelation: true,
+        orderBy: { column: "created_at", ascending: false },
+        limit: listingLimit,
       },
     ),
   ]);

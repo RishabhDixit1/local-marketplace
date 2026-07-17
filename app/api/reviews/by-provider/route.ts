@@ -35,42 +35,38 @@ async function getHandler(request: Request) {
   }
 
   const reviewerIds = [...new Set(reviews.map((r) => r.reviewer_id).filter(Boolean))];
-
-  let verifiedReviewers = new Set<string>();
-  if (reviewerIds.length > 0) {
-    const { data: verifiedOrders } = await db
-      .from("orders")
-      .select("consumer_id")
-      .eq("provider_id", providerId)
-      .eq("status", "completed")
-      .in("consumer_id", reviewerIds);
-
-    if (verifiedOrders) {
-      verifiedReviewers = new Set(
-        (verifiedOrders as Array<{ consumer_id: string }>).map((o) => o.consumer_id)
-      );
-    }
-  }
-
   const reviewIds = reviews.map((r) => r.id);
-  const votesMap = new Map<string, { helpful_count: number; not_helpful_count: number }>();
 
-  if (reviewIds.length > 0) {
-    const { data: votes } = await db
-      .from("review_votes")
-      .select("review_id, vote")
-      .in("review_id", reviewIds);
-
-    if (votes) {
-      for (const reviewId of reviewIds) {
-        const reviewVotes = votes.filter((v) => v.review_id === reviewId);
-        votesMap.set(reviewId, {
-          helpful_count: reviewVotes.filter((v) => v.vote === "helpful").length,
-          not_helpful_count: reviewVotes.filter((v) => v.vote === "not_helpful").length,
-        });
+  const [verifiedReviewers, votesMap] = await Promise.all([
+    (async () => {
+      if (reviewerIds.length === 0) return new Set<string>();
+      const { data: verifiedOrders } = await db
+        .from("orders")
+        .select("consumer_id")
+        .eq("provider_id", providerId)
+        .eq("status", "completed")
+        .in("consumer_id", reviewerIds);
+      return verifiedOrders
+        ? new Set((verifiedOrders as Array<{ consumer_id: string }>).map((o) => o.consumer_id))
+        : new Set<string>();
+    })(),
+    (async () => {
+      const map = new Map<string, { helpful_count: number; not_helpful_count: number }>();
+      if (reviewIds.length === 0) return map;
+      const { data: votes } = await db
+        .from("review_votes")
+        .select("review_id, vote")
+        .in("review_id", reviewIds);
+      if (!votes) return map;
+      for (const v of votes as Array<{ review_id: string; vote: string }>) {
+        const entry = map.get(v.review_id) || { helpful_count: 0, not_helpful_count: 0 };
+        if (v.vote === "helpful") entry.helpful_count++;
+        else if (v.vote === "not_helpful") entry.not_helpful_count++;
+        map.set(v.review_id, entry);
       }
-    }
-  }
+      return map;
+    })(),
+  ]);
 
   const enriched = reviews.map((r) => {
     const votes = votesMap.get(r.id) || { helpful_count: 0, not_helpful_count: 0 };

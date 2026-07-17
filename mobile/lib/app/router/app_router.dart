@@ -361,8 +361,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: AppRoutes.marketZones,
-        builder: (context, state) => const MarketZonesScreen(),
+        path: AppRoutes.profile,
+        builder: (context, state) => const ProfilePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.people,
+        builder: (context, state) => const PeoplePage(),
       ),
       GoRoute(
         path: AppRoutes.provider(':providerId'),
@@ -419,8 +423,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.people,
-                builder: (context, state) => const PeoplePage(),
+                path: AppRoutes.marketZones,
+                builder: (context, state) => const MarketZonesScreen(),
               ),
             ],
           ),
@@ -473,14 +477,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     ),
                   ),
                 ],
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.profile,
-                builder: (context, state) => const ProfilePage(),
               ),
             ],
           ),

@@ -116,14 +116,19 @@ export function SignInModal({ show, contactProvider, onClose, onAuthComplete }: 
         await completeAuth(data.user);
         return;
       }
-    } catch {
-      // GoTrue is unreachable — try custom fallback
+    } catch (goTrueError) {
+      const { data: { session } } = await supabase.retrieveSession();
+      if (session?.user) {
+        await completeAuth(session.user);
+        return;
+      }
+      if (goTrueError instanceof Error) console.warn("verifyOtp (GoTrue) failed, falling back to custom API:", goTrueError.message);
     }
 
     try {
-      const response = await fetch("/api/auth/verify-link", {
+      const response = fetch("/api/auth/verify-link", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type" : "application/json" },
         body: JSON.stringify({ email, otp: code }),
       });
       const payload = (await response.json()) as {

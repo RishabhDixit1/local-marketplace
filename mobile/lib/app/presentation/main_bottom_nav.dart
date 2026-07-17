@@ -162,9 +162,9 @@ List<_NavDestination> _mainDestinations({
       selectedIcon: Icons.home_rounded,
     ),
     _NavDestination(
-      label: l10n.people,
-      icon: Icons.people_outline,
-      selectedIcon: Icons.people_rounded,
+      label: l10n.market,
+      icon: Icons.store_outlined,
+      selectedIcon: Icons.store_rounded,
     ),
     _NavDestination(
       label: l10n.work,
@@ -177,11 +177,6 @@ List<_NavDestination> _mainDestinations({
       icon: Icons.chat_outlined,
       selectedIcon: Icons.chat_rounded,
       badgeCount: chatCount,
-    ),
-    _NavDestination(
-      label: l10n.youTab,
-      icon: Icons.person_outline_rounded,
-      selectedIcon: Icons.person_rounded,
     ),
   ];
 }

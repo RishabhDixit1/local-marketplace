@@ -34,12 +34,18 @@ export default function SeekerOnboardingWelcomePage() {
   const continueFlow = async () => {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from("profiles").upsert({
-        id: user.id,
-        interests: selected,
-        metadata: { seeker_categories: selected },
-      }, { onConflict: "id" });
+    if (!user) {
+      setSaving(false);
+      return;
+    }
+    const { error } = await supabase.from("profiles").upsert({
+      id: user.id,
+      interests: selected,
+      metadata: { seeker_categories: selected },
+    }, { onConflict: "id" });
+    if (error) {
+      setSaving(false);
+      return;
     }
     router.push("/onboarding/seeker/profile");
   };
