@@ -38,13 +38,13 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get sending => 'भेज रहे हैं...';
   @override
-  String get home => 'होम';
+  String get home => 'डैशबोर्ड';
   @override
   String get explore => 'एक्सप्लोर करें';
   @override
   String get people => 'लोग';
   @override
-  String get market => 'बाज़ार';
+  String get market => 'होम';
   @override
   String get work => 'कार्य';
   @override

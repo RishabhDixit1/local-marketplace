@@ -81,7 +81,7 @@ export default function DashboardHero({ activeCategory, providerCount }: Dashboa
               </button>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-slate-500">Hyperlocal marketplace — multiple zones</p>
+
         </div>
       </div>
 
@@ -119,12 +119,7 @@ export default function DashboardHero({ activeCategory, providerCount }: Dashboa
         </div>
       )}
 
-      <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-400">
-        <MapPin className="h-3 w-3 shrink-0" />
-        <span>
-          Active zones: {zones.map((z) => z.name).join(", ")}
-        </span>
-      </div>
+
     </div>
   );
 }

@@ -775,8 +775,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 title: widget.mode == FeedPageMode.welcome
                     ? 'Connected feed'
                     : 'Live local feed',
-                subtitle:
-                    'Marketplace feed with ${items.length} items matching your current search and filters.',
               ),
               const SizedBox(height: 12),
               if (items.isEmpty)

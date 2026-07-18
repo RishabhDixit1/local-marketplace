@@ -103,7 +103,7 @@ class FeedCard extends StatelessWidget {
           ],
           const SizedBox(height: AppSpacing.sm),
           Text(
-            '${item.creatorName} • ${item.category}',
+            item.creatorName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall,
@@ -127,7 +127,6 @@ class FeedCard extends StatelessWidget {
             items: [
               TrustSnapshotItem(
                 icon: Icons.verified_outlined,
-                label: 'Trust',
                 value: item.trustLabel,
                 tone: item.isVerified
                     ? TrustSnapshotTone.trust
@@ -135,7 +134,6 @@ class FeedCard extends StatelessWidget {
               ),
               TrustSnapshotItem(
                 icon: Icons.star_outline_rounded,
-                label: 'Rating',
                 value: item.ratingLabel,
                 tone: item.averageRating != null && item.averageRating! >= 4
                     ? TrustSnapshotTone.success
@@ -143,12 +141,10 @@ class FeedCard extends StatelessWidget {
               ),
               TrustSnapshotItem(
                 icon: Icons.schedule_rounded,
-                label: 'Response',
                 value: item.responseLabel,
               ),
               TrustSnapshotItem(
                 icon: Icons.work_outline_rounded,
-                label: 'Completed',
                 value: item.socialProofLabel,
                 tone: item.completedJobs > 10
                     ? TrustSnapshotTone.trust

@@ -1456,7 +1456,7 @@ List<_WelcomeFeedEntry> _buildForYouEntries({
       _WelcomeFeedEntry.cta(
         title: 'Start the local loop',
         message:
-            'Post a need or explore nearby services so your home feed can learn what matters most to you.',
+            'Post a need or explore nearby to personalize your feed.',
         primaryLabel: 'Post a need',
         secondaryLabel: 'Explore nearby',
         ctaTarget: _CtaTarget.postNeed,
@@ -1476,7 +1476,7 @@ List<_WelcomeFeedEntry> _buildTrustedEntries({
       _WelcomeFeedEntry.cta(
         title: 'Your trusted feed is waiting',
         message:
-            'Accepted connections unlock safer, more relevant posts before the wider public feed takes over.',
+            'Connect with people to see their posts here first.',
         primaryLabel: 'Manage people',
         secondaryLabel: 'Explore nearby',
         ctaTarget: _CtaTarget.people,
@@ -1510,7 +1510,7 @@ List<_WelcomeFeedEntry> _buildNearbyEntries({
       _WelcomeFeedEntry.empty(
         title: 'No live nearby posts yet',
         message:
-            'Pull to refresh, widen your location later, or explore categories to warm up this area.',
+            'Try refreshing or browsing a different category.',
       ),
     ];
   }
@@ -1560,7 +1560,7 @@ List<_WelcomeFeedEntry> _buildEarnEntries({
       const _WelcomeFeedEntry.cta(
         title: 'Become visible for local work',
         message:
-            'Complete provider onboarding to unlock responses, discovery, and trust ranking on this feed.',
+            'Complete your provider profile to unlock opportunities.',
         primaryLabel: 'Earn nearby',
         secondaryLabel: 'Explore nearby',
         ctaTarget: _CtaTarget.earn,
@@ -1789,14 +1789,14 @@ String _buildFeedReason(
   if (item.feedReason.isNotEmpty) {
     return item.feedReason;
   }
-  if (trusted) {
-    return 'Accepted connection post with clearer trust and social context.';
+    if (trusted) {
+    return 'From your trusted network';
   }
   if (item.urgent) {
-    return 'Urgent nearby request with active response signals.';
+    return 'Urgent request nearby';
   }
   if (item.responseMinutes > 0 && item.responseMinutes <= 20) {
-    return 'High-intent post with a faster-than-average response signal.';
+    return 'Fast response expected';
   }
   if (hotCategories.contains(item.category.trim())) {
     return 'Trending in ${item.category} around you right now.';
@@ -1804,7 +1804,7 @@ String _buildFeedReason(
   if (_extractDistanceKm(item.distanceLabel) <= 5) {
     return 'Very close to you and easier to act on quickly.';
   }
-  return 'Relevant local activity ranked for trust, speed, and distance.';
+  return 'Recommended for you';
 }
 
 String _buildOpportunityReason(
@@ -1818,15 +1818,15 @@ String _buildOpportunityReason(
     return item.feedReason;
   }
   if (item.urgent) {
-    return 'Urgent request with a strong chance of quick conversion.';
+    return 'Urgent - respond soon';
   }
   if (item.responseMinutes > 0 && item.responseMinutes <= 25) {
-    return 'Fast-response demand signal, good for providers who can reply now.';
+    return 'Quick turnaround expected';
   }
   if (hotCategories.contains(item.category.trim())) {
     return 'Aligned with live demand in ${item.category}.';
   }
-  return 'High-intent local need worth responding to today.';
+  return 'Active nearby request';
 }
 
 String _buildProviderReason(
@@ -1837,10 +1837,10 @@ String _buildProviderReason(
     return person.reason;
   }
   if (person.isAcceptedConnection) {
-    return 'Accepted connection with stronger marketplace context.';
+    return 'From your trusted network';
   }
   if (person.isOnline) {
-    return 'Active now and ready for fast follow-up.';
+    return 'Active now';
   }
   final matchedTag = person.primaryTags
       .where(hotCategories.contains)
@@ -1850,9 +1850,9 @@ String _buildProviderReason(
     return 'Strong fit for $matchedTag demand nearby.';
   }
   if (person.completedJobs > 0) {
-    return 'Consistent delivery history with growing marketplace trust.';
+    return 'Experienced provider';
   }
-  return 'Visible local provider with enough trust signals to review.';
+  return 'Available provider nearby';
 }
 
 String _composeLiveStatus(

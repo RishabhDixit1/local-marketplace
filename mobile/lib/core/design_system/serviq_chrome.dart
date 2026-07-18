@@ -288,13 +288,13 @@ class TrustSnapshot extends StatelessWidget {
 class TrustSnapshotItem {
   const TrustSnapshotItem({
     required this.icon,
-    required this.label,
+    this.label,
     required this.value,
     this.tone = TrustSnapshotTone.neutral,
   });
 
   final IconData icon;
-  final String label;
+  final String? label;
   final String value;
   final TrustSnapshotTone tone;
 }
@@ -342,10 +342,10 @@ class _TrustSnapshotTile extends StatelessWidget {
                     context,
                   ).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface),
                 ),
-                if (!dense) ...[
+                if (!dense && item.label != null) ...[
                   const SizedBox(height: AppSpacing.xxxs),
                   Text(
-                    item.label,
+                    item.label!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall,

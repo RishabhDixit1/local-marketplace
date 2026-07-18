@@ -77,8 +77,8 @@ void main() {
     );
     await tester.pump();
 
+    expect(find.text('Dashboard'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Market'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget);
     expect(find.text('Inbox'), findsOneWidget);
   });
@@ -103,8 +103,8 @@ void main() {
     );
     await tester.pump();
 
+    expect(find.text('Dashboard'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Market'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget);
     expect(find.text('Inbox'), findsOneWidget);
   });

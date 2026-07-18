@@ -41,9 +41,7 @@ export default function MarketHubPage() {
         <h1 className="text-2xl font-extrabold text-[var(--ink-950)] sm:text-3xl">
           Explore Markets
         </h1>
-        <p className="mt-1 text-sm text-[var(--ink-500)]">
-          Browse all service zones in the ServiQ network
-        </p>
+
       </section>
 
       {loading ? (

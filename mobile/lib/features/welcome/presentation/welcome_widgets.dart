@@ -109,14 +109,6 @@ class _HeroSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(greeting, style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 6),
-          Text(
-            'What should I do now?',
-            style: Theme.of(context)
-                .textTheme
-                .bodyLarge
-                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-          ),
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,

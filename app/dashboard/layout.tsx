@@ -94,7 +94,7 @@ const CartDrawer = dynamic(
 );
 
 const baseNavigationTabs = [
-  { name: "Market", path: "/dashboard", icon: Store },
+  { name: "Home", path: "/dashboard", icon: Store },
   { name: "My Work", path: "/dashboard/tasks", icon: ClipboardList },
   { name: "Explore", path: "/market", icon: Compass },
 ];

@@ -56,7 +56,7 @@ const ProviderCard = (props: Props) => {
     onViewProfile,
   } = props;
 
-  const description = provider.bio?.trim() || provider.trustBlurb?.trim() || `${provider.role} on ServiQ.`;
+  const description = provider.bio?.trim() || provider.trustBlurb?.trim() || '';
   const coverImage = provider.media[0]?.url || "";
   const subheading = provider.role?.trim() || provider.primarySkill?.trim() || provider.location;
   const requestId = connectionState.requestId;
@@ -260,16 +260,6 @@ const ProviderCard = (props: Props) => {
             >
               <MessageCircle className="h-4 w-4" />
               {chatBusy ? "Opening..." : "Message"}
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleOpenProfile();
-              }}
-              className={secondaryActionClassName}
-            >
-              View Profile
             </button>
           </div>
         </div>

@@ -76,9 +76,7 @@ export default function BookingsPage() {
         </div>
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-[var(--ink-950)]">Bookings</h1>
-          <p className="mt-1 text-sm text-[var(--ink-500)]">
-            View and manage your scheduled appointments.
-          </p>
+
         </div>
       </div>
 
