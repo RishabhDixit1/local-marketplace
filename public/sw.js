@@ -1,5 +1,5 @@
-const CACHE_NAME = "serviq-v2";
-const STATIC_CACHE = "serviq-static-v2";
+const CACHE_NAME = "serviq-v3";
+const STATIC_CACHE = "serviq-static-v3";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
