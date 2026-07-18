@@ -21,6 +21,8 @@ export type ParsedIntent = {
   keywords: string[];
   originalQuery: string;
   response: string;
+  intentType: "direct_booking" | "requirement_post" | null;
+  confidence: number;
 };
 
 const CATEGORY_KEYWORDS: Record<string, { en: string[]; hi: string[] }> = {
@@ -266,6 +268,12 @@ function matchKeywords(query: string): ParsedIntent {
     keywords: tokens.filter((t) => t.length > 2),
     originalQuery: query,
     response: "",
+    intentType: action === "find_service" || action === "buy_product"
+      ? "direct_booking"
+      : action === "post_need" || action === "get_help"
+        ? "requirement_post"
+        : null,
+    confidence: category ? 0.6 : 0.3,
   };
   parsed.response = buildResponse(parsed);
   return parsed;
@@ -331,6 +339,8 @@ const intentSchema = z.object({
   location: z.string().nullable(),
   budget: z.object({ min: z.number().nullable(), max: z.number().nullable() }),
   keywords: z.array(z.string()),
+  intentType: z.enum(["direct_booking", "requirement_post"]).nullable(),
+  confidence: z.number().min(0).max(1),
 });
 
 export async function parseIntentWithLLM(query: string): Promise<ParsedIntent | null> {
@@ -346,9 +356,11 @@ Identify:
 - urgency: how urgent (now, today, this_week, flexible)
 - location: any Indian city/locality mentioned (or null)
 - budget: min/max in INR (or null)
-- keywords: important search keywords`,
+- keywords: important search keywords
+- intentType: "direct_booking" if the user wants to book/buy a specific service/product NOW (e.g. "AC repair near me", "buy phone", "hire plumber"), "requirement_post" if the user has a need that providers should respond to (e.g. "need labor for shifting", "looking for caterer for event", "post a requirement")
+- confidence: 0.0-1.0 how confident you are in the extraction (high for specific service queries, lower for vague/ambiguous ones)`,
       schema: intentSchema,
-      system: "You are a hyperlocal marketplace intent parser for India. Extract structured intent from natural language queries. Support Hinglish and colloquial Indian English.",
+      system: "You are a hyperlocal marketplace intent parser for India. Extract structured intent from natural language queries. Support Hinglish and colloquial Indian English. For intentType: prefer direct_booking when the query matches an existing service category clearly; prefer requirement_post when the need is complex, custom, or doesn't map to a standard service listing.",
     });
     return { ...result, originalQuery: query, response: "" };
   } catch (error) {
