@@ -12,7 +12,7 @@ class FeedCard extends StatelessWidget {
     required this.item,
     this.onPrimaryTap,
     this.onSecondaryTap,
-    this.primaryLabel = 'Open',
+    this.primaryLabel,
     this.secondaryLabel = 'Message',
     this.secondaryIcon = Icons.chat_bubble_outline_rounded,
     this.reason,
@@ -25,7 +25,7 @@ class FeedCard extends StatelessWidget {
   final MobileFeedItem item;
   final VoidCallback? onPrimaryTap;
   final VoidCallback? onSecondaryTap;
-  final String primaryLabel;
+  final String? primaryLabel;
   final String secondaryLabel;
   final IconData secondaryIcon;
   final String? reason;
@@ -34,140 +34,165 @@ class FeedCard extends StatelessWidget {
   final VoidCallback? onMoreTap;
   final VoidCallback? onReport;
 
+  String get _effectivePrimaryLabel {
+    if (primaryLabel != null) return primaryLabel!;
+    if (item.loopType == 'requirement_post') {
+      if (item.viewerHasExpressedInterest) return 'View Responses';
+      return 'Respond';
+    }
+    if (item.statusKey == 'booked' || item.statusKey == 'in_progress') {
+      return 'Track';
+    }
+    if (item.statusKey == 'completed') return 'View Order';
+    return 'Book Now';
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusLabel = item.urgent ? 'Urgent' : item.statusLabel;
     final meta = _compactMetaFor(item);
+    final isDirectBooking = item.loopType == 'direct_booking';
+    final borderColor =
+        isDirectBooking ? AppColors.primary : AppColors.warm;
 
-    return SectionCard(
-      variant: ServiqSurfaceVariant.raised,
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (item.hasPreviewImage) ...[
-            _FeedPreview(item: item),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Wrap(
-                  spacing: AppSpacing.xs,
-                  runSpacing: AppSpacing.xs,
-                  children: [
-                    _TypePill(type: item.type),
-                    ServiqStatusPill(
-                      label: statusLabel,
-                      urgent: item.urgent,
-                      maxWidth: 150,
-                    ),
-                    if (item.mediaCount > 0 && !item.hasPreviewImage)
-                      _InlinePill(
-                        icon: Icons.photo_library_outlined,
-                        label: '${item.mediaCount} photos',
-                      ),
-                  ],
-                ),
-              ),
-              if (onSaveTap != null || onMoreTap != null || onReport != null) ...[
-                const SizedBox(width: AppSpacing.xs),
-                _CardActions(
-                  isSaved: isSaved,
-                  onSaveTap: onSaveTap,
-                  onMoreTap: onMoreTap,
-                  onReport: onReport,
-                ),
-              ],
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(left: BorderSide(color: borderColor, width: 3)),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: SectionCard(
+        variant: ServiqSurfaceVariant.raised,
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (item.hasPreviewImage) ...[
+              _FeedPreview(item: item),
+              const SizedBox(height: AppSpacing.sm),
             ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            item.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          if (item.description.trim().isNotEmpty) ...[
-            const SizedBox(height: 4),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      ServiqLoopLabelPill(
+                        label: item.loopLabel,
+                        loopType: item.loopType,
+                      ),
+                      _TypePill(type: item.type),
+                      ServiqLoopStatusPill(
+                        label: statusLabel,
+                        statusKey: item.statusKey,
+                      ),
+                      if (item.mediaCount > 0 && !item.hasPreviewImage)
+                        _InlinePill(
+                          icon: Icons.photo_library_outlined,
+                          label: '${item.mediaCount} photos',
+                        ),
+                    ],
+                  ),
+                ),
+                if (onSaveTap != null || onMoreTap != null || onReport != null) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  _CardActions(
+                    isSaved: isSaved,
+                    onSaveTap: onSaveTap,
+                    onMoreTap: onMoreTap,
+                    onReport: onReport,
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
             Text(
-              item.description,
+              item.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                height: 1.35,
-              ),
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-          ],
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            item.creatorName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          if (meta.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Wrap(
-              spacing: AppSpacing.xs,
-              runSpacing: AppSpacing.xs,
-              children: meta
-                  .map(
-                    (signal) =>
-                        _InlinePill(icon: signal.icon, label: signal.label),
-                  )
-                  .toList(),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.sm),
-          TrustSnapshot(
-            dense: true,
-            items: [
-              TrustSnapshotItem(
-                icon: Icons.verified_outlined,
-                value: item.trustLabel,
-                tone: item.isVerified
-                    ? TrustSnapshotTone.trust
-                    : TrustSnapshotTone.neutral,
-              ),
-              TrustSnapshotItem(
-                icon: Icons.star_outline_rounded,
-                value: item.ratingLabel,
-                tone: item.averageRating != null && item.averageRating! >= 4
-                    ? TrustSnapshotTone.success
-                    : TrustSnapshotTone.neutral,
-              ),
-              TrustSnapshotItem(
-                icon: Icons.schedule_rounded,
-                value: item.responseLabel,
-              ),
-              TrustSnapshotItem(
-                icon: Icons.work_outline_rounded,
-                value: item.socialProofLabel,
-                tone: item.completedJobs > 10
-                    ? TrustSnapshotTone.trust
-                    : TrustSnapshotTone.neutral,
+            if (item.description.trim().isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                item.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  height: 1.35,
+                ),
               ),
             ],
-          ),
-          if (onPrimaryTap != null || onSecondaryTap != null) ...[
             const SizedBox(height: AppSpacing.sm),
-            ServiqActionBar(
-              primaryLabel: primaryLabel,
-              primaryIcon: _primaryIconFor(item),
-              onPrimary: onPrimaryTap,
-              secondaryActions: [
-                ServiqCompactAction(
-                  icon: secondaryIcon,
-                  tooltip: secondaryLabel,
-                  onPressed: onSecondaryTap,
+            Text(
+              item.creatorName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            if (meta.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: meta
+                    .map(
+                      (signal) =>
+                          _InlinePill(icon: signal.icon, label: signal.label),
+                    )
+                    .toList(),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.sm),
+            TrustSnapshot(
+              dense: true,
+              items: [
+                TrustSnapshotItem(
+                  icon: Icons.verified_outlined,
+                  value: item.trustLabel,
+                  tone: item.isVerified
+                      ? TrustSnapshotTone.trust
+                      : TrustSnapshotTone.neutral,
+                ),
+                TrustSnapshotItem(
+                  icon: Icons.star_outline_rounded,
+                  value: item.ratingLabel,
+                  tone: item.averageRating != null && item.averageRating! >= 4
+                      ? TrustSnapshotTone.success
+                      : TrustSnapshotTone.neutral,
+                ),
+                TrustSnapshotItem(
+                  icon: Icons.schedule_rounded,
+                  value: item.responseLabel,
+                ),
+                TrustSnapshotItem(
+                  icon: Icons.work_outline_rounded,
+                  value: item.socialProofLabel,
+                  tone: item.completedJobs > 10
+                      ? TrustSnapshotTone.trust
+                      : TrustSnapshotTone.neutral,
                 ),
               ],
             ),
+            if (onPrimaryTap != null || onSecondaryTap != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              ServiqActionBar(
+                primaryLabel: _effectivePrimaryLabel,
+                primaryIcon: _primaryIconFor(item),
+                onPrimary: onPrimaryTap,
+                secondaryActions: [
+                  ServiqCompactAction(
+                    icon: secondaryIcon,
+                    tooltip: secondaryLabel,
+                    onPressed: onSecondaryTap,
+                  ),
+                ],
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

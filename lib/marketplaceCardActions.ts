@@ -8,7 +8,7 @@ export type MarketplacePrimaryActionKind =
   | "send_quote"
   | "view_profile"
   | "discard";
-export type MarketplaceSecondaryActionKind = "save" | "share" | "hide" | "report";
+export type MarketplaceSecondaryActionKind = "save" | "share" | "hide" | "report" | "overflow";
 
 export type MarketplaceActionTone = "primary" | "secondary" | "success" | "status" | "destructive";
 
@@ -22,6 +22,7 @@ export type MarketplaceCardActionButton<K extends string> = {
 export type MarketplaceCardActionModel = {
   buttons: MarketplaceCardActionButton<MarketplacePrimaryActionKind>[];
   icons: MarketplaceCardActionButton<MarketplaceSecondaryActionKind>[];
+  overflowButtons: MarketplaceCardActionButton<MarketplaceSecondaryActionKind>[];
 };
 
 type ResolveMarketplaceCardActionModelParams = {
@@ -98,6 +99,11 @@ export const resolveMarketplaceCardActionModel = (
     icons: [
       buildButton("save", "Save", "secondary"),
       buildButton("share", "Share", "secondary"),
+      buildButton("hide", "Hide", "secondary"),
+      buildButton("report", "Report", "destructive"),
+    ],
+    overflowButtons: [
+      buildButton("save", "Save", "secondary"),
       buildButton("hide", "Hide", "secondary"),
       buildButton("report", "Report", "destructive"),
     ],

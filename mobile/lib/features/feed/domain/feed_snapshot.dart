@@ -495,6 +495,42 @@ class MobileFeedItem {
     'closed',
     'archived',
   }.contains(_normalizeStatus(status));
+
+  /// `direct_booking` for service/product listings, `requirement_post` for help requests/posts.
+  String get loopType {
+    switch (source) {
+      case MobileFeedSource.serviceListing:
+      case MobileFeedSource.productListing:
+        return 'direct_booking';
+      case MobileFeedSource.helpRequest:
+      case MobileFeedSource.post:
+        return 'requirement_post';
+    }
+  }
+
+  /// Human-readable loop label: "Order" for direct booking, "Requirement" for requirement post.
+  String get loopLabel {
+    switch (source) {
+      case MobileFeedSource.serviceListing:
+      case MobileFeedSource.productListing:
+        return 'Order';
+      case MobileFeedSource.helpRequest:
+      case MobileFeedSource.post:
+        return 'Requirement';
+    }
+  }
+
+  /// Status value normalized for color lookups.
+  String get statusKey {
+    final s = _normalizeStatus(status);
+    if (s == 'available') return 'available';
+    if (s == 'booked') return 'booked';
+    if (s == 'in_progress' || s == 'inprogress') return 'in_progress';
+    if (s == 'completed' || s == 'fulfilled') return 'completed';
+    if (s == 'matched') return 'matched';
+    if (s == 'open') return 'open';
+    return s;
+  }
 }
 
 int _toInt(Object? value) {

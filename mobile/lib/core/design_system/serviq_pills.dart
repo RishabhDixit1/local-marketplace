@@ -70,6 +70,96 @@ class ServiqLocationPill extends StatelessWidget {
   }
 }
 
+/// Loop-specific status pill with per-status colors.
+class ServiqLoopStatusPill extends StatelessWidget {
+  const ServiqLoopStatusPill({
+    super.key,
+    required this.label,
+    required this.statusKey,
+  });
+
+  final String label;
+  final String statusKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final (Color bg, Color fg) = _statusColors(statusKey);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: fg,
+        ),
+      ),
+    );
+  }
+}
+
+(Color, Color) _statusColors(String statusKey) {
+  switch (statusKey) {
+    case 'open':
+    case 'available':
+      return (AppColors.successSoft, AppColors.success);
+    case 'matched':
+    case 'booked':
+      return (AppColors.accentSoft, AppColors.accentDeep);
+    case 'in_progress':
+      return (AppColors.warningSoft, AppColors.warmDeep);
+    case 'completed':
+    case 'fulfilled':
+      return (const Color(0xFFE2F6EE), const Color(0xFF0F6E4A));
+    default:
+      return (AppColors.surfaceMuted, AppColors.primaryDeep);
+  }
+}
+
+/// Loop type label chip (e.g. "Order", "Requirement").
+class ServiqLoopLabelPill extends StatelessWidget {
+  const ServiqLoopLabelPill({
+    super.key,
+    required this.label,
+    required this.loopType,
+  });
+
+  final String label;
+  final String loopType;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bg = loopType == 'direct_booking'
+        ? AppColors.primarySoft
+        : AppColors.warmSoft;
+    final Color fg = loopType == 'direct_booking'
+        ? AppColors.primaryDeep
+        : AppColors.warmDeep;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: fg,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
 /// Price or budget, neutral chip.
 class ServiqPricePill extends StatelessWidget {
   const ServiqPricePill({super.key, required this.label});

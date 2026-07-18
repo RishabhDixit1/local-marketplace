@@ -16,6 +16,8 @@ import {
   buildMarketplaceFeedCardId,
   isClosedMarketplaceStatus,
   isUUIDLike,
+  resolveLoopType,
+  statusChipColorClass,
   type MarketplaceDisplayFeedItem,
   type MarketplaceFeedItem,
   type MarketplaceFeedItemSource,
@@ -949,7 +951,11 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                 key={card.id}
                 data-testid="saved-feed-card"
                 data-card-id={card.card_id}
-                className="overflow-hidden rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-3.5 shadow-[0_18px_32px_-26px_rgba(var(--shadow-rgb),0.45)] transition hover:border-[var(--brand-500)]/28 hover:shadow-[0_26px_42px_-28px_rgba(14,165,164,0.32)]"
+                className={`overflow-hidden rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-3.5 shadow-[0_18px_32px_-26px_rgba(var(--shadow-rgb),0.45)] transition hover:border-[var(--brand-500)]/28 hover:shadow-[0_26px_42px_-28px_rgba(14,165,164,0.32)] border-l-2 ${
+                  resolveLoopType(inferSavedCardSource(card)) === "direct_booking"
+                    ? "border-l-[var(--brand-500)]"
+                    : "border-l-[var(--color-warm)]"
+                }`}
               >
                 <header className="flex items-center gap-3">
                   <button
@@ -999,6 +1005,32 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                     </div>
                   </div>
                 </header>
+
+                <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                  {(() => {
+                    const source = inferSavedCardSource(card);
+                    const loopType = resolveLoopType(source);
+                    const isDirect = loopType === "direct_booking";
+                    return (
+                      <>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider sm:text-[10px] ${
+                            isDirect
+                              ? "border border-[var(--brand-500)]/30 bg-[var(--brand-500)]/10 text-[var(--brand-700)]"
+                              : "border border-[var(--color-warm)]/30 bg-[var(--color-warm)]/10 text-amber-700"
+                          }`}
+                        >
+                          {isDirect ? "Order" : "Requirement"}
+                        </span>
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-semibold sm:text-[10px] ${statusChipColorClass(resolvedItem.status)}`}
+                        >
+                          {resolvedItem.statusChipText}
+                        </span>
+                      </>
+                    );
+                  })()}
+                </div>
 
                 <div className="mt-2.5">
                   <FeedMediaCarousel media={media} title={card.title} />

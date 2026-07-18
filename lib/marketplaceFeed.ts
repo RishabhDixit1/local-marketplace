@@ -12,6 +12,8 @@ import {
 } from "@/lib/provider/listings";
 import { slugifyProfileName } from "@/lib/profile/utils";
 
+export type LoopType = "direct_booking" | "requirement_post";
+
 export type MarketplaceFeedItemType = "service" | "product" | "demand";
 export type MarketplaceFeedItemSource =
   | "service_listing"
@@ -106,6 +108,8 @@ export type MarketplaceDisplayFeedItem = MarketplaceFeedItem & {
   timeLabel: string;
   priceLabel: string;
   distanceLabel: string;
+  loopType: LoopType;
+  statusChipText: string;
 };
 
 export type MarketplaceFeedItemTypeFilter = "all" | MarketplaceFeedItemType;
@@ -159,6 +163,35 @@ const sourcePriority: Record<MarketplaceFeedItemSource, number> = {
   post: 4,
   service_listing: 3,
   product_listing: 3,
+};
+
+export const resolveLoopType = (source: MarketplaceFeedItemSource): LoopType =>
+  source === "service_listing" || source === "product_listing"
+    ? "direct_booking"
+    : "requirement_post";
+
+export const statusChipLabel = (status: string, loopType: LoopType): string => {
+  const normalized = (status || "open").trim().toLowerCase();
+  if (loopType === "direct_booking") {
+    if (normalized === "open") return "Available";
+    if (normalized === "matched" || normalized === "accepted") return "Booked";
+    if (normalized === "in_progress") return "In Progress";
+    if (normalized === "completed") return "Completed";
+  }
+  if (normalized === "open") return "Open";
+  if (normalized === "matched") return "Matched";
+  if (normalized === "in_progress") return "In Progress";
+  if (normalized === "completed") return "Fulfilled";
+  return normalizeMarketplaceStatusLabel(status);
+};
+
+export const statusChipColorClass = (status: string): string => {
+  const normalized = (status || "open").trim().toLowerCase();
+  if (normalized === "open") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (normalized === "matched" || normalized === "accepted") return "border-blue-200 bg-blue-50 text-blue-700";
+  if (normalized === "in_progress") return "border-purple-200 bg-purple-50 text-purple-700";
+  if (normalized === "completed") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  return "border-slate-200 bg-slate-50 text-slate-600";
 };
 
 const CLOSED_STATUSES = new Set([
@@ -483,6 +516,8 @@ export const buildMarketplaceDisplayItem = (
     timeLabel: formatMarketplaceRelativeAge(item.createdAt),
     priceLabel: formatMarketplacePriceLabel(item),
     distanceLabel: buildMarketplaceDistanceLabel(item),
+    loopType: resolveLoopType(item.source),
+    statusChipText: statusChipLabel(item.status, resolveLoopType(item.source)),
   };
 };
 

@@ -14,6 +14,7 @@ import {
   Loader2,
   MapPin,
   MessageCircle,
+  MoreHorizontal,
   MoreVertical,
   Pencil,
   Share2,
@@ -27,6 +28,10 @@ import type {
   MarketplacePrimaryActionKind,
   MarketplaceSecondaryActionKind,
 } from "@/lib/marketplaceCardActions";
+import {
+  type LoopType,
+  statusChipColorClass,
+} from "@/lib/marketplaceFeed";
 import type { MarketplaceDisplayFeedItem } from "@/lib/marketplaceFeed";
 import FeedMediaCarousel from "@/app/dashboard/components/posts/FeedMediaCarousel";
 
@@ -51,6 +56,7 @@ type FeedCardProps = {
   onOwnerDelete?: () => void;
   ownerDeleteLabel?: string;
   ownerBusy?: boolean;
+  overflowButtons?: MarketplaceCardActionButton<MarketplaceSecondaryActionKind>[];
 };
 
 const buttonToneClassNames: Record<MarketplaceCardActionButton<MarketplacePrimaryActionKind>["tone"], string> = {
@@ -69,41 +75,6 @@ const buttonBusyLabels: Record<MarketplacePrimaryActionKind, string> = {
   view_profile: "Opening",
   discard: "Discarding",
 };
-
-const secondaryActionMeta = {
-  save: {
-    idle: "Save post",
-    active: "Saved post",
-    icon: Bookmark,
-    activeIcon: BookmarkCheck,
-  },
-  share: {
-    idle: "Share post",
-    active: "Share post",
-    icon: Share2,
-    activeIcon: Share2,
-  },
-  hide: {
-    idle: "Hide post",
-    active: "Hidden",
-    icon: EyeOff,
-    activeIcon: EyeOff,
-  },
-  report: {
-    idle: "Report post",
-    active: "Reported",
-    icon: Flag,
-    activeIcon: Flag,
-  },
-} satisfies Record<
-  MarketplaceSecondaryActionKind,
-  {
-    idle: string;
-    active: string;
-    icon: typeof Bookmark;
-    activeIcon: typeof BookmarkCheck;
-  }
->;
 
 export default function FeedCard({
   item,
@@ -124,12 +95,18 @@ export default function FeedCard({
   ownerDeleteLabel = "Delete post",
   ownerBusy,
   testId = "feed-card",
+  overflowButtons = [],
 }: FeedCardProps) {
   void index;
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
   const ownerMenuRef = useRef<HTMLDivElement>(null);
+  const overflowMenuRef = useRef<HTMLDivElement>(null);
   const hasMedia = item.media.length > 0;
+  const loopType: LoopType = item.loopType;
+  const isDirectBooking = loopType === "direct_booking";
+
   useEffect(() => {
     if (!ownerMenuOpen) return;
 
@@ -142,6 +119,19 @@ export default function FeedCard({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [ownerMenuOpen]);
+
+  useEffect(() => {
+    if (!overflowMenuOpen) return;
+
+    const handler = (event: MouseEvent) => {
+      if (overflowMenuRef.current && !overflowMenuRef.current.contains(event.target as Node)) {
+        setOverflowMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [overflowMenuOpen]);
 
   const acceptButton = buttons.find(
     (button) => button.kind === "accept" || button.kind === "withdraw" || button.kind === "decline"
@@ -199,7 +189,11 @@ export default function FeedCard({
       isActive={active}
       data-testid={testId}
       data-card-id={item.id}
-      className="flex h-full w-full min-w-0 flex-col overflow-hidden"
+      className={`flex h-full w-full min-w-0 flex-col overflow-hidden border-l-2 ${
+        isDirectBooking
+          ? "border-l-[var(--brand-500)]"
+          : "border-l-[var(--color-warm)]"
+      }`}
       onClickCapture={onFocus}
       onMouseEnter={() => onHoverChange(true)}
       onMouseLeave={() => onHoverChange(false)}
@@ -315,7 +309,24 @@ export default function FeedCard({
         ) : null}
       </header>
 
-      <div className="mt-2 flex min-w-0 min-h-0 flex-1 flex-col">
+      <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider sm:text-[10px] ${
+            isDirectBooking
+              ? "border border-[var(--brand-500)]/30 bg-[var(--brand-500)]/10 text-[var(--brand-700)]"
+              : "border border-[var(--color-warm)]/30 bg-[var(--color-warm)]/10 text-amber-700"
+          }`}
+        >
+          {isDirectBooking ? "Order" : "Requirement"}
+        </span>
+        <span
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-semibold sm:text-[10px] ${statusChipColorClass(item.status)}`}
+        >
+          {item.statusChipText}
+        </span>
+      </div>
+
+      <div className="mt-1.5 flex min-w-0 min-h-0 flex-1 flex-col">
         {hasMedia ? (
           <div data-testid="feed-card-main-image">
             <FeedMediaCarousel
@@ -460,34 +471,53 @@ export default function FeedCard({
 
       <div className="mt-auto flex flex-col gap-2 pt-2.5 sm:flex-row sm:items-center sm:justify-between sm:pt-3">
         <div className="flex flex-wrap items-center gap-2">
-          {primaryButton ? (
-            <button
-              type="button"
-              data-testid="feed-action-primary"
-              onClick={() => void onPrimaryAction(primaryButton.kind)}
-              disabled={primaryButton.disabled || actionBusyState[primaryButton.kind]}
-              aria-label={actionBusyState[primaryButton.kind] ? buttonBusyLabels[primaryButton.kind] : primaryButton.label}
-              title={actionBusyState[primaryButton.kind] ? buttonBusyLabels[primaryButton.kind] : primaryButton.label}
-              className={`inline-flex h-10 min-w-[8rem] items-center justify-center gap-1.5 rounded-2xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${
-                buttonToneClassNames[primaryButton.tone]
-              }`}
-            >
-              {actionBusyState[primaryButton.kind] ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : primaryButton.kind === "send_quote" ? (
-                <MessageCircle size={16} />
-              ) : primaryButton.kind === "view_profile" ? (
-                <ArrowUpRight size={16} />
-              ) : primaryButton.kind === "discard" ? (
-                <Trash2 size={16} />
-              ) : primaryButton.kind === "decline" || primaryButton.kind === "withdraw" ? (
-                <X size={16} />
-              ) : (
-                <Check size={16} />
-              )}
-              <span className="truncate">{primaryButton.label}</span>
-            </button>
-          ) : null}
+          {primaryButton ? (() => {
+            const isBusy = actionBusyState[primaryButton.kind];
+            const getLoopLabel = () => {
+              if (isBusy) return buttonBusyLabels[primaryButton.kind];
+              if (isDirectBooking) {
+                if (primaryButton.kind === "accept" && !primaryButton.disabled) return "Book Now";
+                if (primaryButton.kind === "accept" && primaryButton.label === "Taken") return "Booked";
+                if (primaryButton.kind === "send_quote") return "View Order";
+                if (primaryButton.kind === "decline" || primaryButton.kind === "withdraw") return "Cancel";
+              } else {
+                if (primaryButton.kind === "accept" && !primaryButton.disabled) return "Respond";
+                if (primaryButton.kind === "accept" && primaryButton.label === "Taken") return "Matched";
+                if (primaryButton.kind === "send_quote") return "View Responses";
+                if (primaryButton.kind === "decline" || primaryButton.kind === "withdraw") return "Withdraw";
+              }
+              return primaryButton.label;
+            };
+            const displayLabel = getLoopLabel();
+            return (
+              <button
+                type="button"
+                data-testid="feed-action-primary"
+                onClick={() => void onPrimaryAction(primaryButton.kind)}
+                disabled={primaryButton.disabled || isBusy}
+                aria-label={displayLabel}
+                title={displayLabel}
+                className={`inline-flex h-10 min-w-[8rem] items-center justify-center gap-1.5 rounded-2xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                  buttonToneClassNames[primaryButton.tone]
+                }`}
+              >
+                {isBusy ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : primaryButton.kind === "send_quote" ? (
+                  <MessageCircle size={16} />
+                ) : primaryButton.kind === "view_profile" ? (
+                  <ArrowUpRight size={16} />
+                ) : primaryButton.kind === "discard" ? (
+                  <Trash2 size={16} />
+                ) : primaryButton.kind === "decline" || primaryButton.kind === "withdraw" ? (
+                  <X size={16} />
+                ) : (
+                  <Check size={16} />
+                )}
+                <span className="truncate">{displayLabel}</span>
+              </button>
+            );
+          })() : null}
 
           {sendQuoteButton && primaryButton !== sendQuoteButton ? (
             <button
@@ -525,35 +555,74 @@ export default function FeedCard({
         </div>
 
         <div className="flex items-center gap-1.5 self-end sm:self-auto">
-          {(["save", "share", "hide", "report"] as const).map((actionKind) => {
-            const busy = actionBusyState[actionKind];
-            const isActive = actionKind === "save" ? saved : false;
-            const Icon = isActive ? secondaryActionMeta[actionKind].activeIcon : secondaryActionMeta[actionKind].icon;
-            const label = isActive ? secondaryActionMeta[actionKind].active : secondaryActionMeta[actionKind].idle;
-            const isDestructive = actionKind === "report";
+          <button
+            type="button"
+            data-testid="feed-action-share"
+            onClick={() => void onSecondaryAction("share")}
+            disabled={actionBusyState.share}
+            aria-label="Share post"
+            title="Share post"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white disabled:cursor-not-allowed disabled:opacity-70 sm:h-9 sm:w-9"
+          >
+            {actionBusyState.share ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
+            <span className="sr-only">Share post</span>
+          </button>
 
-            return (
+          {overflowButtons.length > 0 ? (
+            <div ref={overflowMenuRef} className="relative">
               <button
-                key={actionKind}
                 type="button"
-                data-testid={`feed-action-${actionKind}`}
-                onClick={() => void onSecondaryAction(actionKind)}
-                disabled={busy}
-                aria-label={label}
-                title={label}
-                className={`inline-flex h-8 w-8 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 sm:h-9 sm:w-9 ${
-                  isActive
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : isDestructive
-                      ? "border-rose-200 bg-rose-50 text-rose-600 hover:border-rose-300 hover:text-rose-700"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white"
-                }`}
+                onClick={() => setOverflowMenuOpen((current) => !current)}
+                aria-label="More actions"
+                title="More actions"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white sm:h-9 sm:w-9"
               >
-                {busy ? <Loader2 size={16} className="animate-spin" /> : <Icon size={16} />}
-                <span className="sr-only">{label}</span>
+                <MoreHorizontal size={16} />
               </button>
-            );
-          })}
+
+              {overflowMenuOpen ? (
+                <div className="absolute bottom-full right-0 z-50 mb-1 w-36 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-1 shadow-2xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOverflowMenuOpen(false);
+                      void onSecondaryAction("save");
+                    }}
+                    disabled={actionBusyState.save}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700"
+                  >
+                    {saved ? <BookmarkCheck size={14} className="text-slate-400" /> : <Bookmark size={14} className="text-slate-400" />}
+                    {saved ? "Unsave" : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOverflowMenuOpen(false);
+                      void onSecondaryAction("hide");
+                    }}
+                    disabled={actionBusyState.hide}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700"
+                  >
+                    <EyeOff size={14} className="text-slate-400" />
+                    Hide
+                  </button>
+                  <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOverflowMenuOpen(false);
+                      void onSecondaryAction("report");
+                    }}
+                    disabled={actionBusyState.report}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+                  >
+                    <Flag size={14} />
+                    Report
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </Card>

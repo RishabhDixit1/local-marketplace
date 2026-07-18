@@ -441,6 +441,7 @@ export default function FeedGrid({
                   share: isShareBusy(item),
                   hide: false,
                   report: false,
+                  overflow: false,
                 }}
                 onPrimaryAction={(action) => onPrimaryAction(item, action)}
                 onSecondaryAction={(action) => onSecondaryAction(item, action)}
@@ -476,6 +477,7 @@ export default function FeedGrid({
                     ? "Delete request"
                     : "Delete post"
                 }
+                overflowButtons={actionModel.overflowButtons}
               />
             </motion.div>
           );
