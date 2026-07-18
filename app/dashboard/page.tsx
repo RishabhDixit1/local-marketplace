@@ -132,6 +132,9 @@ export default function MarketplacePage() {
     setActiveMapItemId,
     focusItemId,
     composeRequested,
+    composeTitle,
+    composeDetails,
+    composeCategory,
     consumeComposeRequest,
     fetchFeed,
     resetFilters,
@@ -521,6 +524,9 @@ export default function MarketplacePage() {
         <CreatePostModal
           open={composerOpen}
           allowedPostTypes={["need"]}
+          initialTitle={composeTitle || undefined}
+          initialDetails={composeDetails || undefined}
+          initialCategory={composeCategory || undefined}
           onClose={() => {
             setOpenPostModal(false);
             if (composeRequested) {

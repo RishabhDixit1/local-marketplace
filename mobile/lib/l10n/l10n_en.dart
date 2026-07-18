@@ -127,4 +127,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reviews => 'Reviews';
   @override
   String get listings => 'Listings';
+  @override
+  String get aiPlaceholder => 'Ask ServiQ to find, post, buy, sell or manage...';
+  @override
+  String get aiErrorTitle => 'Something went wrong';
+  @override
+  String get aiTryAsking => 'Try asking';
+  @override
+  String get aiBrowseResults => 'Browse results';
+  @override
+  String get aiCreatePost => 'Create post';
+  @override
+  String get aiNoProvidersFound => 'No providers found';
+  @override
+  String get aiPostRequirement => 'Post a Requirement';
+  @override
+  String get aiNearbyProviders => 'Nearby providers';
+  @override
+  String get aiFoundProviders => 'Found providers';
+  @override
+  String get aiSearchMarket => 'Search market';
 }

@@ -127,4 +127,24 @@ class AppLocalizationsTa extends AppLocalizations {
   String get reviews => 'மதிப்புரைகள்';
   @override
   String get listings => 'பட்டியல்கள்';
+  @override
+  String get aiPlaceholder => 'ServiQ மூலம் தேடுங்கள், பதிவிடுங்கள், வாங்குங்கள், விற்குங்கள் அல்லது நிர்வகியுங்கள்...';
+  @override
+  String get aiErrorTitle => 'ஏதோ தவறு நடந்தது';
+  @override
+  String get aiTryAsking => 'கேட்டுப் பாருங்கள்';
+  @override
+  String get aiBrowseResults => 'முடிவுகளைப் பாருங்கள்';
+  @override
+  String get aiCreatePost => 'பதிவை உருவாக்கு';
+  @override
+  String get aiNoProvidersFound => 'வழங்குநர் எதுவும் கிடைக்கவில்லை';
+  @override
+  String get aiPostRequirement => 'தேவையை பதிவிடு';
+  @override
+  String get aiNearbyProviders => 'அருகிலுள்ள வழங்குநர்கள்';
+  @override
+  String get aiFoundProviders => 'வழங்குநர்கள் கிடைத்தன';
+  @override
+  String get aiSearchMarket => 'சந்தையைத் தேடு';
 }

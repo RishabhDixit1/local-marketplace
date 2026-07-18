@@ -127,4 +127,24 @@ class AppLocalizationsBn extends AppLocalizations {
   String get reviews => 'পর্যালোচনা';
   @override
   String get listings => 'লিস্টিং';
+  @override
+  String get aiPlaceholder => 'ServiQ দিয়ে খুঁজুন, পোস্ট করুন, কিনুন, বিক্রি করুন বা পরিচালনা করুন...';
+  @override
+  String get aiErrorTitle => 'কিছু ভুল হয়েছে';
+  @override
+  String get aiTryAsking => 'জিজ্ঞাসা করে দেখুন';
+  @override
+  String get aiBrowseResults => 'ফলাফল দেখুন';
+  @override
+  String get aiCreatePost => 'পোস্ট তৈরি করুন';
+  @override
+  String get aiNoProvidersFound => 'কোনো প্রদাতা পাওয়া যায়নি';
+  @override
+  String get aiPostRequirement => 'প্রয়োজন পোস্ট করুন';
+  @override
+  String get aiNearbyProviders => 'কাছের প্রদাতা';
+  @override
+  String get aiFoundProviders => 'প্রদাতা পাওয়া গেছে';
+  @override
+  String get aiSearchMarket => 'বাজার খুঁজুন';
 }

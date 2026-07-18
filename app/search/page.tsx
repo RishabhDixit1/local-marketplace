@@ -136,8 +136,30 @@ function SearchPageContent() {
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (activeQuery) params.set("search", activeQuery);
-      if (category) params.set("category", category);
+
+      if (activeQuery) {
+        const lower = activeQuery.toLowerCase();
+        const categoryMap: Record<string, string> = {
+          electrician: "Electrician", plumber: "Plumber", carpenter: "Carpenter",
+          painter: "Painter", "ac repair": "AC Repair", "ro repair": "RO Repair",
+          "appliance repair": "Appliance Repair", "mobile repair": "Mobile Repair",
+          "bike repair": "Bike Repair", tailor: "Tailoring", cleaning: "Cleaning",
+        };
+        let matchedCategory = category || "";
+        if (!matchedCategory) {
+          for (const [keyword, label] of Object.entries(categoryMap)) {
+            if (lower.includes(keyword)) { matchedCategory = label; break; }
+          }
+        }
+        if (matchedCategory) {
+          params.set("category", matchedCategory);
+        } else {
+          params.set("search", activeQuery);
+        }
+      } else if (category) {
+        params.set("category", category);
+      }
+
       if (minRating) params.set("minRating", minRating.toString());
       if (onlineOnly) params.set("onlineOnly", "true");
       if (sortBy) params.set("sortBy", sortBy);
@@ -417,8 +439,24 @@ function SearchPageContent() {
           <div className="rounded-2xl border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)]/50 p-12 text-center">
             <Search className="mx-auto mb-3 h-10 w-10 text-[var(--ink-500)]" />
             <p className="text-sm font-semibold text-[var(--ink-700)]">No providers found</p>
-            <p className="mt-1 text-xs text-[var(--ink-500)]">Try different search terms or filters</p>
-            {activeFilterCount > 0 && (
+            <p className="mt-1 text-xs text-[var(--ink-500)]">
+              {query ? (
+                <>
+                  No exact matches &mdash; post a requirement and let providers come to you
+                </>
+              ) : (
+                "Try different search terms or filters"
+              )}
+            </p>
+            {query && (
+              <Link
+                href={`/dashboard?compose=1&postType=need&q=${encodeURIComponent(query)}`}
+                className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-4 py-2 text-xs font-semibold text-white hover:bg-[var(--brand-800)]"
+              >
+                Post a Requirement
+              </Link>
+            )}
+            {!query && activeFilterCount > 0 && (
               <button onClick={clearFilters} className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-4 py-2 text-xs font-semibold text-white">
                 Clear Filters
               </button>

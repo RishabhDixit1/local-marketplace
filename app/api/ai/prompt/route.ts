@@ -3,6 +3,7 @@ import { createSupabaseAdminClient, createSupabaseAnonServerClientWithAuthTimeou
 import { executeQuery } from "@/lib/ai/orchestrator";
 import { moderatePrompt } from "@/lib/ai/contentModeration";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
+import { buildResponse } from "@/lib/ai/intentParser";
 
 type SlimProvider = {
   id: string;
@@ -144,6 +145,7 @@ export async function POST(request: Request) {
     const result = await executeQuery(effectiveQuery, context);
 
     let data: Record<string, unknown> | null = result.data || null;
+    let response = result.response;
 
     if (result.redirect && SEARCH_ACTIONS.has(result.action)) {
       const location = context.location || undefined;
@@ -151,13 +153,15 @@ export async function POST(request: Request) {
         result.category || query,
         location,
       );
+      const actualCount = providers.length;
+      response = buildResponse(result.intent, actualCount);
       if (providers.length > 0) {
         data = { ...(data || {}), providers };
       }
     }
 
     return NextResponse.json({
-      response: result.response,
+      response,
       action: result.action,
       redirect: result.redirect || null,
       data: data || null,

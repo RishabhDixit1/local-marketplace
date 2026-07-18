@@ -8,17 +8,29 @@ import {
   ArrowRight,
   Building2,
   ChevronRight,
+  Droplets,
+  Filter,
+  Flame,
+  Hammer,
   Loader2,
   MapPin,
   Star,
   Store,
   Users,
+  Wrench,
+  Wind,
   Zap,
   CheckCircle2,
+  type LucideIcon,
 } from "lucide-react";
 import { PageMeta } from "@/app/components/PageMeta";
 import { appName } from "@/lib/branding";
 import type { ServiceCategoryResponse } from "@/app/api/service-categories/route";
+
+const iconMap: Record<string, LucideIcon> = {
+  zap: Zap, droplets: Droplets, filter: Filter, wind: Wind,
+  flame: Flame, wrench: Wrench, hammer: Hammer,
+};
 
 type LocalityData = {
   id: string;
@@ -183,16 +195,19 @@ export default function SocietyPage() {
         <section className="mb-10">
           <h2 className="mb-4 text-lg font-extrabold text-[var(--ink-950)]">Browse by Category</h2>
           <div className="flex flex-wrap gap-2">
-            {categories.slice(0, 12).map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/market/${locality.slug}/${cat.slug}`}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3.5 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-300)] hover:shadow-sm"
-              >
-                {cat.icon_slug && <span className="text-sm">{cat.icon_slug}</span>}
-                {cat.name}
-              </Link>
-            ))}
+            {categories.slice(0, 12).map((cat) => {
+              const Icon = iconMap[cat.icon_slug] || Wrench;
+              return (
+                <Link
+                  key={cat.id}
+                  href={`/market/${locality.slug}/${cat.slug}`}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3.5 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-300)] hover:shadow-sm"
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {cat.name}
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}

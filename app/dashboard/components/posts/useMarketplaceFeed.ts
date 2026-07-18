@@ -77,6 +77,9 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
   const [activeMapItemId, setActiveMapItemId] = useState<string | null>(null);
   const [focusItemId, setFocusItemId] = useState("");
   const [composeRequested, setComposeRequested] = useState(false);
+  const [composeTitle, setComposeTitle] = useState("");
+  const [composeDetails, setComposeDetails] = useState("");
+  const [composeCategory, setComposeCategory] = useState("");
   const [mapCenter, setMapCenter] = useState<MarketplaceMapCenter>({ lat: 12.9716, lng: 77.5946 });
   const [browserLocation, setBrowserLocation] = useState<Coordinates | null>(null);
   const [locationStatus, setLocationStatus] = useState<BrowserCoordinateStatus>("idle");
@@ -140,6 +143,9 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
         setActiveMapItemId(focusParam.trim());
       }
       setComposeRequested(params.get("compose") === "1");
+      setComposeTitle(params.get("title") || "");
+      setComposeDetails(params.get("details") || "");
+      setComposeCategory(params.get("category") || "");
     } catch {
       // Local state hydration is best effort.
     }
@@ -462,6 +468,9 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
     setActiveMapItemId,
     focusItemId,
     composeRequested,
+    composeTitle,
+    composeDetails,
+    composeCategory,
     consumeComposeRequest,
     fetchFeed,
     resetFilters,

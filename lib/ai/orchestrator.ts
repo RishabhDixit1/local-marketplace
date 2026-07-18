@@ -15,6 +15,7 @@ export type ActionResult = {
   data?: Record<string, unknown>;
   category?: string;
   suggestions?: string[];
+  intent: ParsedIntent;
 };
 
 function toSearchLabel(slug: string): string {
@@ -66,7 +67,7 @@ function handleSearch(intent: ParsedIntent, _context: AgentContext): ActionResul
         "Browse all categories",
       ];
 
-  return { response: intent.response, action: intent.action, redirect: url, data: intent.category ? { category: intent.category } : undefined, category: intent.category || undefined, suggestions };
+  return { response: intent.response, action: intent.action, redirect: url, data: intent.category ? { category: intent.category } : undefined, category: intent.category || undefined, suggestions, intent };
 }
 
 function handleBuy(intent: ParsedIntent, _context: AgentContext): ActionResult {
@@ -83,7 +84,7 @@ function handleBuy(intent: ParsedIntent, _context: AgentContext): ActionResult {
         "Daily needs with home delivery",
       ];
 
-  return { response: intent.response, action: intent.action, redirect: url, data: intent.category ? { category: intent.category } : undefined, category: intent.category || undefined, suggestions };
+  return { response: intent.response, action: intent.action, redirect: url, data: intent.category ? { category: intent.category } : undefined, category: intent.category || undefined, suggestions, intent };
 }
 
 function handlePostNeed(intent: ParsedIntent, _context: AgentContext): ActionResult {
@@ -91,7 +92,7 @@ function handlePostNeed(intent: ParsedIntent, _context: AgentContext): ActionRes
   if (intent.category) params.set("category", intent.category);
   if (intent.urgency) params.set("urgency", intent.urgency);
   if (intent.budget.max) params.set("maxBudget", String(intent.budget.max));
-  const url = `/?compose=1&postType=need${params.toString() ? `&${params.toString()}` : ""}`;
+  const url = `/dashboard?compose=1&postType=need${params.toString() ? `&${params.toString()}` : ""}`;
 
   return {
     response: intent.response,
@@ -102,6 +103,7 @@ function handlePostNeed(intent: ParsedIntent, _context: AgentContext): ActionRes
       "Set urgency",
       "Describe in detail",
     ],
+    intent,
   };
 }
 
@@ -119,6 +121,7 @@ function handleSell(intent: ParsedIntent, _context: AgentContext): ActionResult 
       "Set competitive price",
       "Add delivery options",
     ],
+    intent,
   };
 }
 
@@ -132,6 +135,7 @@ function handleInventory(_intent: ParsedIntent, _context: AgentContext): ActionR
       "Update stock",
       "View low stock items",
     ],
+    intent: _intent,
   };
 }
 
@@ -142,6 +146,7 @@ function handleCheckOrders(_intent: ParsedIntent, context: AgentContext): Action
       action: "check_orders",
       redirect: "/?signin=true",
       suggestions: ["Sign in", "Browse marketplace"],
+      intent: _intent,
     };
   }
   return {
@@ -153,6 +158,7 @@ function handleCheckOrders(_intent: ParsedIntent, context: AgentContext): Action
       "Track current order",
       "View order history",
     ],
+    intent: _intent,
   };
 }
 
@@ -166,6 +172,7 @@ function handleListServices(_intent: ParsedIntent, _context: AgentContext): Acti
       "Update pricing",
       "Set availability",
     ],
+    intent: _intent,
   };
 }
 
@@ -179,6 +186,7 @@ function handleManageBusiness(_intent: ParsedIntent, _context: AgentContext): Ac
       "Update profile",
       "Manage listings",
     ],
+    intent: _intent,
   };
 }
 
@@ -193,6 +201,7 @@ function handleHelp(intent: ParsedIntent, _context: AgentContext): ActionResult 
       "How delivery works",
       "Contact support",
     ],
+    intent,
   };
 }
 

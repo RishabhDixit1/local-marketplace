@@ -129,4 +129,24 @@ class AppLocalizationsHi extends AppLocalizations {
   String get reviews => 'समीक्षाएं';
   @override
   String get listings => 'लिस्टिंग्स';
+  @override
+  String get aiPlaceholder => 'ServiQ से खोजें, पोस्ट करें, खरीदें, बेचें या प्रबंधित करें...';
+  @override
+  String get aiErrorTitle => 'कुछ गलत हो गया';
+  @override
+  String get aiTryAsking => 'पूछकर देखें';
+  @override
+  String get aiBrowseResults => 'परिणाम देखें';
+  @override
+  String get aiCreatePost => 'पोस्ट बनाएं';
+  @override
+  String get aiNoProvidersFound => 'कोई प्रदाता नहीं मिला';
+  @override
+  String get aiPostRequirement => 'आवश्यकता पोस्ट करें';
+  @override
+  String get aiNearbyProviders => 'नजदीकी प्रदाता';
+  @override
+  String get aiFoundProviders => 'प्रदाता मिले';
+  @override
+  String get aiSearchMarket => 'बाज़ार खोजें';
 }

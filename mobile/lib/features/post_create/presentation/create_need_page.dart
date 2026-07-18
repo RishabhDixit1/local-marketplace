@@ -82,7 +82,16 @@ enum _ServiceDelivery {
 }
 
 class CreateNeedPage extends ConsumerStatefulWidget {
-  const CreateNeedPage({super.key});
+  const CreateNeedPage({
+    super.key,
+    this.initialTitle,
+    this.initialDetails,
+    this.initialCategory,
+  });
+
+  final String? initialTitle;
+  final String? initialDetails;
+  final String? initialCategory;
 
   @override
   ConsumerState<CreateNeedPage> createState() => _CreateNeedPageState();
@@ -118,7 +127,30 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     _detailsController.addListener(_handleDraftChanged);
     _budgetController.addListener(_handleDraftChanged);
     _locationController.addListener(_handleDraftChanged);
-    _restoreDraftIfAvailable();
+
+    final hasInitialData = widget.initialTitle != null ||
+        widget.initialDetails != null ||
+        widget.initialCategory != null;
+    if (hasInitialData) {
+      _applyInitialParams();
+    } else {
+      _restoreDraftIfAvailable();
+    }
+  }
+
+  void _applyInitialParams() {
+    if (widget.initialTitle != null && widget.initialTitle!.isNotEmpty) {
+      _titleController.text = widget.initialTitle!;
+    }
+    if (widget.initialDetails != null && widget.initialDetails!.isNotEmpty) {
+      _detailsController.text = widget.initialDetails!;
+    }
+    if (widget.initialCategory != null &&
+        widget.initialCategory!.isNotEmpty &&
+        categories.contains(widget.initialCategory)) {
+      _category = widget.initialCategory!;
+    }
+    _draftRestored = false;
   }
 
   @override

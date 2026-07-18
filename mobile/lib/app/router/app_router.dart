@@ -165,7 +165,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.createNeed,
-        builder: (context, state) => const CreateNeedPage(),
+        builder: (context, state) => CreateNeedPage(
+          initialTitle: state.uri.queryParameters['title'],
+          initialDetails: state.uri.queryParameters['details'],
+          initialCategory: state.uri.queryParameters['category'],
+        ),
       ),
       GoRoute(
         path: '/app/post-task',

@@ -34,6 +34,9 @@ type Props = {
   onPublished?: (result?: PublishPostResult) => void | Promise<void>;
   allowedPostTypes?: PostType[];
   variant?: "modal" | "page";
+  initialTitle?: string;
+  initialDetails?: string;
+  initialCategory?: string;
 };
 
 export type PublishPostResult = {
@@ -155,8 +158,11 @@ export default function CreatePostModal({
   open,
   onClose,
   onPublished,
-  allowedPostTypes = DEFAULT_ALLOWED_POST_TYPES,
+  allowedPostTypes,
   variant = "modal",
+  initialTitle,
+  initialDetails,
+  initialCategory,
 }: Props) {
   const availableTypeOptions = useMemo(() => {
     const allowedSet = new Set(allowedPostTypes);
@@ -168,9 +174,9 @@ export default function CreatePostModal({
   // form state
   const [step, setStep] = useState<ComposerStep>(1);
   const [postType, setPostType] = useState<PostType>(defaultPostType);
-  const [title, setTitle] = useState("");
-  const [details, setDetails] = useState("");
-  const [category, setCategory] = useState("Plumber");
+  const [title, setTitle] = useState(initialTitle ?? "");
+  const [details, setDetails] = useState(initialDetails ?? "");
+  const [category, setCategory] = useState(initialCategory ?? "Plumber");
   const [price, setPrice] = useState("");
   const [priceType, setPriceType] = useState<PriceType>("Fixed");
   const [location, setLocation] = useState("");

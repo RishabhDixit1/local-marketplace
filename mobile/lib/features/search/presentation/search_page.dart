@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/theme/design_tokens.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/widgets/ai_prompt_bar.dart';
 import '../data/search_repository.dart';
@@ -204,8 +205,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       child: Column(
         children: [
           AiPromptBar(
-            placeholder: 'Service, provider, or category...',
             initialQuery: widget.initialQuery,
+            enableDebounce: true,
             onResult: (result) {
               setState(() => _query = result.response);
               if (result.redirect != null) {
@@ -484,11 +485,17 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             ),
         ] else if (!_loading) ...[
           const SizedBox(height: 32),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: EmptyStateView(
-              title: 'No providers found',
-              message: 'Try a different search term or adjust your filters.',
+              title: AppLocalizations.of(context).aiNoProvidersFound,
+              message: 'Post a requirement and let providers come to you.',
+              actionLabel: AppLocalizations.of(context).aiPostRequirement,
+              onAction: () {
+                final params = <String, String>{};
+                if (_query.isNotEmpty) params['title'] = _query;
+                context.push(Uri(path: AppRoutes.createNeed, queryParameters: params).toString());
+              },
             ),
           ),
         ],
@@ -549,6 +556,10 @@ class _ProviderResultCard extends StatelessWidget {
                             padding: EdgeInsets.only(left: 2),
                             child: Icon(Icons.auto_awesome, size: 12, color: AppColors.warning),
                           ),
+                        const Padding(
+                          padding: EdgeInsets.only(left: 6),
+                          child: _LoopChip(label: 'Service', color: AppColors.primary),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -613,6 +624,29 @@ class _Tag extends StatelessWidget {
           ],
           Text(label, style: TextStyle(fontSize: 10, color: color ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
         ],
+      ),
+    );
+  }
+}
+
+class _LoopChip extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _LoopChip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }

@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import {
   Building2,
   ChevronRight,
+  Droplets,
+  Filter,
+  Flame,
+  Hammer,
   LayoutDashboard,
   LogIn,
   MapPin,
@@ -13,9 +17,12 @@ import {
   Star,
   Store,
   Users,
+  Wrench,
+  Wind,
   X,
   Zap,
   CheckCircle2,
+  type LucideIcon,
 } from "lucide-react";
 import ZoneBrowser from "@/app/components/locality/ZoneBrowser";
 import ZoneSwitcher from "@/app/components/market/ZoneSwitcher";
@@ -28,6 +35,11 @@ import type { LocalityResponse } from "@/app/api/localities/route";
 import type { ServiceCategoryResponse } from "@/app/api/service-categories/route";
 import type { User } from "@supabase/supabase-js";
 import type { MarketZoneResponse } from "@/app/api/market/[slug]/route";
+
+const iconMap: Record<string, LucideIcon> = {
+  zap: Zap, droplets: Droplets, filter: Filter, wind: Wind,
+  flame: Flame, wrench: Wrench, hammer: Hammer,
+};
 
 type ProviderCardData = {
   id: string; name: string; location: string; lat: number | null; lng: number | null;
@@ -222,26 +234,27 @@ export default function MarketZonePage({ slug }: MarketZonePageProps) {
 
         {categories.length > 0 && (
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-            {categories.slice(0, 12).map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => {
-                  setSelectedCategory(selectedCategory === cat.name ? null : cat.name);
-                  scrollToProviders();
-                }}
-                className={`inline-flex items-center gap-1.5 rounded-xl border min-h-11 px-4 py-2.5 text-xs font-semibold transition ${
-                  selectedCategory === cat.name
-                    ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                    : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--brand-300)] hover:shadow-sm"
-                }`}
-              >
-                {cat.icon_slug && (
-                  <span className="text-sm">{cat.icon_slug}</span>
-                )}
-                {cat.name}
-              </button>
-            ))}
+            {categories.slice(0, 12).map((cat) => {
+              const Icon = iconMap[cat.icon_slug] || Wrench;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategory(selectedCategory === cat.name ? null : cat.name);
+                    scrollToProviders();
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border min-h-11 px-4 py-2.5 text-xs font-semibold transition ${
+                    selectedCategory === cat.name
+                      ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
+                      : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--brand-300)] hover:shadow-sm"
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {cat.name}
+                </button>
+              );
+            })}
           </div>
         )}
 

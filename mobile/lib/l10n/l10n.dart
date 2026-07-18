@@ -104,6 +104,18 @@ abstract class AppLocalizations {
   String get trustScore;
   String get reviews;
   String get listings;
+
+  // AI
+  String get aiPlaceholder;
+  String get aiErrorTitle;
+  String get aiTryAsking;
+  String get aiBrowseResults;
+  String get aiCreatePost;
+  String get aiNoProvidersFound;
+  String get aiPostRequirement;
+  String get aiNearbyProviders;
+  String get aiFoundProviders;
+  String get aiSearchMarket;
 }
 
 class _AppLocalizationsDelegate

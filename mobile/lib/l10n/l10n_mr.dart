@@ -127,4 +127,24 @@ class AppLocalizationsMr extends AppLocalizations {
   String get reviews => 'पुनरावलोकने';
   @override
   String get listings => 'लिस्टिंग';
+  @override
+  String get aiPlaceholder => 'ServiQ ने शोधा, पोस्ट करा, खरेदी करा, विक्री करा किंवा व्यवस्थापित करा...';
+  @override
+  String get aiErrorTitle => 'काहीतरी चूक झाली';
+  @override
+  String get aiTryAsking => 'विचारून पहा';
+  @override
+  String get aiBrowseResults => 'निकाल पहा';
+  @override
+  String get aiCreatePost => 'पोस्ट तयार करा';
+  @override
+  String get aiNoProvidersFound => 'कोणतेही प्रदाता सापडले नाहीत';
+  @override
+  String get aiPostRequirement => 'गरज पोस्ट करा';
+  @override
+  String get aiNearbyProviders => 'जवळचे प्रदाते';
+  @override
+  String get aiFoundProviders => 'प्रदाते सापडले';
+  @override
+  String get aiSearchMarket => 'बाजार शोधा';
 }

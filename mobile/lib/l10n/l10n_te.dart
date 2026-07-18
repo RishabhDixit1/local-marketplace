@@ -127,4 +127,24 @@ class AppLocalizationsTe extends AppLocalizations {
   String get reviews => 'సమీక్షలు';
   @override
   String get listings => 'జాబితాలు';
+  @override
+  String get aiPlaceholder => 'ServiQ తో వెతకండి, పోస్ట్ చేయండి, కొనండి, అమ్మండి లేదా నిర్వహించండి...';
+  @override
+  String get aiErrorTitle => 'ఏదో తప్పు జరిగింది';
+  @override
+  String get aiTryAsking => 'అడిగి చూడండి';
+  @override
+  String get aiBrowseResults => 'ఫలితాలు చూడండి';
+  @override
+  String get aiCreatePost => 'పోస్ట్ సృష్టించండి';
+  @override
+  String get aiNoProvidersFound => 'ప్రొవైడర్లు కనుగొనబడలేదు';
+  @override
+  String get aiPostRequirement => 'అవసరాన్ని పోస్ట్ చేయండి';
+  @override
+  String get aiNearbyProviders => 'సమీపంలోని ప్రొవైడర్లు';
+  @override
+  String get aiFoundProviders => 'ప్రొవైడర్లు కనుగొనబడ్డాయి';
+  @override
+  String get aiSearchMarket => 'మార్కెట్ వెతకండి';
 }
