@@ -51,7 +51,16 @@ export default function SetPasswordPage() {
       if (metaError) throw metaError;
       const { ensureProfileForUser, resolveCurrentProfileDestination } = await import("@/lib/profile/client");
       const { data: { user } } = await supabase.auth.getUser();
-      const profile = user ? await ensureProfileForUser(user).catch(() => null) : null;
+      let profile = null;
+      if (user) {
+        try {
+          profile = await ensureProfileForUser(user);
+        } catch (err) {
+          console.error("[set-password] Profile bootstrap failed:", err);
+          setErrorMessage("We couldn't finish setting up your account. Please try again.");
+          return;
+        }
+      }
       router.replace(resolveCurrentProfileDestination(profile));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to set password.";

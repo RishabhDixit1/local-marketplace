@@ -36,13 +36,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sending => 'Sending...';
   @override
-  String get home => 'Dashboard';
+  String get home => 'Home';
   @override
   String get explore => 'Explore';
   @override
   String get people => 'People';
   @override
-  String get market => 'Home';
+  String get market => 'Market';
   @override
   String get work => 'Work';
   @override

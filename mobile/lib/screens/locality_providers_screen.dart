@@ -7,6 +7,7 @@ import '../core/constants/app_routes.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/design_tokens.dart';
 import '../shared/components/loading_shimmer.dart';
+import '../shared/components/marketplace_provider_card.dart';
 
 final _localityProvidersProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, String>((ref, localityId) async {
@@ -31,16 +32,15 @@ class LocalityProvidersScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(localityName,
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Theme.of(context).colorScheme.onSurface)),
+        title: Text(
+          localityName,
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded),
+          icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -56,13 +56,10 @@ class LocalityProvidersScreen extends ConsumerWidget {
                     size: 48, color: AppColors.danger),
                 const SizedBox(height: 16),
                 Text('Could not load providers',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface)),
+                    style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 Text('$err',
-                    style: TextStyle(
-                        fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                    style: Theme.of(context).textTheme.bodySmall,
                     textAlign: TextAlign.center),
               ],
             ),
@@ -80,14 +77,11 @@ class LocalityProvidersScreen extends ConsumerWidget {
                         size: 48, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                     const SizedBox(height: 16),
                     Text('No providers yet',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onSurface)),
+                        style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
                     Text(
                         'Be the first to offer services in this area.',
-                        style: TextStyle(
-                            fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                        style: Theme.of(context).textTheme.bodySmall,
                         textAlign: TextAlign.center),
                   ],
                 ),
@@ -96,96 +90,38 @@ class LocalityProvidersScreen extends ConsumerWidget {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.pageInset),
             itemCount: providers.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (context, index) {
               final p = providers[index];
               final providerId = p['id'] as String? ?? '';
-              final name = (p['full_name'] as String? ?? p['name'] as String?) ?? 'Unknown Provider';
-              final trustScore = p['trust_score'];
-              final score = trustScore is num ? trustScore.toDouble() : null;
-              final localityName = p['locality_name'] as String? ?? '';
+              // Support both old (full_name) and new (name) field names
+              final name = (p['name'] as String? ?? p['full_name'] as String?) ?? 'Unknown Provider';
+              final location = (p['location'] as String? ?? p['locality_name'] as String?) ?? '';
+              final avatarUrl = p['avatar_url'] as String?;
+              final bio = p['bio'] as String?;
               final completedJobs = p['completed_jobs'];
               final jobs = completedJobs is num ? completedJobs.toInt() : 0;
+              final responseMinutes = p['response_minutes'] ?? p['response_time_minutes'];
+              final respMin = responseMinutes is num ? responseMinutes.toInt() : null;
+              final trustScore = p['trust_score'];
+              final score = trustScore is num ? trustScore.toDouble() : null;
+              final avgRating = p['avg_rating'];
+              final rating = avgRating is num ? avgRating.toDouble() : score;
 
-              return Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.xl),
-                  side: BorderSide(color: Theme.of(context).colorScheme.outline),
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(AppRadii.xl),
-                  onTap: providerId.isNotEmpty
-                      ? () => context.push(AppRoutes.provider(providerId))
-                      : null,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 22,
-                          backgroundColor: AppColors.primarySoft,
-                          child: Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : '?',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primaryDeep),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(name,
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: Theme.of(context).colorScheme.onSurface)),
-                          if (localityName.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Icon(Icons.location_on_rounded, size: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(localityName,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-                                ),
-                              ],
-                            ),
-                          ],
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              if (score != null) ...[
-                                Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
-                                const SizedBox(width: 4),
-                                Text(score.toStringAsFixed(1),
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-                                const SizedBox(width: 12),
-                              ],
-                              if (jobs > 0) ...[
-                                Icon(Icons.work_history_rounded, size: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-                                const SizedBox(width: 4),
-                                Text('$jobs job${jobs == 1 ? '' : 's'}',
-                                    style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-                              ],
-                            ],
-                          ),
-                            ],
-                          ),
-                        ),
-                        Icon(Icons.chevron_right_rounded,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-                      ],
-                    ),
-                  ),
-                ),
+              return MarketplaceProviderCard(
+                name: name,
+                location: location.isNotEmpty ? location : null,
+                avatarUrl: avatarUrl,
+                bio: bio,
+                avgRating: rating,
+                completedJobs: jobs,
+                responseMinutes: respMin,
+                verified: false,
+                onTap: providerId.isNotEmpty
+                    ? () => context.push(AppRoutes.provider(providerId))
+                    : null,
               );
             },
           );

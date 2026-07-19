@@ -339,11 +339,19 @@ function AuthForm() {
       const params = new URLSearchParams(window.location.search);
       const next = params.get("next");
       const { ensureProfileForUser, resolveCurrentProfileDestination } = await import("@/lib/profile/client");
-      const profile = await ensureProfileForUser(user).catch(() => null);
+      let profile;
+      try {
+        profile = await ensureProfileForUser(user);
+      } catch (err) {
+        console.error("[LoginPageClient] Profile bootstrap failed:", err);
+        setErrorMessage("We couldn't finish setting up your account. Please try again.");
+        return false;
+      }
       const target = next && isSafeRedirect(next)
         ? next
         : resolveCurrentProfileDestination(profile);
       router.replace(target);
+      return true;
     },
     [router],
   );
@@ -399,14 +407,12 @@ function AuthForm() {
       const { data, error } = await supabase.auth.verifyOtp({ email, token: code, type: "email" });
       if (error) throw error;
       if (data?.user) {
-        await completeAuth(data.user);
-        return;
+        if (await completeAuth(data.user)) return;
       }
     } catch (goTrueError) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        await completeAuth(session.user);
-        return;
+        if (await completeAuth(session.user)) return;
       }
       if (goTrueError instanceof Error) console.warn("verifyOtp (GoTrue) failed, falling back to custom API:", goTrueError.message);
     }
@@ -443,8 +449,7 @@ function AuthForm() {
       }
 
       if (payload.user) {
-        await completeAuth(payload.user as unknown as User);
-        return;
+        if (await completeAuth(payload.user as unknown as User)) return;
       }
       setErrorMessage("Signed in, but could not load your profile. Try refreshing.");
     } catch (error) {

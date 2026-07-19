@@ -4,6 +4,7 @@ import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { getRazorpay, isRazorpayConfigured } from "@/lib/server/razorpay";
+import { logger } from "@/lib/server/logger";
 
 export const runtime = "nodejs";
 
@@ -55,16 +56,20 @@ async function postHandler(request: Request) {
 
   let discountPaise = 0;
   let promoData: Record<string, unknown> | null = null;
+  let promoError: string | null = null;
 
   if (body.promoCode) {
     const db = createSupabaseAdminClient();
     if (db) {
-      const { data: validation } = await db.rpc("validate_promo_code", {
+      const { data: validation, error: rpcError } = await db.rpc("validate_promo_code", {
         p_code: body.promoCode,
         p_order_paise: body.amount,
       });
 
-      if (validation?.ok) {
+      if (rpcError) {
+        logger.error("payment:create-order", "validate_promo_code RPC failed", rpcError, { promoCode: body.promoCode });
+        promoError = "Unable to validate promo code right now, please try again later.";
+      } else if (validation?.ok) {
         discountPaise = validation.discount_paise;
         promoData = {
           promo_code_id: validation.promo_code_id,
@@ -87,6 +92,7 @@ async function postHandler(request: Request) {
       paid: true,
       discountPaise,
       promo: promoData,
+      ...(promoError ? { promoError } : {}),
     });
   }
 
@@ -111,6 +117,7 @@ async function postHandler(request: Request) {
       keyId: process.env.RAZORPAY_KEY_ID ?? "",
       discountPaise,
       promo: promoData,
+      ...(promoError ? { promoError } : {}),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Payment gateway error.";

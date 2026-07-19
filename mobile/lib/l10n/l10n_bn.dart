@@ -36,13 +36,13 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get sending => 'পাঠানো হচ্ছে...';
   @override
-  String get home => 'ড্যাশবোর্ড';
+  String get home => 'হোম';
   @override
-  String get explore => 'এক্সপ্লোর করুন';
+  String get explore => 'এক্সপ্লোর';
   @override
-  String get people => 'লোকজন';
+  String get people => 'পিপল';
   @override
-  String get market => 'হোম';
+  String get market => 'মার্কেট';
   @override
   String get work => 'কাজ';
   @override

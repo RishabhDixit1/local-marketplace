@@ -131,7 +131,12 @@ export default function PublicProfileAvatarEdit({
 
       const publicUrl = await uploadProfileAvatar({ userId: profileUserId, file: selectedFile });
       const latestProfile = await fetchProfileByUserId(viewerId, { id: viewerId, email: viewerEmail || "" }).catch(() => null);
-      const baseValues = latestProfile ? toProfileFormValues(latestProfile) : initialValues;
+      if (!latestProfile) {
+        setErrorMessage("Could not refresh your profile data. Please try again.");
+        setUploading(false);
+        return;
+      }
+      const baseValues = toProfileFormValues(latestProfile);
       await saveCurrentUserProfile({
         user: { id: viewerId, email: viewerEmail || "" },
         values: {

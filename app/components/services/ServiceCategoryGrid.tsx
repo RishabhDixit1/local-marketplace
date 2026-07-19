@@ -49,7 +49,7 @@ export default function ServiceCategoryGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       {visibleCategories.map((cat) => {
         const Icon = iconMap[cat.icon_slug] || Wrench;
         return (
@@ -62,20 +62,20 @@ export default function ServiceCategoryGrid({
                   ? `/?category=${cat.slug}&locality=${localityId}`
                   : `/?category=${cat.slug}`
             }
-            className="group flex flex-col items-start gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
+            className="nameplate-card group flex flex-col items-start gap-3 p-4 pt-6"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand-50)] text-[var(--brand-700)]">
               <Icon className="h-5 w-5" />
             </span>
             <div>
-              <h3 className="text-sm font-extrabold text-[var(--ink-950)] group-hover:text-[var(--brand-700)]">
+              <h3 className="text-sm font-semibold text-[var(--ink-950)] group-hover:text-[var(--brand-700)]">
                 {cat.name}
               </h3>
-              <p className="mt-0.5 text-xs text-[var(--ink-500)]">
+              <p className="mt-0.5 text-xs text-[var(--ink-500)] tabular-nums">
                 ₹{cat.base_price_min}–{cat.base_price_max}
               </p>
               {cat.provider_count != null && (
-                <p className="mt-1 text-[10px] font-medium text-[var(--brand-600)]">
+                <p className="mt-1 text-[10px] font-medium text-[var(--brand-600)] tabular-nums">
                   {cat.provider_count} provider{cat.provider_count === 1 ? "" : "s"} nearby
                 </p>
               )}

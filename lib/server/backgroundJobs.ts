@@ -23,6 +23,7 @@ export async function enqueueJob(
 
   if (error) {
     console.error(`[bg-jobs] Failed to enqueue ${jobType}:`, error.message);
+    throw new Error(`Failed to enqueue job ${jobType}: ${error.message}`);
   }
 }
 

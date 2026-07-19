@@ -43,11 +43,14 @@ async function postHandler(request: Request) {
   }
 
   // Check for existing open dispute on this order
-  const { count: existing } = await db
+  const { count: existing, error: countErr } = await db
     .from("disputes")
     .select("id", { count: "exact", head: true })
     .eq("order_id", body.orderId)
     .eq("status", "open");
+  if (countErr) {
+    return NextResponse.json({ ok: false, code: "DB", message: `Failed to check for existing disputes: ${countErr.message}` }, { status: 500 });
+  }
 
   if (existing && existing > 0) {
     return NextResponse.json({ ok: false, code: "CONFLICT", message: "An open dispute already exists for this order." }, { status: 409 });

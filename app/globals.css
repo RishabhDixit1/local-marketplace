@@ -1,13 +1,13 @@
 @import "tailwindcss";
 :root {
   --font-sans: var(--font-manrope), "Aptos", "Manrope", "Segoe UI Variable Text", "Segoe UI", sans-serif;
-  --font-display: var(--font-sora), "Sora", "Aptos Display", "Bahnschrift", "Segoe UI Semibold", "Segoe UI", sans-serif;
+  --font-display: var(--font-dm-serif), var(--font-sora), "DM Serif Display", "Sora", "Aptos Display", "Bahnschrift", "Segoe UI Semibold", "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
 
-  --surface-app: #f6f7f9;
+  --surface-app: #f8f6f1;
   --surface-elevated: #ffffff;
-  --surface-soft: #f0f3f7;
-  --ink-950: #090f17;
+  --surface-soft: #f0ede6;
+  --ink-950: #0a1628;
   --ink: #141a22;
   --ink-700: #55616b;
   --ink-500: #7a858e;
@@ -19,8 +19,8 @@
   --brand-300: #67e8f9;
   --brand-50: #ccfbf1;
   --brand-ring: rgba(15, 118, 110, 0.24);
-  --surface-border: #d8dee6;
-  --border-strong: #c2cbd6;
+  --surface-border: #d8d4cb;
+  --border-strong: #c2bdb2;
   --surface-overlay: rgba(255, 255, 255, 0.8);
   --ink-50: #f8fafc;
   --accent: #3557d5;
@@ -31,6 +31,22 @@
   --color-success: #158463;
   --color-verified: #2563eb;
   --shimmer-base: #e7ebf1;
+
+  --marigold-50: #fef9ec;
+  --marigold-100: #fdf0cc;
+  --marigold-200: #fbe099;
+  --marigold-300: #f8cc5c;
+  --marigold-400: #f0b429;
+  --marigold-500: #d4920a;
+  --marigold-600: #b87a08;
+  --marigold-700: #8f5e06;
+
+  --sage-50: #f2f9f5;
+  --sage-100: #e8f3ec;
+  --sage-200: #c9e5d3;
+  --sage-300: #a3d4b5;
+  --sage-400: #7bc497;
+  --sage-500: #5aad7a;
 
   --shadow-rgb: 20, 26, 34;
 
@@ -97,6 +113,22 @@
   --color-success: #158463;
   --color-verified: #2563eb;
   --shimmer-base: #222b35;
+
+  --marigold-50: #2a2010;
+  --marigold-100: #3d2e14;
+  --marigold-200: #5c4519;
+  --marigold-300: #8a6a1f;
+  --marigold-400: #f0b429;
+  --marigold-500: #d4920a;
+  --marigold-600: #b87a08;
+  --marigold-700: #8f5e06;
+
+  --sage-50: #0f1f16;
+  --sage-100: #142a1e;
+  --sage-200: #1c3a29;
+  --sage-300: #2a5a3e;
+  --sage-400: #3a7a55;
+  --sage-500: #4a9470;
   --shadow-rgb: 0, 0, 0;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.28);
@@ -162,6 +194,69 @@ h3,
 .brand-display {
   font-family: var(--font-display), "Segoe UI", sans-serif;
   letter-spacing: 0;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.nameplate-card {
+  position: relative;
+  background: var(--surface-elevated);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04),
+    var(--shadow-sm);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.nameplate-card::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 5px;
+  border-radius: 0 0 4px 4px;
+  background: var(--surface-border);
+  border: 1px solid var(--border-strong);
+  border-top: none;
+  opacity: 0.5;
+}
+
+.nameplate-card:hover {
+  border-color: var(--brand-300);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04),
+    var(--shadow-md),
+    0 0 0 1px rgba(15, 118, 110, 0.06);
+}
+
+.nameplate-card-dark {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    var(--shadow-sm);
+}
+
+.dark .nameplate-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    var(--shadow-sm);
+}
+
+.dark .nameplate-card:hover {
+  border-color: var(--brand-300);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    var(--shadow-md),
+    0 0 0 1px rgba(34, 199, 197, 0.08);
 }
 
 ::selection {

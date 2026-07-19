@@ -1,6 +1,7 @@
 import { createSupabaseAdminClient } from "../server/supabaseClients";
 import { parseIntentBest, type ParsedIntent } from "./intentParser";
-import { scoreLead, computeCategoryFit } from "../leads/scoring";
+import { scoreLead, computeCategoryFit, haversineKm } from "../leads/scoring";
+import { logger } from "../server/logger";
 
 type SupabaseClient = NonNullable<ReturnType<typeof createSupabaseAdminClient>>;
 
@@ -164,7 +165,11 @@ async function matchProviders(
   }
 
   const { data: listings, error } = await query;
-  if (error || !listings?.length) return [];
+  if (error) {
+    logger.error("intentEngine", "Failed to query service_listings", error, { category: parsed.category });
+    return [];
+  }
+  if (!listings?.length) return [];
 
   // Batch-fetch profiles
   const providerIds = [...new Set(listings.map((l: CandidateRow) => l.provider_id))];
@@ -190,9 +195,17 @@ async function matchProviders(
       ? computeCategoryFit(parsed.category, [listing.category || "", ...(profile.headline ? [profile.headline] : [])])
       : 0.3;
 
+    let distanceKm: number | null = null;
+    if (
+      userLat != null && userLng != null &&
+      profile.latitude != null && profile.longitude != null
+    ) {
+      distanceKm = haversineKm(userLat, userLng, profile.latitude, profile.longitude);
+    }
+
     const scoreResult = scoreLead({
       categoryFit,
-      distanceKm: null, // TODO: compute from locality
+      distanceKm,
       availability: listing.availability || profile.availability || "available",
       responseTimeMinutes: 30, // default
       trustScore: profile.trust_score ?? 50,
@@ -254,7 +267,11 @@ async function matchServiceListings(
     .textSearch("fts_text", searchTerms, { type: "plain" })
     .limit(20);
 
-  if (error || !data?.length) return [];
+  if (error) {
+    logger.error("intentEngine", "Failed to query service_listings FTS", error, { searchTerms });
+    return [];
+  }
+  if (!data?.length) return [];
 
   return data.map((row: Record<string, unknown>, i: number) => ({
     matchType: "service" as const,
@@ -292,7 +309,11 @@ async function matchProducts(
     .gt("stock", 0)
     .limit(20);
 
-  if (error || !data?.length) return [];
+  if (error) {
+    logger.error("intentEngine", "Failed to query product_catalog FTS", error, { searchTerms });
+    return [];
+  }
+  if (!data?.length) return [];
 
   return data.map((row: Record<string, unknown>, i: number) => ({
     matchType: "product" as const,
@@ -334,7 +355,11 @@ async function matchMarkets(
     .or(orFilters.join(","))
     .limit(10);
 
-  if (error || !data?.length) return [];
+  if (error) {
+    logger.error("intentEngine", "Failed to query localities", error, { orFilters });
+    return [];
+  }
+  if (!data?.length) return [];
 
   return data.map((row: Record<string, unknown>, i: number) => ({
     matchType: "market" as const,
@@ -457,8 +482,11 @@ async function logIntent(
     .single();
 
   if (error) {
-    console.warn("[intentEngine] Failed to log intent:", error.message);
-    return crypto.randomUUID();
+    logger.error("intentEngine", "Failed to log intent", error, {
+      userId: params.userId,
+      query: params.query,
+    });
+    throw new Error(`Failed to log intent: ${error.message}`);
   }
   return data.id;
 }
@@ -480,7 +508,10 @@ async function logMatches(
 
   const { error } = await db.from("intent_matches").insert(rows);
   if (error) {
-    console.warn("[intentEngine] Failed to log matches:", error.message);
+    logger.error("intentEngine", "Failed to log matches", error, {
+      intentId,
+      matchCount: matches.length,
+    });
   }
 }
 

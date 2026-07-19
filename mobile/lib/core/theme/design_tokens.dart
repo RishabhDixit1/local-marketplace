@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 class AppColors {
   const AppColors._();
 
-  /// Canvas behind scrollable content (warm neutral, not pure gray).
-  static const background = Color(0xFFF6F7F9);
-  static const backgroundRaised = Color(0xFFECEFF4);
+  /// Canvas behind scrollable content (warm paper, not pure gray).
+  static const background = Color(0xFFF8F6F1);
+  static const backgroundRaised = Color(0xFFECE9E2);
   static const surface = Color(0xFFFFFFFF);
-  static const surfaceAlt = Color(0xFFF0F3F7);
+  static const surfaceAlt = Color(0xFFF0EDE6);
   static const surfaceTint = Color(0xFFE8EEF8);
-  static const surfacePressed = Color(0xFFE6EAEF);
+  static const surfacePressed = Color(0xFFE6E3DC);
   static const surfaceMuted = surfaceAlt;
   static const surfaceRaised = backgroundRaised;
 
@@ -42,6 +42,18 @@ class AppColors {
   static const urgentSoft = Color(0xFFFFEBDD);
   static const premium = Color(0xFF7147A8);
   static const premiumSoft = Color(0xFFF4ECFF);
+
+  /// Marigold / turmeric accent — warm yellow-orange for "Live" states and highlights.
+  static const marigold = Color(0xFFD4920A);
+  static const marigoldDeep = Color(0xFF8F5E06);
+  static const marigoldSoft = Color(0xFFFEF9EC);
+  static const marigoldMuted = Color(0xFFFDF0CC);
+
+  /// Sage / mint tint — subtle backgrounds and "Coming Soon" dormant states.
+  static const sage = Color(0xFF5AAD7A);
+  static const sageDeep = Color(0xFF3A7A55);
+  static const sageSoft = Color(0xFFF2F9F5);
+  static const sageMuted = Color(0xFFE8F3EC);
 
   static const scrim = Color(0xA6141A22);
   static const shadow = Color(0x15141A22);

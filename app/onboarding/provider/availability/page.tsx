@@ -49,6 +49,7 @@ export default function ProviderAvailabilityOnboarding() {
           setSlots(defaultSlots);
         }
       } catch {
+        setError("Could not load your saved availability. Showing defaults — you can edit before continuing.");
         setSlots(defaultSlots);
       } finally {
         setLoading(false);

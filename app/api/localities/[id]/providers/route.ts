@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
+import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 
 export const runtime = "nodejs";
 
@@ -57,10 +58,26 @@ export async function GET(
       );
     }
 
+    const mapped = (data || []).map((row: Record<string, unknown>) => ({
+      id: row.id,
+      name: row.full_name || "",
+      location: row.locality_name || "",
+      avatar_url: resolveProfileAvatarUrl(row.avatar_url as string) || "",
+      bio: "",
+      services: [],
+      avg_rating: null as number | null,
+      review_count: 0,
+      completed_jobs: row.completed_jobs ?? 0,
+      response_minutes: row.response_time_minutes ?? null,
+      price_min: null as number | null,
+      price_max: null as number | null,
+      verified: false,
+    }));
+
     return NextResponse.json({
       ok: true,
-      providers: (data || []) as LocalityProvider[],
-      total: (data || []).length,
+      providers: mapped as LocalityProvider[],
+      total: mapped.length,
     } satisfies LocalityProvidersResponse);
   } catch (error) {
     return NextResponse.json(

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { logger } from "@/lib/server/logger";
 import { isRazorpayConfigured, getRazorpay } from "@/lib/server/razorpay";
 
 export const runtime = "nodejs";
@@ -17,11 +18,14 @@ async function getHandler(request: Request) {
     return NextResponse.json({ ok: false, message: "No DB client" }, { status: 500 });
   }
 
-  const { data: accounts } = await db
+  const { data: accounts, error: accountsErr } = await db
     .from("provider_bank_accounts")
     .select("*")
     .eq("provider_id", auth.auth.userId)
     .order("is_default", { ascending: false });
+  if (accountsErr) {
+    return NextResponse.json({ ok: false, message: `Failed to load bank accounts: ${accountsErr.message}` }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, accounts: accounts ?? [] });
 }
@@ -78,6 +82,7 @@ async function postHandler(request: Request) {
 
   let razorpayContactId: string | null = null;
   let razorpayFundAccountId: string | null = null;
+  let bankAccountWarning: string | null = null;
 
   if (isRazorpayConfigured()) {
     try {
@@ -115,7 +120,9 @@ async function postHandler(request: Request) {
         razorpayFundAccountId = fundAccount.id;
       }
     } catch (err) {
-      console.error("[bank-accounts] Razorpay contact/fund creation failed:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error("[bank-accounts]", "Razorpay integration failed", err, { userId });
+      bankAccountWarning = `Bank account saved, but Razorpay integration failed: ${msg}. Payouts to this account will need manual processing.`;
     }
   }
 
@@ -140,7 +147,11 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, account });
+  return NextResponse.json({
+    ok: true,
+    account,
+    ...(bankAccountWarning ? { bankAccountWarning } : {}),
+  });
 }
 
 export const GET = withErrorHandling(getHandler, "provider:bank-accounts");

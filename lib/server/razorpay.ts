@@ -26,21 +26,26 @@ export const getRazorpay = (): Razorpay => {
   return new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET });
 };
 
+export type RefundResult =
+  | { ok: true; id: string; status: string }
+  | { ok: false; error: string };
+
 export async function createRefund(
   paymentId: string,
   amountPaise: number,
   notes?: Record<string, string>,
-): Promise<{ id: string; status: string } | null> {
-  if (!isRazorpayConfigured()) return null;
+): Promise<RefundResult> {
+  if (!isRazorpayConfigured()) return { ok: false, error: "Razorpay not configured" };
   try {
     const razorpay = getRazorpay();
     const refund = await razorpay.api.post({
       url: `/payments/${paymentId}/refund`,
       data: { amount: amountPaise, notes },
     }) as { id: string; status: string };
-    return { id: refund.id, status: refund.status };
+    return { ok: true, id: refund.id, status: refund.status };
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error("[razorpay] Refund failed for payment", paymentId, err);
-    return null;
+    return { ok: false, error: message };
   }
 }

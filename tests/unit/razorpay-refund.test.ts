@@ -28,30 +28,30 @@ describe("createRefund", () => {
     delete process.env.RAZORPAY_MODE;
   });
 
-  it("returns null when razorpay is not configured", async () => {
+  it("returns ok:false when razorpay is not configured", async () => {
     delete process.env.RAZORPAY_KEY_ID;
     const { createRefund } = await import("@/lib/server/razorpay");
     const result = await createRefund("pay_test_001", 50000);
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, error: "Razorpay not configured" });
   });
 
   it("returns refund id and status on success", async () => {
     mockRazorpayPost.mockResolvedValue({ id: "rfnd_test_001", status: "processed" });
     const { createRefund } = await import("@/lib/server/razorpay");
     const result = await createRefund("pay_test_001", 50000, { order_id: "order_123", reason: "Test refund" });
-    expect(result).toEqual({ id: "rfnd_test_001", status: "processed" });
+    expect(result).toEqual({ ok: true, id: "rfnd_test_001", status: "processed" });
     expect(mockRazorpayPost).toHaveBeenCalledWith({
       url: "/payments/pay_test_001/refund",
       data: { amount: 50000, notes: { order_id: "order_123", reason: "Test refund" } },
     });
   });
 
-  it("returns null on Razorpay API error and logs it", async () => {
+  it("returns ok:false with error on Razorpay API failure", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     mockRazorpayPost.mockRejectedValue(new Error("Razorpay API error"));
     const { createRefund } = await import("@/lib/server/razorpay");
     const result = await createRefund("pay_test_002", 10000);
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, error: "Razorpay API error" });
     expect(consoleSpy).toHaveBeenCalledWith(
       "[razorpay] Refund failed for payment",
       "pay_test_002",
@@ -64,7 +64,7 @@ describe("createRefund", () => {
     mockRazorpayPost.mockResolvedValue({ id: "rfnd_partial_001", status: "processed" });
     const { createRefund } = await import("@/lib/server/razorpay");
     const result = await createRefund("pay_test_003", 25000);
-    expect(result).toBeTruthy();
+    expect(result.ok).toBe(true);
     expect(mockRazorpayPost).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ amount: 25000 }),

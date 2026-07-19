@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { MapPin, Store, Users, ArrowRight } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { notFound } from "next/navigation";
@@ -118,7 +119,7 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--brand-100)]">
           <Store className="h-8 w-8 text-[var(--brand-700)]" />
         </div>
-        <h1 className="text-2xl font-extrabold text-[var(--ink-950)] sm:text-3xl">
+        <h1 className="text-3xl font-normal text-[var(--ink-950)] sm:text-4xl" style={{ fontFamily: "var(--font-display)" }}>
           {catName} in{" "}
           <span className="text-[var(--brand-700)]">{data.locality.name}</span>
         </h1>
@@ -126,8 +127,8 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
           Find trusted {catName.toLowerCase()} service providers in {data.locality.name}, {areaName}.
         </p>
 
-        <div className="mx-auto mt-6 inline-flex items-center gap-4 divide-x divide-slate-200 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-2.5 shadow-sm">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-700)]">
+        <div className="mx-auto mt-6 inline-flex items-center gap-4 divide-x divide-[var(--surface-border)] rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-2.5 shadow-sm">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-700)] tabular-nums">
             <Users className="h-3.5 w-3.5 text-[var(--brand-600)]" />
             {data.providers.length} {catName} providers
           </div>
@@ -157,22 +158,32 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
 
       {data.providers.length > 0 ? (
         <section>
-          <h2 className="mb-4 text-lg font-extrabold text-[var(--ink-950)]">
+          <h2 className="mb-4 text-xl font-normal text-[var(--ink-950)]" style={{ fontFamily: "var(--font-display)" }}>
             {catName} Providers in {data.locality.name}
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {data.providers.map((p) => (
               <Link
                 key={p.id}
                 href={`/profile/${p.id}`}
-                className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
+                className="nameplate-card block p-4 pt-6"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-sm font-semibold text-[var(--brand-700)]">
-                    {(p.full_name || p.name || "?")[0]}
-                  </div>
+                  {p.avatar_url ? (
+                    <Image
+                      src={p.avatar_url}
+                      alt={p.full_name || p.name || "Provider"}
+                      width={40}
+                      height={40}
+                      className="h-10 w-10 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-sm font-semibold text-[var(--brand-700)]">
+                      {(p.full_name || p.name || "?")[0]}
+                    </div>
+                  )}
                   <div>
-                    <h3 className="text-sm font-extrabold text-[var(--ink-950)]">{p.full_name || p.name}</h3>
+                    <h3 className="text-sm font-semibold text-[var(--ink-950)]">{p.full_name || p.name}</h3>
                     <p className="text-xs text-[var(--ink-500)]">{p.location || data.locality.name}</p>
                   </div>
                 </div>
@@ -191,14 +202,14 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
 
       <section className="mt-10">
         <div className="mb-4">
-          <h2 className="text-lg font-extrabold text-[var(--ink-950)]">Other Societies in {areaName}</h2>
+          <h2 className="text-xl font-normal text-[var(--ink-950)]" style={{ fontFamily: "var(--font-display)" }}>Other Societies in {areaName}</h2>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.allLocalities.filter((l) => l.id !== data.locality.id).slice(0, 6).map((l) => (
             <Link
               key={l.id}
               href={`/market/${l.slug}/${category}`}
-              className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 transition hover:border-[var(--brand-300)]"
+              className="nameplate-card block p-4 pt-6"
             >
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-[var(--ink-500)]" />

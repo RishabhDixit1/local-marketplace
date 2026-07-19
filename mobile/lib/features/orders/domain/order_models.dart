@@ -298,6 +298,12 @@ class MobileBulkCheckoutRequest {
   }
 }
 
+class MobileOrderStatusUpdateResult {
+  const MobileOrderStatusUpdateResult({this.warnings = const []});
+
+  final List<String> warnings;
+}
+
 class MobileCheckoutResult {
   const MobileCheckoutResult({required this.orderIds, required this.count});
 
@@ -322,6 +328,7 @@ class MobileRazorpayOrder {
     required this.amount,
     required this.currency,
     required this.keyId,
+    this.promoError,
   });
 
   factory MobileRazorpayOrder.fromJson(Map<String, dynamic> json) {
@@ -330,6 +337,7 @@ class MobileRazorpayOrder {
       amount: _toInt(json['amount']),
       currency: _readString(json['currency'], fallback: 'INR'),
       keyId: _readString(json['keyId']),
+      promoError: json['promoError'] as String?,
     );
   }
 
@@ -337,6 +345,7 @@ class MobileRazorpayOrder {
   final int amount;
   final String currency;
   final String keyId;
+  final String? promoError;
 }
 
 String _readString(Object? value, {String fallback = ''}) {

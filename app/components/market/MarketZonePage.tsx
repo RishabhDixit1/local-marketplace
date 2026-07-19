@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Building2,
@@ -148,6 +149,8 @@ export default function MarketZonePage({ slug }: MarketZonePageProps) {
     zoneSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const zoneDisplayName = zoneData?.name ?? slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
   return (
     <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-6 lg:pb-20">
       <header className="sticky top-0 z-30 -mx-4 mb-4 border-b border-[var(--surface-border)]/80 bg-[var(--surface-elevated)]/95 px-4 backdrop-blur-md sm:-mx-6 sm:px-6">
@@ -182,33 +185,35 @@ export default function MarketZonePage({ slug }: MarketZonePageProps) {
           <ChevronRight className="h-3 w-3" />
           <Link href="/market" className="hover:text-[var(--brand-700)]">Markets</Link>
           <ChevronRight className="h-3 w-3" />
-          <span className="text-[var(--ink-700)] font-semibold">{zoneData?.name ?? slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</span>
+          <span className="text-[var(--ink-700)] font-semibold">{zoneDisplayName}</span>
         </div>
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--brand-100)]">
           <MapPin className="h-8 w-8 text-[var(--brand-700)]" />
         </div>
-        <h1 className="text-2xl font-extrabold text-[var(--ink-950)] sm:text-3xl">
-          <span className="text-[var(--brand-700)]">{zoneData?.name ?? slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</span>
-          {zoneData?.city && `, ${zoneData.city}`}
+        <h1 className="text-3xl font-normal text-[var(--ink-950)] sm:text-4xl" style={{ fontFamily: "var(--font-display)" }}>
+          {zoneDisplayName}
+          {zoneData?.city && <span className="text-[var(--ink-500)]">, {zoneData.city}</span>}
         </h1>
         <p className="mt-1 text-xs text-[var(--ink-500)]">
-          {zoneData?.state ?? ""}
-          {zoneData?.state ? " — Hyperlocal marketplace" : "Hyperlocal marketplace"}
+          {zoneData?.state ?? ""}{zoneData?.state ? " — " : ""}Hyperlocal marketplace
         </p>
 
         {!localitiesLoading && (
-          <div className="mx-auto mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-3 shadow-sm sm:inline-flex sm:divide-x sm:divide-slate-200">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-700)]">
-              <Building2 className="h-3.5 w-3.5 text-[var(--brand-600)]" />
-              {societies.length} Societies
+          <div className="mx-auto mt-6 inline-flex items-center divide-x divide-[var(--surface-border)] rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-6 py-3 shadow-sm">
+            <div className="flex items-center gap-2 pr-5 text-sm tabular-nums">
+              <Building2 className="h-4 w-4 text-[var(--brand-600)]" />
+              <span className="font-bold text-[var(--ink-950)]">{societies.length}</span>
+              <span className="text-[var(--ink-500)]">Societies</span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-700)] sm:pl-4">
-              <Store className="h-3.5 w-3.5 text-[var(--brand-600)]" />
-              {marketZones.length} Markets
+            <div className="flex items-center gap-2 px-5 text-sm tabular-nums">
+              <Store className="h-4 w-4 text-[var(--brand-600)]" />
+              <span className="font-bold text-[var(--ink-950)]">{marketZones.length}</span>
+              <span className="text-[var(--ink-500)]">Markets</span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-700)] sm:pl-4">
-              <Users className="h-3.5 w-3.5 text-[var(--brand-600)]" />
-              {providers.length} Providers
+            <div className="flex items-center gap-2 pl-5 text-sm tabular-nums">
+              <Users className="h-4 w-4 text-[var(--brand-600)]" />
+              <span className="font-bold text-[var(--ink-950)]">{providers.length}</span>
+              <span className="text-[var(--ink-500)]">Providers</span>
             </div>
           </div>
         )}
@@ -265,18 +270,18 @@ export default function MarketZonePage({ slug }: MarketZonePageProps) {
 
       <section ref={zoneSectionRef} className="mb-10 scroll-mt-24">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-extrabold text-[var(--ink-950)]">Browse Local Zones</h2>
+          <h2 className="text-xl font-normal text-[var(--ink-950)]" style={{ fontFamily: "var(--font-display)" }}>Browse Local Zones</h2>
           {zoneData?.phase === 2 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-1 text-[10px] font-semibold text-purple-700 border border-purple-200">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--sage-50)] px-3 py-1 text-[10px] font-semibold text-[var(--sage-500)] border border-[var(--sage-200)]">
               <Store className="h-3 w-3" />
               Coming Soon
             </span>
           )}
         </div>
         {zoneData?.phase === 2 ? (
-          <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/50 p-10 text-center">
-            <Store className="mx-auto mb-3 h-10 w-10 text-purple-400" />
-            <h3 className="text-lg font-extrabold text-[var(--ink-950)]">{zoneData.name} is launching soon</h3>
+          <div className="rounded-2xl border border-dashed border-[var(--sage-200)] bg-[var(--sage-50)] p-10 text-center">
+            <Store className="mx-auto mb-3 h-10 w-10 text-[var(--sage-400)]" />
+            <h3 className="text-lg font-normal text-[var(--ink-950)]" style={{ fontFamily: "var(--font-display)" }}>{zoneData.name} is launching soon</h3>
             <p className="mt-1 text-sm text-[var(--ink-500)] max-w-md mx-auto">
               We&apos;re currently mapping all markets and vendors in this zone.
               Check back soon for a complete list of local services.
@@ -294,8 +299,8 @@ export default function MarketZonePage({ slug }: MarketZonePageProps) {
       {categories.length > 0 && (
         <section className="mb-10">
           <div className="mb-4">
-            <h2 className="text-lg font-extrabold text-[var(--ink-950)]">Services Available</h2>
-            <p className="text-xs text-[var(--ink-500)]">Browse by category — standard pricing for {zoneData?.name ?? slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</p>
+            <h2 className="text-xl font-normal text-[var(--ink-950)]" style={{ fontFamily: "var(--font-display)" }}>Services Available</h2>
+            <p className="text-xs text-[var(--ink-500)]">Browse by category — standard pricing for {zoneDisplayName}</p>
           </div>
           <ServiceCategoryGrid categories={categories as never[]} zoneSlug={slug} />
         </section>
@@ -318,9 +323,9 @@ export default function MarketZonePage({ slug }: MarketZonePageProps) {
         </div>
 
         {providersLoading ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
+              <div key={i} className="nameplate-card animate-pulse p-4 pt-6">
                 <div className="flex items-start gap-3">
                   <div className="h-11 w-11 shrink-0 animate-pulse rounded-xl bg-[var(--surface-soft)]" />
                   <div className="flex-1 space-y-2">
@@ -332,16 +337,11 @@ export default function MarketZonePage({ slug }: MarketZonePageProps) {
                   <div className="h-3 w-16 animate-pulse rounded bg-[var(--surface-soft)]" />
                   <div className="h-3 w-16 animate-pulse rounded bg-[var(--surface-soft)]" />
                 </div>
-                <div className="mt-3 h-3 w-full animate-pulse rounded bg-[var(--surface-soft)]" />
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="h-4 w-20 animate-pulse rounded bg-[var(--surface-soft)]" />
-                  <div className="h-9 w-24 animate-pulse rounded-xl bg-[var(--surface-soft)]" />
-                </div>
               </div>
             ))}
           </div>
         ) : (providers ?? []).length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {(providers ?? []).map((provider) => (
               <div key={provider.id} className="h-full">
                 <ProviderCard
@@ -375,7 +375,7 @@ export default function MarketZonePage({ slug }: MarketZonePageProps) {
 
       <section className="mx-auto mt-12 max-w-lg rounded-2xl border border-dashed border-[var(--brand-300)] bg-gradient-to-br from-[var(--brand-50)] to-white p-6 text-center">
         <Store className="mx-auto h-8 w-8 text-[var(--brand-500)]" />
-        <h3 className="mt-3 text-lg font-extrabold text-[var(--ink-950)]">Are you a service provider?</h3>
+        <h3 className="mt-3 text-lg font-normal text-[var(--ink-950)]" style={{ fontFamily: "var(--font-display)" }}>Are you a service provider?</h3>
         <p className="mt-1 text-sm text-[var(--ink-500)]">List your business on {appName} and get more customers from your neighborhood.</p>
         <Link
           href="/onboarding/provider/locality"
@@ -390,20 +390,30 @@ export default function MarketZonePage({ slug }: MarketZonePageProps) {
 function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCardData; onContact: (p: ProviderCardData) => void; onSelect: (p: ProviderCardData) => void }) {
   const priceLabel = provider.priceMin != null
     ? provider.priceMax != null && provider.priceMax > provider.priceMin
-      ? `₹${provider.priceMin} - ₹${provider.priceMax}`
+      ? `₹${provider.priceMin} – ₹${provider.priceMax}`
       : `From ₹${provider.priceMin}`
     : null;
 
   return (
-    <div className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 transition hover:border-[var(--brand-500)]/30 hover:shadow-md hover:shadow-[var(--brand-500)]/5">
+    <div className="nameplate-card group flex h-full flex-col p-4 pt-6">
       <div className="flex items-start gap-3">
-        <button type="button" onClick={() => onSelect(provider)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-100)] text-base font-bold text-[var(--brand-700)] transition hover:ring-2 hover:ring-[var(--brand-300)]">
-          {provider.name.charAt(0)}
-        </button>
+        {provider.avatarUrl ? (
+          <Image
+            src={provider.avatarUrl}
+            alt={provider.name}
+            width={44}
+            height={44}
+            className="h-11 w-11 shrink-0 rounded-xl object-cover"
+          />
+        ) : (
+          <button type="button" onClick={() => onSelect(provider)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-50)] text-base font-bold text-[var(--brand-700)] transition hover:ring-2 hover:ring-[var(--brand-300)]">
+            {provider.name.charAt(0)}
+          </button>
+        )}
         <div className="min-w-0 flex-1">
           <button type="button" onClick={() => onSelect(provider)} className="w-full text-left">
             <div className="flex items-start justify-between gap-2">
-              <h3 className="min-w-0 truncate text-sm font-bold text-[var(--ink-950)]">{provider.name}</h3>
+              <h3 className="min-w-0 truncate text-sm font-semibold text-[var(--ink-950)]">{provider.name}</h3>
               {provider.verified && (
                 <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">Verified</span>
               )}
@@ -413,10 +423,10 @@ function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCar
         </div>
       </div>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--ink-500)]">
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--ink-500)] tabular-nums">
         {provider.avgRating ? (
           <span className="flex items-center gap-1">
-            <Star className="h-3 w-3 text-amber-400" fill="currentColor" />
+            <Star className="h-3 w-3 text-[var(--marigold-400)]" fill="currentColor" />
             {provider.avgRating.toFixed(1)} ({provider.reviewCount})
           </span>
         ) : null}
@@ -440,7 +450,7 @@ function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCar
 
       <div className="mt-auto flex items-center justify-between pt-3">
         {priceLabel ? (
-          <span className="text-sm font-bold text-[var(--brand-700)]">{priceLabel}</span>
+          <span className="text-sm font-bold text-[var(--brand-700)] tabular-nums">{priceLabel}</span>
         ) : <span />}
         <button
           type="button"

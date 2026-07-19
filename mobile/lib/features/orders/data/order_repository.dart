@@ -69,7 +69,7 @@ class OrderRepository {
     return MobileCheckoutResult.fromJson(payload);
   }
 
-  Future<void> updateStatus({
+  Future<MobileOrderStatusUpdateResult> updateStatus({
     required String orderId,
     required String status,
   }) async {
@@ -78,9 +78,19 @@ class OrderRepository {
       body: {'status': status},
     );
     _expectOk(payload, 'Unable to update order status.');
+
+    final warnings = <String>[];
+    final refundWarning = payload['refundWarning'] as String?;
+    final payoutWarning = payload['payoutWarning'] as String?;
+    final bookingWarning = payload['bookingWarning'] as String?;
+    if (refundWarning != null && refundWarning.isNotEmpty) warnings.add(refundWarning);
+    if (payoutWarning != null && payoutWarning.isNotEmpty) warnings.add(payoutWarning);
+    if (bookingWarning != null && bookingWarning.isNotEmpty) warnings.add(bookingWarning);
+
+    return MobileOrderStatusUpdateResult(warnings: warnings);
   }
 
-  Future<void> updateDeliveryStatus({
+  Future<MobileOrderStatusUpdateResult> updateDeliveryStatus({
     required String orderId,
     required String status,
     Map<String, dynamic>? extra,
@@ -90,6 +100,14 @@ class OrderRepository {
       body: {'status': status, ...?extra},
     );
     _expectOk(payload, 'Unable to update delivery status.');
+
+    final warnings = <String>[];
+    final payoutWarning = payload['payoutWarning'] as String?;
+    final postSyncWarning = payload['postSyncWarning'] as String?;
+    if (payoutWarning != null && payoutWarning.isNotEmpty) warnings.add(payoutWarning);
+    if (postSyncWarning != null && postSyncWarning.isNotEmpty) warnings.add(postSyncWarning);
+
+    return MobileOrderStatusUpdateResult(warnings: warnings);
   }
 
   Future<void> raiseDispute({

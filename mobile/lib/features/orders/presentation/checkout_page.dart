@@ -44,6 +44,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   _PendingRazorpayCheckout? _pendingRazorpayCheckout;
   var _placing = false;
   String? _checkoutRecoveryMessage;
+  String? _promoError;
   String? _successOrderId;
 
   static const _steps = [_CheckoutStep.review, _CheckoutStep.address, _CheckoutStep.payment, _CheckoutStep.confirm];
@@ -145,6 +146,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     setState(() {
       _placing = true;
       _checkoutRecoveryMessage = null;
+      _promoError = null;
     });
     try {
       String? razorpayOrderId;
@@ -159,6 +161,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
               receipt: 'serviq-${DateTime.now().millisecondsSinceEpoch}',
             );
         razorpayOrderId = paymentOrder.orderId;
+        if (paymentOrder.promoError != null) {
+          setState(() => _promoError = paymentOrder!.promoError);
+        }
       }
 
       final bulk = MobileBulkCheckoutRequest(
@@ -444,6 +449,16 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                               icon: Icons.payments_outlined,
                               actionLabel: 'Dismiss',
                               onAction: () => setState(() => _checkoutRecoveryMessage = null),
+                            ),
+                          ],
+                          if ((_promoError ?? '').trim().isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            ServiqRecoveryBanner(
+                              message: _promoError!.trim(),
+                              tone: ServiqRecoveryTone.warning,
+                              icon: Icons.local_offer_outlined,
+                              actionLabel: 'Dismiss',
+                              onAction: () => setState(() => _promoError = null),
                             ),
                           ],
                         ],

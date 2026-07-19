@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { scoreWithAi, type AiMatchProvider, type AiMatchRequest } from "@/lib/ai/matching";
-import { scoreLead, computeCategoryFit, mergeAiIntoBreakdown, type LeadScoreInput, type AiEnhancedBreakdown } from "@/lib/leads/scoring";
+import { scoreLead, computeCategoryFit, mergeAiIntoBreakdown, haversineKm, type LeadScoreInput, type AiEnhancedBreakdown } from "@/lib/leads/scoring";
 import { routeLeads, type ProviderCapacity } from "@/lib/leads/routing";
 import { enqueueJob } from "@/lib/server/backgroundJobs";
 
@@ -29,22 +29,6 @@ type AiMatchSuccess = {
 
 const toError = (status: number, code: string, message: string, details?: string) =>
   NextResponse.json({ ok: false, code, message, details } satisfies AiMatchError, { status });
-
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function toRad(deg: number): number {
-  return (deg * Math.PI) / 180;
-}
 
 export async function POST(request: Request) {
   const authResult = await requireRequestAuth(request);
@@ -95,13 +79,31 @@ export async function POST(request: Request) {
     .eq("role", "provider")
     .not("latitude", "is", null)
     .not("longitude", "is", null)
-    .limit(50);
+    .limit(100);
 
   if (profilesError) {
     return toError(500, "DB", profilesError.message);
   }
 
-  const providerList = (providers as Array<Record<string, unknown>> | null) || [];
+  const rawProviderList = (providers as Array<Record<string, unknown>> | null) || [];
+
+  const hasRequestCoords = helpRequest.latitude != null && helpRequest.longitude != null;
+  const sortedProviders = hasRequestCoords
+    ? [...rawProviderList].sort((a, b) => {
+        const aLat = a.latitude as number | null;
+        const aLng = a.longitude as number | null;
+        const bLat = b.latitude as number | null;
+        const bLng = b.longitude as number | null;
+        const aDist = (aLat != null && aLng != null)
+          ? haversineKm(helpRequest.latitude as number, helpRequest.longitude as number, aLat, aLng)
+          : Infinity;
+        const bDist = (bLat != null && bLng != null)
+          ? haversineKm(helpRequest.latitude as number, helpRequest.longitude as number, bLat, bLng)
+          : Infinity;
+        return aDist - bDist;
+      })
+    : rawProviderList;
+  const providerList = sortedProviders.slice(0, 50);
 
   if (providerList.length === 0) {
     return NextResponse.json<AiMatchError>({

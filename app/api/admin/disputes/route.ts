@@ -119,7 +119,7 @@ export const PATCH = withErrorHandling(async (request: Request) => {
         reason: "Dispute resolved for consumer",
         resolved_by: auth.auth.userId,
       });
-      if (refund) {
+      if (refund.ok) {
         refundId = refund.id;
         refundStatus = refund.status;
       }

@@ -11,7 +11,9 @@ export default function AuthCallbackPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [message, setMessage] = useState("Verifying your identity...");
+  const [profileError, setProfileError] = useState(false);
   const handledRef = useRef(false);
+  const sessionRef = useRef<Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"]>(null);
 
   const steps = [
     { label: "Verifying", progress: 30 },
@@ -44,7 +46,18 @@ export default function AuthCallbackPage() {
         return;
       }
       const { ensureProfileForUser, resolveCurrentProfileDestination } = await import("@/lib/profile/client");
-      const profile = await ensureProfileForUser(session.user).catch(() => null);
+      let profile;
+      try {
+        profile = await ensureProfileForUser(session.user);
+      } catch (err) {
+        console.error("[callback] Profile bootstrap failed:", err);
+        if (!cancelled) {
+          sessionRef.current = session;
+          setProfileError(true);
+          setMessage("We couldn't finish setting up your account. Please try again.");
+        }
+        return;
+      }
 
       try {
         const referralCode = typeof localStorage !== "undefined" ? localStorage.getItem("referral_code") : null;
@@ -142,6 +155,26 @@ export default function AuthCallbackPage() {
     };
   }, [router]);
 
+  const retryProfileBootstrap = async () => {
+    const session = sessionRef.current;
+    if (!session) return;
+    setProfileError(false);
+    setStep(1);
+    setMessage("Creating your profile...");
+    handledRef.current = false;
+    try {
+      const { ensureProfileForUser, resolveCurrentProfileDestination } = await import("@/lib/profile/client");
+      const profile = await ensureProfileForUser(session.user);
+      setStep(2);
+      setMessage("Redirecting to your dashboard...");
+      router.replace(resolveCurrentProfileDestination(profile));
+    } catch (err) {
+      console.error("[callback] Profile bootstrap retry failed:", err);
+      setProfileError(true);
+      setMessage("We couldn't finish setting up your account. Please try again.");
+    }
+  };
+
   const progress = step >= 0 && step < steps.length ? steps[step].progress : step === -1 ? 0 : 100;
 
   return (
@@ -175,6 +208,17 @@ export default function AuthCallbackPage() {
         </div>
 
         <p className="text-sm text-[var(--ink-700)]">{message}</p>
+
+        {profileError ? (
+          <button
+            type="button"
+            onClick={() => void retryProfileBootstrap()}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] active:scale-[0.98]"
+          >
+            Try Again
+          </button>
+        ) : null}
+
         <p className="text-xs text-[var(--ink-500)]">{appTagline}</p>
       </div>
     </main>

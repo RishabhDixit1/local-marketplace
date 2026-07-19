@@ -36,13 +36,13 @@ class AppLocalizationsTe extends AppLocalizations {
   @override
   String get sending => 'పంపుతోంది...';
   @override
-  String get home => 'డాష్\u200Cబోర్డ్';
+  String get home => 'హోమ్';
   @override
-  String get explore => 'అన్వేషించు';
+  String get explore => 'ఎక్స్\u200Cప్లోర్';
   @override
-  String get people => 'ప్రజలు';
+  String get people => 'పీపుల్';
   @override
-  String get market => 'హోమ్';
+  String get market => 'మార్కెట్';
   @override
   String get work => 'పని';
   @override

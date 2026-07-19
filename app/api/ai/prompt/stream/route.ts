@@ -4,6 +4,9 @@ import { createSupabaseAnonServerClientWithAuthTimeout } from "@/lib/server/supa
 import { parseIntentBest } from "@/lib/ai/intentParser";
 import { moderatePrompt } from "@/lib/ai/contentModeration";
 import { appName } from "@/lib/branding";
+import { applyRateLimit } from "@/lib/server/rateLimit";
+
+const STREAM_RATE_LIMIT = { maxRequests: 30, windowSeconds: 60 };
 
 export const runtime = "edge";
 
@@ -63,6 +66,11 @@ export async function POST(request: Request) {
       }
     }
 
+    const rateLimitResult = await applyRateLimit(userId ?? null, "ai:prompt:stream", STREAM_RATE_LIMIT);
+    if (rateLimitResult.limited) {
+      return rateLimitResult.response;
+    }
+
     const location = typeof body?.context?.location === "string" ? body.context.location : undefined;
     const conversation: Array<{ role: "user" | "assistant"; content: string }> = Array.isArray(body?.conversation) ? body.conversation : [];
 
@@ -83,10 +91,13 @@ If you're unsure, ask clarifying questions.
 
 Remember the context from previous messages — if the user refers to something they mentioned before, use that context.`;
 
-    const result = streamText({
-      model: google("gemini-2.0-flash"),
-      system: systemPrompt,
-      prompt: `${conversationContext}
+    let responseText: string;
+
+    try {
+      const result = streamText({
+        model: google("gemini-2.0-flash"),
+        system: systemPrompt,
+        prompt: `${conversationContext}
 
 Detected intent: ${parsed.action}
 Category: ${parsed.category || "Not specified"}
@@ -94,34 +105,49 @@ Location: ${parsed.location || location || "Not specified"}
 Keywords: ${parsed.keywords.join(", ")}
 
 Provide a helpful response that acknowledges what they're looking for and guides them to find it.`,
-      temperature: 0.7,
-    });
+        temperature: 0.7,
+      });
 
-    const textStream = result.textStream;
+      const textStream = result.textStream;
 
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of textStream) {
-            controller.enqueue(encoder.encode(chunk));
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of textStream) {
+              controller.enqueue(encoder.encode(chunk));
+            }
+            controller.close();
+          } catch (error) {
+            controller.error(error);
           }
-          controller.close();
-        } catch (error) {
-          controller.error(error);
-        }
-      },
-    });
+        },
+      });
 
-    return new Response(stream, {
-      headers: {
+      const responseHeaders = new Headers({
         "content-type": "text/plain; charset=utf-8",
         "x-action": sanitizeHeaderValue(parsed.action || ""),
         "x-category": sanitizeHeaderValue(parsed.category || ""),
         "x-redirect": buildRedirectUrl(parsed),
         "cache-control": "no-cache",
-      },
+      });
+
+      return new Response(stream, { headers: responseHeaders });
+    } catch (aiError) {
+      console.warn("[AI stream] Gemini unavailable, falling back to keyword response:", aiError instanceof Error ? aiError.message : aiError);
+      responseText = parsed.response || `I can help you find ${parsed.category || "services"}${parsed.location ? ` near ${parsed.location}` : " near you"}. Try searching on the dashboard for available options.`;
+    }
+
+    const fallbackHeaders = new Headers({
+      "content-type": "text/plain; charset=utf-8",
+      "x-action": sanitizeHeaderValue(parsed.action || ""),
+      "x-category": sanitizeHeaderValue(parsed.category || ""),
+      "x-redirect": buildRedirectUrl(parsed),
+      "x-streamed": "false",
+      "cache-control": "no-cache",
     });
+
+    return new Response(responseText, { headers: fallbackHeaders });
   } catch (error) {
     console.error("AI stream error:", error);
     return new Response(JSON.stringify({ error: "Failed to process query" }), {

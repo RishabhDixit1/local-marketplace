@@ -48,11 +48,14 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, error: "Forbidden." }, { status: 403 });
   }
 
-  const { data: existing } = await admin
+  const { data: existing, error: existingErr } = await admin
     .from("invoices")
     .select("id, invoice_number")
     .eq("order_id", order.id)
     .maybeSingle();
+  if (existingErr) {
+    return NextResponse.json({ ok: false, error: `Failed to check for existing invoice: ${existingErr.message}` }, { status: 500 });
+  }
 
   if (existing) {
     return NextResponse.json({ ok: true, invoiceId: existing.id, invoiceNumber: existing.invoice_number });

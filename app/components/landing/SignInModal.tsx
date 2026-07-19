@@ -43,7 +43,14 @@ export function SignInModal({ show, contactProvider, onClose, onAuthComplete }: 
   const completeAuth = useCallback(
     async (user: User) => {
       const { ensureProfileForUser, resolveCurrentProfileDestination } = await import("@/lib/profile/client");
-      const profile = await ensureProfileForUser(user).catch(() => null);
+      let profile;
+      try {
+        profile = await ensureProfileForUser(user);
+      } catch (err) {
+        console.error("[SignInModal] Profile bootstrap failed:", err);
+        setErrorMessage("We couldn't finish setting up your account. Please try again.");
+        return false;
+      }
       const target = contactProviderRef.current
         ? `/dashboard/chat?providerId=${contactProviderRef.current.id}`
         : resolveCurrentProfileDestination(profile);
@@ -52,6 +59,7 @@ export function SignInModal({ show, contactProvider, onClose, onAuthComplete }: 
       onClose();
       onAuthComplete();
       router.replace(target);
+      return true;
     },
     [onClose, onAuthComplete, router],
   );
@@ -113,14 +121,12 @@ export function SignInModal({ show, contactProvider, onClose, onAuthComplete }: 
       });
       if (error) throw error;
       if (data?.user) {
-        await completeAuth(data.user);
-        return;
+        if (await completeAuth(data.user)) return;
       }
     } catch (goTrueError) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        await completeAuth(session.user);
-        return;
+        if (await completeAuth(session.user)) return;
       }
       if (goTrueError instanceof Error) console.warn("verifyOtp (GoTrue) failed, falling back to custom API:", goTrueError.message);
     }
@@ -157,8 +163,7 @@ export function SignInModal({ show, contactProvider, onClose, onAuthComplete }: 
       }
 
       if (payload.user) {
-        await completeAuth(payload.user as unknown as User);
-        return;
+        if (await completeAuth(payload.user as unknown as User)) return;
       }
       setErrorMessage("Signed in, but could not load your profile. Try refreshing.");
     } catch (error) {

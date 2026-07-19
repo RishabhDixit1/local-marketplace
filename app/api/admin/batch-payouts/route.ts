@@ -25,10 +25,13 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, message: "No DB client" }, { status: 500 });
   }
 
-  const { data: pendingPayouts } = await db
+  const { data: pendingPayouts, error: pendingErr } = await db
     .from("provider_payouts")
     .select("*")
     .eq("status", "pending");
+  if (pendingErr) {
+    return NextResponse.json({ ok: false, message: `Failed to load pending payouts: ${pendingErr.message}` }, { status: 500 });
+  }
 
   if (!pendingPayouts || pendingPayouts.length === 0) {
     return NextResponse.json({ ok: true, processed: 0, failed: 0, errors: [] });
@@ -43,11 +46,15 @@ async function postHandler(request: Request) {
     const providerId = payout.provider_id;
 
     // Recalculate provider's available balance
-    const { data: orders } = await db
+    const { data: orders, error: ordersErr } = await db
       .from("orders")
       .select("provider_payout_paise, metadata")
       .eq("provider_id", providerId)
       .in("status", ["completed", "closed"]);
+    if (ordersErr) {
+      errors.push(`Failed to load orders for provider ${providerId}: ${ordersErr.message}`);
+      continue;
+    }
 
     const totalEarnedPaise = (orders ?? []).reduce((sum, o) => {
       const meta =
@@ -64,22 +71,30 @@ async function postHandler(request: Request) {
       return sum + (typeof o.provider_payout_paise === "number" ? o.provider_payout_paise : 0);
     }, 0);
 
-    const { data: paidPayouts } = await db
+    const { data: paidPayouts, error: paidErr } = await db
       .from("provider_payouts")
       .select("net_amount_paise")
       .eq("provider_id", providerId)
       .in("status", ["completed"]);
+    if (paidErr) {
+      errors.push(`Failed to load paid payouts for provider ${providerId}: ${paidErr.message}`);
+      continue;
+    }
 
     const totalPaidOutPaise = (paidPayouts ?? []).reduce(
       (sum, p) => sum + p.net_amount_paise,
       0
     );
 
-    const { data: pendingPayoutsForProvider } = await db
+    const { data: pendingPayoutsForProvider, error: pendProvErr } = await db
       .from("provider_payouts")
       .select("net_amount_paise")
       .eq("provider_id", providerId)
       .in("status", ["pending", "approved", "processing"]);
+    if (pendProvErr) {
+      errors.push(`Failed to load pending payouts for provider ${providerId}: ${pendProvErr.message}`);
+      continue;
+    }
 
     const totalPendingPaise = (pendingPayoutsForProvider ?? []).reduce(
       (sum, p) => sum + p.net_amount_paise,

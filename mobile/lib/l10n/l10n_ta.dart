@@ -36,13 +36,13 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get sending => 'அனுப்புகிறது...';
   @override
-  String get home => 'டாஷ்போர்டு';
+  String get home => 'முகப்பு';
   @override
-  String get explore => 'ஆராய்க';
+  String get explore => 'ஆராய்ச்சி';
   @override
   String get people => 'மக்கள்';
   @override
-  String get market => 'முகப்பு';
+  String get market => 'சந்தை';
   @override
   String get work => 'வேலை';
   @override

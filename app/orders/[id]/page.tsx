@@ -121,6 +121,11 @@ export default function OrderStatusPage() {
   const [showDisputeForm, setShowDisputeForm] = useState(false);
   const [razorpayAvailable, setRazorpayAvailable] = useState(false);
   const [orderRealtimeHealth, setOrderRealtimeHealth] = useState<"connected" | "degraded">("connected");
+  const [refundWarning, setRefundWarning] = useState<string | null>(null);
+  const [payoutWarning, setPayoutWarning] = useState<string | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [bookingWarning, setBookingWarning] = useState<string | null>(null);
+  const [postSyncWarning, setPostSyncWarning] = useState<string | null>(null);
   const scriptLoadedRef = useRef(false);
 
   const fetchOrder = useCallback(async () => {
@@ -170,10 +175,14 @@ export default function OrderStatusPage() {
   const updateStatus = useCallback(async (nextStatus: CanonicalOrderStatus) => {
     setBusy(true); setActionError("");
     try {
-      await fetchAuthedJson(supabase, `/api/orders/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: nextStatus }),
-      });
+      const res = await fetchAuthedJson<{ ok: boolean; refundWarning?: string; payoutWarning?: string; bookingWarning?: string }>(
+        supabase, `/api/orders/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: nextStatus }),
+        });
+      if (res.refundWarning) setRefundWarning(res.refundWarning);
+      if (res.payoutWarning) setPayoutWarning(res.payoutWarning);
+      if (res.bookingWarning) setBookingWarning(res.bookingWarning);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Failed to update order.");
     } finally {
@@ -184,10 +193,12 @@ export default function OrderStatusPage() {
   const updateDeliveryStatus = useCallback(async (nextStatus: DeliveryStatus, extra?: Record<string, string | undefined>) => {
     setBusy(true); setActionError("");
     try {
-      const res = await fetchAuthedJson<{ ok: boolean; delivery: DeliveryInfo }>(supabase, `/api/orders/${id}/delivery`, {
+      const res = await fetchAuthedJson<{ ok: boolean; delivery: DeliveryInfo; payoutWarning?: string; postSyncWarning?: string }>(supabase, `/api/orders/${id}/delivery`, {
         method: "POST",
         body: JSON.stringify({ status: nextStatus, ...extra }),
       });
+      if (res.payoutWarning) setPayoutWarning(res.payoutWarning);
+      if (res.postSyncWarning) setPostSyncWarning(res.postSyncWarning);
       if (res.ok && res.delivery) {
         setOrder((prev) => prev ? { ...prev, metadata: { ...prev.metadata, delivery: res.delivery } } : null);
       }
@@ -208,12 +219,13 @@ export default function OrderStatusPage() {
     try {
       const amountPaise = Math.round(order.price * 100);
       const pgRes = await fetchAuthedJson<{
-        ok: boolean; orderId: string; amount: number; currency: string; keyId: string;
+        ok: boolean; orderId: string; amount: number; currency: string; keyId: string; promoError?: string;
       }>(supabase, "/api/payment/create-order", {
         method: "POST",
         body: JSON.stringify({ amount: amountPaise, receipt: `ord_${order.id}_${Date.now()}` }),
       });
       if (!pgRes.ok) throw new Error("Payment gateway unavailable.");
+      if (pgRes.promoError) setPromoError(pgRes.promoError);
       await new Promise<void>((resolve, reject) => {
         const rz = new window.Razorpay!({
           key: pgRes.keyId,
@@ -327,6 +339,32 @@ export default function OrderStatusPage() {
       </div>
 
       <div className="mx-auto max-w-lg px-4 py-6 space-y-4">
+
+        {(refundWarning || payoutWarning || promoError || bookingWarning || postSyncWarning) && (
+          <div className="rounded-2xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Payment Notice</p>
+                {refundWarning && <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">{refundWarning}</p>}
+                {payoutWarning && <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">{payoutWarning}</p>}
+                {promoError && <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">{promoError}</p>}
+                {bookingWarning && <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">{bookingWarning}</p>}
+                {postSyncWarning && <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">{postSyncWarning}</p>}
+                <p className="mt-2 text-xs text-amber-600 dark:text-amber-500">
+                  Please contact <a href="mailto:support@serviq.in" className="underline font-medium">support@serviq.in</a> for assistance.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setRefundWarning(null); setPayoutWarning(null); setPromoError(null); setBookingWarning(null); setPostSyncWarning(null); }}
+                className="shrink-0 rounded-full p-1 text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Item card */}
         <section className="rounded-2xl bg-[var(--surface-elevated)] p-5 shadow-sm">

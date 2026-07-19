@@ -145,7 +145,7 @@ export const PATCH = withErrorHandling(async (request: Request) => {
         reason: "Admin refund",
         refunded_by: auth.auth.userId,
       });
-      if (refund) {
+      if (refund.ok) {
         refundId = refund.id;
         refundStatus = refund.status;
       }

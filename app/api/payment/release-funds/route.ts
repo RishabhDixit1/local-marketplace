@@ -27,6 +27,7 @@ async function postHandler(request: Request) {
   }
 
   let released = 0;
+  const failedOrderIds: string[] = [];
   for (const order of heldOrders ?? []) {
     const meta =
       typeof order.metadata === "object" && order.metadata !== null
@@ -44,13 +45,18 @@ async function postHandler(request: Request) {
       })
       .eq("id", order.id);
 
-    if (!updateError) released++;
+    if (!updateError) {
+      released++;
+    } else {
+      failedOrderIds.push(order.id);
+    }
   }
 
   return NextResponse.json({
     ok: true,
     released,
     total: (heldOrders ?? []).length,
+    ...(failedOrderIds.length > 0 ? { failedOrderIds } : {}),
   });
 }
 

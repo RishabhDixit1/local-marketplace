@@ -140,29 +140,29 @@ class AppTheme {
     final baseText = GoogleFonts.manropeTextTheme(
       Typography.material2021().black,
     );
-    final display = GoogleFonts.soraTextTheme(baseText);
+    final display = GoogleFonts.dmSerifDisplayTextTheme(baseText);
     final textTheme = baseText.copyWith(
       displayLarge: display.displayLarge?.copyWith(
         fontSize: 34,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w400,
         letterSpacing: 0,
         color: _inkStrong,
       ),
       headlineLarge: display.headlineLarge?.copyWith(
         fontSize: 30,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w400,
         letterSpacing: 0,
         color: _inkStrong,
       ),
       headlineMedium: display.headlineMedium?.copyWith(
         fontSize: 24,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w400,
         letterSpacing: 0,
         color: _inkStrong,
       ),
       headlineSmall: display.headlineSmall?.copyWith(
         fontSize: 20,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w400,
         letterSpacing: 0,
         color: _inkStrong,
       ),
@@ -492,29 +492,29 @@ class AppTheme {
     final baseText = GoogleFonts.manropeTextTheme(
       Typography.material2021().white,
     );
-    final display = GoogleFonts.soraTextTheme(baseText);
+    final display = GoogleFonts.dmSerifDisplayTextTheme(baseText);
     final textTheme = baseText.copyWith(
       displayLarge: display.displayLarge?.copyWith(
         fontSize: 34,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w400,
         letterSpacing: 0,
         color: AppColors.darkInkStrong,
       ),
       headlineLarge: display.headlineLarge?.copyWith(
         fontSize: 30,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w400,
         letterSpacing: 0,
         color: AppColors.darkInkStrong,
       ),
       headlineMedium: display.headlineMedium?.copyWith(
         fontSize: 24,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w400,
         letterSpacing: 0,
         color: AppColors.darkInkStrong,
       ),
       headlineSmall: display.headlineSmall?.copyWith(
         fontSize: 20,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w400,
         letterSpacing: 0,
         color: AppColors.darkInkStrong,
       ),

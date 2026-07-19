@@ -36,13 +36,13 @@ class AppLocalizationsMr extends AppLocalizations {
   @override
   String get sending => 'पाठवत आहे...';
   @override
-  String get home => 'डॅशबोर्ड';
+  String get home => 'होम';
   @override
-  String get explore => 'एक्सप्लोर करा';
+  String get explore => 'एक्सप्लोर';
   @override
   String get people => 'लोक';
   @override
-  String get market => 'होम';
+  String get market => 'मार्केट';
   @override
   String get work => 'काम';
   @override

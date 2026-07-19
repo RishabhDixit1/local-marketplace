@@ -51,12 +51,24 @@ async function postHandler(request: Request, { params }: { params: Promise<{ id:
   }
 
   // Check slot availability for new time
-  const { data: available } = await db.rpc("check_booking_slot_available", {
+  const { data: available, error: rpcError } = await db.rpc("check_booking_slot_available", {
     p_provider_id: existing.provider_id,
     p_scheduled_date: body.scheduled_date,
     p_start_time: body.start_time,
     p_end_time: body.end_time,
   });
+
+  if (rpcError) {
+    console.error("[bookings:reschedule] Availability check RPC failed", rpcError.message, {
+      bookingId,
+      providerId: existing.provider_id,
+      scheduledDate: body.scheduled_date,
+    });
+    return NextResponse.json({
+      ok: false,
+      message: "Unable to verify slot availability. Please try again.",
+    }, { status: 503 });
+  }
 
   if (available === false) {
     return NextResponse.json({ ok: false, message: "The requested time slot is not available" }, { status: 409 });
@@ -83,6 +95,12 @@ async function postHandler(request: Request, { params }: { params: Promise<{ id:
     .single();
 
   if (error) {
+    if (error.code === "23P01" || error.code === "23505") {
+      return NextResponse.json({
+        ok: false,
+        message: "This time slot is no longer available. Please choose a different time.",
+      }, { status: 409 });
+    }
     return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
   }
 

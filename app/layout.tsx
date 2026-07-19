@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next";
 import dynamic from "next/dynamic";
 import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
-import { manrope, sora } from "@/lib/fonts";
+import { manrope, sora, dmSerifDisplay } from "@/lib/fonts";
 
 const CookieConsentBanner = dynamic(
   () => import("@/app/components/CookieConsentBanner"),
@@ -73,7 +73,7 @@ export default async function RootLayout({
           {`(function(){try{var l=localStorage.getItem("serviq-locale");if(l){document.documentElement.lang=l}}catch(e){}})();`}
         </Script>
       </head>
-      <body className={`${manrope.variable} ${sora.variable} flex min-h-screen flex-col bg-[var(--surface-app)] text-[var(--ink-950)] antialiased`}>
+      <body className={`${manrope.variable} ${sora.variable} ${dmSerifDisplay.variable} flex min-h-screen flex-col bg-[var(--surface-app)] text-[var(--ink-950)] antialiased`}>
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[var(--layer-tooltip)] focus:rounded-xl focus:bg-[var(--surface-elevated)] focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-[var(--ink-950)] focus:shadow-lg focus:outline-none">
           Skip to main content
         </a>

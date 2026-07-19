@@ -5,6 +5,7 @@ import '../core/api/mobile_api_provider.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/design_tokens.dart';
 import '../shared/components/loading_shimmer.dart';
+import '../shared/components/nameplate_card.dart';
 import '../models/locality.dart';
 import 'locality_providers_screen.dart';
 
@@ -85,7 +86,10 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(_title),
+        title: Text(
+          _title,
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
         backgroundColor: AppColors.surface,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(100),
@@ -134,12 +138,7 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
           itemCount: 4,
           itemBuilder: (context, index) => Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppRadii.lg),
-              ),
+            child: NameplateCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -372,95 +371,92 @@ class _LocalityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.xl),
-        side: BorderSide(color: Theme.of(context).colorScheme.outline),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.xl),
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => LocalityProvidersScreen(
-                  localityId: locality.id,
-                  localityName: locality.name,
-                ),
-              ),
-            );
-          },
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: _zoneColor().withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppRadii.lg),
-                ),
-                child: Icon(_zoneIcon(), color: _zoneColor(), size: 22),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    final isExpansion = locality.zoneTypeEnum == ZoneType.expansion;
+
+    return NameplateCard(
+      opacity: isExpansion ? 0.7 : 1.0,
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => LocalityProvidersScreen(
+              localityId: locality.id,
+              localityName: locality.name,
+            ),
+          ),
+        );
+      },
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: _zoneColor().withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+            ),
+            child: Icon(_zoneIcon(), color: _zoneColor(), size: 22),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(locality.name,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurface)),
+                const SizedBox(height: 2),
+                Row(
                   children: [
-                    Text(locality.name,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: isExpansion
+                            ? AppColors.sageSoft
+                            : _zoneColor().withValues(alpha: 0.1),
+                        borderRadius:
+                            BorderRadius.circular(AppRadii.pill),
+                      ),
+                      child: Text(
+                        locality.zoneTypeEnum == ZoneType.society
+                            ? 'Society'
+                            : locality.zoneTypeEnum == ZoneType.market
+                                ? 'Market'
+                                : locality.zoneTypeEnum == ZoneType.supplyArea
+                                    ? 'Supply Area'
+                                    : 'Soon',
                         style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 14,
-                            color: Theme.of(context).colorScheme.onSurface)),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: _zoneColor().withValues(alpha: 0.1),
-                            borderRadius:
-                                BorderRadius.circular(AppRadii.pill),
-                          ),
-                          child: Text(
-                            locality.zoneTypeEnum == ZoneType.society
-                                ? 'Society'
-                                : locality.zoneTypeEnum == ZoneType.market
-                                    ? 'Market'
-                                    : locality.zoneTypeEnum == ZoneType.supplyArea
-                                        ? 'Supply Area'
-                                        : 'Upcoming',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: _zoneColor(),
-                            ),
-                          ),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: isExpansion
+                              ? AppColors.sage
+                              : _zoneColor(),
                         ),
-                        if (locality.providerCount != null &&
-                            locality.providerCount! > 0) ...[
-                          const SizedBox(width: AppSpacing.xs),
-                          Icon(Icons.people_rounded, size: 12,
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${locality.providerCount}',
-                            style: TextStyle(
-                                fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-                          ),
-                        ],
-                      ],
+                      ),
                     ),
+                    if (locality.providerCount != null &&
+                        locality.providerCount! > 0) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      Icon(Icons.people_rounded, size: 12,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${locality.providerCount}',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                      ),
+                    ],
                   ],
                 ),
-              ),
-              Icon(Icons.chevron_right_rounded,
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-            ],
+              ],
+            ),
           ),
-        ),
+          Icon(Icons.chevron_right_rounded,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
+        ],
       ),
     );
   }

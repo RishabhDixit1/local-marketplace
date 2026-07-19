@@ -45,24 +45,39 @@ export const ensureProfileForUser = async (user: User) => {
   const patch = buildBootstrapProfilePatch(user, existingProfile);
 
   if (Object.keys(patch).length > 1 || !existingProfile) {
-    for (const payload of bootstrapUpsertVariants(patch)) {
+    let bootstrapSucceeded = false;
+    const upsertErrors: string[] = [];
+    for (const [idx, payload] of bootstrapUpsertVariants(patch).entries()) {
       const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
-      if (!error) {
-        bootstrappedUserIds.add(user.id);
-        break;
+      if (error) {
+        upsertErrors.push(`variant[${idx}]: ${error.message}`);
+        continue;
       }
+      bootstrapSucceeded = true;
+      bootstrappedUserIds.add(user.id);
+      break;
+    }
+
+    if (!bootstrapSucceeded) {
+      console.error("[profile] All bootstrap upsert variants failed for user", user.id, upsertErrors);
+      throw new Error(`Profile bootstrap failed: ${upsertErrors.join("; ")}`);
     }
   } else {
     bootstrappedUserIds.add(user.id);
   }
 
-  return fetchProfileByUserId(user.id, user);
+  const profile = await fetchProfileByUserId(user.id, user);
+  if (!profile) {
+    console.error("[profile] Bootstrap succeeded but fetch-back returned null for user", user.id);
+    throw new Error("Profile was created but could not be loaded. Please try again.");
+  }
+  return profile;
 };
 
 export const ensureClientProfile = async (user: User | null | undefined) => {
   if (!user?.id) return null;
   if (bootstrappedUserIds.has(user.id)) {
-    return fetchProfileByUserId(user.id, user).catch(() => null);
+    return fetchProfileByUserId(user.id, user);
   }
 
   return ensureProfileForUser(user);

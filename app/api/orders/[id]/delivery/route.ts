@@ -10,6 +10,7 @@ import {
   buildDeliveryUpdate,
   type DeliveryInfo,
 } from "@/lib/deliveryWorkflow";
+import { logger } from "@/lib/server/logger";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
 import { transitionLinkedPostStatus } from "@/lib/postStatus";
 
@@ -78,6 +79,8 @@ async function postHandler(request: Request, { params }: { params: Promise<{ id:
   const newStatus = body.status ? normalizeDeliveryStatus(body.status) : null;
 
   let updatedDelivery: DeliveryInfo;
+  let postSyncWarning: string | null = null;
+  let payoutWarning: string | null = null;
 
   if (!currentDelivery && newStatus) {
     updatedDelivery = createDeliveryMetadata({
@@ -127,14 +130,18 @@ async function postHandler(request: Request, { params }: { params: Promise<{ id:
         }).eq("id", id);
 
         // Transition linked post status
-        transitionLinkedPostStatus({
-          db: admin,
-          orderId: id,
-          newOrderStatus: "completed",
-          actorId: authResult.auth.userId,
-        }).catch((err) => {
-          console.error("[delivery→complete] post status sync failed", err);
-        });
+        try {
+          await transitionLinkedPostStatus({
+            db: admin,
+            orderId: id,
+            newOrderStatus: "completed",
+            actorId: authResult.auth.userId,
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          logger.error("[delivery→complete]", "post status sync failed", err, { orderId: id });
+          postSyncWarning = `Post status sync failed: ${msg}`;
+        }
 
         // Review request
         await admin.from("review_requests").upsert({
@@ -180,7 +187,9 @@ async function postHandler(request: Request, { params }: { params: Promise<{ id:
               notes: `Auto-payout for order ${id}`,
             });
             if (payoutErr) {
-              console.error("[auto-payout] insert failed for order", id, payoutErr.message);
+              const msg = payoutErr.message || "Unknown error";
+              logger.error("[auto-payout]", "insert failed", payoutErr, { orderId: id });
+              payoutWarning = `Auto-payout could not be created: ${msg}. Order completed, but payout must be processed manually.`;
             }
           }
         }
@@ -225,7 +234,12 @@ async function postHandler(request: Request, { params }: { params: Promise<{ id:
     }
   }
 
-  return NextResponse.json({ ok: true, delivery: updatedDelivery });
+  return NextResponse.json({
+    ok: true,
+    delivery: updatedDelivery,
+    ...(postSyncWarning ? { postSyncWarning } : {}),
+    ...(payoutWarning ? { payoutWarning } : {}),
+  });
 }
 
 export const GET = withErrorHandling(getHandler, "delivery:get");

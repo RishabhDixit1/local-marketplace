@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { logger } from "@/lib/server/logger";
 import { isRazorpayConfigured, getRazorpay } from "@/lib/server/razorpay";
 
 export const runtime = "nodejs";
@@ -26,18 +27,24 @@ async function getHandler(request: Request) {
   const userId = auth.auth.userId;
 
   // Get payouts
-  const { data: payouts } = await db
+  const { data: payouts, error: payoutsErr } = await db
     .from("provider_payouts")
     .select("*")
     .eq("provider_id", userId)
     .order("created_at", { ascending: false });
+  if (payoutsErr) {
+    return NextResponse.json({ ok: false, message: `Failed to load payouts: ${payoutsErr.message}` }, { status: 500 });
+  }
 
   // Get total available earnings (sum of provider_payout_paise from completed/closed orders)
-  const { data: orders } = await db
+  const { data: orders, error: ordersErr } = await db
     .from("orders")
     .select("provider_payout_paise, metadata")
     .eq("provider_id", userId)
     .in("status", ["completed", "closed"]);
+  if (ordersErr) {
+    return NextResponse.json({ ok: false, message: `Failed to load earnings: ${ordersErr.message}` }, { status: 500 });
+  }
 
   const now = Date.now();
 
@@ -59,22 +66,28 @@ async function getHandler(request: Request) {
     return sum + (typeof o.provider_payout_paise === "number" ? o.provider_payout_paise : 0);
   }, 0);
 
-  const { data: paidPayouts } = await db
+  const { data: paidPayouts, error: paidErr } = await db
     .from("provider_payouts")
     .select("net_amount_paise")
     .eq("provider_id", userId)
     .in("status", ["completed"]);
+  if (paidErr) {
+    return NextResponse.json({ ok: false, message: `Failed to load payout history: ${paidErr.message}` }, { status: 500 });
+  }
 
   const totalPaidOutPaise = (paidPayouts ?? []).reduce(
     (sum, p) => sum + p.net_amount_paise,
     0
   );
 
-  const { data: pendingPayouts } = await db
+  const { data: pendingPayouts, error: pendingErr } = await db
     .from("provider_payouts")
     .select("net_amount_paise")
     .eq("provider_id", userId)
     .in("status", ["pending", "approved", "processing"]);
+  if (pendingErr) {
+    return NextResponse.json({ ok: false, message: `Failed to load pending payouts: ${pendingErr.message}` }, { status: 500 });
+  }
 
   const totalPendingPaise = (pendingPayouts ?? []).reduce(
     (sum, p) => sum + p.net_amount_paise,
@@ -180,6 +193,7 @@ async function postHandler(request: Request) {
 
   let razorpayPayoutId: string | null = null;
   let payoutStatus = "pending";
+  let payoutWarning: string | null = null;
 
   if (isRazorpayConfigured() && (body.payout_method === "bank" || body.payout_method === "upi")) {
     try {
@@ -211,7 +225,9 @@ async function postHandler(request: Request) {
         payoutStatus = "completed";
       }
     } catch (err) {
-      console.error("[provider/payouts] Razorpay auto-payout failed:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error("[provider/payouts]", "Razorpay payout failed", err, { userId });
+      payoutWarning = `Razorpay payout could not be processed automatically: ${msg}. Your withdrawal request has been saved and will be processed manually.`;
     }
   }
 
@@ -240,7 +256,11 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, payout });
+  return NextResponse.json({
+    ok: true,
+    payout,
+    ...(payoutWarning ? { payoutWarning } : {}),
+  });
 }
 
 export const GET = withErrorHandling(getHandler, "provider:payouts");

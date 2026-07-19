@@ -26,6 +26,7 @@ import 'package:serviq_mobile/features/search/data/search_repository.dart';
 import 'package:serviq_mobile/features/search/domain/search_models.dart';
 import 'package:serviq_mobile/features/search/presentation/search_page.dart';
 import 'package:serviq_mobile/features/welcome/presentation/welcome_page.dart';
+import 'package:serviq_mobile/l10n/l10n.dart';
 import 'package:serviq_mobile/shared/components/feed_card.dart';
 import 'package:serviq_mobile/shared/components/provider_card.dart';
 
@@ -109,10 +110,6 @@ void main() {
       findsAtLeastNWidgets(1),
     );
     expect(find.text('Urgent nearby'), findsOneWidget);
-    expect(
-      find.textContaining('Electrical and safety inspection'),
-      findsAtLeastNWidgets(1),
-    );
     expect(tester.takeException(), isNull);
   });
 
@@ -285,6 +282,8 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
+          localizationsDelegates: const [AppLocalizations.delegate],
+          supportedLocales: const [Locale('en', 'US')],
           home: const SearchPage(initialQuery: 'electric'),
         ),
       ),

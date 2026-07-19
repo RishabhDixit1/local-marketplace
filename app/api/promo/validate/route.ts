@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { logger } from "@/lib/server/logger";
 
 export const runtime = "nodejs";
 
@@ -24,10 +25,18 @@ export const POST = withErrorHandling(async function postHandler(request: Reques
   const db = createSupabaseAdminClient();
   if (!db) return NextResponse.json({ ok: false, message: "No DB client" }, { status: 500 });
 
-  const { data: result } = await db.rpc("validate_promo_code", {
+  const { data: result, error: rpcError } = await db.rpc("validate_promo_code", {
     p_code: body.code,
     p_order_paise: body.orderPaise ?? 0,
   });
+
+  if (rpcError) {
+    logger.error("promo:validate", "validate_promo_code RPC failed", rpcError, { code: body.code });
+    return NextResponse.json(
+      { ok: false, message: "Unable to validate promo code right now, please try again later." },
+      { status: 503 },
+    );
+  }
 
   if (!result) {
     return NextResponse.json({ ok: false, message: "Invalid promo code" }, { status: 404 });

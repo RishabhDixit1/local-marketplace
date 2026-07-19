@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/design_system/design_system.dart';
+import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
-import '../../../shared/components/trust_badge.dart';
+import '../../../shared/components/nameplate_card.dart';
+import '../../../shared/components/marketplace_provider_card.dart';
 import '../data/marketplace_repository.dart';
 import '../domain/marketplace_provider.dart';
 
@@ -137,8 +139,9 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: AppColors.primarySoft,
+            color: AppColors.marigoldSoft,
             borderRadius: BorderRadius.circular(AppRadii.xl),
+            border: Border.all(color: AppColors.marigoldMuted),
           ),
           child: Row(
             children: [
@@ -146,7 +149,8 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('How ServiQ works', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Theme.of(context).colorScheme.onSurface)),
+                    Text('How ServiQ works',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
                     const SizedBox(height: AppSpacing.xs),
                     Wrap(
                       spacing: AppSpacing.md,
@@ -179,10 +183,10 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
           width: 18,
           height: 18,
           decoration: BoxDecoration(
-            color: AppColors.primaryDeep,
+            color: AppColors.marigold,
             borderRadius: BorderRadius.circular(AppRadii.pill),
           ),
-          child: Center(child: Text(number, style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))),
+          child: Center(child: Text(number, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))),
         ),
         const SizedBox(width: 4),
         Flexible(child: Text(text, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)))),
@@ -201,7 +205,9 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('What do you need done?',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: Theme.of(context).colorScheme.onSurface)),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                )),
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -234,10 +240,14 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                   label: Text(name,
                       style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.bold : FontWeight.w500)),
                   selected: selected,
-                  selectedColor: AppColors.primarySoft,
-                  checkmarkColor: AppColors.primaryDeep,
+                  selectedColor: AppColors.marigoldSoft,
+                  checkmarkColor: AppColors.marigoldDeep,
                   onSelected: (val) => setState(() => _selectedCategory = val ? name : null),
-                  side: BorderSide(color: selected ? AppColors.primary.withValues(alpha: 0.4) : Theme.of(context).colorScheme.outline),
+                  side: BorderSide(
+                    color: selected
+                        ? AppColors.marigold.withValues(alpha: 0.5)
+                        : Theme.of(context).colorScheme.outline,
+                  ),
                 );
               }).toList(),
             ),
@@ -357,10 +367,17 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
               children: [
                 const SizedBox(height: AppSpacing.xs),
                 for (final provider in filtered) ...[
-                  _ProviderLandingCard(
-                    provider: provider,
+                  MarketplaceProviderCard(
+                    name: provider.name,
+                    location: provider.location.isNotEmpty ? provider.location : null,
+                    bio: provider.bio,
+                    avgRating: provider.avgRating,
+                    completedJobs: provider.completedJobs,
+                    responseMinutes: provider.responseMinutes,
+                    priceMin: provider.priceMin,
+                    priceMax: provider.priceMax,
+                    verified: provider.verified,
                     onTap: () => _showProviderDetail(context, provider),
-                    onContact: () => context.push(AppRoutes.signIn),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                 ],
@@ -376,27 +393,26 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(AppSpacing.pageInset, AppSpacing.xxxl, AppSpacing.pageInset, AppSpacing.lg),
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.4), width: 1.2),
-            borderRadius: BorderRadius.circular(AppRadii.xl),
-            color: AppColors.primarySoft.withValues(alpha: 0.3),
-          ),
+        child: NameplateCard(
           child: Column(
             children: [
-              Icon(Icons.store_rounded, size: 32, color: AppColors.primaryDeep),
+              Icon(Icons.store_rounded, size: 32, color: AppColors.marigold),
               const SizedBox(height: AppSpacing.sm),
               Text('Are you a service provider?',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.onSurface)),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: AppSpacing.xxs),
               Text('List your business on ServiQ and get more customers from your neighborhood.',
-                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)), textAlign: TextAlign.center),
+                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                  textAlign: TextAlign.center),
               const SizedBox(height: AppSpacing.md),
               FilledButton.icon(
                 onPressed: () => context.push(AppRoutes.signIn),
                 label: const Text('List Your Business'),
                 icon: Icon(Icons.store_rounded, size: 18),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.marigold,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ],
           ),
@@ -469,157 +485,9 @@ class _HeroSearchField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.xl),
-          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.marigold, width: 1.5),
         ),
       ),
-    );
-  }
-}
-
-class _ProviderLandingCard extends StatelessWidget {
-  const _ProviderLandingCard({
-    required this.provider,
-    required this.onTap,
-    required this.onContact,
-  });
-
-  final MarketplaceProvider provider;
-  final VoidCallback onTap;
-  final VoidCallback onContact;
-
-  @override
-  Widget build(BuildContext context) {
-    final priceLabel = provider.priceMin != null
-        ? provider.priceMax != null && provider.priceMax! > provider.priceMin!
-            ? '₹${provider.priceMin} - ₹${provider.priceMax}'
-            : 'From ₹${provider.priceMin}'
-        : null;
-
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.xl),
-        side: BorderSide(color: Theme.of(context).colorScheme.outline),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadii.xl),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: AppColors.primarySoft,
-                child: Text(
-                  provider.name.isNotEmpty ? provider.name[0].toUpperCase() : '?',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primaryDeep),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(provider.name,
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Theme.of(context).colorScheme.onSurface)),
-                        ),
-                        if (provider.verified)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 4),
-                            child: TrustBadge(label: 'Verified'),
-                          ),
-                      ],
-                    ),
-                    Text(provider.location.isNotEmpty ? provider.location : 'Location not set',
-                        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-                    const SizedBox(height: AppSpacing.xxs),
-                    Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.xxs,
-                      children: [
-                        if (provider.avgRating != null)
-                          _SignalChip(
-                            icon: Icons.star_rounded,
-                            label: '${provider.avgRating?.toStringAsFixed(1) ?? '0.0'} (${provider.reviewCount})',
-                            color: AppColors.warm,
-                          ),
-                        if (provider.responseMinutes != null)
-                          _SignalChip(
-                            icon: Icons.bolt_rounded,
-                            label: '${provider.responseMinutes} min',
-                            color: AppColors.primaryDeep,
-                          ),
-                        if (provider.completedJobs > 0)
-                          _SignalChip(
-                            icon: Icons.check_circle_outline_rounded,
-                            label: '${provider.completedJobs} jobs',
-                            color: AppColors.success,
-                          ),
-                        if (provider.distanceKm != null)
-                          _SignalChip(
-                            icon: Icons.location_on_rounded,
-                            label: '${provider.distanceKm?.toStringAsFixed(1) ?? '?'} km',
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                      ],
-                    ),
-                    if (provider.bio.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xxs),
-                      Text(provider.bio, maxLines: 2, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-                    ],
-                    const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      children: [
-                        if (priceLabel != null)
-                          Expanded(
-                            child: Text(priceLabel,
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primaryDeep)),
-                          ),
-                        FilledButton.icon(
-                          onPressed: onContact,
-                          label: const Text('Contact', style: TextStyle(fontSize: 11)),
-                          icon: Icon(Icons.phone_rounded, size: 14),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            minimumSize: Size.zero,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SignalChip extends StatelessWidget {
-  const _SignalChip({required this.icon, required this.label, required this.color});
-
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 12, color: color),
-        const SizedBox(width: 2),
-        Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-      ],
     );
   }
 }
@@ -653,7 +521,7 @@ class _ProviderDetailSheet extends StatelessWidget {
               backgroundColor: AppColors.primarySoft,
               child: Text(
                 provider.name.isNotEmpty ? provider.name[0].toUpperCase() : '?',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: AppColors.primaryDeep),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: AppColors.primaryDeep),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -667,11 +535,19 @@ class _ProviderDetailSheet extends StatelessWidget {
                         child: Text(provider.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Theme.of(context).colorScheme.onSurface)),
+                            style: Theme.of(context).textTheme.titleLarge),
                       ),
                       if (provider.verified) ...[
                         const SizedBox(width: AppSpacing.xxs),
-                        const TrustBadge(label: 'Verified'),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.verifiedSoft,
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                          ),
+                          child: const Text('Verified',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.verified)),
+                        ),
                       ],
                     ],
                   ),
@@ -683,7 +559,9 @@ class _ProviderDetailSheet extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.md),
-        Row(
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.xs,
           children: [
             if (provider.avgRating != null)
               _DetailStat(icon: Icons.star_rounded, value: provider.avgRating?.toStringAsFixed(1) ?? '—', label: '${provider.reviewCount} reviews'),
@@ -691,8 +569,6 @@ class _ProviderDetailSheet extends StatelessWidget {
               _DetailStat(icon: Icons.check_circle_outline_rounded, value: provider.completedJobs.toString(), label: 'jobs done'),
             if (provider.responseMinutes != null)
               _DetailStat(icon: Icons.bolt_rounded, value: '${provider.responseMinutes} min', label: 'response'),
-            if (provider.distanceKm != null)
-              _DetailStat(icon: Icons.location_on_rounded, value: provider.distanceKm?.toStringAsFixed(1) ?? '?', label: 'km away'),
           ],
         ),
         if (provider.bio.isNotEmpty) ...[
@@ -711,7 +587,7 @@ class _ProviderDetailSheet extends StatelessWidget {
             spacing: AppSpacing.xs,
             runSpacing: AppSpacing.xs,
             children: provider.services.map((s) => Chip(
-              label: Text(s, style: TextStyle(fontSize: 12)),
+              label: Text(s, style: const TextStyle(fontSize: 12)),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               visualDensity: VisualDensity.compact,
             )).toList(),
@@ -726,7 +602,7 @@ class _ProviderDetailSheet extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: AppSpacing.xxs),
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.surfaceAlt,
               borderRadius: BorderRadius.circular(AppRadii.lg),
               border: Border.all(color: Theme.of(context).colorScheme.outline),
             ),
@@ -735,7 +611,7 @@ class _ProviderDetailSheet extends StatelessWidget {
                 Expanded(child: Text(l.title, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface))),
                 if (l.price != null)
                   Text('₹${l.price}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primaryDeep)),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.marigold)),
               ],
             ),
           )),
@@ -746,7 +622,11 @@ class _ProviderDetailSheet extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: onContact,
             label: const Text('Contact'),
-            icon: Icon(Icons.phone_rounded, size: 18),
+            icon: const Icon(Icons.phone_rounded, size: 18),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryDeep,
+              foregroundColor: Colors.white,
+            ),
           ),
         ),
       ],
@@ -763,22 +643,21 @@ class _DetailStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.only(right: AppSpacing.xs),
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(AppRadii.lg),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 16, color: AppColors.accent),
-            const SizedBox(height: AppSpacing.xxs),
-            Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Theme.of(context).colorScheme.onSurface)),
-            Text(label, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))),
-          ],
-        ),
+    return Container(
+      margin: const EdgeInsets.only(right: AppSpacing.xs),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 16, color: AppColors.marigold),
+          const SizedBox(height: AppSpacing.xxs),
+          Text(value, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+          Text(label, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))),
+        ],
       ),
     );
   }
@@ -790,44 +669,31 @@ class _ProviderListShimmer extends StatelessWidget {
     return Column(
       children: List.generate(4, (_) => Padding(
         padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-        child: Card(
-          margin: EdgeInsets.zero,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.xl),
-            side: BorderSide(color: Theme.of(context).colorScheme.outline),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const LoadingShimmer(width: 48, height: 48, borderRadius: 24),
-                const SizedBox(width: AppSpacing.sm),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      LoadingShimmer(width: 140, height: 14),
-                      SizedBox(height: 4),
-                      LoadingShimmer(width: 100, height: 11),
-                      SizedBox(height: 8),
-                      LoadingShimmer(width: 200, height: 11),
-                      SizedBox(height: 4),
-                      LoadingShimmer(width: 160, height: 11),
-                      SizedBox(height: 12),
-                      Row(
-                        children: [
-                          LoadingShimmer(width: 80, height: 32, borderRadius: 16),
-                          Spacer(),
-                          LoadingShimmer(width: 90, height: 32, borderRadius: 16),
-                        ],
-                      ),
-                    ],
-                  ),
+        child: NameplateCard(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const LoadingShimmer(width: 44, height: 44, borderRadius: 22),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const LoadingShimmer(width: 140, height: 14),
+                    const SizedBox(height: 4),
+                    const LoadingShimmer(width: 100, height: 11),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        LoadingShimmer(width: 60, height: 20, borderRadius: 10),
+                        const SizedBox(width: 8),
+                        LoadingShimmer(width: 60, height: 20, borderRadius: 10),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       )),

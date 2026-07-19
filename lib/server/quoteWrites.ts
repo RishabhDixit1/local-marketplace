@@ -346,6 +346,7 @@ const createQuoteVersionSnapshot = async (params: {
     const versionNumber = await getNextVersionNumber(params.db, params.quoteId);
     const status = params.status || quoteRow.status || "draft";
     const now = new Date().toISOString();
+    const warnings: string[] = [];
 
     const versionPayload = {
       quote_id: params.quoteId,
@@ -408,6 +409,7 @@ const createQuoteVersionSnapshot = async (params: {
 
       if (insertItemsResult.error) {
         console.warn("Failed to insert quote version line items:", insertItemsResult.error.message);
+        warnings.push(`Line items insert failed: ${insertItemsResult.error.message}`);
       }
     }
 
@@ -429,6 +431,7 @@ const createQuoteVersionSnapshot = async (params: {
         (loadedVersionResult.data ?? insertVersionResult.data) as QuoteVersionRow,
         (loadedItemsResult.data ?? []) as QuoteVersionLineItemRow[]
       ),
+      ...(warnings.length > 0 ? { warnings } : {}),
     };
   } catch (error) {
     return createMutationError(
@@ -1018,9 +1021,10 @@ const insertQuoteMessage = async (params: {
 
   if (insertResult.error) {
     console.warn("Quote message could not be persisted:", insertResult.error.message);
+    return { conversationId, warning: `Quote message could not be delivered: ${insertResult.error.message}` };
   }
 
-  return conversationId;
+  return { conversationId };
 };
 
 const ensureConversationAccess = async (params: {
@@ -1233,7 +1237,7 @@ export const sendQuoteDraft = async (params: {
   const refreshedDraftResult = await loadQuoteDraftById(params.db, draftResult.draft.id);
   if (!refreshedDraftResult.ok) return refreshedDraftResult;
 
-  const conversationId = await insertQuoteMessage({
+  const messageResult = await insertQuoteMessage({
     userDb: params.userDb,
     userId: params.userId,
     conversationId: params.input.conversationId || null,
@@ -1241,6 +1245,9 @@ export const sendQuoteDraft = async (params: {
     orderId,
     taskTitle: contextResult.context.taskTitle,
   });
+
+  const conversationId = messageResult ? (typeof messageResult === "string" ? messageResult : messageResult.conversationId) : null;
+  const messageWarning = messageResult && typeof messageResult === "object" && "warning" in messageResult ? messageResult.warning : undefined;
 
   // Notify the seeker that a quote has arrived
   const consumerId = contextResult.context.consumerId;
@@ -1302,6 +1309,7 @@ export const sendQuoteDraft = async (params: {
     orderId,
     orderStatus,
     conversationId,
+    ...(messageWarning ? { messageWarning } : {}),
   };
 };
 
@@ -1526,6 +1534,7 @@ export const acceptQuoteDraft = async (params: {
     }
   }
 
+  let versionWarning: string | undefined;
   try {
     await createQuoteVersionSnapshot({
       db: params.db,
@@ -1534,7 +1543,9 @@ export const acceptQuoteDraft = async (params: {
       acceptedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.warn("Failed to create quote version on accept:", error instanceof Error ? error.message : error);
+    const msg = error instanceof Error ? error.message : String(error);
+    console.warn("Failed to create quote version on accept:", msg);
+    versionWarning = `Quote version snapshot failed: ${msg}`;
   }
 
   return {
@@ -1542,5 +1553,6 @@ export const acceptQuoteDraft = async (params: {
     quoteId: params.quoteId,
     orderId,
     orderStatus: "accepted",
+    ...(versionWarning ? { versionWarning } : {}),
   };
 };

@@ -45,7 +45,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
   Future<void> _updateStatus(String status) async {
     setState(() => _busy = true);
     try {
-      await ref
+      final result = await ref
           .read(orderRepositoryProvider)
           .updateStatus(orderId: widget.orderId, status: status);
       ref.invalidate(orderDetailProvider(widget.orderId));
@@ -72,6 +72,15 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Order marked ${_humanize(status)}.')),
       );
+      for (final warning in result.warnings) {
+        if (!mounted) break;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(warning),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
       if (status == 'completed') {
         _promptReview();
       }
@@ -100,7 +109,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
   }) async {
     setState(() => _busy = true);
     try {
-      await ref.read(orderRepositoryProvider).updateDeliveryStatus(
+      final result = await ref.read(orderRepositoryProvider).updateDeliveryStatus(
             orderId: widget.orderId,
             status: status,
             extra: extra,
@@ -112,6 +121,12 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Delivery marked ${_humanize(status)}.')),
       );
+      for (final warning in result.warnings) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(warning), duration: const Duration(seconds: 5)),
+        );
+      }
     } on ApiException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context)

@@ -539,6 +539,7 @@ export default function ChatPage() {
           setSupportsReadReceipts(false);
         } else {
           console.warn("Failed to persist read state:", error.message);
+          return;
         }
       }
 
@@ -1044,6 +1045,7 @@ export default function ChatPage() {
           message.id === optimisticId ? { ...message, status: "failed" as const } : message
         )
       );
+      setInput(trimmed);
       setChatError(`Failed to send message: ${error instanceof Error ? error.message : "unknown error"}`);
       setSending(false);
       return;

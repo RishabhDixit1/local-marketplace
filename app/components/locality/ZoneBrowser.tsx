@@ -32,7 +32,7 @@ export default function ZoneBrowser({
   initialLocalities,
   loading,
   error,
-  zoneSlug,
+  zoneSlug: _zoneSlug,
 }: {
   initialLocalities: Locality[];
   loading?: boolean;
@@ -70,9 +70,9 @@ export default function ZoneBrowser({
             <div key={tab.key} className="h-9 w-24 animate-pulse rounded-xl bg-[var(--surface-soft)]" />
           ))}
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="animate-pulse rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
+            <div key={i} className="nameplate-card animate-pulse p-4 pt-6">
               <div className="flex items-center gap-2">
                 <div className="h-8 w-8 rounded-xl bg-[var(--surface-soft)]" />
                 <div className="h-4 flex-1 rounded bg-[var(--surface-soft)]" />
@@ -129,14 +129,14 @@ export default function ZoneBrowser({
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((locality) => {
             const colors = zoneColors[locality.zone_type] || zoneColors.society;
             return (
               <Link
                 key={locality.id}
                 href={`/market/${locality.slug}`}
-                className="group rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md active:scale-[0.98] active:shadow-sm"
+                className="nameplate-card group block p-4 pt-6"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -144,7 +144,7 @@ export default function ZoneBrowser({
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-soft)] text-[var(--ink-700)]">
                         <MapPin className="h-4 w-4" />
                       </span>
-                      <h3 className="truncate text-sm font-bold text-[var(--ink-950)] group-hover:text-[var(--brand-700)]">
+                      <h3 className="truncate text-sm font-semibold text-[var(--ink-950)] group-hover:text-[var(--brand-700)]">
                         {locality.name}
                       </h3>
                     </div>
@@ -153,7 +153,7 @@ export default function ZoneBrowser({
                         {locality.zone_type === "society" ? "Society" : locality.zone_type === "market" ? "Market" : locality.zone_type === "supply_area" ? "Supply Area" : "Upcoming"}
                       </span>
                       {locality.provider_count != null && locality.provider_count > 0 ? (
-                        <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] text-[var(--ink-700)]">
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] text-[var(--ink-700)] tabular-nums">
                           {locality.provider_count} provider{locality.provider_count === 1 ? "" : "s"}
                         </span>
                       ) : locality.zone_type !== "expansion" ? (

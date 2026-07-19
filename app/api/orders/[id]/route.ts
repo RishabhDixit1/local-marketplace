@@ -217,6 +217,39 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
     })();
   }
 
+  let bookingWarning: string | undefined;
+
+  // If cancelled, propagate to linked booking slot (non-blocking)
+  if (status === "cancelled") {
+    try {
+      const { data: linkedBooking, error: bookingLookupErr } = await admin
+        .from("booking_slots")
+        .select("id, status")
+        .eq("order_id", id)
+        .in("status", ["confirmed", "rescheduled"])
+        .limit(1)
+        .maybeSingle();
+
+      if (bookingLookupErr) {
+        logger.error("orders:update", "Booking slot lookup failed", bookingLookupErr, { orderId: id });
+        bookingWarning = "Order cancelled but linked booking lookup failed. Please contact support.";
+      } else if (linkedBooking) {
+        const { error: bookingUpdateErr } = await admin
+          .from("booking_slots")
+          .update({ status: "cancelled", updated_at: new Date().toISOString() })
+          .eq("id", linkedBooking.id);
+
+        if (bookingUpdateErr) {
+          logger.error("orders:update", "Booking slot cancel sync failed", bookingUpdateErr, { orderId: id, bookingId: linkedBooking.id });
+          bookingWarning = "Order cancelled but linked booking sync failed. Please contact support.";
+        }
+      }
+    } catch (err) {
+      logger.error("orders:update", "Booking slot cancel sync failed", err, { orderId: id });
+      bookingWarning = "Order cancelled but linked booking sync failed. Please contact support.";
+    }
+  }
+
   let refundWarning: string | undefined;
 
   // If cancelled, process refund for paid orders
@@ -227,22 +260,31 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
       const razorpayPaymentId = meta.razorpay_payment_id as string | undefined;
 
       if (paymentStatus === "paid" && razorpayPaymentId && isRazorpayConfigured()) {
-        const amountPaise = ex.price != null ? Math.round(ex.price * 100) : 0;
-        const refund = await createRefund(razorpayPaymentId, amountPaise, {
-          order_id: id,
-          reason: `Order cancelled (status transition from ${previousStatus})`,
-        });
+        const pricePaise = ex.price != null ? Math.round(ex.price * 100) : 0;
 
-        if (refund) {
-          await admin.from("orders").update({
-            metadata: {
-              ...meta,
-              payment_status: "refunded",
-              refund_id: refund.id,
-              refund_status: refund.status,
-              refunded_at: new Date().toISOString(),
-            },
-          }).eq("id", id);
+        if (pricePaise <= 0) {
+          logger.error("orders:update", "Cannot refund order with zero/null price", null, { orderId: id, price: ex.price });
+          refundWarning = "Order cancelled but refund could not be processed: order has no valid price. Please contact support.";
+        } else {
+          const refund = await createRefund(razorpayPaymentId, pricePaise, {
+            order_id: id,
+            reason: `Order cancelled (status transition from ${previousStatus})`,
+          });
+
+          if (refund.ok) {
+            await admin.from("orders").update({
+              metadata: {
+                ...meta,
+                payment_status: "refunded",
+                refund_id: refund.id,
+                refund_status: refund.status,
+                refunded_at: new Date().toISOString(),
+              },
+            }).eq("id", id);
+          } else {
+            logger.error("orders:update", "Razorpay refund failed", refund.error, { orderId: id, paymentId: razorpayPaymentId });
+            refundWarning = "Order cancelled but refund processing failed. Please contact support.";
+          }
         }
       }
     } catch (err) {
@@ -379,8 +421,9 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
   })();
 
   return NextResponse.json({
-    ok: true,
+    ok: !refundWarning && !payoutWarning && !bookingWarning,
     status,
+    ...(bookingWarning ? { bookingWarning } : {}),
     ...(refundWarning ? { refundWarning } : {}),
     ...(payoutWarning ? { payoutWarning } : {}),
   });

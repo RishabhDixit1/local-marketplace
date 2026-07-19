@@ -21,18 +21,24 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, message: "Minimum 50 points required." }, { status: 400 });
   }
 
-  const { data: events } = await db
+  const { data: events, error: eventsErr } = await db
     .from("referral_events")
     .select("reward_points, status")
     .eq("referrer_id", auth.auth.userId);
+  if (eventsErr) {
+    return NextResponse.json({ ok: false, message: `Failed to load referral events: ${eventsErr.message}` }, { status: 500 });
+  }
 
   const totalPoints = (events || []).reduce((sum, e) => sum + (e.reward_points || 0), 0);
 
-  const { data: payouts } = await db
+  const { data: payouts, error: payoutsErr } = await db
     .from("referral_payouts")
     .select("points_redeemed, status")
     .eq("user_id", auth.auth.userId)
     .not("status", "in", '("failed")');
+  if (payoutsErr) {
+    return NextResponse.json({ ok: false, message: `Failed to load payout history: ${payoutsErr.message}` }, { status: 500 });
+  }
 
   const redeemedPoints = (payouts || []).reduce((sum, p) => sum + p.points_redeemed, 0);
   const availablePoints = totalPoints - redeemedPoints;

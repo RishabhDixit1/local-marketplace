@@ -30,11 +30,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
     .single<{ name: string; max_members: number }>();
   if (!workspace) return toError(404, "NOT_FOUND", "Workspace not found.");
 
-  const { count } = await db
+  const { count, error: countErr } = await db
     .from("workspace_members")
     .select("id", { count: "exact", head: true })
     .eq("workspace_id", workspaceId)
     .eq("is_active", true);
+  if (countErr) {
+    return toError(500, "DB", `Failed to check seat limit: ${countErr.message}`);
+  }
   if (count != null && count >= workspace.max_members) {
     return toError(403, "SEAT_LIMIT", `Workspace seat limit (${workspace.max_members}) reached.`);
   }

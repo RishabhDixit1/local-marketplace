@@ -19,12 +19,14 @@ describe("enqueueJob", () => {
     });
   });
 
-  it("handles insert error gracefully", async () => {
+  it("throws on insert error", async () => {
     const insert = vi.fn().mockResolvedValue({ error: { message: "DB error" } });
     const db = { from: vi.fn(() => ({ insert })) } as unknown as unknown as SupabaseClient;
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    await enqueueJob(db as unknown as SupabaseClient, "test-job", {});
+    await expect(
+      enqueueJob(db as unknown as SupabaseClient, "test-job", {})
+    ).rejects.toThrow("Failed to enqueue job test-job: DB error");
 
     expect(consoleSpy).toHaveBeenCalledWith("[bg-jobs] Failed to enqueue test-job:", "DB error");
     consoleSpy.mockRestore();

@@ -16,6 +16,7 @@ import {
   Sparkles,
   Store,
   Truck,
+  XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PageMeta } from "@/app/components/PageMeta";
@@ -86,6 +87,7 @@ export default function CheckoutPage() {
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [userPhone, setUserPhone] = useState("");
+  const [promoError, setPromoError] = useState<string | null>(null);
   const [razorpayAvailable, setRazorpayAvailable] = useState(false);
   const scriptLoadedRef = useRef(false);
   const [authResolved, setAuthResolved] = useState(false);
@@ -227,6 +229,7 @@ export default function CheckoutPage() {
         amount: number;
         currency: string;
         keyId: string;
+        promoError?: string;
       }>(supabase, "/api/payment/create-order", {
         method: "POST",
         body: JSON.stringify({
@@ -237,6 +240,7 @@ export default function CheckoutPage() {
       });
 
       if (!pgRes.ok) throw new Error("Payment gateway unavailable.");
+      if (pgRes.promoError) setPromoError(pgRes.promoError);
 
       // 2. Open Razorpay checkout UI
       await new Promise<void>((resolve, reject) => {
@@ -647,6 +651,21 @@ export default function CheckoutPage() {
             </button>
           )}
         </section>
+
+        {/* Promo error warning */}
+        {promoError && (
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 p-4 shadow-sm lg:col-start-1">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span className="flex-1 text-sm text-amber-700 dark:text-amber-400">{promoError}</span>
+            <button
+              type="button"
+              onClick={() => setPromoError(null)}
+              className="shrink-0 rounded-full p-1 text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition"
+            >
+              <XCircle className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {/* Error */}
         {error && (

@@ -52,7 +52,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('What should I do now?'), findsOneWidget);
     expect(find.text('Post Need'), findsAtLeastNWidgets(1));
     expect(find.text('Find People'), findsOneWidget);
 

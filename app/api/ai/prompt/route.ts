@@ -4,6 +4,9 @@ import { executeQuery } from "@/lib/ai/orchestrator";
 import { moderatePrompt } from "@/lib/ai/contentModeration";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { buildResponse } from "@/lib/ai/intentParser";
+import { applyRateLimit } from "@/lib/server/rateLimit";
+
+const PROMPT_RATE_LIMIT = { maxRequests: 30, windowSeconds: 60 };
 
 type SlimProvider = {
   id: string;
@@ -44,7 +47,11 @@ async function fetchMatchingProviders(categorySlug: string, location?: string, l
     }
 
     const { data: profiles, error } = await query;
-    if (error || !profiles) return [];
+    if (error) {
+      console.error("[prompt] Failed to query profiles:", error.message);
+      return [];
+    }
+    if (!profiles) return [];
 
     const ids = profiles.map((p) => p.id).filter(Boolean);
     if (ids.length === 0) return [];
@@ -134,6 +141,11 @@ export async function POST(request: Request) {
           // GoTrue unreachable — proceed as anonymous
         }
       }
+    }
+
+    const rateLimitResult = await applyRateLimit(userId ?? null, "ai:prompt", PROMPT_RATE_LIMIT);
+    if (rateLimitResult.limited) {
+      return rateLimitResult.response;
     }
 
     const context = {

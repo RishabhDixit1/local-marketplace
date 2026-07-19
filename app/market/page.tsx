@@ -22,6 +22,9 @@ export default function MarketHubPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const liveZones = zones.filter((z) => z.phase !== 2);
+  const upcomingZones = zones.filter((z) => z.phase === 2);
+
   return (
     <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-6 lg:pb-20">
       <PageMeta title="Markets" description="Browse local markets and societies near you" path="/market" />
@@ -31,78 +34,128 @@ export default function MarketHubPage() {
         </div>
       </header>
 
-      <section className="mb-8">
+      <section className="mb-10">
         <div className="flex items-center gap-2 text-xs text-[var(--ink-500)] mb-4">
           <Link href="/" className="hover:text-[var(--brand-700)]">Home</Link>
           <ChevronRight className="h-3 w-3" />
           <span className="text-[var(--ink-700)] font-semibold">Markets</span>
         </div>
 
-        <h1 className="text-2xl font-extrabold text-[var(--ink-950)] sm:text-3xl">
+        <h1 className="text-3xl font-normal text-[var(--ink-950)] sm:text-4xl" style={{ fontFamily: "var(--font-display)" }}>
           Explore Markets
         </h1>
-
+        <p className="mt-2 text-sm text-[var(--ink-500)]">
+          Find local services and providers in your neighborhood
+        </p>
       </section>
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="animate-pulse rounded-2xl border border-slate-200 bg-[var(--surface-elevated)] p-5">
-              <div className="h-5 w-32 rounded bg-slate-100 mb-3" />
-              <div className="h-4 w-24 rounded bg-slate-100 mb-4" />
+            <div key={i} className="nameplate-card animate-pulse p-5 pt-7">
+              <div className="h-5 w-32 rounded bg-[var(--surface-soft)] mb-3" />
+              <div className="h-4 w-24 rounded bg-[var(--surface-soft)] mb-4" />
               <div className="flex gap-3">
-                <div className="h-5 w-16 rounded-full bg-slate-100" />
-                <div className="h-5 w-16 rounded-full bg-slate-100" />
+                <div className="h-5 w-16 rounded-full bg-[var(--surface-soft)]" />
+                <div className="h-5 w-16 rounded-full bg-[var(--surface-soft)]" />
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {zones.map((zone) => (
-            <Link
-              key={zone.id}
-              href={`/market/zone/${zone.slug}`}
-              className="group rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md active:scale-[0.99]"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-base font-extrabold text-[var(--ink-950)] group-hover:text-[var(--brand-700)]">
-                    {zone.name}
-                  </h2>
-                  <p className="mt-0.5 text-xs text-[var(--ink-500)]">
-                    <MapPin className="mr-0.5 inline h-3 w-3" />
-                    {zone.city}, {zone.state}
-                  </p>
-                </div>
-                {zone.phase === 2 ? (
-                  <span className="shrink-0 rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-semibold text-purple-700 border border-purple-200">
-                    Coming Soon
-                  </span>
-                ) : (
-                  <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
-                    Live
-                  </span>
-                )}
+        <>
+          {liveZones.length > 0 && (
+            <section className="mb-10">
+              <div className="mb-5 flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-[var(--marigold-400)]" style={{ boxShadow: "0 0 8px rgba(240, 180, 41, 0.5)" }} />
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--ink-500)]">Live Now</h2>
               </div>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {liveZones.map((zone) => (
+                  <Link
+                    key={zone.id}
+                    href={`/market/zone/${zone.slug}`}
+                    className="nameplate-card group block p-5 pt-7"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-normal text-[var(--ink-950)] group-hover:text-[var(--brand-700)] truncate" style={{ fontFamily: "var(--font-display)" }}>
+                          {zone.name}
+                        </h3>
+                        <p className="mt-1 flex items-center gap-1 text-xs text-[var(--ink-500)]">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          {zone.city}, {zone.state}
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-[var(--marigold-50)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--marigold-600)] border border-[var(--marigold-200)]">
+                        Live
+                      </span>
+                    </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <div className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
-                  <Building2 className="h-3 w-3" />
-                  {zone.societies} Societies
-                </div>
-                <div className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                  <Store className="h-3 w-3" />
-                  {zone.markets} Markets
-                </div>
-              </div>
+                    <div className="mt-4 flex items-center gap-4 text-xs tabular-nums">
+                      <span className="flex items-center gap-1.5 text-[var(--ink-700)]">
+                        <Building2 className="h-3.5 w-3.5 text-[var(--brand-600)]" />
+                        <span className="font-semibold">{zone.societies}</span> Societies
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[var(--ink-700)]">
+                        <Store className="h-3.5 w-3.5 text-[var(--brand-600)]" />
+                        <span className="font-semibold">{zone.markets}</span> Markets
+                      </span>
+                    </div>
 
-              <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-[var(--brand-700)] opacity-0 transition group-hover:opacity-100">
-                View Market <ArrowRight className="h-3 w-3" />
+                    <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-[var(--brand-700)] opacity-0 transition group-hover:opacity-100">
+                      View Market <ArrowRight className="h-3 w-3" />
+                    </div>
+                  </Link>
+                ))}
               </div>
-            </Link>
-          ))}
-        </div>
+            </section>
+          )}
+
+          {upcomingZones.length > 0 && (
+            <section className="mb-10">
+              <div className="mb-5 flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-[var(--sage-300)]" />
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--ink-500)]">Coming Soon</h2>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {upcomingZones.map((zone) => (
+                  <Link
+                    key={zone.id}
+                    href={`/market/zone/${zone.slug}`}
+                    className="nameplate-card group block p-5 pt-7 opacity-70 transition hover:opacity-100"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-normal text-[var(--ink-950)] truncate" style={{ fontFamily: "var(--font-display)" }}>
+                          {zone.name}
+                        </h3>
+                        <p className="mt-1 flex items-center gap-1 text-xs text-[var(--ink-500)]">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          {zone.city}, {zone.state}
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-[var(--sage-50)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--sage-500)] border border-[var(--sage-200)]">
+                        Soon
+                      </span>
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-4 text-xs tabular-nums">
+                      <span className="flex items-center gap-1.5 text-[var(--ink-500)]">
+                        <Building2 className="h-3.5 w-3.5" />
+                        <span className="font-semibold">{zone.societies}</span> Societies
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[var(--ink-500)]">
+                        <Store className="h-3.5 w-3.5" />
+                        <span className="font-semibold">{zone.markets}</span> Markets
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
 
       <MobileBottomNav />
