@@ -55,7 +55,7 @@ function ProviderCard({
   onConnect: (providerId: string, providerName: string) => void;
 }) {
   return (
-    <div className="group flex min-w-[200px] sm:min-w-[250px] max-w-[290px] shrink-0 flex-col gap-2.5 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 transition hover:border-[var(--brand-300)] hover:shadow-lg hover:shadow-slate-200/50">
+    <div className="group flex min-w-[200px] sm:min-w-[250px] max-w-[290px] shrink-0 flex-col gap-2.5 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 transition hover:border-[var(--brand-300)] hover:shadow-lg hover:shadow-slate-200/50">
       <div className="flex items-center gap-3">
         <div className="relative">
           <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand-100)] to-[var(--brand-200)] text-sm font-bold text-[var(--brand-700)]">

@@ -192,7 +192,7 @@ export default function PeoplePage() {
               >
               <Link
                 href={`/dashboard/chat?recipientId=${profile.id}`}
-                className="flex items-start gap-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
+                className="flex items-start gap-3 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
               >
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--brand-100)] to-[var(--brand-200)] text-lg font-bold text-[var(--brand-700)]">
                   {profile.full_name?.charAt(0)?.toUpperCase() || "?"}

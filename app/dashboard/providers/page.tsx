@@ -221,7 +221,7 @@ function ProviderQuickViewModal({
                 )}
               </div>
               {provider.isOnline && (
-                <span className="absolute -right-1 bottom-0 h-5 w-5 rounded-full border-3 border-white bg-emerald-500 shadow-sm" />
+                <span className="absolute -right-1 bottom-0 h-5 w-5 rounded-full border-[3px] border-white bg-emerald-500 shadow-sm" />
               )}
             </div>
 
@@ -990,14 +990,14 @@ export default function ProvidersPage() {
       )}
 
       {!loading && !error && filteredProviders.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredProviders.map((provider) => {
             const isFavorite = favoriteProviderIds.has(provider.id);
 
             return (
               <div
                 key={provider.id}
-                className={`min-w-0 space-y-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 transition shadow-sm hover:border-[var(--brand-300)] hover:shadow-lg hover:shadow-slate-200/50 ${
+                className={`min-w-0 overflow-hidden space-y-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 transition shadow-sm hover:border-[var(--brand-300)] hover:shadow-lg hover:shadow-slate-200/50 ${
                   quickViewProvider?.id === provider.id ? "border-[var(--brand-400)] ring-2 ring-[var(--brand-100)]" : ""
                 }`}
               >
