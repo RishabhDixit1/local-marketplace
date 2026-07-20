@@ -2144,6 +2144,8 @@ class _HeroChip extends StatelessWidget {
       ),
       child: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
           color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.w800,

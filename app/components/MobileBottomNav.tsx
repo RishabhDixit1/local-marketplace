@@ -86,7 +86,7 @@ export function MobileBottomNav({ items }: { items?: MobileNavItem[] }) {
               ) : null}
             </>
           );
-          const className = `relative flex min-h-[4.15rem] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-semibold transition ${
+          const className = `relative flex min-h-[3.5rem] flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition ${
             active
               ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
               : "text-[var(--ink-500)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink-950)]"

@@ -305,9 +305,9 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
                 className="mx-auto mb-3 h-24 w-24 rounded-full border-4 border-indigo-500 object-cover"
               />
               <h2 className="text-xl font-semibold">{profile?.name || "ServiQ member"}</h2>
-              <p className="mt-1 flex items-center justify-center gap-1 text-sm text-slate-500">
-                <MapPin size={14} />
-                {profile?.location || "Location not shared"}
+              <p className="mt-1 flex max-w-full items-center justify-center gap-1 text-sm text-slate-500">
+                <MapPin size={14} className="shrink-0" />
+                <span className="truncate">{profile?.location || "Location not shared"}</span>
               </p>
               <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs text-emerald-700">
                 <BadgeCheck size={13} />

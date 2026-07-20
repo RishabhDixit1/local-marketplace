@@ -256,9 +256,9 @@ export default async function PublicProfilePage({ params, searchParams }: Params
               </p>
 
               <div className="nameplate-stat-bar mx-auto mt-5">
-                <div className="nameplate-stat-item">
-                  <MapPin className="h-4 w-4 text-[var(--brand-600)]" />
-                  <span className="font-bold text-[var(--ink-950)]">{profile.location || "Nearby"}</span>
+                <div className="nameplate-stat-item min-w-0">
+                  <MapPin className="h-4 w-4 shrink-0 text-[var(--brand-600)]" />
+                  <span className="truncate font-bold text-[var(--ink-950)]">{profile.location || "Nearby"}</span>
                 </div>
                 <div className="nameplate-stat-item">
                   <BadgeCheck className="h-4 w-4 text-[var(--brand-600)]" />

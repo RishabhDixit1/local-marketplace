@@ -324,9 +324,9 @@ export function LandingPageClient({
               {t("landing.howItWorks", { appName })}
             </h2>
 
-            <div className="relative mt-6 flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-0">
-              {/* Connecting line (desktop) */}
-              <div className="absolute top-6 left-1/2 hidden h-0.5 w-[60%] -translate-x-1/2 bg-gradient-to-r from-transparent via-[var(--brand-300)] to-transparent sm:block" />
+            <div className="relative mt-6 flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-0 sm:overflow-hidden">
+              {/* Connecting line (desktop) — clipped to icon row, never touches text */}
+              <div className="pointer-events-none absolute top-6 left-1/2 z-0 hidden h-0.5 w-[40%] -translate-x-1/2 bg-gradient-to-r from-transparent via-[var(--brand-300)] to-transparent sm:block" />
 
               {[
                 { step: "1", icon: Search, label: t("landing.step1"), desc: "Browse services in your neighborhood" },

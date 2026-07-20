@@ -350,6 +350,7 @@ h3,
   flex-wrap: wrap;
   align-items: center;
   gap: 0;
+  max-width: 100%;
   border-radius: var(--radius-xl);
   border: 1px solid var(--surface-border);
   background: var(--surface-elevated);
@@ -365,7 +366,9 @@ h3,
   padding: 10px 16px;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 @media (max-width: 380px) {
