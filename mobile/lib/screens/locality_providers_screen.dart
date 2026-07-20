@@ -169,7 +169,10 @@ class _LocalityProvidersScreenState extends ConsumerState<LocalityProvidersScree
                                 .read(cartProvider.notifier)
                                 .addListing(line, providerName: name);
                             if (!mounted) return;
-                            ServiqToast.show(context, message: 'Added "$title" to cart', tone: ServiqToastTone.success);
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (!mounted) return;
+                              ServiqToast.show(context, message: 'Added "$title" to cart', tone: ServiqToastTone.success);
+                            });
                           },
                           icon: const Icon(Icons.add_shopping_cart_outlined, size: 16),
                           label: const Text('Add to Cart', style: TextStyle(fontSize: 12)),

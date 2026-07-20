@@ -125,8 +125,10 @@ class _ProviderBoostsPageState extends ConsumerState<ProviderBoostsPage> {
         'prefill': {'contact': '', 'email': ''},
       });
     } on ApiException catch (e) {
+      if (!mounted) return;
       ServiqToast.show(context, message: e.message, tone: ServiqToastTone.danger);
     } catch (e) {
+      if (!mounted) return;
       ServiqToast.show(context, message: AppErrorMapper.toMessage(e), tone: ServiqToastTone.danger);
     }
   }

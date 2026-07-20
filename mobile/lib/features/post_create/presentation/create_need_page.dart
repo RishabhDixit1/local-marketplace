@@ -570,6 +570,8 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       items.add(item);
     }
 
+    if (!mounted) return;
+
     if (items.isEmpty) {
       ServiqToast.show(context, message: 'Media is too large. Images max ${_formatByteLimit(_maxImageBytes)}, videos max ${_formatByteLimit(_maxVideoBytes)}.', tone: ServiqToastTone.warning);
       return;
