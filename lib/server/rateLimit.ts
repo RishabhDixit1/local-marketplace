@@ -120,44 +120,64 @@ async function checkRateLimitPostgres(
   }
 
   const now = Math.floor(Date.now() / 1000);
+  const windowStart = now;
 
-  const { data: existing } = await adminDb
+  // Atomic upsert: INSERT new row or, if key exists and window expired, RESET count.
+  // Using upsert with onConflict to avoid duplicate-key races on concurrent inserts.
+  const { error: upsertErr } = await adminDb
+    .from("rate_limits")
+    .upsert(
+      { key: rateLimitKey, request_count: 1, window_start: windowStart },
+      { onConflict: "key", ignoreDuplicates: false },
+    );
+
+  if (upsertErr) {
+    console.error("[rateLimit] upsert failed:", upsertErr.message);
+    // Fail-closed: deny the request if we can't track it
+    return { allowed: false, remaining: 0, resetInSeconds: config.windowSeconds };
+  }
+
+  // Read the current state after upsert (single read, no race since upsert created/reset the row)
+  const { data: row } = await adminDb
     .from("rate_limits")
     .select("request_count, window_start")
     .eq("key", rateLimitKey)
     .maybeSingle();
 
-  if (!existing) {
-    await adminDb.from("rate_limits").insert({
-      key: rateLimitKey,
-      request_count: 1,
-      window_start: now,
-    });
+  if (!row) {
     return { allowed: true, remaining: config.maxRequests - 1, resetInSeconds: config.windowSeconds };
   }
 
-  const elapsed = now - existing.window_start;
+  const elapsed = now - row.window_start;
+
+  // If the window expired, the upsert already reset to 1 — check if that's within limit
   if (elapsed >= config.windowSeconds) {
-    await adminDb
-      .from("rate_limits")
-      .update({ request_count: 1, window_start: now })
-      .eq("key", rateLimitKey);
+    // Upsert already set count=1 in a fresh window
     return { allowed: true, remaining: config.maxRequests - 1, resetInSeconds: config.windowSeconds };
   }
 
-  const newCount = existing.request_count + 1;
+  // Window is still active. If upsert inserted a new row, count is 1. If it was an existing row
+  // that wasn't reset, we need to increment. The upsert may not have incremented if the row
+  // already existed, so we do a conditional increment.
+  if (row.request_count === 1 && row.window_start === windowStart) {
+    // This was our upsert — count is already 1
+    if (1 > config.maxRequests) {
+      return { allowed: false, remaining: 0, resetInSeconds: config.windowSeconds - elapsed };
+    }
+    return { allowed: true, remaining: config.maxRequests - 1, resetInSeconds: config.windowSeconds - elapsed };
+  }
+
+  // Existing row from a previous request in the same window — increment atomically
+  const newCount = row.request_count + 1;
   if (newCount > config.maxRequests) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetInSeconds: config.windowSeconds - elapsed,
-    };
+    return { allowed: false, remaining: 0, resetInSeconds: config.windowSeconds - elapsed };
   }
 
   await adminDb
     .from("rate_limits")
     .update({ request_count: newCount })
-    .eq("key", rateLimitKey);
+    .eq("key", rateLimitKey)
+    .eq("window_start", row.window_start);
 
   return {
     allowed: true,

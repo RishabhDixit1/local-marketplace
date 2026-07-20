@@ -140,10 +140,12 @@ function SearchPageContent() {
       if (activeQuery) {
         const lower = activeQuery.toLowerCase();
         const categoryMap: Record<string, string> = {
-          electrician: "Electrician", plumber: "Plumber", carpenter: "Carpenter",
-          painter: "Painter", "ac repair": "AC Repair", "ro repair": "RO Repair",
-          "appliance repair": "Appliance Repair", "mobile repair": "Mobile Repair",
-          "bike repair": "Bike Repair", tailor: "Tailoring", cleaning: "Cleaning",
+          electrician: "Electrician", plumber: "Plumber", plumbing: "Plumber",
+          carpenter: "Carpenter", painter: "Painter", "ac repair": "AC Repair",
+          "ro repair": "RO Repair", "appliance repair": "Appliance Repair",
+          "mobile repair": "Mobile Repair", "bike repair": "Bike Repair",
+          tailor: "Tailoring", cleaning: "Cleaning", "water purifier": "RO Repair",
+          "water filter": "RO Repair", electric: "Electrician",
         };
         let matchedCategory = category || "";
         if (!matchedCategory) {

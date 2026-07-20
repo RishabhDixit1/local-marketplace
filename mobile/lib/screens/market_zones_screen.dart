@@ -6,6 +6,7 @@ import '../core/theme/app_theme.dart';
 import '../core/theme/design_tokens.dart';
 import '../shared/components/loading_shimmer.dart';
 import '../shared/components/nameplate_card.dart';
+import '../shared/widgets/ai_prompt_bar.dart';
 import '../models/locality.dart';
 import 'locality_providers_screen.dart';
 
@@ -92,7 +93,7 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
         ),
         backgroundColor: AppColors.surface,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(100),
+          preferredSize: const Size.fromHeight(150),
           child: Column(
             children: [
               TabBar(
@@ -108,7 +109,7 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
                   AppSpacing.pageInset,
                   AppSpacing.xs,
                   AppSpacing.pageInset,
-                  AppSpacing.sm,
+                  AppSpacing.xs,
                 ),
                 child: TextField(
                   onChanged: (v) => setState(() => _searchQuery = v.toLowerCase().trim()),
@@ -123,6 +124,17 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
                     ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.pageInset,
+                  0,
+                  AppSpacing.pageInset,
+                  AppSpacing.sm,
+                ),
+                child: AiPromptBar(
+                  placeholder: 'Ask about services in this zone...',
                 ),
               ),
             ],

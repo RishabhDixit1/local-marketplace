@@ -263,7 +263,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
             resetEditDraft();
             setEditDialogOpen(true);
           }}
-          className="inline-flex w-full min-h-8 items-center justify-center gap-1.5 rounded-full border border-slate-900 bg-slate-900 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-slate-800 sm:min-h-9 sm:w-auto sm:px-4 sm:text-xs"
+          className="inline-flex w-full min-h-8 items-center justify-center gap-1.5 rounded-full border border-[var(--brand-900)] bg-[var(--brand-900)] px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-[var(--brand-800)] sm:min-h-9 sm:w-auto sm:px-4 sm:text-xs"
         >
           <SquarePen className="h-4 w-4" />
           Edit profile
@@ -294,7 +294,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
         type="button"
         disabled={connectionBusy}
         onClick={() => void handleConnect()}
-        className="inline-flex w-full min-h-8 items-center justify-center gap-1.5 rounded-full border border-[#0a66c2] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#0a66c2] transition hover:bg-[#edf3f8] disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-9 sm:w-auto sm:px-4 sm:text-xs"
+        className="inline-flex w-full min-h-8 items-center justify-center gap-1.5 rounded-full border border-[var(--brand-700)] bg-[var(--surface-elevated)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--brand-700)] transition hover:bg-[var(--brand-50)] disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-9 sm:w-auto sm:px-4 sm:text-xs"
       >
         {connectionBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
         {!authResolved || viewerId
@@ -318,7 +318,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
             type="button"
             disabled={messageBusy}
             onClick={() => void handleMessage()}
-            className="inline-flex w-full min-h-8 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 sm:min-h-9 sm:w-auto sm:px-4 sm:text-xs"
+            className="inline-flex w-full min-h-8 items-center justify-center gap-1.5 rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--ink-700)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink-950)] disabled:cursor-not-allowed disabled:bg-[var(--surface-soft)] disabled:text-[var(--ink-500)] sm:min-h-9 sm:w-auto sm:px-4 sm:text-xs"
           >
             {messageBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}
             {isSelf ? "Open chat" : authResolved && !viewerId ? "Sign in to chat" : "Chat"}
@@ -346,7 +346,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
               type="button"
               disabled={connectionBusy}
               onClick={() => void handleDecision("cancelled")}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-70"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-4 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-elevated)] disabled:opacity-70"
             >
               <XCircle className="h-3.5 w-3.5" />
               Cancel request
@@ -355,7 +355,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
         ) : null}
 
         {!viewerId && authResolved && !isSelf ? (
-          <p className="mt-3 text-xs leading-5 text-slate-500">
+          <p className="mt-3 text-xs leading-5 text-[var(--ink-500)]">
             This page is public. Sign in to connect or start a direct message with this member.
           </p>
         ) : null}
@@ -373,20 +373,20 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
             aria-modal="true"
             aria-label="Edit public profile"
             tabIndex={-1}
-            className="relative z-10 flex max-h-[calc(100dvh-0.75rem)] w-full max-w-3xl flex-col overflow-hidden rounded-t-[28px] border border-slate-200 bg-white shadow-[0_30px_80px_-40px_rgba(var(--shadow-rgb),0.55)] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[28px]"
+            className="relative z-10 flex max-h-[calc(100dvh-0.75rem)] w-full max-w-3xl flex-col overflow-hidden rounded-t-[28px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-[0_30px_80px_-40px_rgba(var(--shadow-rgb),0.55)] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[28px]"
           >
-            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--surface-border)] px-4 py-4 sm:px-6 sm:py-5">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Edit profile</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{displayName}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">Update the details shown on your public profile.</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--ink-500)]">Edit profile</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink-950)]">{displayName}</h2>
+                <p className="mt-2 text-sm leading-6 text-[var(--ink-700)]">Update the details shown on your public profile.</p>
               </div>
 
               <button
                 type="button"
                 onClick={closeEditDialog}
                 disabled={editBusy}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-border)] text-[var(--ink-500)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink-950)] disabled:opacity-50"
                 aria-label="Close profile editor"
               >
                 <X className="h-4 w-4" />
@@ -397,28 +397,28 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
               <div className="grid gap-5">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-900">First name</label>
+                    <label className="text-sm font-semibold text-[var(--ink-950)]">First name</label>
                     <input
                       ref={firstNameInputRef}
                       type="text"
                       value={firstName}
                       disabled={editBusy}
                       onChange={(event) => setFirstName(event.target.value)}
-                      className={`min-h-12 w-full rounded-2xl border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition ${
-                        editErrors.fullName ? "border-rose-300 focus:ring-4 focus:ring-rose-100" : "border-slate-200 focus:ring-4 focus:ring-indigo-100"
+                      className={`min-h-12 w-full rounded-2xl border bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--ink-950)] outline-none transition ${
+                        editErrors.fullName ? "border-rose-300 focus:ring-4 focus:ring-rose-100" : "border-[var(--surface-border)] focus:ring-4 focus:ring-[var(--brand-ring)]"
                       }`}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-900">Last name</label>
+                    <label className="text-sm font-semibold text-[var(--ink-950)]">Last name</label>
                     <input
                       type="text"
                       value={lastName}
                       disabled={editBusy}
                       onChange={(event) => setLastName(event.target.value)}
-                      className={`min-h-12 w-full rounded-2xl border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition ${
-                        editErrors.fullName ? "border-rose-300 focus:ring-4 focus:ring-rose-100" : "border-slate-200 focus:ring-4 focus:ring-indigo-100"
+                      className={`min-h-12 w-full rounded-2xl border bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--ink-950)] outline-none transition ${
+                        editErrors.fullName ? "border-rose-300 focus:ring-4 focus:ring-rose-100" : "border-[var(--surface-border)] focus:ring-4 focus:ring-[var(--brand-ring)]"
                       }`}
                     />
                     {editErrors.fullName ? <p className="text-sm text-rose-600">{editErrors.fullName}</p> : null}
@@ -427,8 +427,8 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                      <MapPin className="h-4 w-4 text-slate-500" />
+                    <label className="flex items-center gap-2 text-sm font-semibold text-[var(--ink-950)]">
+                      <MapPin className="h-4 w-4 text-[var(--ink-500)]" />
                       Location
                     </label>
                     <input
@@ -436,8 +436,8 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
                       value={editValues.location}
                       disabled={editBusy}
                       onChange={(event) => setEditValues((current) => ({ ...current, location: event.target.value }))}
-                      className={`min-h-12 w-full rounded-2xl border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition ${
-                        editErrors.location ? "border-rose-300 focus:ring-4 focus:ring-rose-100" : "border-slate-200 focus:ring-4 focus:ring-indigo-100"
+                      className={`min-h-12 w-full rounded-2xl border bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--ink-950)] outline-none transition ${
+                        editErrors.location ? "border-rose-300 focus:ring-4 focus:ring-rose-100" : "border-[var(--surface-border)] focus:ring-4 focus:ring-[var(--brand-ring)]"
                       }`}
                     />
                     {editErrors.location ? <p className="text-sm text-rose-600">{editErrors.location}</p> : null}
@@ -445,18 +445,18 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-900">About</label>
+                  <label className="text-sm font-semibold text-[var(--ink-950)]">About</label>
                   <textarea
                     value={editValues.bio}
                     disabled={editBusy}
                     onChange={(event) => setEditValues((current) => ({ ...current, bio: event.target.value }))}
                     rows={6}
-                    className="min-h-[160px] w-full rounded-[24px] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition focus:ring-4 focus:ring-indigo-100"
+                    className="min-h-[160px] w-full rounded-[24px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-4 text-sm leading-6 text-[var(--ink-950)] outline-none transition focus:ring-4 focus:ring-[var(--brand-ring)]"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-900">Skills</label>
+                  <label className="text-sm font-semibold text-[var(--ink-950)]">Skills</label>
                   <textarea
                     value={editValues.interests.join(", ")}
                     disabled={editBusy}
@@ -468,13 +468,13 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
                     }
                     rows={3}
                     placeholder="Recruiting, Talent acquisition, Account management"
-                    className={`min-h-[112px] w-full rounded-[24px] border bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition ${
+                    className={`min-h-[112px] w-full rounded-[24px] border bg-[var(--surface-elevated)] px-4 py-4 text-sm leading-6 text-[var(--ink-950)] outline-none transition ${
                       editErrors.interests
                         ? "border-rose-300 focus:ring-4 focus:ring-rose-100"
-                        : "border-slate-200 focus:ring-4 focus:ring-indigo-100"
+                        : "border-[var(--surface-border)] focus:ring-4 focus:ring-[var(--brand-ring)]"
                     }`}
                   />
-                  <p className="text-xs leading-5 text-slate-500">Separate skills with commas.</p>
+                  <p className="text-xs leading-5 text-[var(--ink-500)]">Separate skills with commas.</p>
                   {editErrors.interests ? <p className="text-sm text-rose-600">{editErrors.interests}</p> : null}
                 </div>
 
@@ -490,12 +490,12 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
               </div>
             </div>
 
-            <div className="grid shrink-0 grid-cols-2 gap-3 border-t border-slate-200 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:flex sm:items-center sm:justify-end sm:px-6 sm:py-5">
+            <div className="grid shrink-0 grid-cols-2 gap-3 border-t border-[var(--surface-border)] px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:flex sm:items-center sm:justify-end sm:px-6 sm:py-5">
               <button
                 type="button"
                 onClick={closeEditDialog}
                 disabled={editBusy}
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50 sm:w-auto"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--surface-border)] px-5 py-2.5 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50 sm:w-auto"
               >
                 Cancel
               </button>
@@ -503,7 +503,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
                 type="button"
                 onClick={() => void handleEditSave()}
                 disabled={editBusy}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 sm:w-auto"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--brand-900)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-800)] disabled:opacity-60 sm:w-auto"
               >
                 {editBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <SquarePen className="h-4 w-4" />}
                 {editBusy ? "Saving..." : "Save changes"}

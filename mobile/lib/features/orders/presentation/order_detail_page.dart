@@ -11,6 +11,7 @@ import '../../../core/api/mobile_api_client.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/design_tokens.dart';
@@ -69,32 +70,21 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
               extras: {'order_id': widget.orderId},
             );
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Order marked ${_humanize(status)}.')),
-      );
+      ServiqToast.show(context, message: 'Order marked ${_humanize(status)}.', tone: ServiqToastTone.success);
       for (final warning in result.warnings) {
         if (!mounted) break;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(warning),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        ServiqToast.show(context, message: warning, tone: ServiqToastTone.danger);
       }
       if (status == 'completed') {
         _promptReview();
       }
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-        );
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
       }
     } finally {
       if (mounted) {
@@ -118,25 +108,18 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
       await ref.read(orderDetailProvider(widget.orderId).future);
       if (!mounted) return;
       HapticFeedback.mediumImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delivery marked ${_humanize(status)}.')),
-      );
+      ServiqToast.show(context, message: 'Delivery marked ${_humanize(status)}.', tone: ServiqToastTone.success);
       for (final warning in result.warnings) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(warning), duration: const Duration(seconds: 5)),
-        );
+        ServiqToast.show(context, message: warning, tone: ServiqToastTone.warning);
       }
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-        );
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -162,14 +145,10 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
       ref.invalidate(orderDetailProvider(widget.orderId));
       await ref.read(orderDetailProvider(widget.orderId).future);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Photo uploaded.')),
-      );
+      ServiqToast.show(context, message: 'Photo uploaded.', tone: ServiqToastTone.success);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-        );
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -575,29 +554,17 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                                 Navigator.of(sheetContext).pop();
                               }
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Review submitted.')),
-                                );
+                                ServiqToast.show(context, message: 'Review submitted.', tone: ServiqToastTone.success);
                               }
                             } on ApiException catch (error) {
                               setSheetState(() => submitting = false);
                               if (sheetContext.mounted) {
-                                ScaffoldMessenger.of(sheetContext).showSnackBar(
-                                  SnackBar(
-                                    content: Text(error.message),
-                                    backgroundColor: Theme.of(context).colorScheme.error,
-                                  ),
-                                );
+                                ServiqToast.show(sheetContext, message: error.message, tone: ServiqToastTone.danger);
                               }
                             } catch (error) {
                               setSheetState(() => submitting = false);
                               if (sheetContext.mounted) {
-                                ScaffoldMessenger.of(sheetContext).showSnackBar(
-                                  SnackBar(
-                                    content: Text(error.toString()),
-                                    backgroundColor: Theme.of(context).colorScheme.error,
-                                  ),
-                                );
+                                ServiqToast.show(sheetContext, message: error.toString(), tone: ServiqToastTone.danger);
                               }
                             }
                           },

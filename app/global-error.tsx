@@ -19,53 +19,35 @@ export default function GlobalError({
 
   return (
     <html>
-      <body style={{ margin: 0, fontFamily: "system-ui, sans-serif", background: "#f8fafc", color: "#0f172a" }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "24px", textAlign: "center" }}>
-          <div style={{ marginBottom: "32px" }}>
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#94a3b8" }}>
+      <body className="m-0 min-h-screen bg-[var(--surface-app,#f8fafc)] font-sans text-[var(--ink-950,#0f172a)]">
+        <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
+          <div className="mb-8">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--ink-400,#94a3b8)]">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
           </div>
-          <h1 style={{ fontSize: "24px", fontWeight: 700, margin: 0, color: "#0f172a" }}>Something went wrong</h1>
-          <p style={{ fontSize: "14px", color: "#64748b", marginTop: "8px", lineHeight: 1.5, maxWidth: "400px" }}>
+          <h1 className="text-2xl font-bold text-[var(--ink-950,#0f172a)]">Something went wrong</h1>
+          <p className="mt-2 max-w-[400px] text-sm leading-relaxed text-[var(--ink-500,#64748b)]">
             We encountered an unexpected issue. Our team has been notified. Try reloading the page to continue.
           </p>
-          <div style={{ marginTop: "24px", display: "flex", gap: "12px" }}>
+          <div className="mt-6 flex gap-3">
             <button
               onClick={reset}
-              style={{
-                padding: "12px 28px",
-                borderRadius: "12px",
-                border: "none",
-                background: "#0f172a",
-                color: "#fff",
-                fontSize: "14px",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
+              className="rounded-xl border-none bg-[var(--ink-950,#0f172a)] px-7 py-3 text-sm font-semibold text-white transition hover:brightness-110"
             >
               Try Again
             </button>
             <button
               onClick={() => { window.location.href = "/"; }}
-              style={{
-                padding: "12px 28px",
-                borderRadius: "12px",
-                border: "1px solid #e2e8f0",
-                background: "#fff",
-                color: "#0f172a",
-                fontSize: "14px",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
+              className="rounded-xl border border-[var(--surface-border,#e2e8f0)] bg-[var(--surface-elevated,#fff)] px-7 py-3 text-sm font-semibold text-[var(--ink-950,#0f172a)] transition hover:brightness-95"
             >
               Go Home
             </button>
           </div>
           {process.env.NODE_ENV === "development" && (
-            <pre style={{ marginTop: "32px", padding: "16px", background: "#1e293b", color: "#e2e8f0", borderRadius: "12px", fontSize: "12px", maxWidth: "100%", overflow: "auto", textAlign: "left" }}>
+            <pre className="mt-8 max-w-full overflow-auto rounded-xl bg-[var(--ink-950,#1e293b)] p-4 text-left text-xs text-[var(--ink-200,#e2e8f0)]">
               {error.message}
               {"\n\n"}
               {error.digest ? `Digest: ${error.digest}\n\n` : ""}

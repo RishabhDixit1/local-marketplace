@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
@@ -34,9 +35,7 @@ class _PublicBusinessPageState extends ConsumerState<PublicBusinessPage> {
       );
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open share sheet')),
-        );
+        ServiqToast.show(context, message: 'Could not open share sheet', tone: ServiqToastTone.warning);
       }
     }
   }
@@ -50,9 +49,7 @@ class _PublicBusinessPageState extends ConsumerState<PublicBusinessPage> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open browser')),
-        );
+        ServiqToast.show(context, message: 'Could not open browser', tone: ServiqToastTone.warning);
       }
     }
   }

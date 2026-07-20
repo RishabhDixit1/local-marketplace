@@ -128,7 +128,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold text-[var(--ink-950)]">12. Contact</h2>
           <p className="mt-2">
-            For questions about these Terms, contact legal@serviqapp.com or write to:
+            For questions about these Terms, contact info@serviqapp.com or write to:
             ServiQ, Crossing Republik, Ghaziabad, Uttar Pradesh, India.
           </p>
         </section>

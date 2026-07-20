@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/loading_shimmer.dart';
@@ -55,9 +56,7 @@ class _WorkspacesPageState extends ConsumerState<WorkspacesPage> {
       context.push('/app/workspaces/${ws.id}');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create workspace: $e')),
-      );
+      ServiqToast.show(context, message: 'Failed to create workspace: $e', tone: ServiqToastTone.danger);
     } finally {
       if (mounted) setState(() => _creating = false);
     }

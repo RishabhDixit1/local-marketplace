@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/loading_shimmer.dart';
@@ -77,9 +78,7 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
       await _reloadAll();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add branch: $e')),
-      );
+      ServiqToast.show(context, message: 'Failed to add branch: $e', tone: ServiqToastTone.danger);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -101,9 +100,7 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
       await _reloadAll();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add rule: $e')),
-      );
+      ServiqToast.show(context, message: 'Failed to add rule: $e', tone: ServiqToastTone.danger);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

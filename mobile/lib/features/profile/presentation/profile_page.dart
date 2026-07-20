@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -386,73 +387,81 @@ class _ProfileCommandHub extends StatelessWidget {
         const SizedBox(height: 16),
         _HubSummaryGrid(snapshot: snapshot),
         const SizedBox(height: 16),
+        if (isProvider) ...[
+          _HubSectionTitle(
+            title: 'Provider tools',
+            message: 'Manage setup, listings, availability, and business operations.',
+          ),
+          const SizedBox(height: 12),
+          _HubTileGrid(
+            tiles: [
+              _HubTileData(
+                key: 'profile-tile-business-control',
+                icon: Icons.auto_awesome_rounded,
+                title: 'Business Control',
+                subtitle: 'Setup, leads, listings, quote readiness',
+                route: AppRoutes.control,
+                emphasized: true,
+              ),
+              _HubTileData(
+                key: 'profile-tile-public-profile',
+                icon: Icons.visibility_outlined,
+                title: 'Public Profile',
+                subtitle: 'Preview what nearby people trust first',
+                route: AppRoutes.publicBusiness,
+              ),
+              _HubTileData(
+                key: 'profile-tile-listings',
+                icon: Icons.inventory_2_outlined,
+                title: 'Listings',
+                subtitle: '$offerCount services and products synced',
+                route: AppRoutes.providerListings,
+              ),
+              _HubTileData(
+                key: 'profile-tile-availability',
+                icon: Icons.event_available_outlined,
+                title: 'Availability',
+                subtitle: 'Set your weekly service hours',
+                route: AppRoutes.availability,
+              ),
+              _HubTileData(
+                key: 'profile-tile-bookings',
+                icon: Icons.calendar_month_outlined,
+                title: 'Bookings',
+                subtitle: 'Upcoming and past appointments',
+                route: AppRoutes.bookings,
+              ),
+              _HubTileData(
+                key: 'profile-tile-analytics',
+                icon: Icons.analytics_outlined,
+                title: 'Analytics',
+                subtitle: 'Performance, earnings, and trends',
+                route: AppRoutes.analytics,
+              ),
+              _HubTileData(
+                key: 'profile-tile-workspaces',
+                icon: Icons.business_outlined,
+                title: 'Workspaces',
+                subtitle: 'Manage team workspaces and branches',
+                route: AppRoutes.workspaces,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
         _HubSectionTitle(
-          title: isProvider ? 'Business cockpit' : 'Account cockpit',
-          message: isProvider
-              ? 'Manage setup, listings, leads, trust, orders, and profile quality from tappable pages.'
-              : 'Move from profile basics into local discovery, orders, saved items, and account trust.',
+          title: 'Orders and payments',
+          message: 'Track checkout, earnings, and payment history.',
         ),
         const SizedBox(height: 12),
         _HubTileGrid(
           tiles: [
-            _HubTileData(
-              key: 'profile-tile-business-control',
-              icon: Icons.auto_awesome_rounded,
-              title: 'Business Control',
-              subtitle: isProvider
-                  ? 'Setup, leads, listings, quote readiness'
-                  : 'Start provider setup when you are ready',
-              route: AppRoutes.control,
-              emphasized: isProvider,
-            ),
-            _HubTileData(
-              key: 'profile-tile-public-profile',
-              icon: Icons.visibility_outlined,
-              title: 'Public Profile',
-              subtitle: 'Preview what nearby people trust first',
-              route: AppRoutes.publicBusiness,
-            ),
-            _HubTileData(
-              key: 'profile-tile-edit-profile',
-              icon: Icons.edit_outlined,
-              title: 'Edit Profile',
-              subtitle: 'Name, area, bio, contact, availability',
-              route: AppRoutes.profile,
-            ),
-            _HubTileData(
-              key: 'profile-tile-listings',
-              icon: Icons.inventory_2_outlined,
-              title: 'Listings',
-              subtitle: '$offerCount services and products synced',
-              route: AppRoutes.providerListings,
-            ),
-            _HubTileData(
-              key: 'profile-tile-inbox',
-              icon: Icons.chat_bubble_outline_rounded,
-              title: 'Leads and Inbox',
-              subtitle: 'Replies, quote follow-up, active threads',
-              route: AppRoutes.chat,
-            ),
             _HubTileData(
               key: 'profile-tile-orders',
               icon: Icons.receipt_long_outlined,
               title: 'Payments and Orders',
               subtitle: 'Checkout history and fulfillment status',
               route: AppRoutes.orders,
-            ),
-            _HubTileData(
-              key: 'profile-tile-availability',
-              icon: Icons.event_available_outlined,
-              title: 'Availability',
-              subtitle: 'Set your weekly service hours',
-              route: AppRoutes.availability,
-            ),
-            _HubTileData(
-              key: 'profile-tile-bookings',
-              icon: Icons.calendar_month_outlined,
-              title: 'Bookings',
-              subtitle: 'Upcoming and past appointments',
-              route: AppRoutes.bookings,
             ),
             _HubTileData(
               key: 'profile-tile-payouts',
@@ -467,6 +476,23 @@ class _ProfileCommandHub extends StatelessWidget {
               title: 'Transactions',
               subtitle: 'Payment history and receipts',
               route: AppRoutes.transactions,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _HubSectionTitle(
+          title: 'Communication and trust',
+          message: 'Messages, referrals, verification, and saved items.',
+        ),
+        const SizedBox(height: 12),
+        _HubTileGrid(
+          tiles: [
+            _HubTileData(
+              key: 'profile-tile-inbox',
+              icon: Icons.chat_bubble_outline_rounded,
+              title: 'Leads and Inbox',
+              subtitle: 'Replies, quote follow-up, active threads',
+              route: AppRoutes.chat,
             ),
             _HubTileData(
               key: 'profile-tile-referrals',
@@ -483,25 +509,28 @@ class _ProfileCommandHub extends StatelessWidget {
               route: AppRoutes.verification,
             ),
             _HubTileData(
-              key: 'profile-tile-analytics',
-              icon: Icons.analytics_outlined,
-              title: 'Analytics',
-              subtitle: 'Performance, earnings, and trends',
-              route: AppRoutes.analytics,
-            ),
-            _HubTileData(
-              key: 'profile-tile-workspaces',
-              icon: Icons.business_outlined,
-              title: 'Workspaces',
-              subtitle: 'Manage team workspaces and branches',
-              route: AppRoutes.workspaces,
-            ),
-            _HubTileData(
               key: 'profile-tile-saved',
               icon: Icons.bookmark_border_rounded,
               title: 'Saved',
               subtitle: 'Saved providers, listings, and feed cards',
               route: AppRoutes.saved,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _HubSectionTitle(
+          title: 'Account',
+          message: 'Profile settings, notifications, and preferences.',
+        ),
+        const SizedBox(height: 12),
+        _HubTileGrid(
+          tiles: [
+            _HubTileData(
+              key: 'profile-tile-edit-profile',
+              icon: Icons.edit_outlined,
+              title: 'Edit Profile',
+              subtitle: 'Name, area, bio, contact, availability',
+              route: AppRoutes.profile,
             ),
             _HubTileData(
               key: 'profile-tile-notifications',
@@ -1300,10 +1329,10 @@ class _PublicProfilePreviewCard extends StatelessWidget {
               CircleAvatar(
                 radius: prominent ? 34 : 28,
                 backgroundColor: AppColors.primarySoft,
-                foregroundImage: profile.avatarUrl.isEmpty
+                backgroundImage: profile.avatarUrl.isEmpty
                     ? null
-                    : NetworkImage(profile.avatarUrl),
-                onForegroundImageError: profile.avatarUrl.isEmpty
+                    : CachedNetworkImageProvider(profile.avatarUrl),
+                onBackgroundImageError: profile.avatarUrl.isEmpty
                     ? null
                     : (_, _) {},
                 child: Text(
@@ -1437,15 +1466,19 @@ class _EditableProfileCard extends ConsumerWidget {
                 if (!context.mounted) {
                   return;
                 }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Profile saved to server.')),
+                ServiqToast.show(
+                  context,
+                  message: 'Profile saved to server.',
+                  tone: ServiqToastTone.success,
                 );
               } catch (error) {
                 if (!context.mounted) {
                   return;
                 }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(AppErrorMapper.toMessage(error))),
+                ServiqToast.show(
+                  context,
+                  message: AppErrorMapper.toMessage(error),
+                  tone: ServiqToastTone.danger,
                 );
               }
             },

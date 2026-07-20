@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
@@ -13,23 +14,53 @@ import '../../quotes/domain/quote_models.dart';
 import '../../tasks/data/task_repository.dart';
 import '../../tasks/domain/task_snapshot.dart';
 
-class OrdersPage extends ConsumerWidget {
+enum _OrderFilter { all, active, completed, cancelled }
+
+class OrdersPage extends ConsumerStatefulWidget {
   const OrdersPage({super.key});
 
-  Future<void> _refresh(WidgetRef ref) async {
+  @override
+  ConsumerState<OrdersPage> createState() => _OrdersPageState();
+}
+
+class _OrdersPageState extends ConsumerState<OrdersPage> {
+  _OrderFilter _selectedFilter = _OrderFilter.all;
+
+  Future<void> _refresh() async {
     ref.invalidate(taskSnapshotProvider);
     await ref.read(taskSnapshotProvider.future);
   }
 
+  List<MobileTaskItem> _filterOrders(List<MobileTaskItem> orders) {
+    switch (_selectedFilter) {
+      case _OrderFilter.all:
+        return orders;
+      case _OrderFilter.active:
+        return orders
+            .where((o) =>
+                o.status == MobileTaskStatus.active ||
+                o.status == MobileTaskStatus.inProgress)
+            .toList();
+      case _OrderFilter.completed:
+        return orders
+            .where((o) => o.status == MobileTaskStatus.completed)
+            .toList();
+      case _OrderFilter.cancelled:
+        return orders
+            .where((o) => o.status == MobileTaskStatus.cancelled)
+            .toList();
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final snapshot = ref.watch(taskSnapshotProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Orders')),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () => _refresh(ref),
+          onRefresh: _refresh,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
@@ -37,29 +68,36 @@ class OrdersPage extends ConsumerWidget {
                 value: snapshot,
                 errorTitle: 'Unable to load orders',
                 errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
-                onRetry: () => _refresh(ref),
+                onRetry: _refresh,
                 loadingBuilder: () => const _OrdersLoading(),
                 data: (data) {
-                  final orders = data.items
+                  final allOrders = data.items
                       .where((item) => item.source == MobileTaskSource.order)
                       .toList();
+                  final filtered = _filterOrders(allOrders);
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _OrdersHero(orders: orders),
+                      _OrdersHero(orders: allOrders),
                       const SizedBox(height: 16),
-                      _OrdersStats(orders: orders),
+                      _OrdersStats(orders: allOrders),
                       const SizedBox(height: 16),
-                      if (orders.isEmpty)
-                        const SectionCard(
+                      _FilterTabs(
+                        selected: _selectedFilter,
+                        allOrders: allOrders,
+                        onSelected: (f) => setState(() => _selectedFilter = f),
+                      ),
+                      const SizedBox(height: 12),
+                      if (filtered.isEmpty)
+                        SectionCard(
                           child: EmptyStateView(
-                            title: 'No orders yet',
-                            message:
-                                'Product purchases, service bookings, and accepted quotes will collect here.',
+                            title: _emptyTitle,
+                            message: _emptyMessage,
                           ),
                         )
                       else
-                        ...orders.map(
+                        ...filtered.map(
                           (order) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: _OrderTaskCard(order: order),
@@ -72,6 +110,82 @@ class OrdersPage extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  String get _emptyTitle {
+    switch (_selectedFilter) {
+      case _OrderFilter.all:
+        return 'No orders yet';
+      case _OrderFilter.active:
+        return 'No active orders';
+      case _OrderFilter.completed:
+        return 'No completed orders';
+      case _OrderFilter.cancelled:
+        return 'No cancelled orders';
+    }
+  }
+
+  String get _emptyMessage {
+    switch (_selectedFilter) {
+      case _OrderFilter.all:
+        return 'Product purchases, service bookings, and accepted quotes will collect here.';
+      case _OrderFilter.active:
+        return 'Your in-progress and pending orders will appear here.';
+      case _OrderFilter.completed:
+        return 'Completed orders will appear here.';
+      case _OrderFilter.cancelled:
+        return 'Cancelled orders will appear here.';
+    }
+  }
+}
+
+class _FilterTabs extends StatelessWidget {
+  const _FilterTabs({
+    required this.selected,
+    required this.allOrders,
+    required this.onSelected,
+  });
+
+  final _OrderFilter selected;
+  final List<MobileTaskItem> allOrders;
+  final ValueChanged<_OrderFilter> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeCount = allOrders
+        .where((o) =>
+            o.status == MobileTaskStatus.active ||
+            o.status == MobileTaskStatus.inProgress)
+        .length;
+    final completedCount = allOrders
+        .where((o) => o.status == MobileTaskStatus.completed)
+        .length;
+    final cancelledCount = allOrders
+        .where((o) => o.status == MobileTaskStatus.cancelled)
+        .length;
+
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _OrderFilter.values.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final filter = _OrderFilter.values[index];
+          final label = switch (filter) {
+            _OrderFilter.all => 'All (${allOrders.length})',
+            _OrderFilter.active => 'Active ($activeCount)',
+            _OrderFilter.completed => 'Completed ($completedCount)',
+            _OrderFilter.cancelled => 'Cancelled ($cancelledCount)',
+          };
+          return ChoiceChip(
+            label: Text(label),
+            selected: filter == selected,
+            onSelected: (_) => onSelected(filter),
+          );
+        },
       ),
     );
   }
@@ -173,7 +287,7 @@ class _OrderTaskCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              Chip(label: Text(order.statusLabel)),
+              _StatusChip(status: order.status),
               Chip(label: Text(order.isProviderTask ? 'Selling' : 'Buying')),
               Chip(label: Text(order.budgetLabel)),
             ],
@@ -210,6 +324,28 @@ class _OrderTaskCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
+
+  final MobileTaskStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, label) = switch (status) {
+      MobileTaskStatus.active => (AppColors.primary, 'Active'),
+      MobileTaskStatus.inProgress => (Colors.orange, 'In progress'),
+      MobileTaskStatus.completed => (Colors.green, 'Completed'),
+      MobileTaskStatus.cancelled => (Colors.red, 'Cancelled'),
+    };
+    return Chip(
+      label: Text(label),
+      backgroundColor: color.withValues(alpha: 0.1),
+      side: BorderSide(color: color.withValues(alpha: 0.3)),
+      labelStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
     );
   }
 }

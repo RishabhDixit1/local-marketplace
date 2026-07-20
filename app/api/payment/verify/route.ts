@@ -97,7 +97,9 @@ async function postHandler(request: Request) {
     .update(`${body.razorpayOrderId}|${body.razorpayPaymentId}`)
     .digest("hex");
 
-  if (expectedSignature !== body.razorpaySignature) {
+  const sigBuf = Buffer.from(body.razorpaySignature, "hex");
+  const expectedBuf = Buffer.from(expectedSignature, "hex");
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
     return NextResponse.json(
       { ok: false, code: "SIGNATURE_MISMATCH", message: "Payment signature invalid." },
       { status: 400 }
@@ -239,6 +241,40 @@ async function postHandler(request: Request) {
       } catch (err) {
         logger.error("payment:verify", "Notification after payment verification failed", err, { orderId: order.id });
       }
+    }
+  }
+
+  // Validate Razorpay amount only when orders were actually updated (skip for idempotent replays)
+  // Skip when Razorpay is not configured (e.g. test environments)
+  if (updatedOrders > 0) {
+    try {
+      const { isRazorpayConfigured, getRazorpay } = await import("@/lib/server/razorpay");
+      if (isRazorpayConfigured()) {
+        const razorpay = getRazorpay();
+        const rpOrder = await razorpay.orders.fetch(normalizedBody.razorpayOrderId);
+        const rpAmountPaise = Number(rpOrder.amount);
+        const serviQTotalPaise = orders.reduce(
+          (sum, order) => sum + Math.round((Number(order.price) || 0) * 100),
+          0,
+        );
+        if (rpAmountPaise !== serviQTotalPaise) {
+          logger.error("payment:verify", "Amount mismatch between Razorpay and ServiQ orders", null, {
+            razorpayAmount: rpAmountPaise,
+            serviqAmount: serviQTotalPaise,
+            orderIds: normalizedBody.serviQOrderIds,
+          });
+          return NextResponse.json(
+            { ok: false, code: "AMOUNT_MISMATCH", message: "Payment amount does not match order total." },
+            { status: 400 },
+          );
+        }
+      }
+    } catch (err) {
+      logger.error("payment:verify", "Failed to validate Razorpay order amount", err);
+      return NextResponse.json(
+        { ok: false, code: "VERIFICATION_FAILED", message: "Could not verify payment amount." },
+        { status: 500 },
+      );
     }
   }
 

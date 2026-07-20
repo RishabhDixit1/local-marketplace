@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../people/data/people_repository.dart';
@@ -120,9 +121,7 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage>
       ref.invalidate(connectionsListProvider);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e')),
-      );
+      ServiqToast.show(context, message: '$e', tone: ServiqToastTone.danger);
     }
   }
 }

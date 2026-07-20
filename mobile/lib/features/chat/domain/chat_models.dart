@@ -29,6 +29,7 @@ class ChatMessageItem {
     required this.senderId,
     required this.content,
     required this.createdAt,
+    this.metadata,
   });
 
   final String id;
@@ -36,4 +37,5 @@ class ChatMessageItem {
   final String senderId;
   final String content;
   final DateTime createdAt;
+  final Map<String, dynamic>? metadata;
 }

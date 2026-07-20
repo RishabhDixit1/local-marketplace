@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
@@ -209,6 +210,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     _WelcomeFeedEntry entry, {
     required Set<String> backendSavedIds,
   }) async {
+    HapticFeedback.lightImpact();
     final cardId = entry.storageKey;
     final saved = _isSavedCard(cardId, backendSavedIds);
     final card = _buildInteractionContext(entry);
@@ -255,6 +257,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
   }
 
   Future<void> _hideEntry(_WelcomeFeedEntry entry, {String? reason}) async {
+    HapticFeedback.lightImpact();
     setState(() {
       if (entry.item != null) {
         _hiddenFeedIds.add(entry.item!.id);
@@ -287,6 +290,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
   }
 
   Future<void> _shareEntry(_WelcomeFeedEntry entry) async {
+    HapticFeedback.lightImpact();
     final card = _buildInteractionContext(entry);
     final config = ref.read(appBootstrapProvider).config;
     final shareUrl = _resolveShareUrl(config.apiBaseUrl, card.actionPath);
@@ -346,6 +350,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
   }
 
   Future<void> _callEntry(_WelcomeFeedEntry entry) async {
+    HapticFeedback.lightImpact();
     final phone = entry.item?.contactPhone ?? entry.person?.contactPhone ?? '';
     if (phone.trim().isEmpty) {
       _showSnack('Calling is not available for this profile.');

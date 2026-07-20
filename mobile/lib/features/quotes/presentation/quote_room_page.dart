@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -120,9 +121,7 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
     }
     final items = _lineItems.map((item) => item.toItem()).toList();
     if (items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add at least one quote line.')),
-      );
+      ServiqToast.show(context, message: 'Add at least one quote line.', tone: ServiqToastTone.warning);
       return null;
     }
 
@@ -161,20 +160,14 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
               'line_count': input.lineItems.length,
             },
           );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Quote draft saved.')));
+      ServiqToast.show(context, message: 'Quote draft saved.', tone: ServiqToastTone.success);
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-        );
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
       }
     } finally {
       if (mounted) {
@@ -207,20 +200,14 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
               'line_count': input.lineItems.length,
             },
           );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Quote sent.')));
+      ServiqToast.show(context, message: 'Quote sent.', tone: ServiqToastTone.success);
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-        );
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
       }
     } finally {
       if (mounted) {
@@ -273,14 +260,10 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
             'quote_accepted',
             extras: {'mode': widget.mode.apiValue, 'quote_id': draft.id},
           );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Quote accepted.')));
+      ServiqToast.show(context, message: 'Quote accepted.', tone: ServiqToastTone.success);
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
       }
     } finally {
       if (mounted) {

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
@@ -34,9 +35,7 @@ class _ProviderLaunchpadReviewPageState
     final workspace = ref.read(launchpadWorkspaceProvider).asData?.value;
     final draftId = workspace?.draft?.id;
     if (draftId == null || draftId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Save a draft before publishing.')),
-      );
+      ServiqToast.show(context, message: 'Save a draft before publishing.', tone: ServiqToastTone.warning);
       return;
     }
 
@@ -48,24 +47,18 @@ class _ProviderLaunchpadReviewPageState
       ref.invalidate(launchpadWorkspaceProvider);
       ref.invalidate(providerListingsProvider);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Published ${result.publishedServices} services and ${result.publishedProducts} products.',
-          ),
-        ),
+      ServiqToast.show(
+        context,
+        message: 'Published ${result.publishedServices} services and ${result.publishedProducts} products.',
+        tone: ServiqToastTone.success,
       );
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+        ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-        );
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
       }
     } finally {
       if (mounted) setState(() => _publishing = false);

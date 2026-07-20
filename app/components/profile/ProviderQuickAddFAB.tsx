@@ -44,7 +44,7 @@ export function ProviderQuickAddFAB({ show = false }: ProviderQuickAddFABProps) 
         onClick={() => setOpen(!open)}
         aria-label="Open quick actions"
         aria-expanded={open}
-        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-3 z-40 flex h-12 w-12 items-center justify-center rounded-[1.35rem] bg-[var(--brand-900)] text-white shadow-lg transition hover:bg-[var(--brand-700)] hover:shadow-xl md:bottom-8 md:right-8 md:h-14 md:w-14 md:rounded-full"
+        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-3 z-40 flex h-12 w-12 items-center justify-center rounded-[1.35rem] bg-[var(--brand-900)] text-white shadow-lg transition hover:bg-[var(--brand-700)] hover:shadow-xl md:bottom-8 md:right-8 md:h-14 md:w-14 md:rounded-full"
       >
         <Plus className="h-5 w-5 md:h-6 md:w-6" />
       </button>
@@ -61,7 +61,7 @@ export function ProviderQuickAddFAB({ show = false }: ProviderQuickAddFABProps) 
           />
 
           {/* PopoverMenu */}
-          <div className="fixed bottom-[calc(6.2rem+env(safe-area-inset-bottom))] right-3 z-40 flex flex-col gap-2 md:bottom-28 md:right-8">
+          <div className="fixed bottom-[calc(6.7rem+env(safe-area-inset-bottom))] right-3 z-40 flex flex-col gap-2 md:bottom-28 md:right-8">
             <Link
               href="/dashboard?compose=1"
               onClick={() => setOpen(false)}

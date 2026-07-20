@@ -30,9 +30,9 @@ export default function DashboardError({
       <div className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-rose-100">
         <AlertTriangle className="h-5 w-5 text-rose-600" />
       </div>
-      <h2 className="text-lg font-semibold text-[var(--ink-950)]">Something went wrong on this dashboard view.</h2>
+      <h2 className="text-lg font-semibold text-[var(--ink-950)]">Something went wrong.</h2>
       <p className="mt-2 text-sm text-[var(--ink-700)]">
-        The incident was captured for investigation. Retry now or refresh the page.
+        Try again or refresh the page.
       </p>
       <button
         onClick={reset}

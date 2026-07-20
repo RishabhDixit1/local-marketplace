@@ -65,7 +65,7 @@ export function MobileBottomNav({ items }: { items?: MobileNavItem[] }) {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-[var(--layer-mobile-nav)] border-t border-slate-200/90 bg-[var(--surface-elevated)]/98 shadow-[0_-14px_36px_-28px_rgba(var(--shadow-rgb),0.42)] backdrop-blur-none md:hidden"
+      className="fixed inset-x-0 bottom-0 z-[var(--layer-mobile-nav)] border-t border-[var(--surface-border)]/90 bg-[var(--surface-elevated)]/98 shadow-[0_-14px_36px_-28px_rgba(var(--shadow-rgb),0.42)] backdrop-blur-none md:hidden"
       aria-label="Main navigation"
     >
       <div
@@ -89,7 +89,7 @@ export function MobileBottomNav({ items }: { items?: MobileNavItem[] }) {
           const className = `relative flex min-h-[4.15rem] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-semibold transition ${
             active
               ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
-              : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+              : "text-[var(--ink-500)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink-950)]"
           }`;
 
           if (item.href) {

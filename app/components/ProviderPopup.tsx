@@ -71,9 +71,8 @@ export default function ProviderPopup({
       {children}
 
       {show && profile && (
-        <div className="absolute z-50 top-14 left-0 w-72 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl animate-in fade-in">
+        <div className="absolute z-50 top-14 left-0 w-72 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-2xl animate-in fade-in">
 
-          {/* Header */}
           <div className="flex items-center gap-3 mb-3">
             <Image
               src={
@@ -83,25 +82,24 @@ export default function ProviderPopup({
               alt={profile.name || "Provider avatar"}
               width={48}
               height={48}
-              className="w-12 h-12 rounded-full"
+              className="w-12 h-12 rounded-full object-cover"
             />
 
             <div>
-              <h4 className="font-semibold">
+              <h4 className="text-sm font-semibold text-[var(--ink-950)]">
                 {profile.name || "Provider"}
               </h4>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[var(--ink-500)]">
                 {profile.location || "Unknown"}
               </p>
             </div>
           </div>
 
-          {/* Role */}
-          <div className="text-xs bg-indigo-600 inline-block px-2 py-1 rounded mb-2">
+          <div className="nameplate-badge !bg-[var(--brand-50)] !text-[var(--brand-700)] !border-[var(--brand-200)] mb-2">
             {profile.role || "Provider"}
           </div>
 
-          <div className="text-xs mb-2 text-emerald-300">
+          <div className="text-xs mb-2 text-emerald-600">
             {verificationLabel(
               calculateVerificationStatus({
                 role: profile.role,
@@ -122,19 +120,17 @@ export default function ProviderPopup({
             )}
           </div>
 
-          {/* Bio */}
-          <p className="text-sm text-slate-300 mb-3">
+          <p className="text-sm text-[var(--ink-700)] mb-3">
             {profile.bio ||
               "No bio added yet."}
           </p>
 
-          {/* Services */}
           <div className="flex flex-wrap gap-1">
             {profile.services?.map(
               (service, i) => (
                 <span
                   key={i}
-                  className="text-xs bg-slate-800 px-2 py-1 rounded"
+                  className="text-xs bg-[var(--surface-soft)] text-[var(--ink-700)] px-2 py-1 rounded-lg"
                 >
                   {service}
                 </span>
@@ -142,14 +138,13 @@ export default function ProviderPopup({
             )}
           </div>
 
-          {/* Availability */}
-          <div className="mt-3 text-xs text-green-400">
+          <div className="mt-3 text-xs text-emerald-600">
             ● {profile.availability || "Available"}
           </div>
 
           <button
             onClick={() => window.open(buildPublicProfilePath(profile), "_blank")}
-            className="mt-3 w-full rounded-lg bg-slate-800 py-1.5 text-xs hover:bg-slate-700"
+            className="mt-3 w-full rounded-xl bg-[var(--brand-900)] py-2 text-xs font-semibold text-white transition hover:bg-[var(--brand-700)]"
           >
             View Public Profile
           </button>

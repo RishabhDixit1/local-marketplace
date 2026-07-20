@@ -6,8 +6,12 @@ import '../core/api/mobile_api_provider.dart';
 import '../core/constants/app_routes.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/design_tokens.dart';
+import '../core/design_system/serviq_chrome.dart';
 import '../shared/components/loading_shimmer.dart';
 import '../shared/components/marketplace_provider_card.dart';
+import '../shared/widgets/ai_prompt_bar.dart';
+import '../features/cart/application/cart_notifier.dart';
+import '../features/orders/domain/order_models.dart';
 
 final _localityProvidersProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, String>((ref, localityId) async {
@@ -15,7 +19,7 @@ final _localityProvidersProvider = FutureProvider.autoDispose
   return client.getLocalityProviders(localityId);
 });
 
-class LocalityProvidersScreen extends ConsumerWidget {
+class LocalityProvidersScreen extends ConsumerStatefulWidget {
   const LocalityProvidersScreen({
     required this.localityId,
     required this.localityName,
@@ -26,14 +30,19 @@ class LocalityProvidersScreen extends ConsumerWidget {
   final String localityName;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final providersAsync = ref.watch(_localityProvidersProvider(localityId));
+  ConsumerState<LocalityProvidersScreen> createState() => _LocalityProvidersScreenState();
+}
+
+class _LocalityProvidersScreenState extends ConsumerState<LocalityProvidersScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final providersAsync = ref.watch(_localityProvidersProvider(widget.localityId));
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
-          localityName,
+          widget.localityName,
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         backgroundColor: AppColors.background,
@@ -44,7 +53,16 @@ class LocalityProvidersScreen extends ConsumerWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: providersAsync.when(
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: AiPromptBar(
+              placeholder: 'Ask about services in ${widget.localityName}...',
+            ),
+          ),
+          Expanded(
+            child: providersAsync.when(
         loading: () => const Center(child: LoadingShimmer()),
         error: (err, _) => Center(
           child: Padding(
@@ -110,6 +128,12 @@ class LocalityProvidersScreen extends ConsumerWidget {
               final avgRating = p['avg_rating'];
               final rating = avgRating is num ? avgRating.toDouble() : score;
 
+              final listings = (p['listings'] as List<dynamic>?) ?? [];
+              final pricedListings = listings
+                  .whereType<Map<String, dynamic>>()
+                  .where((l) => l['price'] != null && (l['price'] as num) > 0)
+                  .toList();
+
               return MarketplaceProviderCard(
                 name: name,
                 location: location.isNotEmpty ? location : null,
@@ -122,10 +146,49 @@ class LocalityProvidersScreen extends ConsumerWidget {
                 onTap: providerId.isNotEmpty
                     ? () => context.push(AppRoutes.provider(providerId))
                     : null,
+                trailing: pricedListings.isNotEmpty
+                    ? Align(
+                        alignment: Alignment.centerRight,
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            final listing = pricedListings.first;
+                            final listingId = (listing['id'] as String?) ?? '';
+                            final title = (listing['title'] as String?) ?? name;
+                            final price = (listing['price'] as num).toDouble();
+                            if (listingId.isEmpty) return;
+                            final line = MobileCheckoutItem(
+                              providerId: providerId,
+                              itemType: 'service',
+                              itemId: listingId,
+                              title: title,
+                              price: price,
+                              quantity: 1,
+                              providerName: name,
+                            );
+                            await ref
+                                .read(cartProvider.notifier)
+                                .addListing(line, providerName: name);
+                            if (!mounted) return;
+                            ServiqToast.show(context, message: 'Added "$title" to cart', tone: ServiqToastTone.success);
+                          },
+                          icon: const Icon(Icons.add_shopping_cart_outlined, size: 16),
+                          label: const Text('Add to Cart', style: TextStyle(fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primaryDeep,
+                            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      )
+                    : null,
               );
             },
           );
         },
+      ),
+          ),
+        ],
       ),
     );
   }

@@ -1,10 +1,15 @@
+import 'dart:io';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/design_system/serviq_surface.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
@@ -46,6 +51,7 @@ class ChatPage extends ConsumerStatefulWidget {
 class _ChatPageState extends ConsumerState<ChatPage> {
   final _searchController = TextEditingController();
   final _composerController = TextEditingController();
+  final _messagesScrollController = ScrollController();
 
   String? _selectedConversationId;
   bool _openingConversation = false;
@@ -84,6 +90,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   void dispose() {
     _searchController.dispose();
     _composerController.dispose();
+    _messagesScrollController.dispose();
     final c = _client;
     final ch = _messagesChannel;
     if (c != null && ch != null) {
@@ -202,9 +209,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             'chat_send_failure',
             extras: {'conversation_id': conversationId},
           );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(AppErrorMapper.toMessage(error))));
+      ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
     } finally {
       if (mounted) {
         setState(() => _sending = false);
@@ -371,6 +376,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         : _ChatThread(
             conversationId: selectedConversationId,
             composerController: _composerController,
+            messagesScrollController: _messagesScrollController,
             sending: _sending,
             contextTitle: widget.contextTitle,
             contextTaskId: widget.contextTaskId,
@@ -925,10 +931,11 @@ class _SafetyNote extends StatelessWidget {
   }
 }
 
-class _ChatThread extends ConsumerWidget {
+class _ChatThread extends ConsumerStatefulWidget {
   const _ChatThread({
     required this.conversationId,
     required this.composerController,
+    required this.messagesScrollController,
     required this.sending,
     required this.contextTitle,
     required this.contextTaskId,
@@ -939,6 +946,7 @@ class _ChatThread extends ConsumerWidget {
 
   final String conversationId;
   final TextEditingController composerController;
+  final ScrollController messagesScrollController;
   final bool sending;
   final String? contextTitle;
   final String? contextTaskId;
@@ -947,21 +955,65 @@ class _ChatThread extends ConsumerWidget {
   final VoidCallback onSend;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ChatThread> createState() => _ChatThreadState();
+}
+
+class _ChatThreadState extends ConsumerState<_ChatThread> {
+  bool _uploadingImage = false;
+
+  Future<void> _pickAndSendImage() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 82,
+      maxWidth: 1800,
+    );
+    if (picked == null) return;
+
+    setState(() => _uploadingImage = true);
+    try {
+      final repo = ref.read(chatRepositoryProvider);
+      final imageUrl = await repo.uploadChatImage(
+        widget.conversationId,
+        File(picked.path),
+      );
+      if (imageUrl.isEmpty || !mounted) return;
+
+      await repo.sendMessage(
+        conversationId: widget.conversationId,
+        content: '',
+        imageUrl: imageUrl,
+      );
+      ref.invalidate(chatMessagesProvider(widget.conversationId));
+      ref.invalidate(chatConversationsProvider);
+    } catch (error) {
+      if (mounted) {
+        ServiqToast.show(
+          context,
+          message: AppErrorMapper.toMessage(error),
+          tone: ServiqToastTone.danger,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingImage = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final bootstrap = ref.watch(appBootstrapProvider);
     final currentUserId = bootstrap.client?.auth.currentUser?.id ?? '';
     final conversations =
         ref.watch(chatConversationsProvider).asData?.value ?? const [];
     final conversation = conversations
-        .where((item) => item.id == conversationId)
+        .where((item) => item.id == widget.conversationId)
         .cast<ChatConversation?>()
         .firstOrNull;
-    final messagesAsync = ref.watch(chatMessagesProvider(conversationId));
+    final messagesAsync = ref.watch(chatMessagesProvider(widget.conversationId));
     final requestContext = _ChatRequestContext(
-      title: contextTitle,
-      taskId: contextTaskId,
-      status: contextStatus,
-      source: contextSource,
+      title: widget.contextTitle,
+      taskId: widget.contextTaskId,
+      status: widget.contextStatus,
+      source: widget.contextSource,
     );
     final hasMessages = messagesAsync.asData?.value.isNotEmpty ?? false;
 
@@ -1019,7 +1071,7 @@ class _ChatThread extends ConsumerWidget {
           if (requestContext.taskIdText.isNotEmpty)
             _QuoteRoomShortcut(
               contextData: requestContext,
-              conversationId: conversationId,
+              conversationId: widget.conversationId,
             ),
           Expanded(
             child: ServiqAsyncBody<List<ChatMessageItem>>(
@@ -1027,7 +1079,7 @@ class _ChatThread extends ConsumerWidget {
               errorTitle: 'Unable to load messages',
               errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
               onRetry: () =>
-                  ref.invalidate(chatMessagesProvider(conversationId)),
+                  ref.invalidate(chatMessagesProvider(widget.conversationId)),
               loadingBuilder: () => const Padding(
                 padding: EdgeInsets.all(16),
                 child: _MessageListLoading(),
@@ -1040,11 +1092,21 @@ class _ChatThread extends ConsumerWidget {
                   );
                 }
 
+                // Auto-scroll to bottom when new messages arrive
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (widget.messagesScrollController.hasClients) {
+                    widget.messagesScrollController.jumpTo(
+                      widget.messagesScrollController.position.maxScrollExtent,
+                    );
+                  }
+                });
+
                 final lastMineIndex = messages.lastIndexWhere(
                   (message) => message.senderId == currentUserId,
                 );
 
                 return ListView.builder(
+                  controller: widget.messagesScrollController,
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
@@ -1068,18 +1130,68 @@ class _ChatThread extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            if (message.metadata?['imageUrl'] != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxWidth: 220,
+                                      maxHeight: 160,
+                                    ),
+                                    child: CachedNetworkImage(
+                                      imageUrl: message.metadata!['imageUrl'] as String,
+                                      fit: BoxFit.cover,
+                                      placeholder: (_, _) => Container(
+                                        width: 220,
+                                        height: 120,
+                                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                        child: const Center(
+                                          child: SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                          ),
+                                        ),
+                                      ),
+                                      errorWidget: (_, _, _) => Container(
+                                        width: 220,
+                                        height: 120,
+                                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                        child: Icon(
+                                          Icons.broken_image_rounded,
+                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (message.content.isNotEmpty)
+                              Text(
+                                message.content,
+                                maxLines: 20,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(
+                                      color: isMine
+                                          ? Theme.of(context).colorScheme.onPrimary
+                                          : Theme.of(context).colorScheme.onSurface,
+                                    ),
+                              ),
+                            const SizedBox(height: 6),
                             Text(
-                              message.content,
-                              maxLines: 20,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodyLarge
+                              _formatMessageTime(message.createdAt),
+                              style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
+                                    fontSize: 10,
                                     color: isMine
-                                        ? Theme.of(context).colorScheme.onPrimary
-                                        : Theme.of(context).colorScheme.onSurface,
+                                        ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.5)
+                                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
                                   ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 4),
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -1151,9 +1263,9 @@ class _ChatThread extends ConsumerWidget {
                           child: Row(
                             children:
                                 _quickRepliesFor(
-                                      contextTitle: contextTitle,
-                                      contextStatus: contextStatus,
-                                      contextSource: contextSource,
+                                      contextTitle: widget.contextTitle,
+                                      contextStatus: widget.contextStatus,
+                                      contextSource: widget.contextSource,
                                     )
                                     .map(
                                       (reply) => Padding(
@@ -1162,10 +1274,10 @@ class _ChatThread extends ConsumerWidget {
                                         ),
                                         child: ActionChip(
                                           label: Text(reply),
-                                          onPressed: sending
+                                          onPressed: widget.sending
                                               ? null
                                               : () {
-                                                  composerController
+                                                  widget.composerController
                                                       .value = TextEditingValue(
                                                     text: reply,
                                                     selection:
@@ -1186,16 +1298,27 @@ class _ChatThread extends ConsumerWidget {
                   const SizedBox(height: 12),
                   Row(
                     children: [
+                      IconButton(
+                        onPressed: _uploadingImage ? null : _pickAndSendImage,
+                        icon: _uploadingImage
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.image_outlined),
+                        tooltip: 'Send image',
+                      ),
                       Expanded(
                         child: TextField(
-                          controller: composerController,
+                          controller: widget.composerController,
                           minLines: 1,
                           maxLines: 4,
                           textInputAction: TextInputAction.send,
                           decoration: const InputDecoration(
                             hintText: 'Write a message',
                           ),
-                          onSubmitted: (_) => onSend(),
+                          onSubmitted: (_) => widget.onSend(),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1203,12 +1326,12 @@ class _ChatThread extends ConsumerWidget {
                         width: 56,
                         height: 48,
                         child: FilledButton(
-                          onPressed: sending ? null : onSend,
+                          onPressed: widget.sending ? null : widget.onSend,
                           style: FilledButton.styleFrom(
                             minimumSize: const Size(56, 48),
                             padding: EdgeInsets.zero,
                           ),
-                          child: sending
+                          child: widget.sending
                               ? const SizedBox(
                                   width: 16,
                                   height: 16,
@@ -1534,6 +1657,24 @@ String _messageStatusLabel(
     return isLatestMine ? 'Sent $time' : 'Sent $time';
   }
   return 'Received $time';
+}
+
+String _formatMessageTime(DateTime value) {
+  final local = value.toLocal();
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final messageDate = DateTime(local.year, local.month, local.day);
+  final hour = local.hour;
+  final minute = local.minute.toString().padLeft(2, '0');
+  final period = hour >= 12 ? 'PM' : 'AM';
+  final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+  final timeStr = '$displayHour:$minute $period';
+
+  if (messageDate == today) return timeStr;
+  final yesterday = today.subtract(const Duration(days: 1));
+  if (messageDate == yesterday) return 'Yesterday $timeStr';
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return '${months[local.month - 1]} ${local.day}, $timeStr';
 }
 
 String _relativeTime(DateTime value) {

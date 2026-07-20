@@ -124,10 +124,10 @@ export default function CookiePolicyPage() {
           <p>
             For questions about this cookie policy, contact us at{" "}
             <a
-              href="mailto:privacy@serviq.app"
+              href="mailto:info@serviqapp.com"
               className="font-medium text-[var(--brand-700)] underline underline-offset-2"
             >
-              privacy@serviq.app
+              info@serviqapp.com
             </a>
             .
           </p>

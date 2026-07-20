@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_recovery_banner.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -339,16 +340,20 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      ServiqToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text('Connection request sent to ${person.name}.')));
+        message: 'Connection request sent to ${person.name}.',
+        tone: ServiqToastTone.success,
+      );
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      ServiqToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(AppErrorMapper.toMessage(error))));
+        message: AppErrorMapper.toMessage(error),
+        tone: ServiqToastTone.danger,
+      );
     } finally {
       if (mounted) {
         setState(() => _busyConnectId = null);

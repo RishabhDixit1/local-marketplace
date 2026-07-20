@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 type SendChatMessageRequest = {
   conversationId?: string;
   content?: string;
+  metadata?: Record<string, unknown>;
 };
 
 async function postHandler(request: Request) {
@@ -76,8 +77,9 @@ async function postHandler(request: Request) {
         conversation_id: conversationId,
         sender_id: authResult.auth.userId,
         content,
+        metadata: body.metadata ?? {},
       })
-      .select("id,conversation_id,content,sender_id,created_at")
+      .select("id,conversation_id,content,sender_id,created_at,metadata")
       .single();
 
     if (insertResult.error || !insertResult.data) {

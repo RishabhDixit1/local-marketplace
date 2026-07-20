@@ -27,10 +27,10 @@ export default function PublicProfileAbout({ bio }: PublicProfileAboutProps) {
 
   return (
     <div>
-      <h2 className="text-[2rem] font-semibold tracking-tight text-slate-950">About</h2>
+      <h2 className="text-[2rem] font-semibold tracking-tight text-[var(--ink-950)]">About</h2>
       <p
         ref={textRef}
-        className={`mt-4 text-base leading-8 text-slate-700 ${expanded ? "" : "line-clamp-4"}`}
+        className={`mt-4 text-base leading-8 text-[var(--ink-700)] ${expanded ? "" : "line-clamp-4"}`}
       >
         {content}
       </p>
@@ -39,7 +39,7 @@ export default function PublicProfileAbout({ bio }: PublicProfileAboutProps) {
         <button
           type="button"
           onClick={() => setExpanded((current) => !current)}
-          className="mt-3 text-sm font-semibold text-[#0a66c2] transition hover:text-[#004182]"
+          className="mt-3 text-sm font-semibold text-[var(--brand-500)] transition hover:text-[var(--brand-700)]"
         >
           {expanded ? "Show less" : "More details"}
         </button>

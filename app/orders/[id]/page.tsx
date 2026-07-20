@@ -352,7 +352,7 @@ export default function OrderStatusPage() {
                 {bookingWarning && <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">{bookingWarning}</p>}
                 {postSyncWarning && <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">{postSyncWarning}</p>}
                 <p className="mt-2 text-xs text-amber-600 dark:text-amber-500">
-                  Please contact <a href="mailto:support@serviq.in" className="underline font-medium">support@serviq.in</a> for assistance.
+                  Please contact <a href="mailto:info@serviqapp.com" className="underline font-medium">info@serviqapp.com</a> or call <a href="tel:+919696707492" className="underline font-medium">+91 9696707492</a> for assistance.
                 </p>
               </div>
               <button

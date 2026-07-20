@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../l10n/l10n.dart';
@@ -99,7 +100,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         if (mounted) context.go('/');
       } on ApiException catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+          ServiqToast.show(context, message: e.message, tone: ServiqToastTone.danger);
         }
       }
     }

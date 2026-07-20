@@ -57,10 +57,24 @@ export async function processPendingJobs(db: SupabaseClient, batchSize = 10) {
       continue;
     }
 
+    // Atomically claim the job only if it's still pending (prevents double-processing across instances)
     await db
       .from("background_jobs")
       .update({ status: "running", started_at: new Date().toISOString(), attempts: job.attempts + 1 })
-      .eq("id", job.id);
+      .eq("id", job.id)
+      .eq("status", "pending");
+
+    // Verify claim succeeded (Supabase doesn't return affected row count)
+    const { data: freshJob } = await db
+      .from("background_jobs")
+      .select("status, started_at")
+      .eq("id", job.id)
+      .maybeSingle();
+
+    if (!freshJob || freshJob.status !== "running") {
+      // Another instance claimed this job — skip
+      continue;
+    }
 
     try {
       await handler(db, job.payload as Record<string, unknown>);
@@ -73,11 +87,18 @@ export async function processPendingJobs(db: SupabaseClient, batchSize = 10) {
       const message = err instanceof Error ? err.message : String(err);
       const willRetry = job.attempts + 1 < job.max_attempts;
 
+      // Exponential backoff: 30s, 60s, 120s, ... based on attempt number
+      const backoffSeconds = willRetry ? Math.min(30 * Math.pow(2, job.attempts), 600) : 0;
+      const nextRunAt = willRetry
+        ? new Date(Date.now() + backoffSeconds * 1000).toISOString()
+        : null;
+
       await db
         .from("background_jobs")
         .update({
           status: willRetry ? "pending" : "failed",
           error: message,
+          run_at: nextRunAt ?? undefined,
           completed_at: willRetry ? null : new Date().toISOString(),
         })
         .eq("id", job.id);

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/design_system/serviq_recovery_banner.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
@@ -104,31 +105,19 @@ class _TasksPageState extends ConsumerState<TasksPage> {
       }
 
       HapticFeedback.mediumImpact();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(action.successMessage)));
+      ServiqToast.show(context, message: action.successMessage, tone: ServiqToastTone.success);
     } on ApiException catch (error) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.message),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      ServiqToast.show(context, message: error.toString(), tone: ServiqToastTone.danger);
     } finally {
       if (mounted) {
         setState(() {
@@ -217,27 +206,15 @@ class _TasksPageState extends ConsumerState<TasksPage> {
       if (!mounted) return;
 
       HapticFeedback.mediumImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Task completed.')),
-      );
+      ServiqToast.show(context, message: 'Task completed.', tone: ServiqToastTone.success);
 
       await _showReviewSheet(task);
     } on ApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.message),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      ServiqToast.show(context, message: error.toString(), tone: ServiqToastTone.danger);
     } finally {
       if (mounted) {
         setState(() {
@@ -332,25 +309,13 @@ class _TasksPageState extends ConsumerState<TasksPage> {
         comment: comment,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Review submitted.')),
-      );
+      ServiqToast.show(context, message: 'Review submitted.', tone: ServiqToastTone.success);
     } on ApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.message),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      ServiqToast.show(context, message: error.toString(), tone: ServiqToastTone.danger);
     }
   }
 

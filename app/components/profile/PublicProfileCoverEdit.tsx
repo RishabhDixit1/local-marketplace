@@ -168,12 +168,12 @@ export default function PublicProfileCoverEdit({
             aria-modal="true"
             aria-label="Update cover image"
             tabIndex={-1}
-            className="relative z-10 flex w-full max-w-4xl max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_35px_120px_-45px_rgba(var(--shadow-rgb),0.55)] sm:max-h-[calc(100vh-3rem)]"
+            className="relative z-10 flex w-full max-w-4xl max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[2rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-[0_35px_120px_-45px_rgba(var(--shadow-rgb),0.55)] sm:max-h-[calc(100vh-3rem)]"
           >
-            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-6 py-5 sm:px-8">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--surface-border)] px-6 py-5 sm:px-8">
               <div>
-                <h2 className="text-[1.7rem] font-semibold tracking-tight text-slate-950 sm:text-[1.95rem]">Update cover image</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
+                <h2 className="text-[1.7rem] font-semibold tracking-tight text-[var(--ink-950)] sm:text-[1.95rem]">Update cover image</h2>
+                <p className="mt-2 text-sm leading-6 text-[var(--ink-700)] sm:text-base sm:leading-7">
                   Refresh the background shown on {displayName}&apos;s profile header.
                 </p>
               </div>
@@ -191,13 +191,13 @@ export default function PublicProfileCoverEdit({
 
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8 sm:px-8">
               <div className="mx-auto max-w-3xl">
-                <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50/70 p-5 sm:p-6">
-                  <div className="overflow-hidden rounded-[1.4rem] border border-slate-200 bg-slate-950">
+                <div className="rounded-[1.75rem] border border-[var(--surface-border)] bg-[var(--surface-soft)] p-5 sm:p-6">
+                  <div className="overflow-hidden rounded-[1.4rem] border border-[var(--surface-border)] bg-[var(--ink-950)]">
                     {previewUrl || coverImageUrl ? (
                       <img src={previewUrl || coverImageUrl} alt={`${displayName} cover`} className="h-56 w-full object-cover sm:h-72" />
                     ) : (
                       <div className="flex h-56 w-full items-center justify-center bg-[linear-gradient(125deg,#eff6ff_0%,#dbeafe_24%,#c7d2fe_58%,#e0e7ff_100%)] sm:h-72">
-                        <span className="rounded-full border border-slate-300 bg-white/70 px-4 py-2 text-sm font-semibold text-[var(--ink-700)]">
+                        <span className="rounded-full border border-[var(--surface-border)] bg-white/70 px-4 py-2 text-sm font-semibold text-[var(--ink-700)]">
                           No cover image yet
                         </span>
                       </div>
@@ -206,8 +206,8 @@ export default function PublicProfileCoverEdit({
 
                   <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-base font-semibold text-slate-950 sm:text-lg">{displayName}</p>
-                      <p className="text-sm leading-6 text-slate-500">PNG, JPG, WEBP, or GIF. Images are compressed before upload.</p>
+                      <p className="text-base font-semibold text-[var(--ink-950)] sm:text-lg">{displayName}</p>
+                      <p className="text-sm leading-6 text-[var(--ink-500)]">PNG, JPG, WEBP, or GIF. Images are compressed before upload.</p>
                     </div>
 
                     <button
@@ -215,7 +215,7 @@ export default function PublicProfileCoverEdit({
                       type="button"
                       onClick={() => inputRef.current?.click()}
                       disabled={uploading}
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-400 bg-white px-5 py-2.5 text-base font-semibold text-[var(--ink-700)] transition hover:border-slate-500 hover:text-[var(--ink-950)] disabled:opacity-60"
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface-elevated)] px-5 py-2.5 text-base font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-500)] hover:text-[var(--ink-950)] disabled:opacity-60"
                     >
                       <Upload className="h-4.5 w-4.5" />
                       Choose cover image
@@ -244,12 +244,12 @@ export default function PublicProfileCoverEdit({
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-200 px-6 py-5 sm:px-8">
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[var(--surface-border)] px-6 py-5 sm:px-8">
               <button
                 type="button"
                 onClick={closeDialog}
                 disabled={uploading}
-                className="inline-flex min-h-11 items-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
+                className="inline-flex min-h-11 items-center rounded-full border border-[var(--surface-border)] px-5 py-2.5 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -257,7 +257,7 @@ export default function PublicProfileCoverEdit({
                 type="button"
                 onClick={() => void handleUpload()}
                 disabled={uploading}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--brand-900)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-800)] disabled:opacity-60"
               >
                 {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageUp className="h-4 w-4" />}
                 {uploading ? "Saving..." : "Save cover"}

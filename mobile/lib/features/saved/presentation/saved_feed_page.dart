@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/empty_state_view.dart';
@@ -96,15 +97,9 @@ class _SavedFeedPageState extends ConsumerState<SavedFeedPage> {
       context.push(path);
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          path.isEmpty
-              ? 'This save has no open action yet.'
-              : 'Open this from the web app: $path',
-        ),
-      ),
-    );
+    ServiqToast.show(context, message: path.isEmpty
+        ? 'This save has no open action yet.'
+        : 'Open this from the web app: $path', tone: ServiqToastTone.warning);
   }
 
   @override

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/empty_state_view.dart';
@@ -37,9 +38,9 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
       await ref.read(referralsRepositoryProvider).createCode();
       await _refresh();
     } on ApiException catch (e) {
-      if (mounted) _showError(e.message);
+      if (mounted) ServiqToast.show(context, message: e.message, tone: ServiqToastTone.danger);
     } catch (e) {
-      if (mounted) _showError('Failed to generate code.');
+      if (mounted) ServiqToast.show(context, message: 'Failed to generate code.', tone: ServiqToastTone.danger);
     } finally {
       if (mounted) setState(() => _creating = false);
     }
@@ -51,11 +52,11 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
 
   Future<void> _requestPayout(int availablePoints) async {
     if (_payoutPoints < 50) {
-      _showError('Minimum 50 points required.');
+      ServiqToast.show(context, message: 'Minimum 50 points required.', tone: ServiqToastTone.danger);
       return;
     }
     if (_payoutPoints > availablePoints) {
-      _showError('You only have $availablePoints points available.');
+      ServiqToast.show(context, message: 'You only have $availablePoints points available.', tone: ServiqToastTone.danger);
       return;
     }
 
@@ -74,12 +75,6 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
     } finally {
       if (mounted) setState(() => _requestingPayout = false);
     }
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: AppColors.danger),
-    );
   }
 
   @override

@@ -97,10 +97,13 @@ export default function RefundPolicyPage() {
           <h2 className="mb-3 font-semibold text-[var(--ink-950)]">7. Contact</h2>
           <p>
             For refund inquiries, contact{" "}
-            <a href="mailto:support@serviq.app" className="font-medium text-[var(--brand-700)] underline underline-offset-2">
-              support@serviq.app
+            <a href="mailto:info@serviqapp.com" className="font-medium text-[var(--brand-700)] underline underline-offset-2">
+              info@serviqapp.com
             </a>
-            .
+            {" "}or call{" "}
+            <a href="tel:+919696707492" className="font-medium text-[var(--brand-700)] underline underline-offset-2">
+              +91 9696707492
+            </a>.
           </p>
         </section>
       </div>

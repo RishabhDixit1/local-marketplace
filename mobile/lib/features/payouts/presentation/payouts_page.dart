@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../data/payouts_repository.dart';
@@ -65,12 +66,12 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
     final amountText = _amountController.text.trim();
     final amount = int.tryParse(amountText);
     if (amount == null || amount < 1) {
-      _showError('Enter a valid amount (minimum ₹1).');
+      ServiqToast.show(context, message: 'Enter a valid amount (minimum ₹1).', tone: ServiqToastTone.danger);
       return;
     }
     final amountPaise = amount * 100;
     if (amountPaise > availablePaise) {
-      _showError('Insufficient balance. Available: ${_inr(availablePaise)}');
+      ServiqToast.show(context, message: 'Insufficient balance. Available: ${_inr(availablePaise)}', tone: ServiqToastTone.danger);
       return;
     }
 
@@ -81,12 +82,12 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
             payoutMethod: _selectedMethod,
           );
       _amountController.clear();
-      if (mounted) _showSuccess('Payout requested successfully.');
+      if (mounted) ServiqToast.show(context, message: 'Payout requested successfully.', tone: ServiqToastTone.success);
       await _refresh();
     } on ApiException catch (e) {
-      if (mounted) _showError(e.message);
+      if (mounted) ServiqToast.show(context, message: e.message, tone: ServiqToastTone.danger);
     } catch (e) {
-      if (mounted) _showError('Failed to request payout.');
+      if (mounted) ServiqToast.show(context, message: 'Failed to request payout.', tone: ServiqToastTone.danger);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -103,7 +104,7 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
       final number = _accountNumController.text.trim();
       final ifsc = _ifscController.text.trim();
       if (holder.isEmpty || bank.isEmpty || number.isEmpty || ifsc.isEmpty) {
-        _showError('Fill all bank account fields.');
+        ServiqToast.show(context, message: 'Fill all bank account fields.', tone: ServiqToastTone.danger);
         return;
       }
       body['account_holder_name'] = holder;
@@ -113,7 +114,7 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
     } else {
       final upi = _upiController.text.trim();
       if (upi.isEmpty) {
-        _showError('Enter your UPI handle.');
+        ServiqToast.show(context, message: 'Enter your UPI handle.', tone: ServiqToastTone.danger);
         return;
       }
       body['upi_handle'] = upi;
@@ -128,12 +129,12 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
       _ifscController.clear();
       _upiController.clear();
       _showAddAccount.value = false;
-      if (mounted) _showSuccess('Account added.');
+      if (mounted) ServiqToast.show(context, message: 'Account added.', tone: ServiqToastTone.success);
       await _refresh();
     } on ApiException catch (e) {
-      if (mounted) _showError(e.message);
+      if (mounted) ServiqToast.show(context, message: e.message, tone: ServiqToastTone.danger);
     } catch (e) {
-      if (mounted) _showError('Failed to add account.');
+      if (mounted) ServiqToast.show(context, message: 'Failed to add account.', tone: ServiqToastTone.danger);
     } finally {
       if (mounted) setState(() => _addingAccount = false);
     }
@@ -158,25 +159,13 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
 
     try {
       await ref.read(payoutsRepositoryProvider).deleteAccount(id);
-      if (mounted) _showSuccess('Account deleted.');
+      if (mounted) ServiqToast.show(context, message: 'Account deleted.', tone: ServiqToastTone.success);
       await _refresh();
     } on ApiException catch (e) {
-      if (mounted) _showError(e.message);
+      if (mounted) ServiqToast.show(context, message: e.message, tone: ServiqToastTone.danger);
     } catch (e) {
-      if (mounted) _showError('Failed to delete account.');
+      if (mounted) ServiqToast.show(context, message: 'Failed to delete account.', tone: ServiqToastTone.danger);
     }
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: AppColors.danger),
-    );
-  }
-
-  void _showSuccess(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: AppColors.success),
-    );
   }
 
   @override

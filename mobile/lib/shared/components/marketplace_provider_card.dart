@@ -20,6 +20,7 @@ class MarketplaceProviderCard extends StatelessWidget {
     this.priceMin,
     this.priceMax,
     this.onTap,
+    this.trailing,
     super.key,
   });
 
@@ -35,6 +36,7 @@ class MarketplaceProviderCard extends StatelessWidget {
   final num? priceMin;
   final num? priceMax;
   final VoidCallback? onTap;
+  final Widget? trailing;
 
   String? get _priceLabel {
     if (priceMin == null) return null;
@@ -169,6 +171,10 @@ class MarketplaceProviderCard extends StatelessWidget {
                 color: AppColors.primaryDeep,
               ),
             ),
+          ],
+          if (trailing != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            trailing!,
           ],
         ],
       ),

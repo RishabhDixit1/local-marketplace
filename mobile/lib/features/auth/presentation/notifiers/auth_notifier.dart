@@ -88,6 +88,28 @@ class AuthNotifier extends Notifier<AuthFormState> {
   final phoneController = TextEditingController();
   final emailOtpController = TextEditingController();
 
+  Timer? _otpCooldownTimer;
+  int _otpCooldownRemaining = 0;
+
+  int get otpCooldownRemaining => _otpCooldownRemaining;
+
+  void _startCooldown() {
+    _otpCooldownRemaining = 60;
+    _otpCooldownTimer?.cancel();
+    _otpCooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      _otpCooldownRemaining--;
+      if (_otpCooldownRemaining <= 0) {
+        timer.cancel();
+        _otpCooldownRemaining = 0;
+      }
+      state = state;
+    });
+  }
+
+  void dispose() {
+    _otpCooldownTimer?.cancel();
+  }
+
   void setActiveTab(AuthTab tab) {
     state = state.copyWith(activeTab: tab, clearError: true, clearSuccess: true);
   }
@@ -105,6 +127,8 @@ class AuthNotifier extends Notifier<AuthFormState> {
   }
 
   void resetOtpFlow() {
+    _otpCooldownTimer?.cancel();
+    _otpCooldownRemaining = 0;
     state = state.copyWith(
       clearOtp: true,
       clearError: true,
@@ -133,6 +157,7 @@ class AuthNotifier extends Notifier<AuthFormState> {
       await _authService.sendEmailCode(email);
       if (!context.mounted) return;
 
+      _startCooldown();
       state = state.copyWith(
         isSubmitting: false,
         otpSent: true,
@@ -204,6 +229,7 @@ class AuthNotifier extends Notifier<AuthFormState> {
     try {
       await _authService.sendPhoneOtp(phone);
       if (!context.mounted) return;
+      _startCooldown();
       state = state.copyWith(
         isSubmitting: false,
         otpSent: true,

@@ -65,6 +65,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
               child: FadeTransition(
@@ -231,6 +232,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
               textInputAction: TextInputAction.done,
               maxLength: 6,
               textAlign: TextAlign.center,
+              autofillHints: const [AutofillHints.oneTimeCode],
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -267,6 +269,14 @@ class _LoginPageState extends ConsumerState<LoginPage>
                 ),
               ),
             ),
+            if (notifier.otpCooldownRemaining > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Resend code in ${notifier.otpCooldownRemaining}s',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
           ],
         ),
       );
@@ -288,7 +298,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: state.isSubmitting
+              onPressed: (state.isSubmitting || notifier.otpCooldownRemaining > 0)
                   ? null
                     : () => notifier.sendEmailOtp(context),
               style: FilledButton.styleFrom(
@@ -328,6 +338,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
               textInputAction: TextInputAction.done,
               maxLength: 6,
               textAlign: TextAlign.center,
+              autofillHints: const [AutofillHints.oneTimeCode],
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -364,6 +375,14 @@ class _LoginPageState extends ConsumerState<LoginPage>
                 ),
               ),
             ),
+            if (notifier.otpCooldownRemaining > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Resend code in ${notifier.otpCooldownRemaining}s',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
           ],
         ),
       );
@@ -385,7 +404,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: state.isSubmitting
+              onPressed: (state.isSubmitting || notifier.otpCooldownRemaining > 0)
                   ? null
                     : () => notifier.sendPhoneOtp(context),
               style: FilledButton.styleFrom(

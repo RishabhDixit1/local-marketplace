@@ -258,32 +258,37 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
       const meta = ex.metadata || {};
       const paymentStatus = meta.payment_status as string | undefined;
       const razorpayPaymentId = meta.razorpay_payment_id as string | undefined;
+      const existingRefundId = meta.refund_id as string | undefined;
 
       if (paymentStatus === "paid" && razorpayPaymentId && isRazorpayConfigured()) {
-        const pricePaise = ex.price != null ? Math.round(ex.price * 100) : 0;
-
-        if (pricePaise <= 0) {
-          logger.error("orders:update", "Cannot refund order with zero/null price", null, { orderId: id, price: ex.price });
-          refundWarning = "Order cancelled but refund could not be processed: order has no valid price. Please contact support.";
+        if (existingRefundId) {
+          logger.info("orders:update", "Refund already processed, skipping duplicate", { orderId: id, existingRefundId });
         } else {
-          const refund = await createRefund(razorpayPaymentId, pricePaise, {
-            order_id: id,
-            reason: `Order cancelled (status transition from ${previousStatus})`,
-          });
+          const pricePaise = ex.price != null ? Math.round(ex.price * 100) : 0;
 
-          if (refund.ok) {
-            await admin.from("orders").update({
-              metadata: {
-                ...meta,
-                payment_status: "refunded",
-                refund_id: refund.id,
-                refund_status: refund.status,
-                refunded_at: new Date().toISOString(),
-              },
-            }).eq("id", id);
+          if (pricePaise <= 0) {
+            logger.error("orders:update", "Cannot refund order with zero/null price", null, { orderId: id, price: ex.price });
+            refundWarning = "Order cancelled but refund could not be processed: order has no valid price. Please contact support.";
           } else {
-            logger.error("orders:update", "Razorpay refund failed", refund.error, { orderId: id, paymentId: razorpayPaymentId });
-            refundWarning = "Order cancelled but refund processing failed. Please contact support.";
+            const refund = await createRefund(razorpayPaymentId, pricePaise, {
+              order_id: id,
+              reason: `Order cancelled (status transition from ${previousStatus})`,
+            });
+
+            if (refund.ok) {
+              await admin.from("orders").update({
+                metadata: {
+                  ...meta,
+                  payment_status: "refunded",
+                  refund_id: refund.id,
+                  refund_status: refund.status,
+                  refunded_at: new Date().toISOString(),
+                },
+              }).eq("id", id);
+            } else {
+              logger.error("orders:update", "Razorpay refund failed", refund.error, { orderId: id, paymentId: razorpayPaymentId });
+              refundWarning = "Order cancelled but refund processing failed. Please contact support.";
+            }
           }
         }
       }

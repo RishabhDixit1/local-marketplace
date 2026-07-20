@@ -294,7 +294,7 @@ function matchKeywords(query: string): ParsedIntent {
 
 export function buildResponse(intent: ParsedIntent, actualCount?: number | null): string {
   const prefix = intent.urgency === "now" ? "⚡ Urgent! " : "";
-  const locationSuffix = intent.location ? ` near **${intent.location}**` : " near you";
+  const locationSuffix = intent.location ? ` near ${intent.location}` : " near you";
   const budgetSuffix = intent.budget.max ? ` within ₹${intent.budget.max}` : intent.budget.min ? ` starting from ₹${intent.budget.min}` : "";
 
   const categoryLabel = intent.category
@@ -307,17 +307,17 @@ export function buildResponse(intent: ParsedIntent, actualCount?: number | null)
       if (actualCount != null) {
         if (actualCount === 0) {
           const base = categoryLabel
-            ? `No **${categoryLabel}** providers found${locationSuffix}${budgetSuffix}`
+            ? `No ${categoryLabel} providers found${locationSuffix}${budgetSuffix}`
             : `No providers found${locationSuffix}${budgetSuffix}`;
           return `${base} — post a requirement and let providers come to you.`;
         }
         if (categoryLabel) {
-          return `${prefix}Found **${actualCount}** ${categoryLabel} provider${actualCount === 1 ? "" : "s"}${locationSuffix}${budgetSuffix}.`;
+          return `${prefix}Found ${actualCount} ${categoryLabel} provider${actualCount === 1 ? "" : "s"}${locationSuffix}${budgetSuffix}.`;
         }
-        return `${prefix}Found **${actualCount}** provider${actualCount === 1 ? "" : "s"}${locationSuffix}${budgetSuffix}.`;
+        return `${prefix}Found ${actualCount} provider${actualCount === 1 ? "" : "s"}${locationSuffix}${budgetSuffix}.`;
       }
       if (categoryLabel) {
-        return `${prefix}Searching for **${categoryLabel}** providers${locationSuffix}${budgetSuffix}…`;
+        return `${prefix}Searching for ${categoryLabel} providers${locationSuffix}${budgetSuffix}…`;
       }
       return `${prefix}Searching for service providers${locationSuffix}${budgetSuffix}…`;
     }
@@ -326,17 +326,17 @@ export function buildResponse(intent: ParsedIntent, actualCount?: number | null)
       if (actualCount != null) {
         if (actualCount === 0) {
           const base = categoryLabel
-            ? `No **${categoryLabel}** products found${locationSuffix}${budgetSuffix}`
+            ? `No ${categoryLabel} products found${locationSuffix}${budgetSuffix}`
             : `No products found${locationSuffix}${budgetSuffix}`;
           return `${base} — post a requirement and let sellers come to you.`;
         }
         if (categoryLabel) {
-          return `${prefix}Found **${actualCount}** ${categoryLabel} product${actualCount === 1 ? "" : "s"}${locationSuffix}${budgetSuffix}.`;
+          return `${prefix}Found ${actualCount} ${categoryLabel} product${actualCount === 1 ? "" : "s"}${locationSuffix}${budgetSuffix}.`;
         }
-        return `${prefix}Found **${actualCount}** product${actualCount === 1 ? "" : "s"}${locationSuffix}${budgetSuffix}.`;
+        return `${prefix}Found ${actualCount} product${actualCount === 1 ? "" : "s"}${locationSuffix}${budgetSuffix}.`;
       }
       if (categoryLabel) {
-        return `${prefix}Searching for **${categoryLabel}** products${locationSuffix}${budgetSuffix}…`;
+        return `${prefix}Searching for ${categoryLabel} products${locationSuffix}${budgetSuffix}…`;
       }
       return `${prefix}Searching for products${locationSuffix}${budgetSuffix}…`;
     }

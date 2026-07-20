@@ -44,25 +44,13 @@ class _ProviderLeadsPageState extends ConsumerState<ProviderLeadsPage> {
       if (!mounted) return;
 
       HapticFeedback.mediumImpact();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(action.successMessage)));
+      ServiqToast.show(context, message: action.successMessage, tone: ServiqToastTone.success);
     } on ApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.message),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      ServiqToast.show(context, message: error.toString(), tone: ServiqToastTone.danger);
     } finally {
       if (mounted) setState(() => _busyTaskId = null);
     }

@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/categories.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
@@ -105,20 +106,14 @@ class _ProviderListingsPageState extends ConsumerState<ProviderListingsPage> {
         return;
       }
       HapticFeedback.mediumImpact();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Listing deleted.')));
+      ServiqToast.show(context, message: 'Listing deleted.', tone: ServiqToastTone.success);
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-        );
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
       }
     } finally {
       if (mounted) {
@@ -141,12 +136,10 @@ class _ProviderListingsPageState extends ConsumerState<ProviderListingsPage> {
       ref.invalidate(providerListingsProvider);
       await ref.read(providerListingsProvider.future);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              service.isActive ? 'Service paused.' : 'Service live.',
-            ),
-          ),
+        ServiqToast.show(
+          context,
+          message: service.isActive ? 'Service paused.' : 'Service live.',
+          tone: ServiqToastTone.success,
         );
       }
     } finally {
@@ -168,12 +161,10 @@ class _ProviderListingsPageState extends ConsumerState<ProviderListingsPage> {
       ref.invalidate(providerListingsProvider);
       await ref.read(providerListingsProvider.future);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              product.isActive ? 'Product paused.' : 'Product live.',
-            ),
-          ),
+        ServiqToast.show(
+          context,
+          message: product.isActive ? 'Product paused.' : 'Product live.',
+          tone: ServiqToastTone.success,
         );
       }
     } finally {
@@ -712,9 +703,7 @@ class _ServiceListingSheetState extends ConsumerState<_ServiceListingSheet> {
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-        );
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
       }
     } finally {
       if (mounted) {
@@ -849,9 +838,7 @@ class _ProductListingSheetState extends ConsumerState<_ProductListingSheet> {
       _image.text = path;
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-        );
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
       }
     } finally {
       if (mounted) {
@@ -887,9 +874,7 @@ class _ProductListingSheetState extends ConsumerState<_ProductListingSheet> {
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-        );
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
       }
     } finally {
       if (mounted) {

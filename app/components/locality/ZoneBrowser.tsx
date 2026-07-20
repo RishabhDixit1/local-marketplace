@@ -99,7 +99,7 @@ export default function ZoneBrowser({
             onClick={() => setActiveTab(tab.key)}
             className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 min-h-9 py-2 text-xs font-semibold transition ${
               activeTab === tab.key
-                ? "bg-[var(--brand-900)] text-[var(--ink)] shadow-sm"
+                ? "bg-[var(--brand-900)] text-[var(--ink-50)] shadow-sm"
                 : "text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
             }`}
           >
@@ -164,7 +164,7 @@ export default function ZoneBrowser({
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 flex items-center justify-end text-xs font-semibold text-[var(--brand-700)] opacity-0 transition group-hover:opacity-100">
+                <div className="mt-3 flex items-center justify-end text-xs font-semibold text-[var(--brand-700)] sm:opacity-0 sm:transition sm:group-hover:opacity-100">
                   View providers →
                 </div>
               </Link>

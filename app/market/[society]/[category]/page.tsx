@@ -139,25 +139,25 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
         </div>
 
         <div className="mx-auto mt-6 flex max-w-md gap-3">
-          <Link
-            href={`/dashboard/people?locality_id=${data.locality.id}&category=${encodeURIComponent(catName)}`}
+          <a
+            href="#providers"
             className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] px-5 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[var(--brand-800)]"
           >
             <Users className="h-4 w-4" />
             Browse Providers
-          </Link>
+          </a>
           <Link
-            href={`/market?category=${category}`}
+            href={`/market/${society}`}
             className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-3 text-sm font-bold text-[var(--ink-700)] transition hover:border-[var(--border-strong)]"
           >
             <ArrowRight className="h-4 w-4" />
-            View All Categories
+            Back to Society
           </Link>
         </div>
       </section>
 
       {data.providers.length > 0 ? (
-        <section>
+        <section id="providers">
           <h2 className="mb-4 text-xl font-normal text-[var(--ink-950)]" style={{ fontFamily: "var(--font-display)" }}>
             {catName} Providers in {data.locality.name}
           </h2>
@@ -166,7 +166,7 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
               <Link
                 key={p.id}
                 href={`/profile/${p.id}`}
-                className="nameplate-card block p-4 pt-6"
+                className="nameplate-card flex flex-col overflow-hidden p-4 pt-6"
               >
                 <div className="flex items-center gap-3">
                   {p.avatar_url ? (
@@ -182,9 +182,9 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
                       {(p.full_name || p.name || "?")[0]}
                     </div>
                   )}
-                  <div>
-                    <h3 className="text-sm font-semibold text-[var(--ink-950)]">{p.full_name || p.name}</h3>
-                    <p className="text-xs text-[var(--ink-500)]">{p.location || data.locality.name}</p>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-sm font-semibold text-[var(--ink-950)]">{p.full_name || p.name}</h3>
+                    <p className="truncate text-xs text-[var(--ink-500)]">{p.location || data.locality.name}</p>
                   </div>
                 </div>
                 {p.bio && <p className="mt-2 line-clamp-2 text-xs text-[var(--ink-700)]">{p.bio}</p>}

@@ -11,6 +11,7 @@ import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/nameplate_card.dart';
 import '../../../shared/components/marketplace_provider_card.dart';
+import '../../../shared/widgets/ai_prompt_bar.dart';
 import '../data/marketplace_repository.dart';
 import '../domain/marketplace_provider.dart';
 
@@ -226,7 +227,13 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            _HeroSearchField(controller: _searchController),
+            AiPromptBar(
+              placeholder: 'Try "AC repair", "electrician", "plumber nearby"...',
+              onResult: (result) {
+                final query = result.response.trim().toLowerCase();
+                setState(() => _searchController.text = query);
+              },
+            ),
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: AppSpacing.xs,
@@ -278,7 +285,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                 children: [
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: () => context.push(AppRoutes.marketZones),
+                      onPressed: () => context.go(AppRoutes.marketZones),
                       icon: const Icon(Icons.explore_rounded, size: 18),
                       label: const Text('View Market'),
                       style: FilledButton.styleFrom(
@@ -292,7 +299,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => context.push(AppRoutes.marketZones),
+                      onPressed: () => context.go(AppRoutes.marketZones),
                       icon: const Icon(Icons.store_rounded, size: 18),
                       label: const Text('Browse All Providers'),
                       style: OutlinedButton.styleFrom(
@@ -454,38 +461,6 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
             Navigator.of(sheetContext).pop();
             context.push(AppRoutes.signIn);
           }),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroSearchField extends StatelessWidget {
-  const _HeroSearchField({required this.controller});
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      onChanged: (_) {},
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: 'Try "AC repair", "electrician", "plumber nearby"...',
-        prefixIcon: Icon(Icons.search_rounded, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-        filled: true,
-        fillColor: AppColors.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.xl),
-          borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.xl),
-          borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.xl),
-          borderSide: const BorderSide(color: AppColors.marigold, width: 1.5),
         ),
       ),
     );

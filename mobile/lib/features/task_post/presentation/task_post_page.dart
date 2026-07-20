@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../data/task_post_repository.dart';
 
 class TaskPostPage extends ConsumerStatefulWidget {
@@ -59,22 +60,18 @@ class _TaskPostPageState extends ConsumerState<TaskPostPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Task posted. ${result.matchedCount} provider'
+      ServiqToast.show(
+        context,
+        message: 'Task posted. ${result.matchedCount} provider'
             '${result.matchedCount == 1 ? '' : 's'} matched right away.',
-          ),
-        ),
+        tone: ServiqToastTone.success,
       );
       Navigator.of(context).pop(true);
     } on ApiException catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
     } finally {
       if (mounted) {
         setState(() {

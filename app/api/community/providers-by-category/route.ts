@@ -69,7 +69,7 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
 
     if (search) {
       countQuery = countQuery.or(
-        `full_name.ilike.%${search}%,name.ilike.%${search}%,location.ilike.%${search}%,bio.ilike.%${search}%,services.cs.{${search}}`
+        `full_name.ilike.%${search}%,name.ilike.%${search}%,location.ilike.%${search}%,bio.ilike.%${search}%`
       );
     }
 
@@ -93,7 +93,7 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
 
     if (search) {
       query = query.or(
-        `full_name.ilike.%${search}%,name.ilike.%${search}%,location.ilike.%${search}%,bio.ilike.%${search}%,services.cs.{${search}}`
+        `full_name.ilike.%${search}%,name.ilike.%${search}%,location.ilike.%${search}%,bio.ilike.%${search}%`
       );
     }
 

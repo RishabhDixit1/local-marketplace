@@ -125,9 +125,9 @@ class _ProviderBoostsPageState extends ConsumerState<ProviderBoostsPage> {
         'prefill': {'contact': '', 'email': ''},
       });
     } on ApiException catch (e) {
-      _showError(e.message);
+      ServiqToast.show(context, message: e.message, tone: ServiqToastTone.danger);
     } catch (e) {
-      _showError(AppErrorMapper.toMessage(e));
+      ServiqToast.show(context, message: AppErrorMapper.toMessage(e), tone: ServiqToastTone.danger);
     }
   }
 
@@ -143,34 +143,22 @@ class _ProviderBoostsPageState extends ConsumerState<ProviderBoostsPage> {
     ).then((_) {
       ref.invalidate(boostDataProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Boost activated successfully!')),
-        );
+        ServiqToast.show(context, message: 'Boost activated successfully!', tone: ServiqToastTone.success);
       }
     }).catchError((e) {
       if (mounted) {
-        _showError(AppErrorMapper.toMessage(e));
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(e), tone: ServiqToastTone.danger);
       }
     });
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
     setState(() => _pendingOrder = null);
-    _showError(response.message ?? 'Payment cancelled');
+    ServiqToast.show(context, message: response.message ?? 'Payment cancelled', tone: ServiqToastTone.danger);
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
-    _showError('External wallet selected: ${response.walletName}');
-  }
-
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.danger,
-      ),
-    );
+    ServiqToast.show(context, message: 'External wallet selected: ${response.walletName}', tone: ServiqToastTone.danger);
   }
 }
 

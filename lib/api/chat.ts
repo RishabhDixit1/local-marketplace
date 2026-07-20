@@ -18,6 +18,7 @@ export type ChatMessageRecord = {
   content: string;
   sender_id: string;
   created_at: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type SendChatMessageResponse =

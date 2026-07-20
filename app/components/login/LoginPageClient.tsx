@@ -322,6 +322,7 @@ function AuthForm() {
   const [otpStep, setOtpStep] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -389,6 +390,7 @@ function AuthForm() {
       const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; emailSent?: boolean; message?: string } | null;
       if (!response.ok || !payload?.ok) throw new Error(payload?.error || payload?.message || "Unable to send verification code.");
       setOtpStep(true);
+      setResendCooldown(60);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to send verification code.";
       if (/rate|too many/i.test(message)) setErrorMessage("Too many requests. Wait 60 seconds.");
@@ -457,6 +459,21 @@ function AuthForm() {
       setErrorMessage(message);
     } finally { setVerifying(false); }
   };
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) { clearInterval(timer); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  useEffect(() => {
+    setResendCooldown(0);
+  }, [emailAddress]);
 
   useEffect(() => {
     if (verificationCode.trim().length === 6 && otpStep && !verifying) {
@@ -545,11 +562,15 @@ function AuthForm() {
                   <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)] p-3 text-left">
                     <p className="text-xs leading-[1.6] text-[var(--ink-500)]">
                       Code valid for 24&nbsp;hours.{" "}
-                      <button type="button" onClick={() => { setOtpStep(false); setErrorMessage(""); setVerificationCode(""); }}
+                      <button type="button" onClick={() => { setOtpStep(false); setErrorMessage(""); setVerificationCode(""); setResendCooldown(0); }}
                         className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">Use a different email</button>{" "}
                       or{" "}
-                      <button type="button" onClick={() => { setVerificationCode(""); void sendEmailLink(); }}
-                        className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">resend code</button>.
+                      {resendCooldown > 0 ? (
+                        <span className="text-[var(--ink-400)]">resend code in {resendCooldown}s</span>
+                      ) : (
+                        <button type="button" onClick={() => { setVerificationCode(""); void sendEmailLink(); }}
+                          className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">resend code</button>
+                      )}.
                     </p>
                   </div>
                 </motion.div>
@@ -615,6 +636,7 @@ function AuthForm() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.97 }}
                   transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+                  role="alert"
                   className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-600"
                 >
                   {errorMessage}

@@ -248,9 +248,7 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       });
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to get GPS location: ${AppErrorMapper.toMessage(error)}')),
-      );
+      ServiqToast.show(context, message: 'Unable to get GPS location: ${AppErrorMapper.toMessage(error)}', tone: ServiqToastTone.danger);
     } finally {
       if (mounted) setState(() => _locatingGps = false);
     }
@@ -309,9 +307,7 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       if (quiet) {
         setState(() => _draftStatus = 'Autosave paused');
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
       }
       return null;
     } catch (error) {
@@ -321,9 +317,7 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       if (quiet) {
         setState(() => _draftStatus = 'Autosave paused');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-        );
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
       }
       return null;
     } finally {
@@ -384,15 +378,11 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       });
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-        );
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
       }
     } finally {
       if (mounted) {
@@ -466,9 +456,7 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
 
   void _continue() {
     if (!_validateCurrentStep()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Fill in all required fields to continue.')),
-      );
+      ServiqToast.show(context, message: 'Fill in all required fields to continue.', tone: ServiqToastTone.warning);
       return;
     }
     switch (_step) {

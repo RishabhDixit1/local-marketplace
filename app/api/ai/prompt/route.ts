@@ -34,13 +34,14 @@ async function fetchMatchingProviders(categorySlug: string, location?: string, l
 
   try {
     const label = toSearchLabel(categorySlug);
+    const lowerLabel = label.toLowerCase();
     let query = admin
       .from("profiles")
       .select("id, full_name, name, location, bio, avatar_url, services")
       .in("role", ["provider", "business"])
       .not("full_name", "is", null)
       .contains("services", [label])
-      .limit(limit);
+      .limit(limit * 3);
 
     if (location) {
       query = query.or(`location.ilike.%${location}%,bio.ilike.%${location}%`);
@@ -53,7 +54,12 @@ async function fetchMatchingProviders(categorySlug: string, location?: string, l
     }
     if (!profiles) return [];
 
-    const ids = profiles.map((p) => p.id).filter(Boolean);
+    const matched = profiles.filter((p) => {
+      const services = (p.services || []) as string[];
+      return services.some((s) => s.toLowerCase().includes(lowerLabel));
+    }).slice(0, limit);
+
+    const ids = matched.map((p) => p.id).filter(Boolean);
     if (ids.length === 0) return [];
 
     const { data: reviews } = await admin
@@ -67,7 +73,7 @@ async function fetchMatchingProviders(categorySlug: string, location?: string, l
       ratingMap[r.provider_id].push(r.rating);
     }
 
-    return profiles.map((p) => {
+    return matched.map((p) => {
       const ratings = ratingMap[p.id] || [];
       const avg = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
       return {

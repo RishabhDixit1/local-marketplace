@@ -1357,21 +1357,21 @@ export default function ChatPage() {
 
       <div className="relative flex h-full">
         <aside
-          className={`w-full border-r border-[var(--surface-border)]/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl md:w-[23rem] lg:w-[25rem] ${
+          className={`w-full border-r border-[var(--surface-border)]/80 bg-[var(--surface-elevated)]/90 backdrop-blur-xl md:w-[23rem] lg:w-[25rem] ${
             selectedChat ? "hidden md:flex" : "flex"
           } flex-col`}
         >
           <div className="border-b border-[var(--surface-border)]/80 px-3 pb-3 pt-3 sm:px-5 sm:pb-5 sm:pt-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-400 sm:block sm:text-xs">Local Inbox</p>
+                <p className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-600 sm:block sm:text-xs">Local Inbox</p>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <h2 className="text-lg font-semibold text-[var(--ink-950)] sm:text-xl">Messages</h2>
                   <span className="inline-flex items-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--ink-700)] sm:hidden">
                     {conversations.length} chats
                   </span>
                 </div>
-                <p className="mt-1 hidden text-xs text-[var(--ink-500)] dark:text-slate-400 sm:block">Hyperlocal chats with live sync, unread state, and presence.</p>
+                <p className="mt-1 hidden text-xs text-[var(--ink-500)] sm:block">Hyperlocal chats with live sync, unread state, and presence.</p>
               </div>
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold sm:text-[11px] ${
@@ -1394,7 +1394,7 @@ export default function ChatPage() {
               </span>
             </div>
 
-            <div className="mt-4 hidden items-center gap-2 rounded-2xl border border-slate-300 dark:border-slate-700 bg-[var(--surface-soft)] px-3 py-2.5 sm:flex">
+            <div className="mt-4 hidden items-center gap-2 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-2.5 sm:flex">
               <Search size={16} className="text-[var(--ink-500)]" />
               <input
                 placeholder="Search people or messages"
@@ -1411,7 +1411,7 @@ export default function ChatPage() {
                   className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${
                     inboxFilter === "all"
                       ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                      : "border-slate-300 dark:border-slate-700 bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
+                      : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                   }`}
                 >
                   All Chats ({conversations.length})
@@ -1422,7 +1422,7 @@ export default function ChatPage() {
                   className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${
                     inboxFilter === "unread"
                       ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                      : "border-slate-300 dark:border-slate-700 bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
+                      : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:bg-[var(--surface-soft)]"
                 }`}
               >
                 Unread ({totalUnread})
@@ -1501,7 +1501,7 @@ export default function ChatPage() {
                     onClick={() => selectConversation(chat.id, true)}
                     className={`w-full rounded-[1.15rem] border px-3 py-3 text-left transition-all duration-200 sm:rounded-2xl ${
                       isSelected
-                        ? "border-indigo-300 bg-gradient-to-r from-indigo-50 via-sky-50 to-white dark:from-indigo-950 dark:via-sky-950 dark:to-slate-900 shadow-sm"
+                        ? "border-indigo-300 bg-gradient-to-r from-indigo-50 via-sky-50 to-[var(--surface-elevated)] shadow-sm"
                         : "border-transparent bg-[var(--surface-elevated)] hover:border-[var(--surface-border)] hover:bg-[var(--surface-soft)]"
                     }`}
                   >
@@ -1551,7 +1551,7 @@ export default function ChatPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-white/90 dark:bg-slate-800/90 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-[var(--surface-elevated)]/90 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
                       <Sparkles className="h-3.5 w-3.5" />
                       {activeFeedContext.source === "saved_feed"
                         ? "From Saved Feed"
@@ -1599,7 +1599,7 @@ export default function ChatPage() {
 
           {!selectedChat ? (
             <div className="relative flex h-full items-center justify-center overflow-y-auto p-6 md:p-10">
-              <div className="w-full max-w-3xl rounded-3xl border border-[var(--surface-border)]/80 bg-white/85 dark:bg-slate-800/85 p-6 shadow-sm backdrop-blur-xl md:p-8">
+              <div className="w-full max-w-3xl rounded-3xl border border-[var(--surface-border)]/80 bg-[var(--surface-elevated)]/85 p-6 shadow-sm backdrop-blur-xl md:p-8">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
                     <Activity className="h-3.5 w-3.5" />
@@ -1648,13 +1648,13 @@ export default function ChatPage() {
             </div>
           ) : (
             <>
-              <header className="border-b border-[var(--surface-border)]/80 bg-white/90 dark:bg-slate-900/90 px-3 py-2.5 backdrop-blur-xl sm:px-6 sm:py-4">
+              <header className="border-b border-[var(--surface-border)]/80 bg-[var(--surface-elevated)]/90 px-3 py-2.5 backdrop-blur-xl sm:px-6 sm:py-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <button
                       type="button"
                       onClick={() => setSelectedChat(null)}
-                      className="rounded-xl border border-slate-300 dark:border-slate-700 bg-[var(--surface-elevated)] p-2 text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] md:hidden"
+                      className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-2 text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] md:hidden"
                     >
                       <ArrowLeft size={18} />
                     </button>
@@ -1670,7 +1670,7 @@ export default function ChatPage() {
                             className="h-11 w-11 rounded-full border border-[var(--surface-border)] object-cover"
                           />
                           <span
-                          className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-900 ${
+                          className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[var(--surface-elevated)] ${
                               selectedUserOnline ? "bg-emerald-500" : "bg-slate-300"
                             }`}
                           />
@@ -1974,7 +1974,7 @@ export default function ChatPage() {
                     {groupedMessages.map((group) => (
                       <div key={group.key} className="space-y-3">
                         <div className="flex justify-center">
-                          <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-[var(--surface-elevated)] px-3 py-1 text-[11px] font-semibold text-[var(--ink-700)]">
+                          <span className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-1 text-[11px] font-semibold text-[var(--ink-700)]">
                             {group.label}
                           </span>
                         </div>
@@ -2028,7 +2028,7 @@ export default function ChatPage() {
 
                     {selectedUserTyping && selectedConversation && (
                       <div className="flex justify-start">
-                        <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-md border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2 text-xs text-[var(--ink-700)] dark:text-slate-300 shadow-sm">
+                        <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-md border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2 text-xs text-[var(--ink-700)] shadow-sm">
                           <span className="flex items-center gap-0.5">
                             {[0, 0.15, 0.3].map((delay) => (
                               <span
@@ -2083,7 +2083,7 @@ export default function ChatPage() {
                     ))}
                   </div>
                 ) : null}
-                <div className="relative rounded-[1.65rem] border border-slate-300 dark:border-slate-700 bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] dark:bg-[linear-gradient(180deg,#1e293b_0%,#0f172a_100%)] p-2.5 shadow-[0_18px_32px_-28px_rgba(var(--shadow-rgb),0.45)]">
+                <div className="relative rounded-[1.65rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-2.5 shadow-[0_18px_32px_-28px_rgba(var(--shadow-rgb),0.45)]">
                   {showEmoticonPicker && (
                     <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+6.25rem)] z-20 rounded-[1.6rem] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-3 shadow-xl shadow-slate-900/15 sm:absolute sm:bottom-full sm:left-2 sm:right-2 sm:mb-2 sm:rounded-2xl">
                       <div className="mb-2 flex items-center justify-between gap-2">
@@ -2105,7 +2105,7 @@ export default function ChatPage() {
                               key={option.label}
                               type="button"
                               onClick={() => insertEmoticon(option.value)}
-                              className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-2 py-2 text-center text-base font-semibold leading-none text-[var(--ink-700)] dark:text-slate-300 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                              className="rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)] px-2 py-2 text-center text-base font-semibold leading-none text-[var(--ink-700)] transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                               aria-label={`Insert ${option.label}`}
                               title={option.label}
                             >
@@ -2136,7 +2136,7 @@ export default function ChatPage() {
                       className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-sm font-bold transition ${
                         showEmoticonPicker
                           ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                          : "border-slate-300 dark:border-slate-700 bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-indigo-200 hover:text-indigo-700"
+                          : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-indigo-200 hover:text-indigo-700"
                       }`}
                       aria-label="Open emoji picker"
                       aria-expanded={showEmoticonPicker}
@@ -2166,10 +2166,11 @@ export default function ChatPage() {
                       onKeyUp={(event) => syncMessageSelection(event.currentTarget)}
                       onSelect={(event) => syncMessageSelection(event.currentTarget)}
                         placeholder="Write a message..."
+                        aria-label="Message input"
                         rows={1}
                         maxLength={1200}
                         enterKeyHint="send"
-                        className="h-11 max-h-36 min-h-11 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-[var(--ink-950)] dark:text-white outline-none placeholder:text-[var(--ink-500)]"
+                        className="h-11 max-h-36 min-h-11 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-[var(--ink-950)] outline-none placeholder:text-[var(--ink-500)]"
                     />
                     <button
                       onClick={() => void sendMessage()}

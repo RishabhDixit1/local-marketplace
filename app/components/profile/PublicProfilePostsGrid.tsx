@@ -103,10 +103,10 @@ function MediaCarousel({ media, title }: { media: PublicProfilePostMedia[]; titl
 
   if (!media.length) {
     return (
-      <div className="grid aspect-[16/9] place-items-center rounded-2xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 via-white to-indigo-50 text-center">
+      <div className="grid aspect-[16/9] place-items-center rounded-2xl border border-dashed border-[var(--surface-border)] bg-gradient-to-br from-[var(--surface-soft)] via-[var(--surface-elevated)] to-indigo-50 text-center">
         <div>
-          <p className="text-xs font-semibold text-slate-600">No media yet</p>
-          <p className="mt-1 text-[11px] text-slate-500">This post does not include image or video attachments.</p>
+          <p className="text-xs font-semibold text-[var(--ink-700)]">No media yet</p>
+          <p className="mt-1 text-[11px] text-[var(--ink-500)]">This post does not include image or video attachments.</p>
         </div>
       </div>
     );
@@ -117,7 +117,7 @@ function MediaCarousel({ media, title }: { media: PublicProfilePostMedia[]; titl
   const canNavigate = media.length > 1;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+    <div className="relative overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)]">
       <div className="relative aspect-[16/9]">
         {current.mimeType.startsWith("image/") && !current.mimeType.startsWith("image/svg") ? (
           isBrowserLocalImageUrl(current.url) ? (
@@ -136,9 +136,9 @@ function MediaCarousel({ media, title }: { media: PublicProfilePostMedia[]; titl
         ) : current.mimeType.startsWith("video/") ? (
           <video src={current.url} controls playsInline preload="metadata" className="h-full w-full object-cover" />
         ) : current.mimeType.startsWith("audio/") ? (
-          <div className="grid h-full place-items-center bg-slate-900 p-4 text-center">
+          <div className="grid h-full place-items-center bg-[var(--ink-950)] p-4 text-center">
             <div className="w-full max-w-xs space-y-2">
-              <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-slate-950 shadow-xl">
+              <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-[var(--ink-950)] shadow-xl">
                 <Music2 className="h-6 w-6" />
               </span>
               <p className="text-xs font-semibold uppercase tracking-wide text-white/80">Audio Attachment</p>
@@ -146,8 +146,8 @@ function MediaCarousel({ media, title }: { media: PublicProfilePostMedia[]; titl
             </div>
           </div>
         ) : (
-          <div className="grid h-full place-items-center bg-gradient-to-br from-indigo-50 via-white to-slate-100 p-4 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Media Preview</p>
+          <div className="grid h-full place-items-center bg-gradient-to-br from-indigo-50 via-[var(--surface-elevated)] to-[var(--surface-soft)] p-4 text-center">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-700)]">Media Preview</p>
           </div>
         )}
       </div>
@@ -162,7 +162,7 @@ function MediaCarousel({ media, title }: { media: PublicProfilePostMedia[]; titl
                 return (normalized - 1 + media.length) % media.length;
               });
             }}
-            className="absolute left-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-slate-700 shadow-sm transition hover:bg-white"
+            className="absolute left-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-[var(--ink-700)] shadow-sm transition hover:bg-white"
             aria-label="Previous media"
           >
             <ChevronLeft size={14} />
@@ -175,7 +175,7 @@ function MediaCarousel({ media, title }: { media: PublicProfilePostMedia[]; titl
                 return (normalized + 1) % media.length;
               });
             }}
-            className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-slate-700 shadow-sm transition hover:bg-white"
+            className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-[var(--ink-700)] shadow-sm transition hover:bg-white"
             aria-label="Next media"
           >
             <ChevronRight size={14} />
@@ -183,7 +183,7 @@ function MediaCarousel({ media, title }: { media: PublicProfilePostMedia[]; titl
         </>
       ) : null}
 
-      <div className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-semibold text-white">
+      <div className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-[var(--ink-950)]/70 px-2.5 py-1 text-[11px] font-semibold text-white">
         {Math.min(safeIndex + 1, media.length)} / {media.length}
       </div>
     </div>
@@ -738,7 +738,7 @@ export default function PublicProfilePostsGrid({
             <article
               id={`profile-post-${post.id}`}
               key={post.id}
-              className={`flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_18px_32px_-26px_rgba(var(--shadow-rgb),0.45)] sm:p-4 ${
+              className={`flex h-full flex-col overflow-hidden rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-3 shadow-[0_18px_32px_-26px_rgba(var(--shadow-rgb),0.45)] sm:p-4 ${
                 horizontal
                   ? "w-[min(82vw,320px)] min-w-[240px] max-w-[320px] shrink-0 snap-start sm:w-[calc(50vw-2.75rem)] sm:min-w-[260px] sm:max-w-[360px] lg:w-[calc(33vw-2.5rem)] lg:min-w-[280px] lg:max-w-[380px] xl:w-[calc(30vw-2.5rem)]"
                   : ""
@@ -752,7 +752,7 @@ export default function PublicProfilePostsGrid({
                       src={resolvedAvatar}
                       alt={`${displayName} avatar`}
                       loading="lazy"
-                      className="h-10 w-10 rounded-full border border-slate-200 object-cover"
+                      className="h-10 w-10 rounded-full border border-[var(--surface-border)] object-cover"
                     />
                   ) : (
                     <Image
@@ -762,7 +762,7 @@ export default function PublicProfilePostsGrid({
                       height={40}
                       quality={60}
                       sizes="40px"
-                      className="h-10 w-10 rounded-full border border-slate-200 object-cover"
+                      className="h-10 w-10 rounded-full border border-[var(--surface-border)] object-cover"
                     />
                   )}
                 </div>
@@ -787,7 +787,7 @@ export default function PublicProfilePostsGrid({
                     ) : null}
                   </div>
 
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--ink-500)]">
                     <span className="inline-flex items-center gap-1">
                       <Clock3 size={11} />
                       {formatRelativeAge(post.createdAt)}
@@ -796,7 +796,7 @@ export default function PublicProfilePostsGrid({
                       <MapPin size={11} />
                       {post.locationLabel || locationLabel || "Nearby"}
                     </span>
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                    <span className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--ink-700)]">
                       {normalizeStatusLabel(post.status)}
                     </span>
                   </div>
@@ -809,7 +809,7 @@ export default function PublicProfilePostsGrid({
                       onClick={() => setOwnerMenuOpenId((current) => (current === post.id ? null : post.id))}
                       disabled={ownerBusyId === post.id}
                       aria-label={post.source === "help_request" ? "Request options" : "Post options"}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--ink-500)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink-700)] disabled:opacity-50"
                     >
                       {ownerBusyId === post.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -819,7 +819,7 @@ export default function PublicProfilePostsGrid({
                     </button>
 
                     {ownerMenuOpenId === post.id ? (
-                      <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white py-1 shadow-2xl">
+                      <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] py-1 shadow-2xl">
                         <button
                           type="button"
                           onClick={() => void handleRemoveOwnedPost(post)}
@@ -839,10 +839,10 @@ export default function PublicProfilePostsGrid({
               </div>
 
               <div className="mt-2.5">
-                <h3 className="line-clamp-2 text-base font-semibold leading-tight text-slate-900">
+                <h3 className="line-clamp-2 text-base font-semibold leading-tight text-[var(--ink-950)]">
                   {post.title}
                 </h3>
-                <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-600">{post.description}</p>
+                <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-[var(--ink-700)]">{post.description}</p>
               </div>
 
               {(post.type === "product" || post.type === "service") && !isOwnListing && (
@@ -879,7 +879,7 @@ export default function PublicProfilePostsGrid({
                   title={acceptLabel}
                   className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
                     acceptDisabled
-                      ? "border-slate-200 bg-slate-100 text-slate-500"
+                      ? "border-[var(--surface-border)] bg-[var(--surface-soft)] text-[var(--ink-500)]"
                       : acceptLabel === "Accept"
                         ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                         : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
@@ -902,8 +902,8 @@ export default function PublicProfilePostsGrid({
                   title={chatLabel}
                   className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
                     canOpenChat
-                      ? "border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
-                      : "border-slate-200 bg-slate-100 text-slate-500"
+                      ? "border-[var(--brand-900)] bg-[var(--brand-900)] text-[var(--ink-50)] hover:bg-[var(--brand-800)]"
+                      : "border-[var(--surface-border)] bg-[var(--surface-soft)] text-[var(--ink-500)]"
                   }`}
                 >
                   {chatOpening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -916,7 +916,7 @@ export default function PublicProfilePostsGrid({
                     disabled={sharingBusy}
                     aria-label="Share post"
                     title="Share post"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink-950)] disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {sharingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
                   </button>
@@ -929,8 +929,8 @@ export default function PublicProfilePostsGrid({
                     title={saved ? "Saved post" : "Save post"}
                     className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
                       saved
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
+                        ? "border-[var(--brand-900)] bg-[var(--brand-900)] text-[var(--ink-50)]"
+                        : "border-[var(--surface-border)] bg-[var(--surface-elevated)] text-[var(--ink-700)] hover:border-[var(--border-strong)] hover:text-[var(--ink-950)]"
                     }`}
                   >
                     {savingBusy ? (

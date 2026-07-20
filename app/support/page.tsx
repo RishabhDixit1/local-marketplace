@@ -80,7 +80,7 @@ export default function SupportPage() {
 
       <p className="mt-8 text-center text-sm text-[var(--ink-500)]">
         Still need help?{" "}
-        <a href="mailto:support@serviqapp.com" className="font-semibold text-[var(--ink-950)] underline">
+        <a href="mailto:info@serviqapp.com" className="font-semibold text-[var(--ink-950)] underline">
           Contact our support team
         </a>
       </p>

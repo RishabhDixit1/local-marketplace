@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -217,7 +218,7 @@ class ChatRepository {
       final client = _requireClient();
       final rows = await client
           .from('messages')
-          .select('id,conversation_id,content,sender_id,created_at')
+          .select('id,conversation_id,content,sender_id,created_at,metadata')
           .eq('conversation_id', conversationId)
           .order('created_at', ascending: true)
           .limit(120);
@@ -230,6 +231,9 @@ class ChatRepository {
               senderId: _readString(row['sender_id']),
               content: _readString(row['content']),
               createdAt: _parseDate(row['created_at']) ?? DateTime.now(),
+              metadata: row['metadata'] is Map
+                  ? Map<String, dynamic>.from(row['metadata'] as Map)
+                  : null,
             ),
           )
           .toList();
@@ -261,11 +265,20 @@ class ChatRepository {
   Future<ChatMessageItem> sendMessage({
     required String conversationId,
     required String content,
+    String? imageUrl,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'conversationId': conversationId,
+        'content': content.trim(),
+      };
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        body['metadata'] = {'imageUrl': imageUrl};
+      }
+
       final payload = await _apiClient.postJson(
         '/api/chat/messages',
-        body: {'conversationId': conversationId, 'content': content.trim()},
+        body: body,
       );
       if (payload['ok'] != true) {
         throw ApiException(
@@ -283,10 +296,33 @@ class ChatRepository {
         senderId: _readString(message['sender_id']),
         content: _readString(message['content']),
         createdAt: _parseDate(message['created_at']) ?? DateTime.now(),
+        metadata: message['metadata'] is Map
+            ? Map<String, dynamic>.from(message['metadata'] as Map)
+            : null,
       );
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException('Unable to send message. Please try again.');
+    }
+  }
+
+  Future<String> uploadChatImage(String conversationId, File file) async {
+    try {
+      final payload = await _apiClient.uploadFile(
+        '/api/upload/chat-media',
+        filePath: file.path,
+        fileName: file.path.split('/').last,
+        mediaType: 'image/jpeg',
+      );
+      if (payload['ok'] != true) {
+        throw ApiException(
+          (payload['message'] as String?) ?? 'Unable to upload image.',
+        );
+      }
+      return (payload['url'] as String?) ?? '';
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Unable to upload image. Please try again.');
     }
   }
 

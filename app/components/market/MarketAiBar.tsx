@@ -75,6 +75,8 @@ export function MarketAiFloating() {
   const ref = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (expanded && inputRef.current) {
@@ -90,7 +92,10 @@ export function MarketAiFloating() {
       }
     };
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      abortRef.current?.abort();
+    };
   }, []);
 
   const fetchAiResponse = useCallback(async (q: string) => {
@@ -99,17 +104,22 @@ export function MarketAiFloating() {
       setShowAiResult(false);
       return;
     }
+    setError(null);
     setLoading(true);
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const data = await fetchAuthedJson<AiResponse>(supabase, "/api/ai/prompt", {
         method: "POST",
         body: JSON.stringify({ query: q }),
+        signal: controller.signal,
       });
       setAiResponse(data);
       setShowAiResult(true);
-    } catch {
-      setAiResponse(null);
-      setShowAiResult(false);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      setError("Couldn't reach AI. Try again.");
     } finally {
       setLoading(false);
     }
@@ -193,6 +203,7 @@ export function MarketAiFloating() {
                     setQuery(e.target.value);
                     setActiveIndex(-1);
                     setShowAiResult(false);
+                    setError(null);
                   }}
                   onKeyDown={(e) => {
                     const items = showAiResult
@@ -244,9 +255,9 @@ export function MarketAiFloating() {
                   initial={{ height: 0 }}
                   animate={{ height: "auto" }}
                   exit={{ height: 0 }}
-                  className="border-t border-slate-100"
+                  className="border-t border-[var(--surface-border)]"
                 >
-                  <div className="bg-gradient-to-r from-[var(--brand-50)] to-white p-3.5">
+                  <div className="bg-gradient-to-r from-[var(--brand-50)] to-[var(--surface-elevated)] p-3.5">
                     <div className="flex items-start gap-2.5">
                       <div className="mt-0.5 shrink-0 rounded-full bg-[var(--brand-100)] p-1.5 text-[var(--brand-600)]">
                         <Sparkles size={13} />
@@ -285,8 +296,8 @@ export function MarketAiFloating() {
                     </div>
                   </div>
                   {aiResponse.data?.providers && aiResponse.data.providers.length > 0 && (
-                    <div className="border-t border-slate-100">
-                      <div className="flex items-center gap-1.5 border-b border-slate-100 px-3.5 py-1.5">
+                    <div className="border-t border-[var(--surface-border)]">
+                      <div className="flex items-center gap-1.5 border-b border-[var(--surface-border)] px-3.5 py-1.5">
                         <MapPin size={12} className="text-[var(--ink-500)]" />
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-500)]">
                           Nearby providers
@@ -298,7 +309,7 @@ export function MarketAiFloating() {
                             key={p.id}
                             href={`/profile/${p.id}`}
                             onClick={() => { setExpanded(false); setShowAiResult(false); }}
-                            className="flex items-center gap-3 border-b border-slate-50 px-3.5 py-2.5 text-left text-sm transition hover:bg-[var(--surface-soft)]"
+                            className="flex items-center gap-3 border-b border-[var(--surface-border)]/60 px-3.5 py-2.5 text-left text-sm transition hover:bg-[var(--surface-soft)]"
                           >
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-[11px] font-bold text-[var(--brand-700)]">
                               {p.name.charAt(0).toUpperCase()}
@@ -309,7 +320,7 @@ export function MarketAiFloating() {
                                   {p.name}
                                 </span>
                                 {p.rating != null && (
-                                  <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-amber-500">
+                                  <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-[var(--marigold-400)]">
                                     <Star size={10} fill="currentColor" />
                                     {p.rating}
                                   </span>
@@ -332,7 +343,7 @@ export function MarketAiFloating() {
                   )}
                   {aiResponse.suggestions.length > 0 && (
                     <>
-                      <div className="flex items-center gap-1.5 border-b border-slate-100 px-3.5 py-1.5">
+                      <div className="flex items-center gap-1.5 border-b border-[var(--surface-border)] px-3.5 py-1.5">
                         <TrendingUp size={12} className="text-[var(--ink-500)]" />
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-500)]">
                           Try asking
@@ -364,9 +375,9 @@ export function MarketAiFloating() {
                   initial={{ height: 0 }}
                   animate={{ height: "auto" }}
                   exit={{ height: 0 }}
-                  className="border-t border-slate-100"
+                  className="border-t border-[var(--surface-border)]"
                 >
-                  <div className="flex items-center gap-1.5 border-b border-slate-100 px-3.5 py-1.5">
+                  <div className="flex items-center gap-1.5 border-b border-[var(--surface-border)] px-3.5 py-1.5">
                     <Sparkles size={12} className="text-[var(--brand-500)]" />
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-500)]">
                       Try asking
@@ -396,13 +407,20 @@ export function MarketAiFloating() {
                   initial={{ height: 0 }}
                   animate={{ height: "auto" }}
                   exit={{ height: 0 }}
-                  className="border-t border-slate-100 p-4 text-center"
+                  className="border-t border-[var(--surface-border)] p-4 text-center"
                 >
                   <div className="flex items-center justify-center gap-2 text-sm text-[var(--ink-500)]">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Thinking...
                   </div>
                 </motion.div>
+              )}
+
+              {error && (
+                <div className="border-t border-[var(--surface-border)] p-3.5 text-center">
+                  <p className="text-xs text-red-500">{error}</p>
+                  <button type="button" onClick={() => { setError(null); fetchAiResponse(query); }} className="mt-1 text-xs font-semibold text-[var(--brand-700)] hover:text-[var(--brand-500)]">Retry</button>
+                </div>
               )}
             </AnimatePresence>
           </motion.div>

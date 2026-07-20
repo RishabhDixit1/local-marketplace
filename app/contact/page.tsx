@@ -3,7 +3,7 @@ import { buildPageMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "Contact Us",
-  description: "Get in touch with the ServiQ team. Email us at support@serviqapp.com for help, feedback, or partnership inquiries.",
+  description: "Get in touch with the ServiQ team. Email us at info@serviqapp.com for help, feedback, or partnership inquiries.",
   path: "/contact",
 });
 
@@ -15,9 +15,9 @@ export default function ContactPage() {
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2">
         <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6">
-          <h2 className="text-base font-semibold text-[var(--ink-950)]">General Inquiries</h2>
+          <h2 className="text-base font-semibold text-[var(--ink-950)]">Email</h2>
           <p className="mt-2 text-sm text-[var(--ink-700)]">
-            For general questions, feedback, or partnership inquiries.
+            For general questions, support, feedback, or partnership inquiries.
           </p>
           <a
             href="mailto:info@serviqapp.com"
@@ -28,54 +28,15 @@ export default function ContactPage() {
         </div>
 
         <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6">
-          <h2 className="text-base font-semibold text-[var(--ink-950)]">Customer Support</h2>
+          <h2 className="text-base font-semibold text-[var(--ink-950)]">Phone</h2>
           <p className="mt-2 text-sm text-[var(--ink-700)]">
-            For help with orders, accounts, or technical issues.
+            For urgent inquiries or immediate assistance.
           </p>
           <a
-            href="mailto:support@serviqapp.com"
+            href="tel:+919696707492"
             className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--ink-950)] underline"
           >
-            support@serviqapp.com
-          </a>
-        </div>
-
-        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6">
-          <h2 className="text-base font-semibold text-[var(--ink-950)]">Privacy</h2>
-          <p className="mt-2 text-sm text-[var(--ink-700)]">
-            For privacy-related inquiries and data requests.
-          </p>
-          <a
-            href="mailto:privacy@serviqapp.com"
-            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--ink-950)] underline"
-          >
-            privacy@serviqapp.com
-          </a>
-        </div>
-
-        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6">
-          <h2 className="text-base font-semibold text-[var(--ink-950)]">Legal</h2>
-          <p className="mt-2 text-sm text-[var(--ink-700)]">
-            For legal notices or terms-related questions.
-          </p>
-          <a
-            href="mailto:legal@serviqapp.com"
-            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--ink-950)] underline"
-          >
-            legal@serviqapp.com
-          </a>
-        </div>
-
-        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6">
-          <h2 className="text-base font-semibold text-[var(--ink-950)]">Press & Partnerships</h2>
-          <p className="mt-2 text-sm text-[var(--ink-700)]">
-            For media inquiries and partnership opportunities.
-          </p>
-          <a
-            href="mailto:press@serviqapp.com"
-            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--ink-950)] underline"
-          >
-            press@serviqapp.com
+            +91 9696707492
           </a>
         </div>
       </div>

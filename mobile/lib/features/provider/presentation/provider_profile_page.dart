@@ -9,6 +9,7 @@ import '../../../core/api/mobile_api_provider.dart';
 import '../../../features/blocking/data/block_repository_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
@@ -359,20 +360,19 @@ class ProviderProfilePage extends ConsumerWidget {
                             });
                             if (sheetContext.mounted) {
                               Navigator.of(sheetContext).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content:
-                                      Text('Report submitted. Our team will review it.'),
-                                ),
+                              ServiqToast.show(
+                                context,
+                                message: 'Report submitted. Our team will review it.',
+                                tone: ServiqToastTone.success,
                               );
                             }
                           } catch (e) {
                             setSheetState(() => submitting = false);
                             if (sheetContext.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Failed to submit report. ${AppErrorMapper.toMessage(e)}'),
-                                ),
+                              ServiqToast.show(
+                                context,
+                                message: 'Failed to submit report. ${AppErrorMapper.toMessage(e)}',
+                                tone: ServiqToastTone.danger,
                               );
                             }
                           }
@@ -443,20 +443,19 @@ class ProviderProfilePage extends ConsumerWidget {
                             await ref.read(blockRepositoryProvider).blockUser(provider.id);
                             if (sheetContext.mounted) {
                               Navigator.of(sheetContext).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      '${provider.name} has been blocked.'),
-                                ),
+                              ServiqToast.show(
+                                context,
+                                message: '${provider.name} has been blocked.',
+                                tone: ServiqToastTone.success,
                               );
                             }
                           } catch (e) {
                             setSheetState(() => blocking = false);
                             if (sheetContext.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Failed to block user. ${AppErrorMapper.toMessage(e)}'),
-                                ),
+                              ServiqToast.show(
+                                context,
+                                message: 'Failed to block user. ${AppErrorMapper.toMessage(e)}',
+                                tone: ServiqToastTone.danger,
                               );
                             }
                           }
@@ -587,28 +586,24 @@ class ProviderProfilePage extends ConsumerWidget {
                                   comment: comment,
                                 );
                             if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Review submitted.'),
-                              ),
+                            ServiqToast.show(
+                              context,
+                              message: 'Review submitted.',
+                              tone: ServiqToastTone.success,
                             );
                           } on ApiException catch (error) {
                             if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(error.message),
-                                backgroundColor:
-                                    Theme.of(context).colorScheme.error,
-                              ),
+                            ServiqToast.show(
+                              context,
+                              message: error.message,
+                              tone: ServiqToastTone.danger,
                             );
                           } catch (error) {
                             if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(error.toString()),
-                                backgroundColor:
-                                    Theme.of(context).colorScheme.error,
-                              ),
+                            ServiqToast.show(
+                              context,
+                              message: error.toString(),
+                              tone: ServiqToastTone.danger,
                             );
                           }
                         },
@@ -638,12 +633,10 @@ class ProviderProfilePage extends ConsumerWidget {
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          publicPath.isEmpty ? 'Provider ID copied.' : 'Public profile copied.',
-        ),
-      ),
+    ServiqToast.show(
+      context,
+      message: publicPath.isEmpty ? 'Provider ID copied.' : 'Public profile copied.',
+      tone: ServiqToastTone.success,
     );
   }
 }

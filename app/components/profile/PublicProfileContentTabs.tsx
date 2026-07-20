@@ -45,7 +45,7 @@ const formatReviewDate = (value: string | null) => {
 
 const renderStars = (rating: number) =>
   Array.from({ length: 5 }, (_, index) => (
-    <span key={`${rating}-${index}`} className={index < Math.round(rating) ? "text-amber-400" : "text-slate-300"}>
+    <span key={`${rating}-${index}`} className={index < Math.round(rating) ? "text-amber-400" : "text-[var(--surface-border)]"}>
       ★
     </span>
   ));
@@ -224,8 +224,8 @@ export default function PublicProfileContentTabs({
   ];
 
   return (
-    <section className="rounded-[22px] border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_2px_rgba(var(--shadow-rgb),0.05)] sm:px-6 sm:py-6">
-      <div className="flex flex-wrap items-end gap-6 border-b border-slate-200">
+    <section className="rounded-[22px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-5 py-5 shadow-[0_1px_2px_rgba(var(--shadow-rgb),0.05)] sm:px-6 sm:py-6">
+      <div className="-mx-5 flex items-end gap-6 overflow-x-auto border-b border-[var(--surface-border)] px-5 scrollbar-hide sm:mx-0 sm:px-0">
         {tabs.map((tab) => {
           const active = activeTab === tab.id;
 
@@ -234,10 +234,10 @@ export default function PublicProfileContentTabs({
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex border-b-2 pb-3 text-base font-semibold transition ${
+              className={`inline-flex shrink-0 border-b-2 pb-3 text-base font-semibold transition ${
                 active
-                  ? "border-[#0a66c2] text-[#0a66c2]"
-                  : "border-transparent text-slate-500 hover:text-slate-900"
+                  ? "border-[var(--brand-500)] text-[var(--brand-500)]"
+                  : "border-transparent text-[var(--ink-500)] hover:text-[var(--ink-950)]"
               }`}
             >
               {tab.label}
@@ -251,8 +251,8 @@ export default function PublicProfileContentTabs({
           <div className="space-y-4">
             <div className="flex items-end justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold tracking-tight text-slate-950">Marketplace</h2>
-                <p className="mt-1 text-sm text-slate-600">
+                <h2 className="text-xl font-semibold tracking-tight text-[var(--ink-950)]">Marketplace</h2>
+                <p className="mt-1 text-sm text-[var(--ink-700)]">
                   All posts, services, and products in one horizontally scrollable row.
                 </p>
               </div>
@@ -271,7 +271,7 @@ export default function PublicProfileContentTabs({
                 horizontal
               />
             ) : (
-              <div className="rounded-[20px] border border-dashed border-slate-200 bg-[#f8fafc] p-4 text-sm text-slate-500">
+              <div className="rounded-[20px] border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] p-4 text-sm text-[var(--ink-500)]">
                 No public marketplace items yet. Posts, services, and products will appear here when shared.
               </div>
             )}
@@ -286,8 +286,8 @@ export default function PublicProfileContentTabs({
           <div className="space-y-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-[2rem] font-semibold tracking-tight text-slate-950">Reviews</h2>
-                <p className="mt-2 text-sm text-slate-600">
+                <h2 className="text-[2rem] font-semibold tracking-tight text-[var(--ink-950)]">Reviews</h2>
+                <p className="mt-2 text-sm text-[var(--ink-700)]">
                   {reviewCount > 0 ? `${averageRating.toFixed(1)} average from ${reviewCount} review${reviewCount === 1 ? "" : "s"}.` : "No public reviews yet."}
                 </p>
               </div>
@@ -295,7 +295,7 @@ export default function PublicProfileContentTabs({
                 <button
                   type="button"
                   onClick={() => setReviewModalOpen(true)}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#0a66c2] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0959aa]"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--brand-500)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-600)]"
                 >
                   <Plus className="h-4 w-4" />
                   Write a review
@@ -310,7 +310,7 @@ export default function PublicProfileContentTabs({
                 ))}
               </div>
             ) : (
-              <div className="rounded-[20px] border border-dashed border-slate-200 bg-[#f8fafc] p-4 text-sm text-slate-500">
+              <div className="rounded-[20px] border border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] p-4 text-sm text-[var(--ink-500)]">
                 Reviews will appear here once this member receives public feedback.
               </div>
             )}
@@ -322,15 +322,15 @@ export default function PublicProfileContentTabs({
             <PublicProfileAbout bio={bio} />
 
             {workHistory.length > 0 && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                <h3 className="mb-4 text-sm font-semibold text-slate-700">Work History</h3>
+              <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
+                <h3 className="mb-4 text-sm font-semibold text-[var(--ink-700)]">Work History</h3>
                 <ol className="space-y-3">
                   {workHistory.slice(0, 2).map((wh) => (
                     <li key={wh.id} className="flex items-start gap-3">
                       <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-500" />
                       <div>
-                        <p className="text-sm font-medium text-slate-800">{wh.role_title}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-sm font-medium text-[var(--ink-950)]">{wh.role_title}</p>
+                        <p className="text-xs text-[var(--ink-500)]">
                           {wh.company_name}
                           {wh.start_date
                             ? ` · ${new Date(wh.start_date).getFullYear()}–${wh.is_current ? "Present" : wh.end_date ? new Date(wh.end_date).getFullYear() : ""}`
@@ -344,13 +344,13 @@ export default function PublicProfileContentTabs({
             )}
 
             {paymentMethods.length > 0 && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                <h3 className="mb-4 text-sm font-semibold text-slate-700">Accepts Payment Via</h3>
+              <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-5">
+                <h3 className="mb-4 text-sm font-semibold text-[var(--ink-700)]">Accepts Payment Via</h3>
                 <div className="flex flex-wrap gap-2">
                   {paymentMethods.map((pm) => (
                     <span
                       key={pm.id}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--surface-border)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-medium text-[var(--ink-700)]"
                     >
                       {formatPaymentRailLabel(pm.provider_name ?? pm.method_type)}
                       {pm.is_verified && (
@@ -366,25 +366,25 @@ export default function PublicProfileContentTabs({
       </div>
 
       {!reviewModalOpen ? null : (
-        <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-[var(--ink-950)]/55 px-4 py-6 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => setReviewModalOpen(false)} />
           <div
             role="dialog"
             aria-modal="true"
             aria-label="Write a review"
             tabIndex={-1}
-            className="relative z-[1] flex max-h-[min(88vh,600px)] w-full max-w-lg flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_30px_80px_-35px_rgba(var(--shadow-rgb),0.45)] outline-none"
+            className="relative z-[1] flex max-h-[min(88vh,600px)] w-full max-w-lg flex-col overflow-hidden rounded-[28px] bg-[var(--surface-elevated)] shadow-[0_30px_80px_-35px_rgba(var(--shadow-rgb),0.45)] outline-none"
           >
-            <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--surface-border)] px-6 py-5">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Review</p>
-                <h3 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">Share your experience</h3>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--ink-500)]">Review</p>
+                <h3 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink-950)]">Share your experience</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setReviewModalOpen(false)}
                 disabled={reviewSubmitting}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--surface-border)] text-[var(--ink-500)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink-950)] disabled:opacity-50"
                 aria-label="Close review dialog"
               >
                 <X className="h-4 w-4" />
@@ -396,14 +396,14 @@ export default function PublicProfileContentTabs({
 
                 {/* Overall Rating */}
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-900">Overall Rating</label>
+                  <label className="text-sm font-semibold text-[var(--ink-950)]">Overall Rating</label>
                   <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
                         type="button"
                         onClick={() => setReviewRating(star)}
-                        className={`text-2xl transition ${star <= reviewRating ? "text-yellow-400" : "text-slate-300 hover:text-yellow-300"}`}
+                        className={`text-2xl transition ${star <= reviewRating ? "text-yellow-400" : "text-[var(--surface-border)] hover:text-yellow-300"}`}
                         aria-label={`${star} star${star > 1 ? "s" : ""}`}
                       >
                         ★
@@ -413,18 +413,18 @@ export default function PublicProfileContentTabs({
                 </div>
 
                 {/* Rating Breakdown */}
-                <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Breakdown</p>
+                <div className="space-y-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-soft)]/50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-500)]">Breakdown</p>
                   {(["quality", "communication", "timeliness", "value"] as const).map((key) => (
                     <div key={key} className="flex items-center gap-3">
-                      <span className="w-28 shrink-0 text-xs font-medium capitalize text-slate-700">{key}</span>
+                      <span className="w-28 shrink-0 text-xs font-medium capitalize text-[var(--ink-700)]">{key}</span>
                       <div className="flex items-center gap-0.5">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <button
                             key={star}
                             type="button"
                             onClick={() => setReviewBreakdown((prev) => ({ ...prev, [key]: star }))}
-                            className={`text-base transition ${star <= reviewBreakdown[key] ? "text-yellow-400" : "text-slate-200 hover:text-yellow-300"}`}
+                            className={`text-base transition ${star <= reviewBreakdown[key] ? "text-yellow-400" : "text-[var(--surface-border)] hover:text-yellow-300"}`}
                             aria-label={`${key} ${star} star${star > 1 ? "s" : ""}`}
                           >
                             ★
@@ -436,14 +436,14 @@ export default function PublicProfileContentTabs({
                 </div>
 
                 {/* Would recommend toggle */}
-                <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                <div className="flex items-center justify-between rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-3">
                   <div className="flex items-center gap-2.5">
                     {reviewWouldRecommend ? (
                       <ThumbsUp className="h-5 w-5 text-emerald-500" />
                     ) : (
                       <ThumbsDown className="h-5 w-5 text-rose-400" />
                     )}
-                    <span className="text-sm font-medium text-slate-900">
+                    <span className="text-sm font-medium text-[var(--ink-950)]">
                       {reviewWouldRecommend ? "I would recommend this provider" : "I would not recommend this provider"}
                     </span>
                   </div>
@@ -451,7 +451,7 @@ export default function PublicProfileContentTabs({
                     type="button"
                     onClick={() => setReviewWouldRecommend((prev) => !prev)}
                     className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                      reviewWouldRecommend ? "bg-emerald-500" : "bg-slate-300"
+                      reviewWouldRecommend ? "bg-emerald-500" : "bg-[var(--surface-border)]"
                     }`}
                     role="switch"
                     aria-checked={reviewWouldRecommend}
@@ -467,15 +467,15 @@ export default function PublicProfileContentTabs({
 
                 {/* Photo upload */}
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-900">Photos</label>
+                  <label className="text-sm font-semibold text-[var(--ink-950)]">Photos</label>
                   <div className="flex flex-wrap gap-3">
                     {reviewPhotoPreviews.map((preview, i) => (
-                      <div key={preview} className="relative h-20 w-20 overflow-hidden rounded-xl border border-slate-200">
+                      <div key={preview} className="relative h-20 w-20 overflow-hidden rounded-xl border border-[var(--surface-border)]">
                         <Image src={preview} alt={`Review photo ${i + 1}`} fill sizes="80px" className="object-cover" />
                         <button
                           type="button"
                           onClick={() => removeReviewPhoto(i)}
-                          className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-slate-900/60 text-white hover:bg-slate-900/80"
+                          className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--ink-950)]/60 text-white hover:bg-[var(--ink-950)]/80"
                           aria-label="Remove photo"
                         >
                           <X className="h-3 w-3" />
@@ -483,8 +483,8 @@ export default function PublicProfileContentTabs({
                       </div>
                     ))}
                     {reviewPhotos.length < 5 && (
-                      <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-slate-400 hover:bg-slate-100">
-                        <Camera className="h-6 w-6 text-slate-400" />
+                      <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-[var(--surface-border)] bg-[var(--surface-soft)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-elevated)]">
+                        <Camera className="h-6 w-6 text-[var(--ink-500)]" />
                         <input
                           type="file"
                           accept="image/*"
@@ -495,31 +495,31 @@ export default function PublicProfileContentTabs({
                       </label>
                     )}
                   </div>
-                  <p className="text-xs text-slate-400">Up to 5 photos</p>
+                  <p className="text-xs text-[var(--ink-500)]">Up to 5 photos</p>
                 </div>
 
                 {/* Comment */}
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-900">Comment</label>
+                  <label className="text-sm font-semibold text-[var(--ink-950)]">Comment</label>
                   <textarea
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
                     rows={4}
                     placeholder="Describe your experience with this provider..."
-                    className="min-h-[120px] w-full rounded-[24px] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10"
+                    className="min-h-[120px] w-full rounded-[24px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-4 text-sm leading-6 text-[var(--ink-950)] outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10"
                   />
                 </div>
 
-                {reviewError ? <p className="text-sm text-rose-600">{reviewError}</p> : null}
+                        {reviewError ? <p className="text-sm text-rose-600">{reviewError}</p> : null}
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-200 px-6 py-5">
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[var(--surface-border)] px-6 py-5">
               <button
                 type="button"
                 onClick={() => setReviewModalOpen(false)}
                 disabled={reviewSubmitting}
-                className="inline-flex min-h-11 items-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+                className="inline-flex min-h-11 items-center rounded-full border border-[var(--surface-border)] px-5 py-2.5 text-sm font-semibold text-[var(--ink-700)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -527,7 +527,7 @@ export default function PublicProfileContentTabs({
                 type="button"
                 disabled={reviewSubmitting || reviewComment.trim().length < 5}
                 onClick={() => void handleSubmitReview()}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#0a66c2] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0959aa] disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--brand-500)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-600)] disabled:cursor-not-allowed disabled:bg-[var(--surface-soft)]"
               >
                 {reviewSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {reviewSubmitting ? "Submitting..." : "Submit review"}
@@ -589,7 +589,7 @@ function ReviewCard({ review, viewerId }: { review: PublicProfileReview; viewerI
   };
 
   return (
-    <article className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-4">
+    <article className="rounded-[20px] border border-[var(--surface-border)] bg-[var(--surface-soft)] px-4 py-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-1 text-lg">{renderStars(review.rating)}</div>
         <div className="flex items-center gap-2">
@@ -599,11 +599,11 @@ function ReviewCard({ review, viewerId }: { review: PublicProfileReview; viewerI
               Verified
             </span>
           )}
-          <span className="text-xs font-medium text-slate-500">{formatReviewDate(review.createdAt)}</span>
+          <span className="text-xs font-medium text-[var(--ink-500)]">{formatReviewDate(review.createdAt)}</span>
         </div>
       </div>
 
-      <p className="mt-3 text-sm leading-7 text-slate-700">{review.comment || "Verified marketplace interaction."}</p>
+      <p className="mt-3 text-sm leading-7 text-[var(--ink-700)]">{review.comment || "Verified marketplace interaction."}</p>
 
       {photos && photos.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -624,7 +624,7 @@ function ReviewCard({ review, viewerId }: { review: PublicProfileReview; viewerI
             className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
               voteState?.userVote === "helpful"
                 ? "border-blue-200 bg-blue-50 text-blue-700"
-                : "border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                : "border-[var(--surface-border)] text-[var(--ink-500)] hover:border-[var(--border-strong)] hover:text-[var(--ink-700)]"
             }`}
           >
             <ThumbsUp className="h-3 w-3" />

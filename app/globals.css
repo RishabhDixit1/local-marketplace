@@ -206,10 +206,11 @@ h3,
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-xl);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.04),
-    var(--shadow-sm);
-  transition: border-color 180ms ease, box-shadow 180ms ease;
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+    0 1px 3px rgba(var(--shadow-rgb), 0.04),
+    0 4px 12px -4px rgba(var(--shadow-rgb), 0.06);
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
 }
 
 .nameplate-card::before {
@@ -218,22 +219,36 @@ h3,
   top: -5px;
   left: 50%;
   transform: translateX(-50%);
-  width: 28px;
+  width: 32px;
   height: 5px;
-  border-radius: 0 0 4px 4px;
-  background: var(--surface-border);
+  border-radius: 0 0 5px 5px;
+  background: linear-gradient(180deg, var(--surface-border), var(--border-strong));
   border: 1px solid var(--border-strong);
   border-top: none;
-  opacity: 0.5;
+  opacity: 0.55;
+}
+
+.nameplate-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  pointer-events: none;
 }
 
 .nameplate-card:hover {
   border-color: var(--brand-300);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.04),
-    var(--shadow-md),
-    0 0 0 1px rgba(15, 118, 110, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+    0 2px 6px rgba(var(--shadow-rgb), 0.06),
+    0 8px 24px -6px rgba(var(--shadow-rgb), 0.1),
+    0 0 0 1px rgba(15, 118, 110, 0.08);
+  transform: translateY(-1px);
 }
 
 .nameplate-card-dark {
@@ -247,7 +262,12 @@ h3,
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     inset 0 -1px 0 rgba(0, 0, 0, 0.12),
-    var(--shadow-sm);
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 4px 12px -4px rgba(0, 0, 0, 0.2);
+}
+
+.dark .nameplate-card::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
 }
 
 .dark .nameplate-card:hover {
@@ -255,8 +275,109 @@ h3,
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     inset 0 -1px 0 rgba(0, 0, 0, 0.12),
-    var(--shadow-md),
+    0 2px 6px rgba(0, 0, 0, 0.2),
+    0 8px 24px -6px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(34, 199, 197, 0.08);
+}
+
+.nameplate-inset {
+  position: relative;
+  background: var(--surface-soft);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    inset 0 2px 4px rgba(var(--shadow-rgb), 0.06),
+    inset 0 1px 2px rgba(var(--shadow-rgb), 0.04);
+}
+
+.nameplate-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+.nameplate-badge-live {
+  background: var(--marigold-50);
+  color: var(--marigold-600);
+  border: 1px solid var(--marigold-200);
+  box-shadow: 0 0 8px rgba(240, 180, 41, 0.15);
+}
+
+.nameplate-badge-soon {
+  background: var(--sage-50);
+  color: var(--sage-500);
+  border: 1px solid var(--sage-200);
+}
+
+.nameplate-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, var(--brand-50) 0%, var(--surface-app) 40%, var(--marigold-50) 100%);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.nameplate-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(13, 148, 136, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 80% 60%, rgba(240, 180, 41, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.nameplate-hero::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 10%, rgba(255, 255, 255, 0.7) 50%, transparent 90%);
+  pointer-events: none;
+}
+
+.nameplate-stat-bar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-elevated);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 1px 3px rgba(var(--shadow-rgb), 0.04);
+}
+
+.nameplate-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 380px) {
+  .nameplate-stat-item {
+    padding: 8px 12px;
+    font-size: 12px;
+    gap: 4px;
+  }
+}
+
+.nameplate-stat-item + .nameplate-stat-item {
+  border-left: 1px solid var(--surface-border);
 }
 
 ::selection {

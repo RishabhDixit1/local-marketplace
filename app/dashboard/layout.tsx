@@ -99,29 +99,61 @@ const baseNavigationTabs = [
   { name: "Explore", path: "/market", icon: Compass },
 ];
 
-const secondaryNavItems = [
-  { name: "People", path: "/dashboard/people", icon: Users },
-  { name: "Providers", path: "/dashboard/providers", icon: Store },
-  { name: "Orders", path: "/dashboard/orders", icon: ShoppingCart },
-  { name: "Analytics", path: "/dashboard/analytics", icon: BarChart3 },
-  { name: "Notifications", path: "/dashboard/notifications", icon: Bell },
-  { name: "Chat", path: "/dashboard/chat", icon: MessageCircle },
-  { name: "Subscriptions", path: "/dashboard/subscriptions", icon: Crown },
-  { name: "Boosts", path: "/dashboard/boosts", icon: TrendingUp },
-  { name: "Listings", path: "/dashboard/listings", icon: Store },
-  { name: "Launchpad", path: "/dashboard/launchpad", icon: Rocket },
-  { name: "Referrals", path: "/dashboard/referrals", icon: Gift },
-  { name: "Referral Leaderboard", path: "/dashboard/referrals/leaderboard", icon: Trophy },
-  { name: "Payouts", path: "/dashboard/payouts", icon: Banknote },
-  { name: "Availability", path: "/dashboard/availability", icon: Clock },
-  { name: "Bookings", path: "/dashboard/bookings", icon: CalendarCheck },
-  { name: "Verification", path: "/dashboard/verification", icon: BadgeCheck },
-  { name: "Workspaces", path: "/dashboard/workspaces", icon: Building2 },
-  { name: "Invoices", path: "/dashboard/invoices", icon: FileText },
-  { name: "Leads", path: "/dashboard/leads", icon: Zap },
-  { name: "Campaigns", path: "/dashboard/campaigns", icon: Megaphone },
-  { name: "A/B Tests", path: "/dashboard/tests", icon: FlaskConical },
+const secondaryNavGroups = [
+  {
+    group: "Connect",
+    items: [
+      { name: "People", path: "/dashboard/people", icon: Users },
+      { name: "Providers", path: "/dashboard/providers", icon: Store },
+      { name: "Chat", path: "/dashboard/chat", icon: MessageCircle },
+    ],
+  },
+  {
+    group: "Commerce",
+    items: [
+      { name: "Orders", path: "/dashboard/orders", icon: ShoppingCart },
+      { name: "Listings", path: "/dashboard/listings", icon: Store },
+      { name: "Bookings", path: "/dashboard/bookings", icon: CalendarCheck },
+    ],
+  },
+  {
+    group: "Growth",
+    items: [
+      { name: "Analytics", path: "/dashboard/analytics", icon: BarChart3 },
+      { name: "Boosts", path: "/dashboard/boosts", icon: TrendingUp },
+      { name: "Campaigns", path: "/dashboard/campaigns", icon: Megaphone },
+      { name: "Leads", path: "/dashboard/leads", icon: Zap },
+      { name: "Referrals", path: "/dashboard/referrals", icon: Gift },
+      { name: "Referral Leaderboard", path: "/dashboard/referrals/leaderboard", icon: Trophy },
+    ],
+  },
+  {
+    group: "Money",
+    items: [
+      { name: "Payouts", path: "/dashboard/payouts", icon: Banknote },
+      { name: "Invoices", path: "/dashboard/invoices", icon: FileText },
+      { name: "Subscriptions", path: "/dashboard/subscriptions", icon: Crown },
+    ],
+  },
+  {
+    group: "Account",
+    items: [
+      { name: "Notifications", path: "/dashboard/notifications", icon: Bell },
+      { name: "Availability", path: "/dashboard/availability", icon: Clock },
+      { name: "Verification", path: "/dashboard/verification", icon: BadgeCheck },
+      { name: "Workspaces", path: "/dashboard/workspaces", icon: Building2 },
+      { name: "Launchpad", path: "/dashboard/launchpad", icon: Rocket },
+    ],
+  },
+  {
+    group: "Platform",
+    items: [
+      { name: "A/B Tests", path: "/dashboard/tests", icon: FlaskConical },
+    ],
+  },
 ];
+
+const secondaryNavItems = secondaryNavGroups.flatMap((g) => g.items);
 
 const STARTUP_CHECK_SESSION_KEY = "serviq-startup-check-ran";
 
@@ -784,7 +816,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             })}
 
             {!desktopNavCollapsed && secondaryNavItems.length > 0 && (
-              <div className="border-t border-slate-100 pt-4 mt-4">
+              <div className="border-t border-[var(--surface-border)] pt-4 mt-4">
                 <button
                   type="button"
                   onClick={() => setShowDesktopMore((v) => !v)}
@@ -794,25 +826,34 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   <ChevronDown className={`h-3 w-3 transition ${showDesktopMore ? "" : "-rotate-90"}`} />
                 </button>
                 {showDesktopMore && (
-                <div className="space-y-1">
-                  {secondaryNavItems.map((item) => {
-                    const isActive = isNavigationTabActive(pathname, item.path);
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.path}
-                        href={item.path}
-                        className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
-                          isActive
-                            ? "bg-[var(--surface-soft)] text-[var(--ink-950)]"
-                            : "text-[var(--ink-500)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink-950)]"
-                        }`}
-                      >
-                        <Icon className="h-4 w-4 shrink-0" />
-                        {item.name}
-                      </Link>
-                    );
-                  })}
+                <div className="space-y-3">
+                  {secondaryNavGroups.map((group) => (
+                    <div key={group.group}>
+                      <span className="px-3 py-1 block text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-500)]">
+                        {group.group}
+                      </span>
+                      <div className="space-y-1">
+                        {group.items.map((item) => {
+                          const isActive = isNavigationTabActive(pathname, item.path);
+                          const Icon = item.icon;
+                          return (
+                            <Link
+                              key={item.path}
+                              href={item.path}
+                              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
+                                isActive
+                                  ? "bg-[var(--surface-soft)] text-[var(--ink-950)]"
+                                  : "text-[var(--ink-500)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink-950)]"
+                              }`}
+                            >
+                              <Icon className="h-4 w-4 shrink-0" />
+                              {item.name}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 )}
               </div>
@@ -827,14 +868,14 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             className={`border-t border-[var(--surface-border)] ${desktopNavCollapsed ? "px-2 py-4" : "px-4 py-4"}`}
           >
             <div
-              className={`rounded-[1.65rem] border border-[var(--surface-border)] bg-slate-50/85 shadow-[0_18px_36px_-34px_rgba(var(--shadow-rgb),0.55)] ${
+              className={`rounded-[1.65rem] border border-[var(--surface-border)] bg-[var(--surface-soft)] shadow-[0_18px_36px_-34px_rgba(var(--shadow-rgb),0.55)] ${
                 desktopNavCollapsed
                   ? "space-y-2 px-2 py-2.5"
                   : "space-y-2.5 px-3 py-3"
               }`}
             >
               <button
-                className={`w-full flex items-center justify-center rounded-2xl bg-slate-900 font-semibold text-white transition-colors hover:bg-slate-800 ${
+                className={`w-full flex items-center justify-center rounded-2xl bg-[var(--brand-900)] font-semibold text-white transition-colors hover:bg-[var(--brand-800)] ${
                   desktopNavCollapsed ? "px-3 py-3" : "gap-2 px-4 py-3"
                 }`}
                 onClick={() => setShowLogoutConfirm(true)}
@@ -1067,9 +1108,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   Log out of {appName}?
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-[var(--ink-700)]">
-                  You can always sign back in with a magic link sent to your
-                  email. Any unsaved local changes on open pages will be
-                  lost.
+                  You can sign back in anytime with a magic link.
                 </p>
               </div>
             </div>

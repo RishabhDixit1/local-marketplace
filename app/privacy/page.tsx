@@ -78,7 +78,7 @@ export default function PrivacyPage() {
             <li>Export your data in a portable format</li>
           </ul>
           <p className="mt-2">
-            To exercise these rights, contact us at privacy@serviqapp.com.
+            To exercise these rights, contact us at info@serviqapp.com.
           </p>
         </section>
 
@@ -112,7 +112,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold text-[var(--ink-950)]">9. Contact</h2>
           <p className="mt-2">
-            For privacy-related inquiries, contact us at privacy@serviqapp.com or write to:
+            For privacy-related inquiries, contact us at info@serviqapp.com or write to:
             ServiQ, Crossing Republik, Ghaziabad, Uttar Pradesh, India.
           </p>
         </section>

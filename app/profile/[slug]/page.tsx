@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import dynamicImport from "next/dynamic";
 import { notFound, permanentRedirect } from "next/navigation";
-import { BadgeCheck, LayoutDashboard, MapPin } from "lucide-react";
+import { BadgeCheck, LayoutDashboard, MapPin, ArrowLeft } from "lucide-react";
 import PublicProfileAvatarEdit from "@/app/components/profile/PublicProfileAvatarEdit";
 import PublicProfileCoverEdit from "@/app/components/profile/PublicProfileCoverEdit";
 import PublicProfileContentTabs from "@/app/components/profile/PublicProfileContentTabs";
@@ -187,7 +187,7 @@ export default async function PublicProfilePage({ params, searchParams }: Params
   const requestReviewComposer = isTruthyQueryValue(pickFirst(resolvedSearchParams.writeReview));
   return (
     <CartProvider>
-      <div className="min-h-screen bg-[#f4f2ee] text-slate-950">
+      <div className="min-h-screen bg-[var(--surface-app)] text-[var(--ink-950)]">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
         <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 lg:px-8">
@@ -204,99 +204,95 @@ export default async function PublicProfilePage({ params, searchParams }: Params
             pointer-events: none !important;
           }
         `}</style>
-        <section className="relative h-[25svh] min-h-[240px] max-h-[320px] overflow-hidden rounded-[28px] border border-slate-300/30 bg-[linear-gradient(125deg,#eff6ff_0%,#dbeafe_24%,#c7d2fe_58%,#e0e7ff_100%)] text-white shadow-[0_24px_70px_-35px_rgba(var(--shadow-rgb),0.55)]">
-          {coverImageUrl ? (
-            <Image
-              src={coverImageUrl}
-              alt=""
-              fill
-              sizes="(max-width: 768px) 100vw, 1180px"
-              quality={72}
-              priority
-              className="object-cover will-change-transform motion-safe:[animation:profile-cover-drift_18s_ease-in-out_infinite]"
-            />
-          ) : null}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(125,211,252,0.55),transparent_28%),radial-gradient(circle_at_82%_14%,rgba(99,102,241,0.45),transparent_28%),radial-gradient(circle_at_74%_82%,rgba(148,163,184,0.28),transparent_26%),linear-gradient(140deg,rgba(255,255,255,0.22),transparent_24%,rgba(255,255,255,0.12)_24%,transparent_38%,rgba(255,255,255,0.08)_38%,transparent)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(var(--shadow-rgb),0.28),rgba(30,41,59,0.08),rgba(var(--shadow-rgb),0.62))]" />
-          <div className="absolute inset-y-0 left-[30%] w-[28%] rotate-[16deg] bg-white/14 blur-[2px]" />
-          <div className="absolute inset-y-0 right-[16%] w-[32%] -rotate-[20deg] bg-sky-200/12 blur-[2px]" />
-          <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(var(--shadow-rgb),0.8),rgba(var(--shadow-rgb),0.16),transparent)]" />
 
+        <div className="mb-4 flex items-center gap-3">
+          <Link
+            href="/market"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)]/60 bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-600)] transition hover:border-[var(--brand-300)] hover:text-[var(--brand-700)]"
+          >
+            <ArrowLeft className="h-3 w-3" /> Back
+          </Link>
           <Link
             href="/dashboard"
-            className="public-profile-header-action absolute right-3 top-3 z-20 inline-flex h-7 max-w-[calc(50%-1rem)] items-center gap-1 rounded-full border border-white/20 bg-white/12 px-2.5 text-[10px] font-semibold text-white shadow-[0_12px_30px_-20px_rgba(var(--shadow-rgb),0.45)] backdrop-blur-md transition hover:bg-white/20 sm:right-5 sm:top-4 sm:h-9 sm:max-w-none sm:gap-1.5 sm:px-3.5 sm:text-xs"
+            className="public-profile-header-action inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--brand-800)]"
           >
-            <LayoutDashboard className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-            <span className="truncate">Dashboard</span>
+            <LayoutDashboard className="h-3 w-3" /> Dashboard
           </Link>
+        </div>
+
+        <section className="nameplate-hero -mx-4 mb-6 rounded-b-[28px] px-4 pt-10 pb-8 sm:-mx-6 sm:px-6">
+          <div className="relative z-10">
+            <div className="flex flex-col items-center text-center">
+              <div className="relative mb-4">
+                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[var(--brand-900)] shadow-lg ring-2 ring-[var(--surface-border)]/30 sm:h-24 sm:w-24">
+                  {profileAvatarUrl ? (
+                    <Image src={profileAvatarUrl} alt={displayName} width={96} height={96} quality={70} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-semibold text-white" style={{ fontFamily: "var(--font-display)" }}>{avatarFallback}</span>
+                  )}
+                </div>
+                <PublicProfileAvatarEdit
+                  profileUserId={profile.id}
+                  displayName={displayName}
+                  avatarUrl={profileAvatarUrl || ""}
+                  initialValues={initialProfileValues}
+                  triggerMode="image"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-normal text-[var(--ink-950)] sm:text-3xl" style={{ fontFamily: "var(--font-display)" }}>{displayName}</h1>
+                {verificationStatus === "verified" && (
+                  <BadgeCheck className="h-5 w-5 shrink-0 text-[var(--brand-600)]" />
+                )}
+              </div>
+
+              <p className="mt-1.5 text-sm text-[var(--ink-500)]">
+                {getRoleLabel(roleFamily)} <span className="text-[var(--ink-400)]">&middot;</span> {joinedShortLabel}
+              </p>
+
+              <p className="mt-2 max-w-lg text-xs leading-relaxed text-[var(--ink-500)]">
+                {summaryText}
+              </p>
+
+              <div className="nameplate-stat-bar mx-auto mt-5">
+                <div className="nameplate-stat-item">
+                  <MapPin className="h-4 w-4 text-[var(--brand-600)]" />
+                  <span className="font-bold text-[var(--ink-950)]">{profile.location || "Nearby"}</span>
+                </div>
+                <div className="nameplate-stat-item">
+                  <BadgeCheck className="h-4 w-4 text-[var(--brand-600)]" />
+                  <span className="font-bold text-[var(--ink-950)]">{roleFamily === "provider" ? "Provider" : "Seeker"}</span>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                <PublicContactInfoTrigger
+                  displayName={displayName}
+                  email={profile.email}
+                  phone={profile.phone}
+                  website={profile.website}
+                  location={profile.location}
+                />
+                <PublicConnectionsTrigger
+                  profileUserId={profile.id}
+                  label={connectionLabel}
+                  connections={acceptedConnections}
+                  className="text-xs font-semibold text-[var(--ink-600)] transition hover:text-[var(--brand-700)]"
+                />
+              </div>
+
+              <div className="mt-4 public-profile-primary-actions">
+                <PublicProfileActions profileUserId={profile.id} displayName={displayName} initialValues={initialProfileValues} />
+              </div>
+            </div>
+          </div>
           <PublicProfileCoverEdit
             profileUserId={profile.id}
             displayName={displayName}
             coverImageUrl={coverImageUrl}
             initialValues={initialProfileValues}
           />
-
-          <div className="relative z-10 h-full p-4 sm:p-5 lg:p-6">
-            <div className="relative flex h-full flex-col justify-end">
-              <div className="absolute left-0 top-11 sm:top-12">
-                <div className="relative w-fit shrink-0">
-                  <div className="flex h-18 w-18 items-center justify-center overflow-hidden rounded-full border-[4px] border-white/90 bg-slate-950 text-xl font-semibold text-white shadow-[0_20px_32px_-24px_rgba(var(--shadow-rgb),0.48)] sm:h-20 sm:w-20 sm:text-2xl">
-                    {profileAvatarUrl ? (
-                      <Image src={profileAvatarUrl} alt={displayName} width={80} height={80} quality={70} className="h-full w-full object-cover" />
-                    ) : (
-                      <span>{avatarFallback}</span>
-                    )}
-                  </div>
-                  <PublicProfileAvatarEdit
-                    profileUserId={profile.id}
-                    displayName={displayName}
-                    avatarUrl={profileAvatarUrl || ""}
-                    initialValues={initialProfileValues}
-                    triggerMode="image"
-                  />
-                </div>
-              </div>
-
-              <div className="min-w-0 pl-[4.75rem] pt-2 sm:pl-[5.5rem] sm:pt-3">
-                <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <h1 className="max-w-full truncate text-[clamp(1rem,2.8vw,1.6rem)] font-extrabold tracking-tight text-white">{displayName}</h1>
-                  {verificationStatus === "verified" ? <BadgeCheck className="h-4.5 w-4.5 shrink-0 text-sky-200 sm:h-5 sm:w-5" /> : null}
-                </div>
-
-                <p className="mt-0.5 text-[11px] text-white/82 sm:text-xs">
-                  {getRoleLabel(roleFamily)} <span className="px-1 text-white/45">•</span> {joinedShortLabel}
-                </p>
-
-                <p className="mt-1 line-clamp-1 text-[11px] leading-[1.3] text-white/92 sm:text-xs">
-                  {summaryText}
-                </p>
-
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-white/78 sm:text-xs">
-                  <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-white/60" />
-                    {profile.location || "Location not added"}
-                  </span>
-                  <PublicContactInfoTrigger
-                    displayName={displayName}
-                    email={profile.email}
-                    phone={profile.phone}
-                    website={profile.website}
-                    location={profile.location}
-                  />
-                  <PublicConnectionsTrigger
-                    profileUserId={profile.id}
-                    label={connectionLabel}
-                    connections={acceptedConnections}
-                    className="text-[11px] text-white/78 transition hover:text-white sm:text-xs"
-                  />
-                </div>
-
-                <div className="mt-2">
-                  <PublicProfileActions profileUserId={profile.id} displayName={displayName} initialValues={initialProfileValues} />
-                </div>
-              </div>
-            </div>
-          </div>
         </section>
         </div>
 

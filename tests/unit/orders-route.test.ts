@@ -56,12 +56,14 @@ const makeRateLimitChain = () => {
     update: vi.fn(),
     maybeSingle: vi.fn(),
     insert: vi.fn(),
+    upsert: vi.fn(),
   };
   chain.select.mockReturnValue(chain);
   chain.eq.mockReturnValue(chain);
   chain.update.mockReturnValue(chain);
   chain.maybeSingle.mockResolvedValue({ data: null, error: null });
   chain.insert.mockResolvedValue({ error: null });
+  chain.upsert.mockResolvedValue({ error: null });
   return chain;
 };
 
@@ -118,6 +120,7 @@ describe("POST /api/orders", () => {
             update: vi.fn(() => rl),
             maybeSingle: vi.fn(async () => ({ data: null, error: null })),
             insert: vi.fn(async () => ({ error: null })),
+            upsert: vi.fn(async () => ({ error: null })),
           };
           return rl;
         }

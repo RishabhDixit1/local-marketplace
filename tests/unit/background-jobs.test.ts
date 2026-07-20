@@ -53,12 +53,13 @@ describe("processPendingJobs", () => {
     registerJobHandler("test-handler", async () => {});
 
     const update = vi.fn().mockReturnThis();
-    const eq = vi.fn().mockResolvedValue({ error: null });
+    const eq = vi.fn().mockReturnThis();
+    const maybeSingle = vi.fn().mockResolvedValue({ data: { status: "running" }, error: null });
 
     const db = {
       from: vi.fn(() => ({
         select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
+        eq,
         lte: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({
@@ -74,11 +75,9 @@ describe("processPendingJobs", () => {
           error: null,
         }),
         update,
+        maybeSingle,
       })),
     } as unknown as unknown as SupabaseClient;
-
-    // make eq chain return update mock properly
-    (eq as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ error: null });
 
     const result = await processPendingJobs(db as unknown as SupabaseClient, 10);
     expect(result).toEqual({ processed: 1, failed: 0 });
@@ -90,12 +89,13 @@ describe("processPendingJobs", () => {
     });
 
     const update = vi.fn().mockReturnThis();
-    const eq = vi.fn().mockResolvedValue({ error: null });
+    const eq = vi.fn().mockReturnThis();
+    const maybeSingle = vi.fn().mockResolvedValue({ data: { status: "running" }, error: null });
 
     const db = {
       from: vi.fn(() => ({
         select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
+        eq,
         lte: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({
@@ -111,10 +111,9 @@ describe("processPendingJobs", () => {
           error: null,
         }),
         update,
+        maybeSingle,
       })),
     } as unknown as unknown as SupabaseClient;
-
-    (eq as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ error: null });
 
     const result = await processPendingJobs(db as unknown as SupabaseClient, 10);
     expect(result).toEqual({ processed: 0, failed: 1 });
@@ -126,12 +125,13 @@ describe("processPendingJobs", () => {
     });
 
     const update = vi.fn().mockReturnThis();
-    const eq = vi.fn().mockResolvedValue({ error: null });
+    const eq = vi.fn().mockReturnThis();
+    const maybeSingle = vi.fn().mockResolvedValue({ data: { status: "running" }, error: null });
 
     const db = {
       from: vi.fn(() => ({
         select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
+        eq,
         lte: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({
@@ -147,10 +147,9 @@ describe("processPendingJobs", () => {
           error: null,
         }),
         update,
+        maybeSingle,
       })),
     } as unknown as unknown as SupabaseClient;
-
-    (eq as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ error: null });
 
     const result = await processPendingJobs(db as unknown as SupabaseClient, 10);
     // Should NOT count as failed because it will retry

@@ -30,6 +30,7 @@ const makeChain = <T>(result?: { data: T; error: { message: string } | null }) =
     update: vi.fn(() => chain),
     is: vi.fn(async () => ({ error: null })),
     insert: vi.fn(() => chain),
+    upsert: vi.fn(async () => ({ error: null })),
     order: vi.fn(() => chain),
     limit: vi.fn(() => chain),
     in: vi.fn(() => chain),

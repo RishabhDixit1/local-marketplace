@@ -6,6 +6,7 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/design_system/serviq_recovery_banner.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
@@ -211,13 +212,13 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     } on ApiException catch (error) {
       if (mounted) {
         setState(() => _checkoutRecoveryMessage = error.message);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+        ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
       }
     } catch (error) {
       if (mounted) {
         final mapped = AppErrorMapper.toMessage(error);
         setState(() => _checkoutRecoveryMessage = mapped);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mapped)));
+        ServiqToast.show(context, message: mapped, tone: ServiqToastTone.danger);
       }
     } finally {
       if (mounted) {
@@ -268,9 +269,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
             'payment_failure',
             extras: {'stage': 'open_razorpay', 'method': 'razorpay'},
           );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(mapped)),
-      );
+      ServiqToast.show(context, message: mapped, tone: ServiqToastTone.danger);
     }
   }
 
@@ -290,8 +289,10 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
             'payment_failure',
             extras: {'stage': 'incomplete_response', 'method': 'razorpay'},
           );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Razorpay returned an incomplete payment response.')),
+      ServiqToast.show(
+        context,
+        message: 'Razorpay returned an incomplete payment response.',
+        tone: ServiqToastTone.danger,
       );
       return;
     }
@@ -328,9 +329,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       });
     } on ApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
       ref.read(analyticsServiceProvider).trackEvent(
             'payment_failure',
             extras: {'stage': 'verify_api', 'method': 'razorpay'},
@@ -338,9 +337,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       _goToPendingOrder(pending);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-      );
+      ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
       ref.read(analyticsServiceProvider).trackEvent(
             'payment_failure',
             extras: {'stage': 'verify_unknown', 'method': 'razorpay'},
@@ -362,7 +359,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
           'payment_failure',
           extras: {'stage': 'razorpay_callback', 'method': 'razorpay', 'code': response.code ?? 0},
         );
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ServiqToast.show(context, message: message, tone: ServiqToastTone.danger);
     _goToPendingOrder(pending);
   }
 
@@ -373,14 +370,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
           'payment_external_wallet',
           extras: {'wallet': wallet.isEmpty ? 'unknown' : wallet},
         );
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          wallet.isEmpty
-              ? 'Continue in the selected wallet to complete payment.'
-              : 'Continue in $wallet to complete payment.',
-        ),
-      ),
+    ServiqToast.show(
+      context,
+      message: wallet.isEmpty
+          ? 'Continue in the selected wallet to complete payment.'
+          : 'Continue in $wallet to complete payment.',
+      tone: ServiqToastTone.neutral,
     );
   }
 

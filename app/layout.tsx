@@ -67,7 +67,7 @@ export default async function RootLayout({
     <html lang={locale} suppressHydrationWarning>
       <head>
         <Script id="theme-script" strategy="beforeInteractive">
-          {`(function(){try{var t=localStorage.getItem("serviq-theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme:dark)").matches)){document.documentElement.classList.add("dark")}}catch(e){}})();`}
+          {`(function(){try{var t=localStorage.getItem("serviq-theme");if(t==="dark"){document.documentElement.classList.add("dark")}}catch(e){}})();`}
         </Script>
         <Script id="locale-script" strategy="beforeInteractive">
           {`(function(){try{var l=localStorage.getItem("serviq-locale");if(l){document.documentElement.lang=l}}catch(e){}})();`}

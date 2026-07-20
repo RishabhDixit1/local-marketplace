@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
@@ -28,18 +29,11 @@ class _BlockedUsersPageState extends ConsumerState<BlockedUsersPage> {
       await ref.read(blockRepositoryProvider).unblockUser(user.blockedId);
       ref.invalidate(blockedUsersProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User unblocked.')),
-        );
+        ServiqToast.show(context, message: 'User unblocked.', tone: ServiqToastTone.success);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppErrorMapper.toMessage(e)),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        ServiqToast.show(context, message: AppErrorMapper.toMessage(e), tone: ServiqToastTone.danger);
       }
     }
   }

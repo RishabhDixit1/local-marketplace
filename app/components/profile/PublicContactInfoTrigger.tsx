@@ -99,19 +99,19 @@ export default function PublicContactInfoTrigger({
             role="dialog"
             aria-modal="true"
             aria-label={`${displayName} contact information`}
-            className="relative z-10 w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_30px_80px_-40px_rgba(var(--shadow-rgb),0.55)]"
+            className="relative z-10 w-full max-w-lg rounded-[28px] border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6 shadow-[0_30px_80px_-40px_rgba(var(--shadow-rgb),0.55)]"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Contact info</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{displayName}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">Public contact details shared on this profile.</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--ink-500)]">Contact info</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink-950)]">{displayName}</h2>
+                <p className="mt-2 text-sm leading-6 text-[var(--ink-700)]">Public contact details shared on this profile.</p>
               </div>
 
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-border)] text-[var(--ink-500)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink-950)]"
                 aria-label="Close contact info"
               >
                 <X className="h-4 w-4" />
@@ -121,11 +121,11 @@ export default function PublicContactInfoTrigger({
             <div className="mt-6 space-y-3">
               {contactRows.map((row) => {
                 const content = (
-                  <div className="flex items-start gap-3 rounded-[18px] border border-slate-200 bg-[#f8fafc] px-4 py-3">
-                    <div className="mt-0.5 text-slate-500">{row.icon}</div>
+                  <div className="flex items-start gap-3 rounded-[18px] border border-[var(--surface-border)] bg-[var(--surface-soft)] px-4 py-3">
+                    <div className="mt-0.5 text-[var(--ink-500)]">{row.icon}</div>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{row.label}</p>
-                      <p className="mt-1 break-all text-sm leading-6 text-slate-700">{row.value}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-500)]">{row.label}</p>
+                      <p className="mt-1 break-all text-sm leading-6 text-[var(--ink-700)]">{row.value}</p>
                     </div>
                   </div>
                 );

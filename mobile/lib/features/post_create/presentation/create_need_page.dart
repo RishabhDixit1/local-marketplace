@@ -12,6 +12,7 @@ import '../../../core/constants/categories.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/marketplace_guidance.dart';
 import '../../../shared/components/metric_tile.dart';
@@ -427,9 +428,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     }
 
     if (_media.length >= _maxComposerMedia) {
-      _showComposerSnack(
-        'You can upload up to $_maxComposerMedia attachments.',
-      );
+      ServiqToast.show(context, message: 'You can upload up to $_maxComposerMedia attachments.', tone: ServiqToastTone.warning);
       return;
     }
 
@@ -553,9 +552,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     final remaining = _maxComposerMedia - _media.length;
     final candidateFiles = files.take(remaining).toList();
     if (candidateFiles.isEmpty) {
-      _showComposerSnack(
-        'You can upload up to $_maxComposerMedia attachments.',
-      );
+      ServiqToast.show(context, message: 'You can upload up to $_maxComposerMedia attachments.', tone: ServiqToastTone.warning);
       return;
     }
 
@@ -574,9 +571,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     }
 
     if (items.isEmpty) {
-      _showComposerSnack(
-        'Media is too large. Images max ${_formatByteLimit(_maxImageBytes)}, videos max ${_formatByteLimit(_maxVideoBytes)}.',
-      );
+      ServiqToast.show(context, message: 'Media is too large. Images max ${_formatByteLimit(_maxImageBytes)}, videos max ${_formatByteLimit(_maxVideoBytes)}.', tone: ServiqToastTone.warning);
       return;
     }
 
@@ -592,15 +587,11 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     }
 
     if (rejectedForSize > 0) {
-      _showComposerSnack(
-        '$rejectedForSize attachment${rejectedForSize == 1 ? '' : 's'} skipped for size. Images max ${_formatByteLimit(_maxImageBytes)}.',
-      );
+      ServiqToast.show(context, message: '$rejectedForSize attachment${rejectedForSize == 1 ? '' : 's'} skipped for size. Images max ${_formatByteLimit(_maxImageBytes)}.', tone: ServiqToastTone.warning);
     }
 
     if (files.length > candidateFiles.length) {
-      _showComposerSnack(
-        'Only the first $remaining attachment${remaining == 1 ? '' : 's'} were added.',
-      );
+      ServiqToast.show(context, message: 'Only the first $remaining attachment${remaining == 1 ? '' : 's'} were added.', tone: ServiqToastTone.warning);
     }
   }
 
@@ -678,16 +669,6 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       _error = null;
     });
     _cacheDraft();
-  }
-
-  void _showComposerSnack(String message) {
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   _ComposerMediaItem? _mediaFor(String itemId) {
