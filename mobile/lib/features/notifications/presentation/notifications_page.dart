@@ -40,34 +40,36 @@ enum _NotificationFilter {
   }
 }
 
-String _sectionLabel(MobileNotificationKind kind) {
-  switch (kind) {
-    case MobileNotificationKind.message:
-      return 'Messages';
-    case MobileNotificationKind.order:
-      return 'Orders';
-    case MobileNotificationKind.review:
-      return 'Reviews';
-    case MobileNotificationKind.connection:
-      return 'Connections';
-    case MobileNotificationKind.system:
-      return 'System';
+enum _DateCategory {
+  today,
+  yesterday,
+  earlierThisWeek,
+  earlier;
+
+  String get label {
+    switch (this) {
+      case _DateCategory.today:
+        return 'Today';
+      case _DateCategory.yesterday:
+        return 'Yesterday';
+      case _DateCategory.earlierThisWeek:
+        return 'Earlier this week';
+      case _DateCategory.earlier:
+        return 'Earlier';
+    }
   }
 }
 
-IconData _sectionIcon(MobileNotificationKind kind) {
-  switch (kind) {
-    case MobileNotificationKind.message:
-      return Icons.chat_bubble_outline_rounded;
-    case MobileNotificationKind.order:
-      return Icons.assignment_outlined;
-    case MobileNotificationKind.review:
-      return Icons.star_outline_rounded;
-    case MobileNotificationKind.connection:
-      return Icons.people_outline_rounded;
-    case MobileNotificationKind.system:
-      return Icons.notifications_none_rounded;
-  }
+_DateCategory _dateCategory(DateTime? date) {
+  if (date == null) return _DateCategory.earlier;
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final dateOnly = DateTime(date.year, date.month, date.day);
+  final diff = today.difference(dateOnly).inDays;
+  if (diff <= 0) return _DateCategory.today;
+  if (diff == 1) return _DateCategory.yesterday;
+  if (diff <= 6) return _DateCategory.earlierThisWeek;
+  return _DateCategory.earlier;
 }
 
 class NotificationsPage extends ConsumerStatefulWidget {
@@ -83,7 +85,12 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   RealtimeChannel? _channel;
   SupabaseClient? _client;
   bool _busy = false;
-  final Set<MobileNotificationKind> _collapsedSections = {};
+  static const _dateCategoryOrder = [
+    _DateCategory.today,
+    _DateCategory.yesterday,
+    _DateCategory.earlierThisWeek,
+    _DateCategory.earlier,
+  ];
 
   @override
   void initState() {
@@ -331,20 +338,6 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     return haystack.contains(query);
                   }).toList();
 
-                  final grouped = <MobileNotificationKind, List<MobileNotificationItem>>{};
-                  for (final item in filtered) {
-                    grouped.putIfAbsent(item.kind, () => []).add(item);
-                  }
-
-                  final kindOrder = [
-                    MobileNotificationKind.message,
-                    MobileNotificationKind.order,
-                    MobileNotificationKind.connection,
-                    MobileNotificationKind.review,
-                    MobileNotificationKind.system,
-                  ];
-                  kindOrder.removeWhere((k) => !grouped.containsKey(k));
-
                   if (filtered.isEmpty) {
                     return const SectionCard(
                       child: EmptyStateView(
@@ -355,46 +348,64 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     );
                   }
 
+                  final grouped = <_DateCategory, List<MobileNotificationItem>>{};
+                  for (final item in filtered) {
+                    grouped
+                        .putIfAbsent(_dateCategory(item.createdAt), () => [])
+                        .add(item);
+                  }
+
+                  for (final list in grouped.values) {
+                    list.sort((a, b) {
+                      final aDate = a.createdAt ?? DateTime(0);
+                      final bDate = b.createdAt ?? DateTime(0);
+                      return bDate.compareTo(aDate);
+                    });
+                  }
+
+                  final activeCategories = _dateCategoryOrder
+                      .where((c) => grouped.containsKey(c))
+                      .toList();
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final kind in kindOrder) ...[
-                        _buildSectionHeader(kind, grouped[kind]!.length),
-                        if (!_collapsedSections.contains(kind))
-                          ...grouped[kind]!.map(
-                            (item) => Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AppSpacing.sm,
+                      for (final category in activeCategories) ...[
+                        _buildDateHeader(category, grouped[category]!.length),
+                        ...grouped[category]!.map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.sm,
+                            ),
+                            child: _NotificationCard(
+                              item: item,
+                              busy: _busy,
+                              actionLabel:
+                                  resolveMobileNotificationAction(item).label,
+                              onOpen: () => _openNotification(item),
+                              onClear: () => _runAction(
+                                () => ref
+                                    .read(notificationRepositoryProvider)
+                                    .clearNotification(item.id),
+                                successMessage: 'Notification cleared.',
                               ),
-                              child: _NotificationCard(
-                                item: item,
-                                busy: _busy,
-                                actionLabel:
-                                    resolveMobileNotificationAction(item).label,
-                                onOpen: () => _openNotification(item),
-                                onClear: () => _runAction(
-                                  () => ref
-                                      .read(notificationRepositoryProvider)
-                                      .clearNotification(item.id),
-                                  successMessage: 'Notification cleared.',
-                                ),
-                                onAcceptConnection: item.kind ==
-                                        MobileNotificationKind.connection
-                                    ? () => _respondConnection(
-                                          requestId: item.entityId ?? item.id,
-                                          decision: 'accepted',
-                                        )
-                                    : null,
-                                onRejectConnection: item.kind ==
-                                        MobileNotificationKind.connection
-                                    ? () => _respondConnection(
-                                          requestId: item.entityId ?? item.id,
-                                          decision: 'rejected',
-                                        )
-                                    : null,
-                              ),
+                              onAcceptConnection: item.kind ==
+                                      MobileNotificationKind.connection
+                                  ? () => _respondConnection(
+                                        requestId: item.entityId ?? item.id,
+                                        decision: 'accepted',
+                                      )
+                                  : null,
+                              onRejectConnection: item.kind ==
+                                      MobileNotificationKind.connection
+                                  ? () => _respondConnection(
+                                        requestId: item.entityId ?? item.id,
+                                        decision: 'rejected',
+                                      )
+                                  : null,
                             ),
                           ),
+                        ),
                       ],
                     ],
                   );
@@ -407,62 +418,35 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     );
   }
 
-  Widget _buildSectionHeader(MobileNotificationKind kind, int count) {
-    final collapsed = _collapsedSections.contains(kind);
+  Widget _buildDateHeader(_DateCategory category, int count) {
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.xs),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: () {
-          setState(() {
-            if (collapsed) {
-              _collapsedSections.remove(kind);
-            } else {
-              _collapsedSections.add(kind);
-            }
-          });
-        },
-        child: Row(
-          children: [
-            Icon(
-              _sectionIcon(kind),
-              size: 18,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Text(
-              _sectionLabel(kind),
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceMuted,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 11,
+      child: Row(
+        children: [
+          Text(
+            category.label,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
-            const Spacer(),
-            Icon(
-              collapsed
-                  ? Icons.keyboard_arrow_down_rounded
-                  : Icons.keyboard_arrow_up_rounded,
-              size: 20,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
