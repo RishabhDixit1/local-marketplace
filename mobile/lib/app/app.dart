@@ -10,6 +10,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import '../core/auth/auth_state_controller.dart';
 import '../core/firebase/app_firebase.dart';
 import '../core/firebase/mobile_push_notifications.dart';
+import '../core/network/offline_banner.dart';
 import '../core/services/analytics_service.dart';
 import '../core/services/app_update_service.dart';
 import '../core/supabase/app_bootstrap.dart';
@@ -148,7 +149,15 @@ class _ServiQAppState extends ConsumerState<ServiQApp> {
       ],
       routerConfig: router,
       builder: (context, child) {
-        return _UpdateCheckGate(updateService: ref.read(appUpdateServiceProvider), child: child!);
+        return _UpdateCheckGate(
+          updateService: ref.read(appUpdateServiceProvider),
+          child: Column(
+            children: [
+              const OfflineBanner(),
+              Expanded(child: child!),
+            ],
+          ),
+        );
       },
     );
   }

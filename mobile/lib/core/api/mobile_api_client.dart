@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:http/http.dart' as http;
@@ -265,6 +266,20 @@ class MobileApiClient {
       );
     }
 
+    // Fail fast when device is offline.
+    try {
+      final results = await Connectivity().checkConnectivity();
+      final offline = results.every((r) =>
+          r == ConnectivityResult.none || r == ConnectivityResult.bluetooth);
+      if (offline) {
+        throw const ApiException(
+          'You appear to be offline. Check your internet connection and try again.',
+        );
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+    }
+
     final uri = _buildUri(path);
     final request = http.MultipartRequest('POST', uri);
     if (authenticated) {
@@ -338,6 +353,21 @@ class MobileApiClient {
       throw const ApiException(
         'API base URL is missing. Add API_BASE_URL with --dart-define or mobile/config/local.json.',
       );
+    }
+
+    // Fail fast when device is offline — avoid waiting for the 15 s timeout.
+    try {
+      final results = await Connectivity().checkConnectivity();
+      final offline = results.every((r) =>
+          r == ConnectivityResult.none || r == ConnectivityResult.bluetooth);
+      if (offline) {
+        throw const ApiException(
+          'You appear to be offline. Check your internet connection and try again.',
+        );
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      // Connectivity plugin failure — proceed and let the HTTP layer fail.
     }
 
     final uri = _buildUri(path, queryParameters: queryParameters);
@@ -523,9 +553,16 @@ class MobileApiClient {
     try {
       final session = client.auth.currentSession;
       if (session == null) return false;
-      await client.auth.refreshSession();
+      await client.auth.refreshSession().timeout(
+            const Duration(seconds: 8),
+            onTimeout: () {
+              debugPrint('ServiQ MobileApiClient: refreshSession timed out');
+              throw TimeoutException('Session refresh timed out');
+            },
+          );
       return client.auth.currentSession != null;
     } catch (e) {
+      debugPrint('ServiQ MobileApiClient: refreshSession failed: $e');
       return false;
     } finally {
       _refreshCompleter?.complete();

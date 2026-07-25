@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -170,21 +171,54 @@ final mobileLiveHubProvider = Provider<MobileLiveHub?>((ref) {
         },
       );
 
+  var retryCount = 0;
+  const maxRetries = 20;
+  const baseDelayMs = 5000;
+  const maxDelayMs = 60000;
+  Timer? reconnectTimer;
+
+  void scheduleReconnect() {
+    if (retryCount >= maxRetries) {
+      debugPrint(
+        'ServiQ MobileLiveHub: gave up reconnecting after $maxRetries attempts',
+      );
+      return;
+    }
+    retryCount++;
+    final backoff = math.min(
+      baseDelayMs * math.pow(2, retryCount - 1).toInt(),
+      maxDelayMs,
+    );
+    final jitter = (backoff * 0.15 * math.Random().nextDouble()).round();
+    final delay = Duration(milliseconds: backoff + jitter);
+    debugPrint(
+      'ServiQ MobileLiveHub: retry $retryCount/$maxRetries in ${delay.inSeconds}s',
+    );
+    reconnectTimer?.cancel();
+    reconnectTimer = Timer(delay, () {
+      // ignore: invalid_use_of_internal_member — no public API exposed.
+      if (!channel.isJoined) {
+        debugPrint('ServiQ MobileLiveHub: reconnecting...');
+        channel.unsubscribe();
+        channel.subscribe();
+      }
+    });
+  }
+
   channel.subscribe((status, [error]) {
+    if (status == RealtimeSubscribeStatus.subscribed) {
+      retryCount = 0;
+      return;
+    }
     if (status == RealtimeSubscribeStatus.channelError ||
         status == RealtimeSubscribeStatus.timedOut) {
       debugPrint('ServiQ MobileLiveHub channel error: $status $error');
-      Future.delayed(const Duration(seconds: 5), () {
-        // ignore: invalid_use_of_internal_member — no public API exposed.
-        if (!channel.isJoined) {
-          debugPrint('ServiQ MobileLiveHub attempting reconnect...');
-          channel.subscribe();
-        }
-      });
+      scheduleReconnect();
     }
   });
 
   ref.onDispose(() {
+    reconnectTimer?.cancel();
     client.removeChannel(channel);
   });
 
