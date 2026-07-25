@@ -73,6 +73,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: FadeTransition(
@@ -145,7 +146,6 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
   }
 
   Widget _buildSignUpForm(AuthNotifier notifier, AuthFormState state) {
-    final theme = Theme.of(context);
     return Form(
       child: Column(
         children: [
@@ -195,15 +195,6 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
               onPressed: state.isSubmitting
                   ? null
                   : () => notifier.signUp(context),
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.onSurface,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.surfacePressed,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                ),
-              ),
               child: state.isSubmitting
                   ? SizedBox(
                       width: 20,
@@ -213,12 +204,8 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
                         color: Theme.of(context).colorScheme.onPrimary,
                       ),
                     )
-                    : Text(
+                    : const Text(
                       'Create account',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
                     ),
             ),
           ),

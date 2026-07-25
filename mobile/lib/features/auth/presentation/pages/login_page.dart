@@ -168,7 +168,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
       padding: const EdgeInsets.all(4),
@@ -185,7 +185,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: selected ? AppColors.surface : Colors.transparent,
+                  color: selected ? Theme.of(context).colorScheme.surface : Colors.transparent,
                   borderRadius: BorderRadius.circular(AppRadii.md),
                   boxShadow: selected ? AppShadows.card : null,
                 ),
@@ -217,8 +217,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
   }
 
   Widget _buildEmailOtpForm(AuthNotifier notifier, AuthFormState state) {
-    final theme = Theme.of(context);
-
     if (state.otpSent) {
       return Form(
         child: Column(
@@ -241,33 +239,18 @@ class _LoginPageState extends ConsumerState<LoginPage>
                 onPressed: state.isSubmitting
                     ? null
                     : () => notifier.verifyEmailOtp(context),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.onSurface,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.surfacePressed,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.md),
-                  ),
-                ),
                 child: state.isSubmitting
                     ? SizedBox(
                         width: 20, height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                       )
-                    : Text('Verify code', style: theme.textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w700)),
+                    : const Text('Verify code'),
               ),
             ),
             const SizedBox(height: 10),
             TextButton(
               onPressed: notifier.resetOtpFlow,
-              child: Text(
-                'Use a different email',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: const Text('Use a different email'),
             ),
             if (notifier.otpCooldownRemaining > 0)
               Padding(
@@ -301,21 +284,12 @@ class _LoginPageState extends ConsumerState<LoginPage>
               onPressed: (state.isSubmitting || notifier.otpCooldownRemaining > 0)
                   ? null
                     : () => notifier.sendEmailOtp(context),
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.onSurface,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.surfacePressed,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                ),
-              ),
               child: state.isSubmitting
                   ? SizedBox(
                       width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
-                  : Text('Send code', style: theme.textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w700)),
+                  : const Text('Send code'),
             ),
           ),
         ],
@@ -324,8 +298,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
   }
 
   Widget _buildPhoneOtpForm(AuthNotifier notifier, AuthFormState state) {
-    final theme = Theme.of(context);
-
     if (state.otpSent) {
       return Form(
         child: Column(
@@ -347,33 +319,18 @@ class _LoginPageState extends ConsumerState<LoginPage>
                 onPressed: state.isSubmitting
                     ? null
                     : () => notifier.verifyPhoneOtp(context),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.onSurface,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.surfacePressed,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.md),
-                  ),
-                ),
                 child: state.isSubmitting
                     ? SizedBox(
                         width: 20, height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                       )
-                    : Text('Verify code', style: theme.textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w700)),
+                    : const Text('Verify code'),
               ),
             ),
             const SizedBox(height: 10),
             TextButton(
               onPressed: notifier.resetOtpFlow,
-              child: Text(
-                'Use a different number',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: const Text('Use a different number'),
             ),
             if (notifier.otpCooldownRemaining > 0)
               Padding(
@@ -407,21 +364,12 @@ class _LoginPageState extends ConsumerState<LoginPage>
               onPressed: (state.isSubmitting || notifier.otpCooldownRemaining > 0)
                   ? null
                     : () => notifier.sendPhoneOtp(context),
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.onSurface,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.surfacePressed,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                ),
-              ),
               child: state.isSubmitting
                   ? SizedBox(
                       width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
-                  : Text('Send code', style: theme.textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w700)),
+                  : const Text('Send code'),
             ),
           ),
         ],
@@ -430,7 +378,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
   }
 
   Widget _buildPasswordForm(AuthNotifier notifier, AuthFormState state) {
-    final theme = Theme.of(context);
     return Form(
       child: Column(
         children: [
@@ -459,33 +406,18 @@ class _LoginPageState extends ConsumerState<LoginPage>
               onPressed: state.isSubmitting
                   ? null
                   : () => notifier.signInWithPassword(context),
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.onSurface,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.surfacePressed,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                ),
-              ),
               child: state.isSubmitting
                   ? SizedBox(
                       width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
-                  : Text('Sign in', style: theme.textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w700)),
+                  : const Text('Sign in'),
             ),
           ),
           const SizedBox(height: 8),
           TextButton(
             onPressed: () => context.push(AppRoutes.forgotPassword),
-            child: Text(
-              'Forgot password?',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: const Text('Forgot password?'),
           ),
         ],
       ),

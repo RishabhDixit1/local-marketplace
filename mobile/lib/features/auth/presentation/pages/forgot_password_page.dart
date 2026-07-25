@@ -71,6 +71,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               physics: const BouncingScrollPhysics(),
               padding:
                   const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -136,10 +137,6 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
                                 : () =>
                                     notifier.sendForgotPasswordEmail(context),
                             style: FilledButton.styleFrom(
-                              backgroundColor: Theme.of(context).colorScheme.onSurface,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor:
-                                  AppColors.surfacePressed,
                               padding:
                                   const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
@@ -156,15 +153,8 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
                                       color: Theme.of(context).colorScheme.onPrimary,
                                     ),
                                   )
-                                : Text(
+                                : const Text(
                                     'Send reset link',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(
-                                          color: Theme.of(context).colorScheme.onPrimary,
-                                          fontWeight: FontWeight.w700,
-                                        ),
                                   ),
                           ),
                         ),

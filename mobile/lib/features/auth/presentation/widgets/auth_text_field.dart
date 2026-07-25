@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/design_tokens.dart';
 
 class AuthTextField extends StatelessWidget {
   const AuthTextField({
@@ -59,7 +58,7 @@ class AuthTextField extends StatelessWidget {
             : null,
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: AppColors.surfaceAlt,
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         counterText: '',
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -135,7 +134,7 @@ class _PasswordFieldState extends State<PasswordField> {
           },
         ),
         filled: true,
-        fillColor: AppColors.surfaceAlt,
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         counterText: '',
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,

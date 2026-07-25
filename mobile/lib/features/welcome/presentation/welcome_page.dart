@@ -668,7 +668,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
           onRefresh: _refresh,
           edgeOffset: 12,
           color: AppColors.primary,
-          backgroundColor: AppColors.surface,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
@@ -679,7 +679,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                 elevation: 0,
                 scrolledUnderElevation: 0,
                 titleSpacing: 16,
-                backgroundColor: AppColors.background,
+                backgroundColor: Theme.of(context).colorScheme.surface,
                 surfaceTintColor: Colors.transparent,
                 title: const _WelcomeAppBarTitle(),
                 actions: [
@@ -812,7 +812,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: AppColors.surfaceAlt,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: Theme.of(context).colorScheme.outline),
           ),
