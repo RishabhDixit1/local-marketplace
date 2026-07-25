@@ -17,10 +17,14 @@ class ReviewRepository {
 
   final MobileApiClient _apiClient;
 
-  Future<List<ProviderReviewItem>> fetchByProvider(String providerId) async {
+  Future<List<ProviderReviewItem>> fetchByProvider(String providerId, {int limit = 50, int offset = 0}) async {
     final payload = await _apiClient.getJson(
       '/api/reviews/by-provider',
-      queryParameters: {'providerId': providerId},
+      queryParameters: {
+        'providerId': providerId,
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      },
     );
 
     if (payload['ok'] != true) {

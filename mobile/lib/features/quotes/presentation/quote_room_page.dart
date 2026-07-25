@@ -8,6 +8,7 @@ import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/empty_state_view.dart';
@@ -49,6 +50,8 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
   QuoteWorkspaceRequest get _request =>
       QuoteWorkspaceRequest(mode: widget.mode, targetId: widget.targetId);
 
+  bool get _isOrderMode => widget.mode == MobileQuoteTargetMode.order;
+
   @override
   void dispose() {
     _summaryController.dispose();
@@ -64,6 +67,9 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
   Future<void> _refresh() async {
     ref.invalidate(quoteWorkspaceProvider(_request));
     await ref.read(quoteWorkspaceProvider(_request).future);
+    if (_isOrderMode) {
+      ref.invalidate(dealRoomProvider(widget.targetId));
+    }
   }
 
   void _hydrate(MobileQuoteWorkspace workspace) {
@@ -121,7 +127,11 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
     }
     final items = _lineItems.map((item) => item.toItem()).toList();
     if (items.isEmpty) {
-      ServiqToast.show(context, message: 'Add at least one quote line.', tone: ServiqToastTone.warning);
+      ServiqToast.show(
+        context,
+        message: 'Add at least one quote line.',
+        tone: ServiqToastTone.warning,
+      );
       return null;
     }
 
@@ -150,24 +160,34 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
       if (!mounted) {
         return;
       }
-      ref
-          .read(analyticsServiceProvider)
-          .trackEvent(
-            'quote_draft_saved',
-            extras: {
-              'mode': widget.mode.apiValue,
-              'target_id': widget.targetId,
-              'line_count': input.lineItems.length,
-            },
-          );
-      ServiqToast.show(context, message: 'Quote draft saved.', tone: ServiqToastTone.success);
+      ref.read(analyticsServiceProvider).trackEvent(
+        'quote_draft_saved',
+        extras: {
+          'mode': widget.mode.apiValue,
+          'target_id': widget.targetId,
+          'line_count': input.lineItems.length,
+        },
+      );
+      ServiqToast.show(
+        context,
+        message: 'Quote draft saved.',
+        tone: ServiqToastTone.success,
+      );
     } on ApiException catch (error) {
       if (mounted) {
-        ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
+        ServiqToast.show(
+          context,
+          message: error.message,
+          tone: ServiqToastTone.danger,
+        );
       }
     } catch (error) {
       if (mounted) {
-        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
+        ServiqToast.show(
+          context,
+          message: AppErrorMapper.toMessage(error),
+          tone: ServiqToastTone.danger,
+        );
       }
     } finally {
       if (mounted) {
@@ -190,24 +210,34 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
         return;
       }
       HapticFeedback.mediumImpact();
-      ref
-          .read(analyticsServiceProvider)
-          .trackEvent(
-            'quote_sent',
-            extras: {
-              'mode': widget.mode.apiValue,
-              'target_id': widget.targetId,
-              'line_count': input.lineItems.length,
-            },
-          );
-      ServiqToast.show(context, message: 'Quote sent.', tone: ServiqToastTone.success);
+      ref.read(analyticsServiceProvider).trackEvent(
+        'quote_sent',
+        extras: {
+          'mode': widget.mode.apiValue,
+          'target_id': widget.targetId,
+          'line_count': input.lineItems.length,
+        },
+      );
+      ServiqToast.show(
+        context,
+        message: 'Quote sent.',
+        tone: ServiqToastTone.success,
+      );
     } on ApiException catch (error) {
       if (mounted) {
-        ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
+        ServiqToast.show(
+          context,
+          message: error.message,
+          tone: ServiqToastTone.danger,
+        );
       }
     } catch (error) {
       if (mounted) {
-        ServiqToast.show(context, message: AppErrorMapper.toMessage(error), tone: ServiqToastTone.danger);
+        ServiqToast.show(
+          context,
+          message: AppErrorMapper.toMessage(error),
+          tone: ServiqToastTone.danger,
+        );
       }
     } finally {
       if (mounted) {
@@ -232,16 +262,14 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
     _expiresDaysController.text = generated.expiresDays.toString();
 
     setState(() {});
-    ref
-        .read(analyticsServiceProvider)
-        .trackEvent(
-          'quote_draft_generated',
-          extras: {
-            'mode': widget.mode.apiValue,
-            'target_id': widget.targetId,
-            'line_count': generated.lineItems.length,
-          },
-        );
+    ref.read(analyticsServiceProvider).trackEvent(
+      'quote_draft_generated',
+      extras: {
+        'mode': widget.mode.apiValue,
+        'target_id': widget.targetId,
+        'line_count': generated.lineItems.length,
+      },
+    );
   }
 
   Future<void> _acceptQuote(MobileQuoteDraft draft) async {
@@ -254,20 +282,73 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
         return;
       }
       HapticFeedback.mediumImpact();
-      ref
-          .read(analyticsServiceProvider)
-          .trackEvent(
-            'quote_accepted',
-            extras: {'mode': widget.mode.apiValue, 'quote_id': draft.id},
-          );
-      ServiqToast.show(context, message: 'Quote accepted.', tone: ServiqToastTone.success);
+      ref.read(analyticsServiceProvider).trackEvent(
+        'quote_accepted',
+        extras: {'mode': widget.mode.apiValue, 'quote_id': draft.id},
+      );
+      ServiqToast.show(
+        context,
+        message: 'Quote accepted.',
+        tone: ServiqToastTone.success,
+      );
     } on ApiException catch (error) {
       if (mounted) {
-        ServiqToast.show(context, message: error.message, tone: ServiqToastTone.danger);
+        ServiqToast.show(
+          context,
+          message: error.message,
+          tone: ServiqToastTone.danger,
+        );
       }
     } finally {
       if (mounted) {
         setState(() => _accepting = false);
+      }
+    }
+  }
+
+  Future<void> _rejectQuote(MobileQuoteDraft draft) async {
+    final result = await showDialog<_RejectResult>(
+      context: context,
+      builder: (context) => _RejectQuoteDialog(currentTotal: draft.total),
+    );
+    if (result == null) return;
+
+    try {
+      await ref.read(quoteRepositoryProvider).rejectQuote(
+        QuoteRejectInput(
+          quoteId: draft.id,
+          reason: result.reason,
+          counterAmount: result.counterAmount,
+        ),
+      );
+      ref.invalidate(quoteWorkspaceProvider(_request));
+      if (_isOrderMode) {
+        ref.invalidate(dealRoomProvider(widget.targetId));
+      }
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      ServiqToast.show(
+        context,
+        message: result.counterAmount != null
+            ? 'Counter-offer sent.'
+            : 'Quote rejected.',
+        tone: ServiqToastTone.success,
+      );
+    } on ApiException catch (error) {
+      if (mounted) {
+        ServiqToast.show(
+          context,
+          message: error.message,
+          tone: ServiqToastTone.danger,
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ServiqToast.show(
+          context,
+          message: AppErrorMapper.toMessage(error),
+          tone: ServiqToastTone.danger,
+        );
       }
     }
   }
@@ -293,14 +374,28 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
     }
 
     final workspaceAsync = ref.watch(quoteWorkspaceProvider(_request));
+    final dealRoomAsync = _isOrderMode
+        ? ref.watch(dealRoomProvider(widget.targetId))
+        : null;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Quote room')),
+      appBar: AppBar(
+        title: Text(_isOrderMode ? 'Deal room' : 'Quote room'),
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
+              if (_isOrderMode && dealRoomAsync != null)
+                dealRoomAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (e, _) => const SizedBox.shrink(),
+                  data: (ctx) => ctx != null
+                      ? _OrderProgressSection(context: ctx)
+                      : const SizedBox.shrink(),
+                ),
               ServiqAsyncBody<MobileQuoteWorkspace>(
                 value: workspaceAsync,
                 errorTitle: 'Unable to load quote',
@@ -325,10 +420,29 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
                               draft.isAcceptable &&
                               workspace.context.actorRole ==
                                   MobileQuoteActorRole.consumer,
+                          canReject:
+                              draft.isAcceptable &&
+                              workspace.context.actorRole ==
+                                  MobileQuoteActorRole.consumer,
                           accepting: _accepting,
                           onAccept: () => _acceptQuote(draft),
+                          onReject: () => _rejectQuote(draft),
                         ),
                       if (draft != null) const SizedBox(height: 16),
+                      if (_isOrderMode && dealRoomAsync != null)
+                        dealRoomAsync.when(
+                          loading: () => const SizedBox.shrink(),
+                          error: (e, _) => const SizedBox.shrink(),
+                          data: (ctx) => ctx != null &&
+                                  ctx.versions.isNotEmpty
+                              ? Column(
+                                  children: [
+                                    _VersionHistoryCard(versions: ctx.versions),
+                                    const SizedBox(height: 16),
+                                  ],
+                                )
+                              : const SizedBox.shrink(),
+                        ),
                       _QuoteForm(
                         formKey: _formKey,
                         summaryController: _summaryController,
@@ -355,6 +469,22 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
                         onGenerateDraft: () =>
                             _generateDraft(workspace.context),
                       ),
+                      if (_isOrderMode && dealRoomAsync != null)
+                        dealRoomAsync.when(
+                          loading: () => const SizedBox.shrink(),
+                          error: (e, _) => const SizedBox.shrink(),
+                          data: (ctx) => ctx != null &&
+                                  ctx.timelineEvents.isNotEmpty
+                              ? Column(
+                                  children: [
+                                    const SizedBox(height: 16),
+                                    _ActivityTimelineCard(
+                                      events: ctx.timelineEvents,
+                                    ),
+                                  ],
+                                )
+                              : const SizedBox.shrink(),
+                        ),
                     ],
                   );
                 },
@@ -363,6 +493,368 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _OrderProgressSection extends StatelessWidget {
+  const _OrderProgressSection({required this.context});
+  final DealRoomContext context;
+
+  @override
+  Widget build(BuildContext context) {
+    final stages = [
+      'new_lead',
+      'quoted',
+      'accepted',
+      'in_progress',
+      'completed',
+    ];
+    final currentStatus = this.context.orderStatus ?? 'new_lead';
+    final currentIndex = stages.indexOf(currentStatus).clamp(0, stages.length - 1);
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Order progress', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          Row(
+            children: List.generate(stages.length * 2 - 1, (i) {
+              if (i.isOdd) {
+                return Expanded(
+                  child: Container(
+                    height: 2,
+                    color: i ~/ 2 < currentIndex
+                        ? AppColors.primary
+                        : Theme.of(context).colorScheme.outline,
+                  ),
+                );
+              }
+              final stageIndex = i ~/ 2;
+              final isDone = stageIndex < currentIndex;
+              final isCurrent = stageIndex == currentIndex;
+              return Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isDone || isCurrent
+                      ? AppColors.primary
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                ),
+                child: Center(
+                  child: isDone
+                      ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                      : Text(
+                          '${stageIndex + 1}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isCurrent ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: List.generate(stages.length * 2 - 1, (i) {
+              if (i.isOdd) return const Expanded(child: SizedBox());
+              final stageIndex = i ~/ 2;
+              return SizedBox(
+                width: 28,
+                child: Text(
+                  stages[stageIndex].replaceAll('_', ' '),
+                  style: TextStyle(
+                    fontSize: 8,
+                    color: stageIndex <= currentIndex
+                        ? AppColors.primary
+                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VersionHistoryCard extends StatelessWidget {
+  const _VersionHistoryCard({required this.versions});
+  final List<QuoteVersion> versions;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Version history',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              _LabelChip(text: '${versions.length} versions'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...versions.map((v) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _versionColor(v.status).withValues(alpha: 0.12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'v${v.versionNumber}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: _versionColor(v.status),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'INR ${v.total.round()}',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          _LabelChip(text: v.status),
+                        ],
+                      ),
+                      if (v.sentAt != null)
+                        Text(
+                          'Sent ${_relativeTime(v.sentAt!)}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Color _versionColor(String status) {
+    switch (status) {
+      case 'accepted':
+        return AppColors.success;
+      case 'sent':
+        return AppColors.primary;
+      case 'rejected':
+        return AppColors.danger;
+      default:
+        return AppColors.accent;
+    }
+  }
+}
+
+class _ActivityTimelineCard extends StatelessWidget {
+  const _ActivityTimelineCard({required this.events});
+  final List<TimelineEvent> events;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Activity', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          ...events.take(10).map((e) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(top: 5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _eventColor(e.type),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        e.message.isNotEmpty ? e.message : _humanize(e.type),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      if (e.createdAt != null)
+                        Text(
+                          _relativeTime(e.createdAt!),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontSize: 11,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Color _eventColor(String type) {
+    if (type.contains('accept')) return AppColors.success;
+    if (type.contains('send') || type.contains('quote')) return AppColors.primary;
+    if (type.contains('reject') || type.contains('counter')) return AppColors.warning;
+    if (type.contains('status')) return AppColors.accent;
+    return AppColors.surfaceAlt;
+  }
+}
+
+class _LabelChip extends StatelessWidget {
+  const _LabelChip({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+        ),
+      ),
+    );
+  }
+}
+
+class _RejectResult {
+  const _RejectResult({this.reason, this.counterAmount});
+  final String? reason;
+  final double? counterAmount;
+}
+
+class _RejectQuoteDialog extends StatefulWidget {
+  const _RejectQuoteDialog({required this.currentTotal});
+  final double currentTotal;
+
+  @override
+  State<_RejectQuoteDialog> createState() => _RejectQuoteDialogState();
+}
+
+class _RejectQuoteDialogState extends State<_RejectQuoteDialog> {
+  final _reasonController = TextEditingController();
+  final _counterController = TextEditingController();
+  bool _wantsCounter = false;
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    _counterController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Reject quote'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Optionally provide a reason and counter-offer amount.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _reasonController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Reason (optional)',
+                hintText: 'Why are you rejecting this quote?',
+              ),
+            ),
+            const SizedBox(height: 12),
+            CheckboxListTile(
+              value: _wantsCounter,
+              onChanged: (v) => setState(() => _wantsCounter = v ?? false),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Suggest counter-offer'),
+            ),
+            if (_wantsCounter) ...[
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _counterController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Counter amount (INR)',
+                  hintText: 'Current: INR ${widget.currentTotal.round()}',
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final counter = double.tryParse(_counterController.text.trim());
+            Navigator.of(context).pop(
+              _RejectResult(
+                reason: _reasonController.text.trim().isEmpty
+                    ? null
+                    : _reasonController.text.trim(),
+                counterAmount: _wantsCounter ? counter : null,
+              ),
+            );
+          },
+          child: const Text('Reject'),
+        ),
+      ],
     );
   }
 }
@@ -411,14 +903,18 @@ class _QuoteStatusCard extends StatelessWidget {
   const _QuoteStatusCard({
     required this.draft,
     required this.canAccept,
+    required this.canReject,
     required this.accepting,
     required this.onAccept,
+    required this.onReject,
   });
 
   final MobileQuoteDraft draft;
   final bool canAccept;
+  final bool canReject;
   final bool accepting;
   final VoidCallback onAccept;
+  final VoidCallback onReject;
 
   @override
   Widget build(BuildContext context) {
@@ -447,18 +943,34 @@ class _QuoteStatusCard extends StatelessWidget {
                 : 'Sent ${_relativeTime(draft.sentAt!)}.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          if (canAccept) ...[
+          if (canAccept || canReject) ...[
             const SizedBox(height: 14),
-            PrimaryButton(
-              label: accepting ? 'Accepting...' : 'Accept quote',
-              icon: accepting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.check_circle_outline_rounded),
-              onPressed: accepting ? null : onAccept,
+            Row(
+              children: [
+                if (canAccept)
+                  Expanded(
+                    child: PrimaryButton(
+                      label: accepting ? 'Accepting...' : 'Accept quote',
+                      icon: accepting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check_circle_outline_rounded),
+                      onPressed: accepting ? null : onAccept,
+                    ),
+                  ),
+                if (canAccept && canReject) const SizedBox(width: 10),
+                if (canReject)
+                  Expanded(
+                    child: SecondaryButton(
+                      label: 'Reject',
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: accepting ? null : onReject,
+                    ),
+                  ),
+              ],
             ),
           ],
         ],
@@ -515,7 +1027,10 @@ class _QuoteTimelineCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Quote timeline', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Quote timeline',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 8),
           Text(
             'Scope, quote, acceptance, and task handoff stay visible together.',
@@ -562,7 +1077,7 @@ class _TimelineStepRow extends StatelessWidget {
         : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
     final background = step.done || step.active
         ? AppColors.primarySoft
-        : AppColors.surfaceMuted;
+        : Theme.of(context).colorScheme.surfaceContainerHighest;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -677,7 +1192,7 @@ class _QuoteForm extends StatelessWidget {
                       const SizedBox(height: 6),
                       SecondaryButton(
                         label: 'Generate draft',
-                        icon: Icon(Icons.auto_awesome_rounded),
+                        icon: const Icon(Icons.auto_awesome_rounded),
                         expanded: false,
                         onPressed: saving || sending ? null : onGenerateDraft,
                       ),
@@ -690,7 +1205,7 @@ class _QuoteForm extends StatelessWidget {
             TextFormField(
               controller: summaryController,
               enabled: canEdit,
-              decoration: InputDecoration(labelText: 'Summary'),
+              decoration: const InputDecoration(labelText: 'Summary'),
               validator: _required('Add a quote summary.'),
             ),
             const SizedBox(height: 12),
@@ -699,7 +1214,7 @@ class _QuoteForm extends StatelessWidget {
               enabled: canEdit,
               minLines: 2,
               maxLines: 4,
-              decoration: InputDecoration(labelText: 'Notes'),
+              decoration: const InputDecoration(labelText: 'Notes'),
             ),
             const SizedBox(height: 16),
             Text('Line items', style: Theme.of(context).textTheme.titleMedium),
@@ -752,7 +1267,8 @@ class _QuoteForm extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.surfaceMuted,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(AppRadii.sm),
               ),
               child: Column(
@@ -818,7 +1334,8 @@ class _QuoteAttachmentGuidance extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest
+            .withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
@@ -877,7 +1394,8 @@ class _LineItemCardState extends State<_LineItemCard> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest
+            .withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(AppRadii.sm),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
@@ -917,7 +1435,7 @@ class _LineItemCardState extends State<_LineItemCard> {
                   controller: item.quantity,
                   enabled: widget.enabled,
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: 'Qty'),
+                  decoration: const InputDecoration(labelText: 'Qty'),
                 ),
               ),
               const SizedBox(width: 10),
@@ -926,7 +1444,7 @@ class _LineItemCardState extends State<_LineItemCard> {
                   controller: item.unitPrice,
                   enabled: widget.enabled,
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: 'Unit price'),
+                  decoration: const InputDecoration(labelText: 'Unit price'),
                 ),
               ),
             ],

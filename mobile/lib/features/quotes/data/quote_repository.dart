@@ -16,6 +16,12 @@ final quoteWorkspaceProvider =
       return ref.watch(quoteRepositoryProvider).fetchWorkspace(request);
     });
 
+final dealRoomProvider =
+    FutureProvider.family<DealRoomContext?, String>((ref, orderId) {
+      if (orderId.isEmpty) return Future.value(null);
+      return ref.watch(quoteRepositoryProvider).fetchDealRoom(orderId);
+    });
+
 class QuoteWorkspaceRequest {
   const QuoteWorkspaceRequest({required this.mode, required this.targetId});
 
@@ -75,6 +81,34 @@ class QuoteRepository {
   Future<void> acceptQuote(String quoteId) async {
     final payload = await _apiClient.postJson('/api/quotes/$quoteId/accept');
     _expectOk(payload, 'Unable to accept quote.');
+  }
+
+  Future<DealRoomContext?> fetchDealRoom(String orderId) async {
+    final payload = await _apiClient.getJson(
+      '/api/quotes/deal-room',
+      queryParameters: {'orderId': orderId},
+    );
+    if (payload['ok'] != true) return null;
+    final data = payload['data'] as Map<String, dynamic>?;
+    if (data == null) return null;
+    return DealRoomContext.fromJson(data);
+  }
+
+  Future<void> rejectQuote(QuoteRejectInput input) async {
+    final payload = await _apiClient.postJson(
+      '/api/quotes/reject',
+      body: input.toJson(),
+    );
+    _expectOk(payload, 'Unable to reject quote.');
+  }
+
+  Future<ComparisonQuoteResult> fetchQuotesForRequest(String helpRequestId) async {
+    final payload = await _apiClient.getJson(
+      '/api/quotes/for-request',
+      queryParameters: {'helpRequestId': helpRequestId},
+    );
+    _expectOk(payload, 'Unable to load quotes.');
+    return ComparisonQuoteResult.fromJson(payload);
   }
 
   void _expectOk(Map<String, dynamic> payload, String fallbackMessage) {

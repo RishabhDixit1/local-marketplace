@@ -276,7 +276,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
             children: [
               Expanded(
                   child: DropdownButtonFormField<String>(
-                  initialValue: field.documentType,
+                  value: field.documentType,
                   decoration: const InputDecoration(
                     labelText: 'Document type',
                     contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),

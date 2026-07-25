@@ -287,7 +287,7 @@ class _NavDestinationButton extends StatelessWidget {
                       clipBehavior: Clip.none,
                       alignment: Alignment.center,
                       children: [
-                        Icon(icon, size: selected ? 23 : 21, color: foreground),
+                        Icon(icon, size: AppIconSize.lg, color: foreground),
                         Positioned(
                           top: -6,
                           right: -8,

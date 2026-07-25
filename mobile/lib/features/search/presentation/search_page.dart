@@ -38,6 +38,17 @@ Future<List<String>> _loadRecent() async {
   }
 }
 
+Future<void> _deleteRecent(String query) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final recent = (prefs.getStringList(_recentKey) ?? [])
+      ..remove(query);
+    prefs.setStringList(_recentKey, recent);
+  } catch (e) {
+    debugPrint('ServiQ search_page._deleteRecent failed: $e');
+  }
+}
+
 Future<void> _saveRecent(String query) async {
   try {
     final prefs = await SharedPreferences.getInstance();
@@ -379,13 +390,26 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             dense: true,
             leading: Icon(Icons.history_rounded, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
             title: Text(s, style: TextStyle(fontSize: 14)),
-            trailing: IconButton(
-              icon: Icon(Icons.north_west_rounded, size: 16, color: AppColors.primary),
-              onPressed: () {
-                _query = s;
-                _doSearch();
-              },
-              visualDensity: VisualDensity.compact,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.north_west_rounded, size: 16, color: AppColors.primary),
+                  onPressed: () {
+                    _query = s;
+                    _doSearch();
+                  },
+                  visualDensity: VisualDensity.compact,
+                ),
+                IconButton(
+                  icon: Icon(Icons.close, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
+                  onPressed: () async {
+                    setState(() => _recent.remove(s));
+                    await _deleteRecent(s);
+                  },
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
             ),
             onTap: () {
               _query = s;

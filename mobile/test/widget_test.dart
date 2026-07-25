@@ -621,7 +621,7 @@ void main() {
             (ref) async => _sampleConversations,
           ),
           chatMessagesProvider(
-            'conv-1',
+            (conversationId: 'conv-1', offset: 0),
           ).overrideWith((ref) async => _sampleMessages),
         ],
         child: MaterialApp(

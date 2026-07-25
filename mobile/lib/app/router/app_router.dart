@@ -55,6 +55,7 @@ import '../../features/provider/presentation/provider_listings_page.dart';
 import '../../features/provider/presentation/provider_profile_page.dart';
 import '../../features/quotes/domain/quote_models.dart';
 import '../../features/quotes/presentation/quote_room_page.dart';
+import '../../features/quotes/presentation/quote_comparison_page.dart';
 import '../../features/search/presentation/search_page.dart';
 import '../../features/search/presentation/map_discovery_page.dart';
 import '../../features/tasks/presentation/tasks_page.dart';
@@ -362,6 +363,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           mode: quoteTargetModeFromSource(_queryParam(state, 'mode')),
           targetId: _queryParam(state, 'targetId') ?? '',
           conversationId: _queryParam(state, 'conversationId'),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.quoteComparison,
+        builder: (context, state) => QuoteComparisonPage(
+          helpRequestId: _queryParam(state, 'helpRequestId') ?? '',
         ),
       ),
       GoRoute(

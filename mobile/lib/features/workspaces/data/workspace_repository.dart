@@ -37,8 +37,14 @@ class WorkspacesRepository {
 
   final MobileApiClient _apiClient;
 
-  Future<List<MobileWorkspace>> fetchWorkspaces() async {
-    final payload = await _apiClient.getJson('/api/workspaces');
+  Future<List<MobileWorkspace>> fetchWorkspaces({int limit = 50, int offset = 0}) async {
+    final payload = await _apiClient.getJson(
+      '/api/workspaces',
+      queryParameters: {
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      },
+    );
     _expectOk(payload, 'Unable to load workspaces.');
     final list = (payload['workspaces'] as List?) ?? [];
     return list
@@ -91,8 +97,14 @@ class WorkspacesRepository {
     _expectOk(payload, 'Unable to delete workspace.');
   }
 
-  Future<List<MobileWorkspaceMember>> fetchMembers(String workspaceId) async {
-    final payload = await _apiClient.getJson('/api/workspaces/$workspaceId/members');
+  Future<List<MobileWorkspaceMember>> fetchMembers(String workspaceId, {int limit = 50, int offset = 0}) async {
+    final payload = await _apiClient.getJson(
+      '/api/workspaces/$workspaceId/members',
+      queryParameters: {
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      },
+    );
     _expectOk(payload, 'Unable to load members.');
     final list = (payload['members'] as List?) ?? [];
     return list
@@ -116,8 +128,14 @@ class WorkspacesRepository {
     _expectOk(payload, 'Unable to remove member.');
   }
 
-  Future<List<MobileWorkspaceBranch>> fetchBranches(String workspaceId) async {
-    final payload = await _apiClient.getJson('/api/workspaces/$workspaceId/branches');
+  Future<List<MobileWorkspaceBranch>> fetchBranches(String workspaceId, {int limit = 50, int offset = 0}) async {
+    final payload = await _apiClient.getJson(
+      '/api/workspaces/$workspaceId/branches',
+      queryParameters: {
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      },
+    );
     _expectOk(payload, 'Unable to load branches.');
     final list = (payload['branches'] as List?) ?? [];
     return list
@@ -134,8 +152,14 @@ class WorkspacesRepository {
     _expectOk(payload, 'Unable to add branch.');
   }
 
-  Future<List<MobileWorkspaceRule>> fetchRules(String workspaceId) async {
-    final payload = await _apiClient.getJson('/api/workspaces/$workspaceId/rules');
+  Future<List<MobileWorkspaceRule>> fetchRules(String workspaceId, {int limit = 50, int offset = 0}) async {
+    final payload = await _apiClient.getJson(
+      '/api/workspaces/$workspaceId/rules',
+      queryParameters: {
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      },
+    );
     _expectOk(payload, 'Unable to load rules.');
     final list = (payload['rules'] as List?) ?? [];
     return list

@@ -1417,19 +1417,26 @@ class _PublicProfilePreviewCard extends StatelessWidget {
   }
 }
 
-class _EditableProfileCard extends ConsumerWidget {
+class _EditableProfileCard extends ConsumerStatefulWidget {
   const _EditableProfileCard({required this.snapshot});
 
   final MobileProfileSnapshot snapshot;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final profile = snapshot.profile;
+  ConsumerState<_EditableProfileCard> createState() => _EditableProfileCardState();
+}
+
+class _EditableProfileCardState extends ConsumerState<_EditableProfileCard> {
+  bool _syncing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = widget.snapshot.profile;
     final rows = [
       (
         'Public name',
-        profile.fullName.isNotEmpty || snapshot.displayName.isNotEmpty,
-        profile.fullName.isEmpty ? snapshot.displayName : profile.fullName,
+        profile.fullName.isNotEmpty || widget.snapshot.displayName.isNotEmpty,
+        profile.fullName.isEmpty ? widget.snapshot.displayName : profile.fullName,
       ),
       ('Headline', profile.headline.isNotEmpty, profile.headline),
       ('Bio', profile.bio.isNotEmpty, profile.bio),
@@ -1457,32 +1464,43 @@ class _EditableProfileCard extends ConsumerWidget {
             ),
           const SizedBox(height: 14),
           FilledButton.tonal(
-            onPressed: () async {
-              try {
-                await ref
-                    .read(profileRepositoryProvider)
-                    .saveProfileFromSnapshot(snapshot);
-                ref.invalidate(profileSnapshotProvider);
-                if (!context.mounted) {
-                  return;
-                }
-                ServiqToast.show(
-                  context,
-                  message: 'Profile saved to server.',
-                  tone: ServiqToastTone.success,
-                );
-              } catch (error) {
-                if (!context.mounted) {
-                  return;
-                }
-                ServiqToast.show(
-                  context,
-                  message: AppErrorMapper.toMessage(error),
-                  tone: ServiqToastTone.danger,
-                );
-              }
-            },
-            child: const Text('Sync fields to server'),
+            onPressed: _syncing
+                ? null
+                : () async {
+                    setState(() => _syncing = true);
+                    try {
+                      await ref
+                          .read(profileRepositoryProvider)
+                          .saveProfileFromSnapshot(widget.snapshot);
+                      ref.invalidate(profileSnapshotProvider);
+                      if (!context.mounted) {
+                        return;
+                      }
+                      ServiqToast.show(
+                        context,
+                        message: 'Profile saved to server.',
+                        tone: ServiqToastTone.success,
+                      );
+                    } catch (error) {
+                      if (!context.mounted) {
+                        return;
+                      }
+                      ServiqToast.show(
+                        context,
+                        message: AppErrorMapper.toMessage(error),
+                        tone: ServiqToastTone.danger,
+                      );
+                    } finally {
+                      if (mounted) setState(() => _syncing = false);
+                    }
+                  },
+            child: _syncing
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Sync fields to server'),
           ),
           const SizedBox(height: 10),
           _ActionRow(

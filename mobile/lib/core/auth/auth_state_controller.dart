@@ -40,6 +40,8 @@ class AuthStateController extends ChangeNotifier {
   bool get isAuthenticated => currentSession != null;
   Stream<Session?> get sessionChanges => _sessionController.stream;
 
+  static const Duration _signOutTimeout = Duration(seconds: 8);
+
   Future<void> signOut() async {
     final client = _bootstrap.client;
     if (client == null) {
@@ -47,7 +49,7 @@ class AuthStateController extends ChangeNotifier {
     }
 
     try {
-      await client.auth.signOut();
+      await client.auth.signOut().timeout(_signOutTimeout);
     } catch (e) {
       debugPrint('ServiQ auth_state_controller.signOut failed: $e');
       rethrow;

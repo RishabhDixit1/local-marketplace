@@ -17,8 +17,14 @@ class InvoicesRepository {
 
   final MobileApiClient _apiClient;
 
-  Future<List<InvoiceRecord>> fetchInvoices() async {
-    final payload = await _apiClient.getJson('/api/invoices/list');
+  Future<List<InvoiceRecord>> fetchInvoices({int limit = 50, int offset = 0}) async {
+    final payload = await _apiClient.getJson(
+      '/api/invoices/list',
+      queryParameters: {
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      },
+    );
 
     final list = (payload['invoices'] as List?) ?? [];
     return list

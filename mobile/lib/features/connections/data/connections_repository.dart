@@ -17,8 +17,14 @@ class ConnectionsRepository {
 
   final MobileApiClient _apiClient;
 
-  Future<List<ConnectionRequestRow>> fetchConnections() async {
-    final payload = await _apiClient.getJson('/api/connections');
+  Future<List<ConnectionRequestRow>> fetchConnections({int limit = 50, int offset = 0}) async {
+    final payload = await _apiClient.getJson(
+      '/api/connections',
+      queryParameters: {
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      },
+    );
     final rows = (payload['rows'] as List?) ?? [];
     return rows
         .whereType<Map<String, dynamic>>()

@@ -19,6 +19,7 @@ class ConnectionsPage extends ConsumerStatefulWidget {
 class _ConnectionsPageState extends ConsumerState<ConnectionsPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  String? _busyId;
 
   @override
   void initState() {
@@ -87,6 +88,7 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage>
                 people: people,
                 emptyMessage: 'No incoming requests.',
                 showActions: true,
+                busyId: _busyId,
                 onAccept: (r) => _respond(r.id, 'accepted'),
                 onReject: (r) => _respond(r.id, 'rejected'),
               ),
@@ -96,6 +98,7 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage>
                 people: people,
                 emptyMessage: 'No outgoing requests.',
                 showActions: false,
+                busyId: _busyId,
                 onCancel: (r) => _respond(r.id, 'cancelled'),
               ),
               _ConnectionsList(
@@ -113,6 +116,7 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage>
   }
 
   Future<void> _respond(String requestId, String decision) async {
+    setState(() => _busyId = requestId);
     try {
       await ref.read(connectionsRepositoryProvider).respondToConnection(
         requestId: requestId,
@@ -122,6 +126,8 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage>
     } catch (e) {
       if (!mounted) return;
       ServiqToast.show(context, message: '$e', tone: ServiqToastTone.danger);
+    } finally {
+      if (mounted) setState(() => _busyId = null);
     }
   }
 }
@@ -133,6 +139,7 @@ class _ConnectionsList extends StatelessWidget {
     this.people,
     required this.emptyMessage,
     this.showActions = false,
+    this.busyId,
     this.onAccept,
     this.onReject,
     this.onCancel,
@@ -143,6 +150,7 @@ class _ConnectionsList extends StatelessWidget {
   final MobilePeopleSnapshot? people;
   final String emptyMessage;
   final bool showActions;
+  final String? busyId;
   final void Function(ConnectionRequestRow)? onAccept;
   final void Function(ConnectionRequestRow)? onReject;
   final void Function(ConnectionRequestRow)? onCancel;
@@ -202,18 +210,18 @@ class _ConnectionsList extends StatelessWidget {
             if (showActions) ...[
               IconButton(
                 icon: Icon(Icons.check_circle, color: AppColors.verified),
-                onPressed: () => onAccept?.call(row),
+                onPressed: busyId == row.id ? null : () => onAccept?.call(row),
                 tooltip: 'Accept',
               ),
               IconButton(
                 icon: Icon(Icons.cancel, color: AppColors.danger),
-                onPressed: () => onReject?.call(row),
+                onPressed: busyId == row.id ? null : () => onReject?.call(row),
                 tooltip: 'Reject',
               ),
             ],
             if (onCancel != null)
               TextButton(
-                onPressed: () => onCancel?.call(row),
+                onPressed: busyId == row.id ? null : () => onCancel?.call(row),
                 child: const Text('Cancel'),
               ),
           ],

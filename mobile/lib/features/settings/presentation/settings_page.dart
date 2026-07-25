@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -24,6 +27,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _saving = false;
+  bool _signingOut = false;
   String? _saveMessage;
 
   Future<void> _refresh() async {
@@ -65,7 +69,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ),
     );
     if (confirmed == true) {
-      await Supabase.instance.client.auth.signOut();
+      await Supabase.instance.client.auth.signOut().timeout(const Duration(seconds: 8));
       if (mounted) context.go('/');
     }
   }
@@ -80,7 +84,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('This permanently deletes your account and data. Type DELETE to confirm.'),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             TextField(controller: controller, decoration: const InputDecoration(labelText: 'Type DELETE')),
           ],
         ),
@@ -96,7 +100,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (confirmed == true) {
       try {
         await ref.read(mobileApiClientProvider).postJson('/api/account/delete');
-        await Supabase.instance.client.auth.signOut();
+        await Supabase.instance.client.auth.signOut().timeout(const Duration(seconds: 8));
         if (mounted) context.go('/');
       } on ApiException catch (e) {
         if (mounted) {
@@ -115,17 +119,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       appBar: AppBar(title: const Text('Settings')),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 28),
           children: [
             Text('Manage account, notifications, and appearance.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             _buildNotificationsSection(notifAsync),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             _buildAppearanceSection(themeMode),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             _buildGeneralSection(),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             _buildAccountSection(),
           ],
         ),
@@ -169,12 +173,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ],
             ),
             loadingBuilder: () => const Padding(
-              padding: EdgeInsets.all(20),
+              padding: EdgeInsets.all(AppSpacing.lg),
               child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             ),
           ),
           if (_saveMessage != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             Text(_saveMessage!, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
           ],
         ],
@@ -223,7 +227,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         borderRadius: BorderRadius.circular(10),
         onTap: () => ref.read(themeModeProvider.notifier).set(mode),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: selected ? AppColors.primary : Theme.of(context).colorScheme.outline),
@@ -269,13 +273,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       builder: (ctx) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text('Select Language',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.sm),
                 ...localeOptions.map((entry) {
                   final (locale, label) = entry;
                   final selected = locale.languageCode == currentLocale.languageCode;
@@ -382,10 +386,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             leading: Icon(Icons.logout_rounded, color: Theme.of(context).colorScheme.onSurface),
             title: const Text('Sign out', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             subtitle: Text('Sign out of this device', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-            onTap: () async {
-              await Supabase.instance.client.auth.signOut();
-              if (mounted) context.go('/');
-            },
+            trailing: _signingOut
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : null,
+            onTap: _signingOut
+                ? null
+                : () async {
+                    HapticFeedback.mediumImpact();
+                    setState(() => _signingOut = true);
+                    try {
+                      await Supabase.instance.client.auth.signOut().timeout(const Duration(seconds: 8));
+                      if (mounted) context.go('/');
+                    } catch (_) {
+                      if (mounted) setState(() => _signingOut = false);
+                    }
+                  },
           ),
           const Divider(height: 1),
           ListTile(

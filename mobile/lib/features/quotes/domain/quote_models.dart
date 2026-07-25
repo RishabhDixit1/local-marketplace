@@ -54,6 +54,116 @@ class MobileQuoteWorkspace {
   final MobileQuoteDraft? draft;
 }
 
+class ComparisonQuoteLineItem {
+  const ComparisonQuoteLineItem({
+    required this.id,
+    required this.label,
+    this.description,
+    this.quantity = 1,
+    this.unitPrice = 0,
+    this.amount = 0,
+  });
+
+  factory ComparisonQuoteLineItem.fromJson(Map<String, dynamic> json) {
+    return ComparisonQuoteLineItem(
+      id: _readString(json['id']),
+      label: _readString(json['label'], fallback: 'Item'),
+      description: _nullableString(json['description']),
+      quantity: _toInt(json['quantity'], fallback: 1),
+      unitPrice: _toDouble(json['unit_price']),
+      amount: _toDouble(json['amount']),
+    );
+  }
+
+  final String id;
+  final String label;
+  final String? description;
+  final int quantity;
+  final double unitPrice;
+  final double amount;
+}
+
+class ComparisonQuote {
+  const ComparisonQuote({
+    required this.id,
+    this.helpRequestId = '',
+    this.status = 'draft',
+    this.summary,
+    this.notes,
+    this.subtotal = 0,
+    this.taxAmount = 0,
+    this.total = 0,
+    this.expiresAt,
+    this.sentAt,
+    required this.createdAt,
+    this.providerName = 'Unknown',
+    this.providerAvatar,
+    this.isFromAcceptedProvider = false,
+    this.lineItems = const [],
+  });
+
+  factory ComparisonQuote.fromJson(Map<String, dynamic> json) {
+    final lineItemsList = (json['quote_line_items'] as List?) ?? [];
+    return ComparisonQuote(
+      id: _readString(json['id']),
+      helpRequestId: _readString(json['help_request_id']),
+      status: _readString(json['status'], fallback: 'draft'),
+      summary: _nullableString(json['summary']),
+      notes: _nullableString(json['notes']),
+      subtotal: _toDouble(json['subtotal']),
+      taxAmount: _toDouble(json['tax_amount']),
+      total: _toDouble(json['total']),
+      expiresAt: _parseDate(json['expires_at']),
+      sentAt: _parseDate(json['sent_at']),
+      createdAt: _parseDate(json['created_at']) ?? DateTime.now(),
+      providerName: _readString(json['provider_name'], fallback: 'Unknown'),
+      providerAvatar: _nullableString(json['provider_avatar']),
+      isFromAcceptedProvider: json['is_from_accepted_provider'] == true,
+      lineItems: lineItemsList
+          .whereType<Map<String, dynamic>>()
+          .map(ComparisonQuoteLineItem.fromJson)
+          .toList(),
+    );
+  }
+
+  final String id;
+  final String helpRequestId;
+  final String status;
+  final String? summary;
+  final String? notes;
+  final double subtotal;
+  final double taxAmount;
+  final double total;
+  final DateTime? expiresAt;
+  final DateTime? sentAt;
+  final DateTime createdAt;
+  final String providerName;
+  final String? providerAvatar;
+  final bool isFromAcceptedProvider;
+  final List<ComparisonQuoteLineItem> lineItems;
+}
+
+class ComparisonQuoteResult {
+  const ComparisonQuoteResult({
+    required this.quotes,
+    this.helpRequestTitle = '',
+  });
+
+  factory ComparisonQuoteResult.fromJson(Map<String, dynamic> json) {
+    final quotesList = (json['quotes'] as List?) ?? [];
+    return ComparisonQuoteResult(
+      quotes: quotesList
+          .whereType<Map<String, dynamic>>()
+          .map(ComparisonQuote.fromJson)
+          .toList(),
+      helpRequestTitle: _readString(json['help_request_title']),
+    );
+  }
+
+  final List<ComparisonQuote> quotes;
+  final String helpRequestTitle;
+}
+
 class MobileQuoteContext {
   const MobileQuoteContext({
     required this.mode,
@@ -246,6 +356,127 @@ class MobileQuoteDraftInput {
   }
 }
 
+class DealRoomContext {
+  const DealRoomContext({
+    this.orderStatus,
+    this.deliveryStatus,
+    this.budgetMin,
+    this.budgetMax,
+    this.category,
+    this.versionCount = 0,
+    this.attachmentCount = 0,
+    this.timelineEvents = const [],
+    this.versions = const [],
+  });
+
+  factory DealRoomContext.fromJson(Map<String, dynamic> json) {
+    final eventsList = (json['timeline_events'] as List?) ?? [];
+    final versionsList = (json['versions'] as List?) ?? [];
+    return DealRoomContext(
+      orderStatus: _nullableString(json['order_status']),
+      deliveryStatus: _nullableString(json['delivery_status']),
+      budgetMin: _nullableDouble(json['budget_min']),
+      budgetMax: _nullableDouble(json['budget_max']),
+      category: _nullableString(json['category']),
+      versionCount: _toInt(json['version_count']),
+      attachmentCount: _toInt(json['attachment_count']),
+      timelineEvents: eventsList
+          .whereType<Map<String, dynamic>>()
+          .map(TimelineEvent.fromJson)
+          .toList(),
+      versions: versionsList
+          .whereType<Map<String, dynamic>>()
+          .map(QuoteVersion.fromJson)
+          .toList(),
+    );
+  }
+
+  final String? orderStatus;
+  final String? deliveryStatus;
+  final double? budgetMin;
+  final double? budgetMax;
+  final String? category;
+  final int versionCount;
+  final int attachmentCount;
+  final List<TimelineEvent> timelineEvents;
+  final List<QuoteVersion> versions;
+}
+
+class QuoteVersion {
+  const QuoteVersion({
+    required this.id,
+    this.versionNumber = 1,
+    this.status = 'draft',
+    this.total = 0,
+    this.sentAt,
+    this.acceptedAt,
+    this.rejectedAt,
+  });
+
+  factory QuoteVersion.fromJson(Map<String, dynamic> json) {
+    return QuoteVersion(
+      id: _readString(json['id']),
+      versionNumber: _toInt(json['version_number'], fallback: 1),
+      status: _readString(json['status'], fallback: 'draft'),
+      total: _toDouble(json['total']),
+      sentAt: _parseDate(json['sent_at']),
+      acceptedAt: _parseDate(json['accepted_at']),
+      rejectedAt: _parseDate(json['rejected_at']),
+    );
+  }
+
+  final String id;
+  final int versionNumber;
+  final String status;
+  final double total;
+  final DateTime? sentAt;
+  final DateTime? acceptedAt;
+  final DateTime? rejectedAt;
+}
+
+class TimelineEvent {
+  const TimelineEvent({
+    required this.id,
+    this.type = 'info',
+    this.message = '',
+    this.createdAt,
+  });
+
+  factory TimelineEvent.fromJson(Map<String, dynamic> json) {
+    return TimelineEvent(
+      id: _readString(json['id']),
+      type: _readString(json['type'], fallback: 'info'),
+      message: _readString(json['message']),
+      createdAt: _parseDate(json['created_at']),
+    );
+  }
+
+  final String id;
+  final String type;
+  final String message;
+  final DateTime? createdAt;
+}
+
+class QuoteRejectInput {
+  const QuoteRejectInput({
+    required this.quoteId,
+    this.reason,
+    this.counterAmount,
+  });
+
+  final String quoteId;
+  final String? reason;
+  final double? counterAmount;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'quoteId': quoteId,
+      if (reason != null && reason!.isNotEmpty) 'reason': reason,
+      if (counterAmount != null) 'counterAmount': counterAmount,
+    };
+  }
+}
+
 MobileQuoteTargetMode quoteTargetModeFromSource(String? source) {
   final normalized = (source ?? '').trim().toLowerCase();
   if (normalized == 'order' || normalized == 'orders') {
@@ -295,6 +526,13 @@ double _toDouble(Object? value, {double fallback = 0}) {
   if (value is String) {
     return double.tryParse(value) ?? fallback;
   }
+  return fallback;
+}
+
+int _toInt(Object? value, {int fallback = 0}) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? fallback;
   return fallback;
 }
 

@@ -1527,7 +1527,7 @@ class _CategoryPicker extends StatelessWidget {
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
           key: ValueKey('category-more-$selectedCategory'),
-          initialValue: categories.contains(selectedCategory)
+          value: categories.contains(selectedCategory)
               ? selectedCategory
               : categories.first,
           isExpanded: true,

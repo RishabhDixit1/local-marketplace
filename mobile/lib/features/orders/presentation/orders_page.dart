@@ -301,6 +301,13 @@ class _OrderTaskCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
+          const SizedBox(height: 4),
+          Text(
+            order.createdLabel,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
           const SizedBox(height: 14),
           Row(
             children: [

@@ -17,8 +17,14 @@ class BookingRepository {
 
   final MobileApiClient _apiClient;
 
-  Future<List<Booking>> fetch() async {
-    final payload = await _apiClient.getJson('/api/provider/bookings');
+  Future<List<Booking>> fetch({int limit = 50, int offset = 0}) async {
+    final payload = await _apiClient.getJson(
+      '/api/provider/bookings',
+      queryParameters: {
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      },
+    );
 
     if (payload['ok'] != true) {
       throw ApiException(

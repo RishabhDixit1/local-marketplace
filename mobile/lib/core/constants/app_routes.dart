@@ -46,6 +46,7 @@ class AppRoutes {
   static const transactions = '/app/transactions';
   static const blockedUsers = '/app/blocked-users';
   static const referrals = '/app/referrals';
+  static const quoteComparison = '/app/quote-comparison';
   static const verification = '/app/verification';
   static const analytics = '/app/analytics';
   static const availability = '/app/availability';

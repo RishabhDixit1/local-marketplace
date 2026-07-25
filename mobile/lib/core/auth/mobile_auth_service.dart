@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -159,7 +160,7 @@ class MobileAuthService {
         email: trimmedEmail,
         token: trimmedCode,
         type: OtpType.email,
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(_otpTimeout);
     } catch (e) {
       debugPrint('ServiQ auth.verifyEmailCode timeout/GoTrue failed: $e');
     }
@@ -187,7 +188,7 @@ class MobileAuthService {
         try {
           return await _client.auth
               .recoverSession(jsonEncode(sessionJson))
-              .timeout(const Duration(seconds: 5));
+              .timeout(_otpTimeout);
         } catch (e) {
           debugPrint('ServiQ auth.recoverSession failed: $e');
         }
@@ -199,32 +200,41 @@ class MobileAuthService {
     }
   }
 
+  static const Duration _authTimeout = Duration(seconds: 8);
+  static const Duration _otpTimeout = Duration(seconds: 5);
+
   Future<AuthResponse> signInWithPassword({
     required String email,
     required String password,
   }) async {
-    return _client.auth.signInWithPassword(
-      email: email.trim(),
-      password: password,
-    );
+    return _client.auth
+        .signInWithPassword(
+          email: email.trim(),
+          password: password,
+        )
+        .timeout(_authTimeout);
   }
 
   Future<AuthResponse> signUpWithPassword({
     required String email,
     required String password,
   }) async {
-    return _client.auth.signUp(
-      email: email.trim(),
-      password: password,
-      emailRedirectTo: _bootstrap.config.magicLinkRedirectUrl,
-    );
+    return _client.auth
+        .signUp(
+          email: email.trim(),
+          password: password,
+          emailRedirectTo: _bootstrap.config.magicLinkRedirectUrl,
+        )
+        .timeout(_authTimeout);
   }
 
   Future<void> signInWithApple() async {
-    final launched = await _client.auth.signInWithOAuth(
-      OAuthProvider.apple,
-      redirectTo: _bootstrap.config.magicLinkRedirectUrl,
-    );
+    final launched = await _client.auth
+        .signInWithOAuth(
+          OAuthProvider.apple,
+          redirectTo: _bootstrap.config.magicLinkRedirectUrl,
+        )
+        .timeout(_authTimeout);
 
     if (!launched) {
       throw StateError('Could not open Apple sign-in.');
@@ -232,10 +242,12 @@ class MobileAuthService {
   }
 
   Future<void> signInWithGoogle() async {
-    final launched = await _client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: _bootstrap.config.magicLinkRedirectUrl,
-    );
+    final launched = await _client.auth
+        .signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: _bootstrap.config.magicLinkRedirectUrl,
+        )
+        .timeout(_authTimeout);
 
     if (!launched) {
       throw StateError('Could not open Google sign-in.');
@@ -243,10 +255,12 @@ class MobileAuthService {
   }
 
   Future<void> linkGoogle() async {
-    final launched = await _client.auth.linkIdentity(
-      OAuthProvider.google,
-      redirectTo: _bootstrap.config.magicLinkRedirectUrl,
-    );
+    final launched = await _client.auth
+        .linkIdentity(
+          OAuthProvider.google,
+          redirectTo: _bootstrap.config.magicLinkRedirectUrl,
+        )
+        .timeout(_authTimeout);
 
     if (!launched) {
       throw StateError('Could not open Google account linking.');
@@ -254,30 +268,38 @@ class MobileAuthService {
   }
 
   Future<void> updatePassword(String password) async {
-    await _client.auth.updateUser(UserAttributes(password: password));
+    await _client.auth
+        .updateUser(UserAttributes(password: password))
+        .timeout(_authTimeout);
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
-    await _client.auth.resetPasswordForEmail(
-      email.trim(),
-      redirectTo: _bootstrap.config.magicLinkRedirectUrl,
-    );
+    await _client.auth
+        .resetPasswordForEmail(
+          email.trim(),
+          redirectTo: _bootstrap.config.magicLinkRedirectUrl,
+        )
+        .timeout(_authTimeout);
   }
 
   Future<void> sendPhoneOtp(String phone) async {
-    await _client.auth.signInWithOtp(
-      phone: phone.trim(),
-    );
+    await _client.auth
+        .signInWithOtp(
+          phone: phone.trim(),
+        )
+        .timeout(_otpTimeout);
   }
 
   Future<AuthResponse> verifyPhoneOtp({
     required String phone,
     required String code,
   }) async {
-    return _client.auth.verifyOTP(
-      phone: phone.trim(),
-      token: code.trim(),
-      type: OtpType.sms,
-    );
+    return _client.auth
+        .verifyOTP(
+          phone: phone.trim(),
+          token: code.trim(),
+          type: OtpType.sms,
+        )
+        .timeout(_otpTimeout);
   }
 }

@@ -25,8 +25,11 @@ class MarketplaceRepository {
     return _apiClient.getServiceCategories();
   }
 
-  Future<List<MarketplaceProvider>> fetchProviders({String? category}) async {
-    final body = <String, dynamic>{};
+  Future<List<MarketplaceProvider>> fetchProviders({String? category, int limit = 50, int offset = 0}) async {
+    final body = <String, dynamic>{
+      'limit': limit,
+      'offset': offset,
+    };
     if (category != null && category.isNotEmpty) {
       body['category'] = category;
     }
