@@ -106,6 +106,152 @@ class AdminReport {
   final DateTime? createdAt;
 }
 
+class AdminListing {
+  const AdminListing({
+    required this.id,
+    required this.title,
+    this.type = 'post',
+    this.ownerName,
+    this.ownerId,
+    this.category,
+    this.status = 'active',
+    this.isFlagged = false,
+    this.isRemoved = false,
+    this.createdAt,
+  });
+
+  factory AdminListing.fromJson(Map<String, dynamic> json) {
+    return AdminListing(
+      id: _readString(json['id']),
+      title: _readString(json['title'], fallback: 'Untitled'),
+      type: _readString(json['type'], fallback: 'post'),
+      ownerName: _readStringOrNull(json['owner_name']),
+      ownerId: _readStringOrNull(json['owner_id']),
+      category: _readStringOrNull(json['category']),
+      status: _readString(json['status'], fallback: 'active'),
+      isFlagged: json['is_flagged'] == true,
+      isRemoved: json['is_removed'] == true,
+      createdAt: _parseDate(json['created_at']),
+    );
+  }
+
+  final String id;
+  final String title;
+  final String type;
+  final String? ownerName;
+  final String? ownerId;
+  final String? category;
+  final String status;
+  final bool isFlagged;
+  final bool isRemoved;
+  final DateTime? createdAt;
+}
+
+class AdminOrder {
+  const AdminOrder({
+    required this.id,
+    this.status = 'new_lead',
+    this.deliveryStatus,
+    this.price = 0,
+    this.fee = 0,
+    this.paymentStatus,
+    this.providerName,
+    this.consumerName,
+    this.createdAt,
+  });
+
+  factory AdminOrder.fromJson(Map<String, dynamic> json) {
+    return AdminOrder(
+      id: _readString(json['id']),
+      status: _readString(json['status'], fallback: 'new_lead'),
+      deliveryStatus: _readStringOrNull(json['delivery_status']),
+      price: _toDouble(json['price']),
+      fee: _toDouble(json['fee']),
+      paymentStatus: _readStringOrNull(json['payment_status']),
+      providerName: _readStringOrNull(json['provider_name']),
+      consumerName: _readStringOrNull(json['consumer_name']),
+      createdAt: _parseDate(json['created_at']),
+    );
+  }
+
+  final String id;
+  final String status;
+  final String? deliveryStatus;
+  final double price;
+  final double fee;
+  final String? paymentStatus;
+  final String? providerName;
+  final String? consumerName;
+  final DateTime? createdAt;
+}
+
+class AdminDispute {
+  const AdminDispute({
+    required this.id,
+    this.orderId,
+    this.reason,
+    this.description,
+    this.filedBy,
+    this.status = 'open',
+    this.orderValue = 0,
+    this.createdAt,
+  });
+
+  factory AdminDispute.fromJson(Map<String, dynamic> json) {
+    return AdminDispute(
+      id: _readString(json['id']),
+      orderId: _readStringOrNull(json['order_id']),
+      reason: _readStringOrNull(json['reason']),
+      description: _readStringOrNull(json['description']),
+      filedBy: _readStringOrNull(json['filed_by']),
+      status: _readString(json['status'], fallback: 'open'),
+      orderValue: _toDouble(json['order_value']),
+      createdAt: _parseDate(json['created_at']),
+    );
+  }
+
+  final String id;
+  final String? orderId;
+  final String? reason;
+  final String? description;
+  final String? filedBy;
+  final String status;
+  final double orderValue;
+  final DateTime? createdAt;
+}
+
+class AdminVerification {
+  const AdminVerification({
+    required this.id,
+    this.applicantName,
+    this.documentType,
+    this.email,
+    this.phone,
+    this.documentUrl,
+    this.createdAt,
+  });
+
+  factory AdminVerification.fromJson(Map<String, dynamic> json) {
+    return AdminVerification(
+      id: _readString(json['id']),
+      applicantName: _readStringOrNull(json['applicant_name']),
+      documentType: _readStringOrNull(json['document_type']),
+      email: _readStringOrNull(json['email']),
+      phone: _readStringOrNull(json['phone']),
+      documentUrl: _readStringOrNull(json['document_url']),
+      createdAt: _parseDate(json['created_at']),
+    );
+  }
+
+  final String id;
+  final String? applicantName;
+  final String? documentType;
+  final String? email;
+  final String? phone;
+  final String? documentUrl;
+  final DateTime? createdAt;
+}
+
 String _readString(Object? value, {String fallback = ''}) {
   final text = value is String ? value.trim() : '';
   return text.isEmpty ? fallback : text;
