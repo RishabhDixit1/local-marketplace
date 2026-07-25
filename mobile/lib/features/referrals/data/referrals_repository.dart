@@ -13,6 +13,10 @@ final referralBundleProvider = FutureProvider<ReferralBundle>((ref) {
   return ref.watch(referralsRepositoryProvider).fetchBundle();
 });
 
+final leaderboardProvider = FutureProvider<LeaderboardData>((ref) {
+  return ref.watch(referralsRepositoryProvider).fetchLeaderboard();
+});
+
 class ReferralsRepository {
   const ReferralsRepository(this._apiClient);
 
@@ -54,6 +58,12 @@ class ReferralsRepository {
   void shareCode(String code) {
     final url = 'https://www.serviqapp.com/referral?code=$code';
     SharePlus.instance.share(ShareParams(text: 'Join ServiQ using my referral code: $code\n\n$url'));
+  }
+
+  Future<LeaderboardData> fetchLeaderboard() async {
+    final payload = await _apiClient.getJson('/api/referrals/leaderboard');
+    _expectOk(payload, 'Unable to load leaderboard.');
+    return LeaderboardData.fromJson(payload);
   }
 
   void _expectOk(Map<String, dynamic> payload, String fallbackMessage) {

@@ -117,6 +117,58 @@ class ReferralBundle {
   final int availablePoints;
 }
 
+class LeaderboardEntry {
+  const LeaderboardEntry({
+    required this.rank,
+    required this.userId,
+    required this.fullName,
+    this.avatarUrl,
+    this.referralCount = 0,
+    this.totalPoints = 0,
+  });
+
+  factory LeaderboardEntry.fromJson(Map<String, dynamic> json) {
+    return LeaderboardEntry(
+      rank: _toInt(json['rank']),
+      userId: _readString(json['userId']),
+      fullName: _readString(json['fullName'], fallback: 'Anonymous'),
+      avatarUrl: (json['avatarUrl'] as String?)?.trim().isEmpty == true ? null : json['avatarUrl'] as String?,
+      referralCount: _toInt(json['referralCount']),
+      totalPoints: _toInt(json['totalPoints']),
+    );
+  }
+
+  final int rank;
+  final String userId;
+  final String fullName;
+  final String? avatarUrl;
+  final int referralCount;
+  final int totalPoints;
+}
+
+class LeaderboardData {
+  const LeaderboardData({
+    required this.top20,
+    this.totalReferrers = 0,
+    this.currentUserRank,
+  });
+
+  factory LeaderboardData.fromJson(Map<String, dynamic> json) {
+    final top20List = (json['top20'] as List?) ?? [];
+    return LeaderboardData(
+      top20: top20List.whereType<Map<String, dynamic>>().map(LeaderboardEntry.fromJson).toList(),
+      totalReferrers: _toInt(json['totalReferrers']),
+      currentUserRank: json['currentUserRank'] != null
+          ? LeaderboardEntry.fromJson(Map<String, dynamic>.from(json['currentUserRank'] as Map))
+          : null,
+    );
+  }
+
+  final List<LeaderboardEntry> top20;
+  final int totalReferrers;
+  final LeaderboardEntry? currentUserRank;
+}
+
 String _readString(Object? value, {String fallback = ''}) {
   final text = value is String ? value.trim() : '';
   return text.isEmpty ? fallback : text;

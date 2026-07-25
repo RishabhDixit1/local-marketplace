@@ -21,11 +21,25 @@ class ReferralsPage extends ConsumerStatefulWidget {
   ConsumerState<ReferralsPage> createState() => _ReferralsPageState();
 }
 
-class _ReferralsPageState extends ConsumerState<ReferralsPage> {
+class _ReferralsPageState extends ConsumerState<ReferralsPage>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
   bool _creating = false;
   bool _requestingPayout = false;
   int _payoutPoints = 50;
   String _payoutMsg = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   Future<void> _refresh() async {
     ref.invalidate(referralBundleProvider);
@@ -82,25 +96,224 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage> {
     final bundleAsync = ref.watch(referralBundleProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Referrals')),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _refresh,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-            children: [
-              Text('Invite providers, earn \u{20B9}50 per signup.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-              const SizedBox(height: 16),
-              ServiqAsyncBody<ReferralBundle>(
-                value: bundleAsync,
-                errorTitle: 'Unable to load referrals',
-                onRetry: _refresh,
-                data: (bundle) => _buildContent(bundle),
-              ),
-            ],
+      appBar: AppBar(
+        title: const Text('Referrals'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'My Referrals'),
+            Tab(text: 'Leaderboard'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildMyReferralsTab(bundleAsync),
+          _buildLeaderboardTab(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMyReferralsTab(AsyncValue<ReferralBundle> bundleAsync) {
+    return SafeArea(
+      child: RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+          children: [
+            Text('Invite providers, earn \u{20B9}50 per signup.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
+            const SizedBox(height: 16),
+            ServiqAsyncBody<ReferralBundle>(
+              value: bundleAsync,
+              errorTitle: 'Unable to load referrals',
+              onRetry: _refresh,
+              data: (bundle) => _buildContent(bundle),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLeaderboardTab() {
+    final leaderboardAsync = ref.watch(leaderboardProvider);
+    return SafeArea(
+      child: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(leaderboardProvider);
+          await ref.read(leaderboardProvider.future);
+        },
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+          children: [
+            Text('Top referrers in the community',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
+            const SizedBox(height: 16),
+            ServiqAsyncBody<LeaderboardData>(
+              value: leaderboardAsync,
+              errorTitle: 'Unable to load leaderboard',
+              onRetry: () {
+                ref.invalidate(leaderboardProvider);
+              },
+              data: (data) => _buildLeaderboardContent(data),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLeaderboardContent(LeaderboardData data) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (data.currentUserRank != null && data.currentUserRank!.rank > 20) ...[
+          _buildYourRankCard(data.currentUserRank!),
+          const SizedBox(height: 16),
+        ],
+        _buildLeaderboardList(data),
+        const SizedBox(height: 12),
+        Center(
+          child: Text(
+            '${data.totalReferrers} referrers total',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildYourRankCard(LeaderboardEntry entry) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Your Rank', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          _leaderboardRow(entry, highlight: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeaderboardList(LeaderboardData data) {
+    if (data.top20.isEmpty) {
+      return const EmptyStateView(
+        title: 'No referrals yet',
+        message: 'Be the first to refer someone and appear on the leaderboard!',
+      );
+    }
+
+    return SectionCard(
+      child: Column(
+        children: [
+          for (final entry in data.top20)
+            _leaderboardRow(entry, highlight: entry.userId == data.currentUserRank?.userId),
+        ],
+      ),
+    );
+  }
+
+  Widget _leaderboardRow(LeaderboardEntry entry, {bool highlight = false}) {
+    final isTop3 = entry.rank <= 3;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: highlight ? AppColors.primarySoft : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 32,
+            child: _rankBadge(entry.rank),
+          ),
+          const SizedBox(width: 8),
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            backgroundImage: entry.avatarUrl != null ? NetworkImage(entry.avatarUrl!) : null,
+            child: entry.avatarUrl == null
+                ? Text(entry.fullName.isNotEmpty ? entry.fullName[0].toUpperCase() : '?',
+                    style: Theme.of(context).textTheme.labelMedium)
+                : null,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        entry.fullName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: isTop3 ? FontWeight.bold : FontWeight.w600,
+                          fontSize: 14,
+                          color: highlight ? AppColors.primary : null,
+                        ),
+                      ),
+                    ),
+                    if (highlight) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primarySoft,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text('You', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${entry.referralCount} referral${entry.referralCount == 1 ? '' : 's'}',
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            _inr(entry.totalPoints),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _rankBadge(int rank) {
+    if (rank == 1) {
+      return const Icon(Icons.emoji_events_rounded, color: AppColors.marigold, size: 24);
+    }
+    if (rank == 2) {
+      return const Icon(Icons.emoji_events_outlined, color: AppColors.darkInkSubtle, size: 22);
+    }
+    if (rank == 3) {
+      return const Icon(Icons.emoji_events_outlined, color: AppColors.warm, size: 20);
+    }
+    return Text(
+      '$rank',
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
       ),
     );
   }
