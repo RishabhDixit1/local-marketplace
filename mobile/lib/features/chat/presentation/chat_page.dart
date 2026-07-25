@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -151,7 +152,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             value: conversationId,
           ),
           callback: (_) {
-            ref.invalidate(chatMessagesProvider(conversationId));
+            ref.invalidate(chatMessagesProvider((conversationId: conversationId, offset: 0)));
             ref.invalidate(chatConversationsProvider);
           },
         )
@@ -187,7 +188,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           .read(chatRepositoryProvider)
           .sendMessage(conversationId: conversationId, content: text);
       _composerController.clear();
-      ref.invalidate(chatMessagesProvider(conversationId));
+      ref.invalidate(chatMessagesProvider((conversationId: conversationId, offset: 0)));
       ref.invalidate(chatConversationsProvider);
       ref
           .read(analyticsServiceProvider)
@@ -386,14 +387,17 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: Text(selectedConversationId == null ? 'Inbox' : 'Conversation'),
         leading: selectedConversationId == null
             ? null
-            : IconButton(
-                onPressed: _handleThreadBack,
-                icon: const Icon(Icons.arrow_back_rounded),
+            : Semantics(
+                label: 'Back',
+                child: IconButton(
+                  onPressed: _handleThreadBack,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
               ),
       ),
       body: PopScope(
@@ -450,10 +454,13 @@ class _InboxDashboardHeader extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-              IconButton.filledTonal(
-                tooltip: 'Refresh Inbox',
-                onPressed: onRefresh,
-                icon: const Icon(Icons.refresh_rounded),
+              Semantics(
+                label: 'Refresh inbox',
+                child: IconButton.filledTonal(
+                  tooltip: 'Refresh Inbox',
+                  onPressed: onRefresh,
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
               ),
             ],
           ),
@@ -596,7 +603,7 @@ class _InboxStartAction extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: AppColors.surfaceMuted,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(AppRadii.sm),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.sm),
@@ -805,7 +812,7 @@ class _RequestContextCard extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -849,14 +856,14 @@ class _RequestContextCard extends StatelessWidget {
                           ? 'Status in Tasks'
                           : contextData.statusText,
                       icon: Icons.flag_outlined,
-                      backgroundColor: AppColors.surface,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
                       foregroundColor: AppColors.primary,
                     ),
                     if (contextData.taskIdText.isNotEmpty)
                       TrustBadge(
                         label: 'Task linked',
                         icon: Icons.link_rounded,
-                        backgroundColor: AppColors.surface,
+                        backgroundColor: Theme.of(context).colorScheme.surface,
                         foregroundColor: Theme.of(context).colorScheme.onSurface,
                       ),
                   ],
@@ -960,6 +967,36 @@ class _ChatThread extends ConsumerStatefulWidget {
 
 class _ChatThreadState extends ConsumerState<_ChatThread> {
   bool _uploadingImage = false;
+  final List<ChatMessageItem> _olderMessages = [];
+  bool _loadingOlder = false;
+  bool _hasMoreOlder = true;
+
+  Future<void> _loadOlderMessages() async {
+    if (_loadingOlder || !_hasMoreOlder) return;
+    setState(() => _loadingOlder = true);
+
+    try {
+      final repo = ref.read(chatRepositoryProvider);
+      final currentCount = _olderMessages.length +
+          (ref.read(chatMessagesProvider(
+            (conversationId: widget.conversationId, offset: 0),
+          )).asData?.value.length ?? 0);
+      final older = await repo.fetchMessages(
+        widget.conversationId,
+        offset: currentCount,
+      );
+
+      if (mounted) {
+        setState(() {
+          _olderMessages.addAll(older);
+          _hasMoreOlder = older.length >= 50;
+          _loadingOlder = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loadingOlder = false);
+    }
+  }
 
   Future<void> _pickAndSendImage() async {
     final picked = await ImagePicker().pickImage(
@@ -983,7 +1020,7 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
         content: '',
         imageUrl: imageUrl,
       );
-      ref.invalidate(chatMessagesProvider(widget.conversationId));
+      ref.invalidate(chatMessagesProvider((conversationId: widget.conversationId, offset: 0)));
       ref.invalidate(chatConversationsProvider);
     } catch (error) {
       if (mounted) {
@@ -1008,7 +1045,7 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
         .where((item) => item.id == widget.conversationId)
         .cast<ChatConversation?>()
         .firstOrNull;
-    final messagesAsync = ref.watch(chatMessagesProvider(widget.conversationId));
+    final messagesAsync = ref.watch(chatMessagesProvider((conversationId: widget.conversationId, offset: 0)));
     final requestContext = _ChatRequestContext(
       title: widget.contextTitle,
       taskId: widget.contextTaskId,
@@ -1025,7 +1062,7 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: Theme.of(context).colorScheme.surface,
                 border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outline)),
               ),
               child: Column(
@@ -1050,7 +1087,7 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
                         icon: Icons.circle,
                         backgroundColor: conversation.isOnline
                             ? AppColors.primarySoft
-                            : AppColors.surfaceMuted,
+                            : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                         foregroundColor: conversation.isOnline
                             ? AppColors.primary
                             : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
@@ -1058,7 +1095,7 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
                       TrustBadge(
                         label: conversation.subtitle,
                         icon: Icons.place_outlined,
-                        backgroundColor: AppColors.surfaceMuted,
+                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                         foregroundColor: Theme.of(context).colorScheme.onSurface,
                       ),
                     ],
@@ -1079,18 +1116,20 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
               errorTitle: 'Unable to load messages',
               errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
               onRetry: () =>
-                  ref.invalidate(chatMessagesProvider(widget.conversationId)),
+                  ref.invalidate(chatMessagesProvider((conversationId: widget.conversationId, offset: 0))),
               loadingBuilder: () => const Padding(
                 padding: EdgeInsets.all(16),
                 child: _MessageListLoading(),
               ),
               data: (messages) {
-                if (messages.isEmpty) {
+                if (messages.isEmpty && _olderMessages.isEmpty) {
                   return Padding(
                     padding: const EdgeInsets.all(16),
                     child: _ThreadEmptyState(contextData: requestContext),
                   );
                 }
+
+                final allMessages = [..._olderMessages.reversed, ...messages];
 
                 // Auto-scroll to bottom when new messages arrive
                 WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1101,16 +1140,34 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
                   }
                 });
 
-                final lastMineIndex = messages.lastIndexWhere(
+                final lastMineIndex = allMessages.lastIndexWhere(
                   (message) => message.senderId == currentUserId,
                 );
 
                 return ListView.builder(
                   controller: widget.messagesScrollController,
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                  itemCount: messages.length,
+                  itemCount: allMessages.length + (_hasMoreOlder ? 1 : 0),
                   itemBuilder: (context, index) {
-                    final message = messages[index];
+                    if (index == 0 && _hasMoreOlder) {
+                      return _loadingOlder
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(12),
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                            )
+                          : TextButton(
+                              onPressed: _loadOlderMessages,
+                              child: const Text('Load older messages'),
+                            );
+                    }
+                    final messageIndex = _hasMoreOlder ? index - 1 : index;
+                    final message = allMessages[messageIndex];
                     final isMine = message.senderId == currentUserId;
                     return Align(
                       alignment: isMine
@@ -1121,7 +1178,7 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isMine ? Theme.of(context).colorScheme.onSurface : AppColors.surface,
+                          color: isMine ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(AppRadii.md),
                           border: Border.all(
                             color: isMine ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.outline,
@@ -1140,28 +1197,31 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
                                       maxWidth: 220,
                                       maxHeight: 160,
                                     ),
-                                    child: CachedNetworkImage(
-                                      imageUrl: message.metadata!['imageUrl'] as String,
-                                      fit: BoxFit.cover,
-                                      placeholder: (_, _) => Container(
-                                        width: 220,
-                                        height: 120,
-                                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                        child: const Center(
-                                          child: SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: Semantics(
+                                      label: 'Chat image attachment',
+                                      child: CachedNetworkImage(
+                                        imageUrl: message.metadata!['imageUrl'] as String,
+                                        fit: BoxFit.cover,
+                                        placeholder: (_, _) => Container(
+                                          width: 220,
+                                          height: 120,
+                                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                          child: const Center(
+                                            child: SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(strokeWidth: 2),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      errorWidget: (_, _, _) => Container(
-                                        width: 220,
-                                        height: 120,
-                                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                        child: Icon(
-                                          Icons.broken_image_rounded,
-                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                                        errorWidget: (_, _, _) => Container(
+                                          width: 220,
+                                          height: 120,
+                                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                          child: Icon(
+                                            Icons.broken_image_rounded,
+                                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1234,7 +1294,7 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
               16 + MediaQuery.viewInsetsOf(context).bottom,
             ),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: Theme.of(context).colorScheme.surface,
               border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline)),
             ),
             child: SafeArea(
@@ -1298,16 +1358,19 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      IconButton(
-                        onPressed: _uploadingImage ? null : _pickAndSendImage,
-                        icon: _uploadingImage
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.image_outlined),
-                        tooltip: 'Send image',
+                      Semantics(
+                        label: 'Send image',
+                        child: IconButton(
+                          onPressed: _uploadingImage ? null : _pickAndSendImage,
+                          icon: _uploadingImage
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.image_outlined),
+                          tooltip: 'Send image',
+                        ),
                       ),
                       Expanded(
                         child: TextField(
@@ -1326,7 +1389,12 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
                         width: 56,
                         height: 48,
                         child: FilledButton(
-                          onPressed: widget.sending ? null : widget.onSend,
+                          onPressed: widget.sending
+                              ? null
+                              : () {
+                                  HapticFeedback.lightImpact();
+                                  widget.onSend();
+                                },
                           style: FilledButton.styleFrom(
                             minimumSize: const Size(56, 48),
                             padding: EdgeInsets.zero,
@@ -1372,7 +1440,7 @@ class _QuoteRoomShortcut extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outline)),
       ),
       child: Row(
@@ -1419,7 +1487,7 @@ class _ConversationTile extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: AppColors.surfaceMuted,
+                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   foregroundImage: conversation.avatarUrl.trim().isEmpty
                       ? null
                       : NetworkImage(conversation.avatarUrl),
@@ -1439,7 +1507,7 @@ class _ConversationTile extends StatelessWidget {
                           ? AppColors.primary
                           : Theme.of(context).colorScheme.outline,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.surface, width: 2),
+                      border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
                     ),
                   ),
                 ),

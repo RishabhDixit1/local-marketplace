@@ -23,8 +23,11 @@ final chatConversationsProvider = FutureProvider<List<ChatConversation>>((ref) {
 });
 
 final chatMessagesProvider =
-    FutureProvider.family<List<ChatMessageItem>, String>((ref, conversationId) {
-      return ref.watch(chatRepositoryProvider).fetchMessages(conversationId);
+    FutureProvider.family<List<ChatMessageItem>, ({String conversationId, int offset})>((ref, params) {
+      return ref.watch(chatRepositoryProvider).fetchMessages(
+            params.conversationId,
+            offset: params.offset,
+          );
     });
 
 class ChatRepository {
@@ -87,14 +90,23 @@ class ChatRepository {
             ),
         client
             .from('messages')
-            .select('id,conversation_id,content,created_at,sender_id')
-            .inFilter('conversation_id', conversationIds)
-            .order('created_at', ascending: false)
-            .limit(messageScanLimit),
+            .batchedSelect(
+              columns: 'id,conversation_id,content,created_at,sender_id',
+              filterColumn: 'conversation_id',
+              values: conversationIds,
+            ),
       ]);
 
       final participantRows = _rows(results[0]);
-      final messageRows = _rows(results[1]);
+      final messageRows = _rows(results[1])
+        ..sort((a, b) {
+          final aTime = _parseDate(a['created_at'])?.millisecondsSinceEpoch ?? 0;
+          final bTime = _parseDate(b['created_at'])?.millisecondsSinceEpoch ?? 0;
+          return bTime.compareTo(aTime);
+        });
+      if (messageRows.length > messageScanLimit) {
+        messageRows.removeRange(messageScanLimit, messageRows.length);
+      }
       final uniqueUserIds = participantRows
           .map((row) => _readString(row['user_id']))
           .where((id) => id.isNotEmpty)
@@ -213,15 +225,20 @@ class ChatRepository {
     }
   }
 
-  Future<List<ChatMessageItem>> fetchMessages(String conversationId) async {
+  static const _messagePageSize = 50;
+
+  Future<List<ChatMessageItem>> fetchMessages(
+    String conversationId, {
+    int offset = 0,
+  }) async {
     try {
       final client = _requireClient();
       final rows = await client
           .from('messages')
           .select('id,conversation_id,content,sender_id,created_at,metadata')
           .eq('conversation_id', conversationId)
-          .order('created_at', ascending: true)
-          .limit(120);
+          .order('created_at', ascending: false)
+          .range(offset, offset + _messagePageSize - 1);
 
       return _rows(rows)
           .map(
