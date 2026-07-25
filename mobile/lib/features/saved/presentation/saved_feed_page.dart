@@ -16,9 +16,13 @@ class SavedFeedPage extends ConsumerStatefulWidget {
 }
 
 class _SavedFeedPageState extends ConsumerState<SavedFeedPage> {
+  static const _pageSize = 50;
+
   bool _loading = true;
   String? _error;
   List<_SavedCardRow> _rows = const [];
+  bool _hasMore = true;
+  bool _loadingMore = false;
 
   @override
   void initState() {
@@ -64,7 +68,7 @@ class _SavedFeedPageState extends ConsumerState<SavedFeedPage> {
           )
           .eq('user_id', userId)
           .order('created_at', ascending: false)
-          .limit(150);
+          .range(0, _pageSize - 1);
 
       final list = (data as List<dynamic>)
           .whereType<Map<String, dynamic>>()
@@ -75,6 +79,7 @@ class _SavedFeedPageState extends ConsumerState<SavedFeedPage> {
       setState(() {
         _rows = list;
         _loading = false;
+        _hasMore = list.length >= _pageSize;
       });
     } on PostgrestException catch (error) {
       setState(() {
@@ -88,6 +93,47 @@ class _SavedFeedPageState extends ConsumerState<SavedFeedPage> {
         _error = error.toString();
         _rows = const [];
       });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+
+    try {
+      final bootstrap = ref.read(appBootstrapProvider);
+      final client = bootstrap.client;
+      final userId = client?.auth.currentUser?.id;
+      if (client == null || userId == null) return;
+
+      final from = _rows.length;
+      final to = from + _pageSize - 1;
+
+      final data = await client
+          .from('feed_card_saves')
+          .select(
+            'id, card_id, focus_id, card_type, title, subtitle, action_path, created_at',
+          )
+          .eq('user_id', userId)
+          .order('created_at', ascending: false)
+          .range(from, to);
+
+      final list = (data as List<dynamic>)
+          .whereType<Map<String, dynamic>>()
+          .map(_SavedCardRow.fromSupabase)
+          .where((row) => row.cardId.isNotEmpty)
+          .toList();
+
+      setState(() {
+        _rows = [..._rows, ...list];
+        _hasMore = list.length >= _pageSize;
+        _loadingMore = false;
+      });
+    } catch (error) {
+      setState(() => _loadingMore = false);
+      if (mounted) {
+        ServiqToast.show(context, message: 'Could not load more saves.', tone: ServiqToastTone.danger);
+      }
     }
   }
 
@@ -158,9 +204,22 @@ class _SavedFeedPageState extends ConsumerState<SavedFeedPage> {
       onRefresh: _load,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-        itemCount: _rows.length,
+        itemCount: _rows.length + (_hasMore ? 1 : 0),
         separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
+          if (index == _rows.length) {
+            return _loadingMore
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : TextButton(
+                    onPressed: _loadMore,
+                    child: const Text('Load more'),
+                  );
+          }
           final row = _rows[index];
           return SectionCard(
             child: Column(
