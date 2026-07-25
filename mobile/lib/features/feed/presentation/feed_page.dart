@@ -968,21 +968,36 @@ class _ExploreIntentPanel extends StatelessWidget {
             onChanged: onQueryChanged,
           ),
           const SizedBox(height: AppSpacing.sm),
-          SizedBox(
-            height: 36,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 6),
-              itemBuilder: (context, index) {
-                final cat = categories[index];
-                final selected = selectedCategory == cat;
-                return FilterChip(
-                  label: Text(cat, style: const TextStyle(fontSize: 12)),
-                  selected: selected,
-                  onSelected: (_) => onCategoryChanged(selected ? null : cat),
-                );
-              },
+          ShaderMask(
+            shaderCallback: (Rect bounds) {
+              return LinearGradient(
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+                colors: [
+                  Theme.of(context).colorScheme.surface,
+                  Theme.of(context).colorScheme.surface.withValues(alpha: 0),
+                ],
+                stops: const [0.95, 1.0],
+              ).createShader(bounds);
+            },
+            blendMode: BlendMode.dstOut,
+            child: SizedBox(
+              height: 36,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(right: 20),
+                itemCount: categories.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 6),
+                itemBuilder: (context, index) {
+                  final cat = categories[index];
+                  final selected = selectedCategory == cat;
+                  return FilterChip(
+                    label: Text(cat, style: const TextStyle(fontSize: 12)),
+                    selected: selected,
+                    onSelected: (_) => onCategoryChanged(selected ? null : cat),
+                  );
+                },
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
