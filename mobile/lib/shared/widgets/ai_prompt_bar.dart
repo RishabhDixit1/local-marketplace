@@ -200,7 +200,7 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
               ),
               prefixIcon: _loading
                   ? Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(AppSpacing.sm),
                       child: SizedBox(
                         width: 18,
                         height: 18,
@@ -211,7 +211,7 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
                       ),
                     )
                   : Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(AppSpacing.sm),
                       child: Icon(Icons.auto_awesome_rounded,
                           size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                     ),
@@ -272,7 +272,7 @@ class _InlineAiResult extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
         decoration: BoxDecoration(
           color: result.hasProviders ? AppColors.primarySoft : AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadii.md),

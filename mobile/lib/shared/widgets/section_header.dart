@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/design_tokens.dart';
+
 class AppSectionHeader extends StatelessWidget {
   const AppSectionHeader({
     super.key,
@@ -23,7 +25,7 @@ class AppSectionHeader extends StatelessWidget {
             children: [
               Text(title, style: Theme.of(context).textTheme.titleLarge),
               if (subtitle?.trim().isNotEmpty ?? false) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
               ],
             ],

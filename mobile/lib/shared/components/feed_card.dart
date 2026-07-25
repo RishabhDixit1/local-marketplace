@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/design_system/design_system.dart';
 import '../../core/theme/app_theme.dart';
@@ -114,7 +115,7 @@ class FeedCard extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             if (item.description.trim().isNotEmpty) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xxs),
               Text(
                 item.description,
                 maxLines: 2,
@@ -251,19 +252,25 @@ class _FeedPreviewState extends State<_FeedPreview> {
             PageView.builder(
               itemCount: urls.length,
               onPageChanged: (i) => setState(() => _currentPage = i),
-              itemBuilder: (context, index) => CachedNetworkImage(
-                imageUrl: urls[index],
+              itemBuilder: (context, index) => Semantics(
+                label: 'Feed preview image ${index + 1} of ${urls.length}',
+                child: CachedNetworkImage(
+                  imageUrl: urls[index],
+                  fit: BoxFit.cover,
+                  errorWidget: (context, url, error) => _PreviewFallback(item: item),
+                  placeholder: (context, url) => _PreviewFallback(item: item),
+                ),
+              ),
+            )
+          else
+            Semantics(
+              label: 'Feed preview image',
+              child: CachedNetworkImage(
+                imageUrl: item.thumbnailUrl,
                 fit: BoxFit.cover,
                 errorWidget: (context, url, error) => _PreviewFallback(item: item),
                 placeholder: (context, url) => _PreviewFallback(item: item),
               ),
-            )
-          else
-            CachedNetworkImage(
-              imageUrl: item.thumbnailUrl,
-              fit: BoxFit.cover,
-              errorWidget: (context, url, error) => _PreviewFallback(item: item),
-              placeholder: (context, url) => _PreviewFallback(item: item),
             ),
           const DecoratedBox(
             decoration: BoxDecoration(
@@ -398,7 +405,7 @@ class _InlinePill extends StatelessWidget {
           vertical: AppSpacing.xs,
         ),
         decoration: BoxDecoration(
-          color: AppColors.surfaceMuted,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(AppRadii.pill),
         ),
         child: Row(
@@ -434,7 +441,7 @@ class _OverlayPill extends StatelessWidget {
         vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(AppRadii.md),
       ),
       child: Text(
@@ -477,7 +484,12 @@ class _CardActions extends StatelessWidget {
               child: SizedBox.square(
                 dimension: AppTouchTargets.minimum,
                 child: IconButton.outlined(
-                  onPressed: onSaveTap,
+                  onPressed: onSaveTap != null
+                      ? () {
+                          HapticFeedback.lightImpact();
+                          onSaveTap!.call();
+                        }
+                      : null,
                   icon: Icon(
                     isSaved
                         ? Icons.bookmark_rounded

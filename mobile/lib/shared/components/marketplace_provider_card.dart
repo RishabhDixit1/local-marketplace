@@ -105,11 +105,11 @@ class MarketplaceProviderCard extends StatelessWidget {
                       ],
                     ),
                     if (location != null && location!.isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSpacing.xxxs),
                       Row(
                         children: [
                           Icon(Icons.location_on_rounded, size: 12, color: textTertiary),
-                          const SizedBox(width: 2),
+                          const SizedBox(width: AppSpacing.xxxs),
                           Expanded(
                             child: Text(
                               location!,
@@ -236,7 +236,7 @@ class _SignalChip extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 12, color: iconColor),
-        const SizedBox(width: 2),
+        const SizedBox(width: AppSpacing.xxxs),
         Text(
           label,
           style: TextStyle(

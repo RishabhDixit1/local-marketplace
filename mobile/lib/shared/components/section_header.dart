@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/design_tokens.dart';
+
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
@@ -30,7 +32,7 @@ class SectionHeader extends StatelessWidget {
                   child: Text(title, style: Theme.of(context).textTheme.titleLarge),
                 ),
                 if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
                 ],
               ],

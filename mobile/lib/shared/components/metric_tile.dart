@@ -22,7 +22,7 @@ class MetricTile extends StatelessWidget {
     return Semantics(
       label: '$label: $value',
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           color: scheme.surface,
           borderRadius: BorderRadius.circular(AppRadii.md),

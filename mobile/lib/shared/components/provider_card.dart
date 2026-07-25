@@ -169,7 +169,7 @@ class ProviderDirectoryCard extends StatelessWidget {
 
     return SectionCard(
       variant: ServiqSurfaceVariant.raised,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -192,7 +192,7 @@ class ProviderDirectoryCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.labelLarge,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,7 +217,7 @@ class ProviderDirectoryCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               Expanded(
@@ -226,7 +226,7 @@ class ProviderDirectoryCard extends StatelessWidget {
                   label: person.locationLabel,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               Flexible(
                 child: _DirectoryMetaPill(
                   icon: person.isOnline
@@ -272,7 +272,7 @@ class ProviderDirectoryCard extends StatelessWidget {
             ],
           ),
           if (onOpenProfile != null || onMessage != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             SizedBox(
               height: 44,
               child: Row(
@@ -299,7 +299,7 @@ class ProviderDirectoryCard extends StatelessWidget {
                       ),
                     ),
                   if (onMessage != null) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.xs),
                     Semantics(
                       label: 'Send message to ${person.name}',
                       hint: 'Opens a chat conversation',
@@ -327,8 +327,8 @@ class ProviderDirectoryCard extends StatelessWidget {
                 onPressed: connecting ? null : onConnect,
                 icon: connecting
                     ? const SizedBox(
-                        width: 16,
-                        height: 16,
+                        width: AppSpacing.md,
+                        height: AppSpacing.md,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : Icon(Icons.person_add_alt_1_outlined),
@@ -413,7 +413,7 @@ class _ProviderActions extends StatelessWidget {
                 ),
               ),
             if (onMore != null) ...[
-              if (onSave != null) const SizedBox(width: 4),
+              if (onSave != null) const SizedBox(width: AppSpacing.xxs),
               Semantics(
                 label: 'More actions',
                 hint: 'Shows additional options for this provider',
@@ -430,7 +430,7 @@ class _ProviderActions extends StatelessWidget {
               ),
             ],
             if (onReport != null) ...[
-              if (onSave != null || onMore != null) const SizedBox(width: 4),
+              if (onSave != null || onMore != null) const SizedBox(width: AppSpacing.xxs),
               Semantics(
                 label: 'Report this provider',
                 hint: 'Opens report options for this provider',

@@ -35,7 +35,7 @@ class ProfileAvatarTile extends StatelessWidget {
             onForegroundImageError: avatarUrl.trim().isEmpty ? null : (_, _) {},
             child: Text(AppFormatters.initials(name)),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,7 +46,7 @@ class ProfileAvatarTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                   subtitle,
                   maxLines: subtitleMaxLines,
@@ -56,7 +56,7 @@ class ProfileAvatarTile extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+          if (trailing != null) ...[const SizedBox(width: AppSpacing.sm), trailing!],
         ],
       ),
     );

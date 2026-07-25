@@ -39,10 +39,10 @@ class StickyBottomCTA extends StatelessWidget {
           children: [
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xxs),
               Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
                 if (secondaryLabel != null && onSecondary != null) ...[
@@ -52,7 +52,7 @@ class StickyBottomCTA extends StatelessWidget {
                       onPressed: onSecondary,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.sm),
                 ],
                 Expanded(
                   child: PrimaryButton(

@@ -35,12 +35,12 @@ class ErrorStateView extends StatelessWidget {
               color: AppColors.danger,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Text(title, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Text(message, style: Theme.of(context).textTheme.bodyMedium),
           if (onRetry != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             SecondaryButton(
               label: 'Try again',
               onPressed: onRetry,

@@ -8,7 +8,7 @@ class NameplateCard extends StatelessWidget {
   const NameplateCard({
     required this.child,
     this.onTap,
-    this.padding = const EdgeInsets.all(12),
+    this.padding = const EdgeInsets.all(AppSpacing.sm),
     this.margin,
     this.opacity = 1.0,
     super.key,
@@ -59,7 +59,7 @@ class NameplateCard extends StatelessWidget {
             onTap: onTap,
             borderRadius: BorderRadius.circular(AppRadii.xl),
             child: Padding(
-              padding: padding.add(const EdgeInsets.only(top: 8)),
+              padding: padding.add(const EdgeInsets.only(top: AppSpacing.xs)),
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [

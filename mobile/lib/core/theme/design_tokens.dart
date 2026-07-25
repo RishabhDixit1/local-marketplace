@@ -107,6 +107,18 @@ class AppSpacing {
   static const pageInset = 20.0;
 }
 
+class AppIconSize {
+  const AppIconSize._();
+
+  static const xxs = 12.0;
+  static const xs = 16.0;
+  static const sm = 18.0;
+  static const md = 20.0;
+  static const lg = 24.0;
+  static const xl = 32.0;
+  static const xxl = 48.0;
+}
+
 class AppRadii {
   const AppRadii._();
 

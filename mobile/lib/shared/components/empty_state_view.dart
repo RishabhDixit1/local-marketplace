@@ -49,14 +49,14 @@ class EmptyStateView extends StatelessWidget {
             ),
             child: Icon(icon, size: 28, color: Colors.white),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           Text(
             title,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             message,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -65,7 +65,7 @@ class EmptyStateView extends StatelessWidget {
                 ),
           ),
           if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.lg),
             GhostButton(label: actionLabel!, onPressed: onAction),
           ],
         ],
