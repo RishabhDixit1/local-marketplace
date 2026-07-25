@@ -114,7 +114,7 @@ class ProviderProfilePage extends ConsumerWidget {
                 await ref.read(peopleSnapshotProvider.future);
               },
               color: AppColors.primary,
-              backgroundColor: AppColors.surface,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 168),
                 children: [
@@ -523,6 +523,7 @@ class ProviderProfilePage extends ConsumerWidget {
       showDragHandle: true,
       isScrollControlled: true,
       builder: (sheetContext) {
+        bool submitting = false;
         return StatefulBuilder(
           builder: (context, setSheetState) {
             return SafeArea(
@@ -575,39 +576,49 @@ class ProviderProfilePage extends ConsumerWidget {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed: () async {
-                          Navigator.of(sheetContext).pop();
-                          try {
-                            await ref
-                                .read(profileRepositoryProvider)
-                                .submitReview(
-                                  providerId: providerId,
-                                  rating: rating,
-                                  comment: comment,
-                                );
-                            if (!context.mounted) return;
-                            ServiqToast.show(
-                              context,
-                              message: 'Review submitted.',
-                              tone: ServiqToastTone.success,
-                            );
-                          } on ApiException catch (error) {
-                            if (!context.mounted) return;
-                            ServiqToast.show(
-                              context,
-                              message: error.message,
-                              tone: ServiqToastTone.danger,
-                            );
-                          } catch (error) {
-                            if (!context.mounted) return;
-                            ServiqToast.show(
-                              context,
-                              message: error.toString(),
-                              tone: ServiqToastTone.danger,
-                            );
-                          }
-                        },
-                        child: const Text('Submit'),
+                        onPressed: submitting // ignore: dead_code
+                            ? null
+                            : () async {
+                                HapticFeedback.mediumImpact();
+                                setSheetState(() => submitting = true);
+                                Navigator.of(sheetContext).pop();
+                                try {
+                                  await ref
+                                      .read(profileRepositoryProvider)
+                                      .submitReview(
+                                        providerId: providerId,
+                                        rating: rating,
+                                        comment: comment,
+                                      );
+                                  if (!context.mounted) return;
+                                  ServiqToast.show(
+                                    context,
+                                    message: 'Review submitted.',
+                                    tone: ServiqToastTone.success,
+                                  );
+                                } on ApiException catch (error) {
+                                  if (!context.mounted) return;
+                                  ServiqToast.show(
+                                    context,
+                                    message: error.message,
+                                    tone: ServiqToastTone.danger,
+                                  );
+                                } catch (error) {
+                                  if (!context.mounted) return;
+                                  ServiqToast.show(
+                                    context,
+                                    message: error.toString(),
+                                    tone: ServiqToastTone.danger,
+                                  );
+                                }
+                              },
+                        child: submitting
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Submit'),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -656,7 +667,7 @@ class _StorefrontHero extends StatelessWidget {
 
     return PremiumSurface(
       padding: EdgeInsets.zero,
-      backgroundColor: AppColors.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -772,7 +783,7 @@ class _StorefrontHero extends StatelessWidget {
                     TrustBadge(
                       label: provider.locationLabel,
                       icon: Icons.place_outlined,
-                      backgroundColor: AppColors.surfaceMuted,
+                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                       foregroundColor: Theme.of(context).colorScheme.onSurface,
                     ),
                     TrustBadge(
@@ -792,7 +803,7 @@ class _StorefrontHero extends StatelessWidget {
                         .map(
                           (tag) => PremiumPill(
                             label: tag,
-                            backgroundColor: AppColors.surfaceAlt,
+                            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                             foregroundColor: Theme.of(context).colorScheme.onSurface,
                           ),
                         )
@@ -907,7 +918,7 @@ class _SquareStorefrontButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
           side: BorderSide(color: Theme.of(context).colorScheme.outline),
@@ -1121,7 +1132,7 @@ class _OfferTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surfaceAlt,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.md),
         side: BorderSide(color: Theme.of(context).colorScheme.outline),
@@ -1138,7 +1149,7 @@ class _OfferTile extends StatelessWidget {
                 width: 58,
                 height: 58,
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(AppRadii.md),
                 ),
                 clipBehavior: Clip.antiAlias,
@@ -1191,7 +1202,7 @@ class _OfferTile extends StatelessWidget {
                         TrustBadge(
                           label: offer.distanceLabel,
                           icon: Icons.route_rounded,
-                          backgroundColor: AppColors.surface,
+                          backgroundColor: Theme.of(context).colorScheme.surface,
                           foregroundColor: Theme.of(context).colorScheme.onSurface,
                         ),
                       ],

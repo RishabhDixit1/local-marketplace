@@ -15,6 +15,7 @@ import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
+import '../../../shared/components/app_text_field.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
@@ -933,11 +934,12 @@ class _BasicsStep extends StatelessWidget {
           subtitle:
               'Tell Business AI who you are and where customers can find you.',
         ),
-        _TextField(
+        AppTextField(
           controller: businessNameController,
           label: 'Business or provider name',
           validator: _required('Add a public name.'),
         ),
+        const SizedBox(height: 12),
         _DropdownField(
           label: 'Business type',
           value: businessType,
@@ -954,7 +956,7 @@ class _BasicsStep extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: _TextField(
+              child: AppTextField(
                 controller: locationController,
                 label: 'Base location',
                 validator: _required('Add a location.'),
@@ -1003,8 +1005,9 @@ class _BasicsStep extends StatelessWidget {
               ),
             ),
           ),
-        _TextField(controller: serviceAreaController, label: 'Service area'),
-        _TextField(
+        AppTextField(controller: serviceAreaController, label: 'Service area'),
+        const SizedBox(height: 12),
+        AppTextField(
           controller: radiusController,
           label: 'Service radius in km',
           keyboardType: TextInputType.number,
@@ -1064,34 +1067,39 @@ class _OffersStep extends StatelessWidget {
           onChanged: onOfferingTypeChanged,
         ),
         const SizedBox(height: 12),
-        _TextField(
+        AppTextField(
           controller: offeringsController,
           label: 'Core offerings',
           hint: 'One per line works well',
           maxLines: 4,
           validator: _required('Add at least one offer.'),
         ),
-        _TextField(
+        const SizedBox(height: 12),
+        AppTextField(
           controller: catalogController,
           label: 'Catalog details',
           hint: 'Paste products, packs, service variants',
           maxLines: 4,
         ),
-        _TextField(
+        const SizedBox(height: 12),
+        AppTextField(
           controller: pricingController,
           label: 'Pricing notes',
           maxLines: 3,
         ),
-        _TextField(
+        const SizedBox(height: 12),
+        AppTextField(
           controller: hoursController,
           label: 'Availability and hours',
         ),
-        _TextField(
+        const SizedBox(height: 12),
+        AppTextField(
           controller: phoneController,
           label: 'Phone',
           keyboardType: TextInputType.phone,
         ),
-        _TextField(
+        const SizedBox(height: 12),
+        AppTextField(
           controller: websiteController,
           label: 'Website',
           keyboardType: TextInputType.url,
@@ -1132,7 +1140,7 @@ class _AiDraftStep extends StatelessWidget {
           onPressed: onAiReviewStarted,
         ),
         const SizedBox(height: 14),
-        _TextField(
+        AppTextField(
           controller: descriptionController,
           label: 'Short profile summary',
           hint: 'What should customers know first?',
