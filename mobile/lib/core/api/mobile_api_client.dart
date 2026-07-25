@@ -246,7 +246,7 @@ class MobileApiClient {
     return postJson(
       '/api/ai/prompt',
       body: {'query': query, 'context': context},
-      authenticated: false,
+      authenticated: true,
     );
   }
 

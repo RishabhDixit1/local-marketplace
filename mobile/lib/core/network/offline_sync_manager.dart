@@ -67,7 +67,7 @@ class OfflineSyncManager {
         await client.postJson('/api/profile/review', body: op.payload);
       case OfflineOperationType.updateOrderStatus:
         await client.patchJson(
-          '/api/orders/${op.payload['orderId']}/status',
+          '/api/orders/${op.payload['orderId']}',
           body: {'status': op.payload['status']},
         );
     }
