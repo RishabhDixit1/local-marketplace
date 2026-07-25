@@ -12,6 +12,7 @@ import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
+import '../../../shared/components/app_text_field.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
@@ -721,27 +722,31 @@ class _ServiceListingSheetState extends ConsumerState<_ServiceListingSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SheetTextField(
+            AppTextField(
               controller: _title,
               label: 'Service title',
               validator: _required('Add a service title.'),
             ),
-            _SheetTextField(
+            const SizedBox(height: 12),
+            AppTextField(
               controller: _description,
               label: 'Description',
               maxLines: 3,
             ),
+            const SizedBox(height: 12),
             _SheetDropdown(
               label: 'Category',
               value: _category,
               values: categories,
               onChanged: (value) => setState(() => _category = value),
             ),
-            _SheetTextField(
+            const SizedBox(height: 12),
+            AppTextField(
               controller: _price,
               label: 'Price',
               keyboardType: TextInputType.number,
             ),
+            const SizedBox(height: 12),
             _SheetDropdown(
               label: 'Pricing',
               value: _pricingType,
@@ -892,28 +897,32 @@ class _ProductListingSheetState extends ConsumerState<_ProductListingSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SheetTextField(
+            AppTextField(
               controller: _title,
               label: 'Product title',
               validator: _required('Add a product title.'),
             ),
-            _SheetTextField(
+            const SizedBox(height: 12),
+            AppTextField(
               controller: _description,
               label: 'Description',
               maxLines: 3,
             ),
+            const SizedBox(height: 12),
             _SheetDropdown(
               label: 'Category',
               value: _category,
               values: categories,
               onChanged: (value) => setState(() => _category = value),
             ),
-            _SheetTextField(
+            const SizedBox(height: 12),
+            AppTextField(
               controller: _price,
               label: 'Price',
               keyboardType: TextInputType.number,
             ),
-            _SheetTextField(
+            const SizedBox(height: 12),
+            AppTextField(
               controller: _stock,
               label: 'Stock',
               keyboardType: TextInputType.number,
@@ -925,7 +934,8 @@ class _ProductListingSheetState extends ConsumerState<_ProductListingSheet> {
               onChanged: (value) => setState(() => _deliveryMethod = value),
             ),
             const SizedBox(height: 12),
-            _SheetTextField(controller: _image, label: 'Image path or URL'),
+            const SizedBox(height: 12),
+            AppTextField(controller: _image, label: 'Image path or URL'),
             SecondaryButton(
               label: _uploading ? 'Uploading...' : 'Pick image',
               icon: _uploading
@@ -988,36 +998,6 @@ class _SheetScaffold extends StatelessWidget {
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-class _SheetTextField extends StatelessWidget {
-  const _SheetTextField({
-    required this.controller,
-    required this.label,
-    this.maxLines = 1,
-    this.keyboardType,
-    this.validator,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final int maxLines;
-  final TextInputType? keyboardType;
-  final String? Function(String?)? validator;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
-        controller: controller,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(labelText: label),
-        validator: validator,
       ),
     );
   }
