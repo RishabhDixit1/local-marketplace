@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -77,6 +78,7 @@ class FeedPage extends ConsumerStatefulWidget {
 
 class _FeedPageState extends ConsumerState<FeedPage> {
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
   Timer? _debounce;
   String _query = '';
   late MobileFeedScope _scope;
@@ -86,20 +88,61 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   String? _selectedLocalityName;
   String? _busyFeedActionId;
 
+  static const _pageSize = 20;
+  int _visibleCount = _pageSize;
+  bool _isLoadingMore = false;
+
   @override
   void initState() {
     super.initState();
     _scope = widget.mode.scope;
+    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _searchController.dispose();
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
     super.dispose();
   }
 
+  void _onScroll() {
+    if (_isLoadingMore) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final current = _scrollController.offset;
+    if (maxScroll - current <= 200) {
+      _loadMore();
+    }
+  }
+
+  void _loadMore() {
+    final snapshot = widget.snapshotOverride ?? ref.read(feedSnapshotProvider(_scope));
+    final items = snapshot?.asData?.value.items;
+    if (items == null || items.isEmpty || _visibleCount >= items.length) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      setState(() {
+        _visibleCount += _pageSize;
+        _isLoadingMore = false;
+      });
+    });
+  }
+
+  void _resetPagination() {
+    _visibleCount = _pageSize;
+    _isLoadingMore = false;
+  }
+
   Future<void> _refresh() async {
+    _resetPagination();
     ref.invalidate(feedSnapshotProvider(_scope));
     await ref.read(feedSnapshotProvider(_scope).future);
   }
@@ -116,11 +159,11 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       ),
       builder: (ctx) => ListView(
         shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+        padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xl, AppSpacing.md, AppSpacing.xxl),
         children: [
           const Text('Select locality',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           ...localities.map((loc) {
             final id = loc['id'] as String? ?? '';
             final name = loc['name'] as String? ?? '';
@@ -143,6 +186,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       setState(() {
         _selectedLocalityId = selected;
         _selectedLocalityName = name;
+        _resetPagination();
       });
     }
   }
@@ -151,7 +195,10 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 220), () {
       if (mounted) {
-        setState(() => _query = value.trim());
+        setState(() {
+          _query = value.trim();
+          _resetPagination();
+        });
       }
     });
   }
@@ -275,6 +322,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       return;
     }
 
+    HapticFeedback.lightImpact();
     setState(() => _busyFeedActionId = item.id);
     try {
       if (item.viewerHasExpressedInterest) {
@@ -458,17 +506,26 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     );
   }
 
-  void _hideFeedItem(MobileFeedItem item) {
+  Future<void> _hideFeedItem(MobileFeedItem item) async {
     final ctx = FeedCardInteractionContext(
       cardId: item.id,
       focusId: item.providerId,
       cardType: item.type == MobileFeedItemType.service ? 'service' : 'product',
       title: item.title,
     );
-    ref.read(feedInteractionsRepositoryProvider).hide(ctx, reason: 'not_interested');
-    if (!mounted) return;
-    ref.invalidate(feedSnapshotProvider(_scope));
-    ServiqToast.show(context, message: 'Hidden.', tone: ServiqToastTone.success);
+    try {
+      await ref.read(feedInteractionsRepositoryProvider).hide(ctx, reason: 'not_interested');
+      ref.invalidate(feedSnapshotProvider(_scope));
+      if (!mounted) return;
+      ServiqToast.show(context, message: 'Hidden.', tone: ServiqToastTone.success);
+    } catch (error) {
+      if (!mounted) return;
+      ServiqToast.show(
+        context,
+        message: AppErrorMapper.toMessage(error),
+        tone: ServiqToastTone.danger,
+      );
+    }
   }
 
   FeedCardInteractionContext _buildInteractionContext(MobileFeedItem item) {
@@ -573,25 +630,37 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       appBar: AppBar(
         title: Text(widget.mode.title),
         actions: [
-          IconButton(
-            onPressed: () => context.push(AppRoutes.search),
-            icon: const Icon(Icons.search_rounded),
-          ),
-          IconButton(
-            onPressed: () => context.push(AppRoutes.saved),
-            icon: const Icon(Icons.bookmarks_outlined),
-          ),
-          IconButton(
-            onPressed: () => showServiqCartSheet(context),
-            icon: Badge(
-              isLabelVisible: cartCount > 0,
-              label: Text('$cartCount'),
-              child: const Icon(Icons.shopping_cart_outlined),
+          Semantics(
+            label: 'Search',
+            child: IconButton(
+              onPressed: () => context.push(AppRoutes.search),
+              icon: const Icon(Icons.search_rounded),
             ),
           ),
-          IconButton(
-            onPressed: () => context.push(AppRoutes.notifications),
-            icon: const Icon(Icons.notifications_none_rounded),
+          Semantics(
+            label: 'Saved items',
+            child: IconButton(
+              onPressed: () => context.push(AppRoutes.saved),
+              icon: const Icon(Icons.bookmarks_outlined),
+            ),
+          ),
+          Semantics(
+            label: 'Cart',
+            child: IconButton(
+              onPressed: () => showServiqCartSheet(context),
+              icon: Badge(
+                isLabelVisible: cartCount > 0,
+                label: Text('$cartCount'),
+                child: const Icon(Icons.shopping_cart_outlined),
+              ),
+            ),
+          ),
+          Semantics(
+            label: 'Notifications',
+            child: IconButton(
+              onPressed: () => context.push(AppRoutes.notifications),
+              icon: const Icon(Icons.notifications_none_rounded),
+            ),
           ),
         ],
       ),
@@ -599,9 +668,18 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-            itemCount: feedChildren.length,
-            itemBuilder: (context, index) => feedChildren[index],
+            controller: _scrollController,
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 28),
+            itemCount: feedChildren.length + (_isLoadingMore ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == feedChildren.length) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              return feedChildren[index];
+            },
           ),
         ),
       ),
@@ -640,7 +718,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
           ];
         },
         orElse: () => <Widget>[],
@@ -657,33 +735,40 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         onPrimaryTap: _openPostTask,
         onSearchTap: () => context.push(AppRoutes.search),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: AppSpacing.md),
       _ExploreIntentPanel(
         mode: widget.mode,
         searchController: _searchController,
         scope: _scope,
         filters: _filters,
         onQueryChanged: _onQueryChanged,
-        onScopeChanged: (scope) => setState(() => _scope = scope),
+        onScopeChanged: (scope) => setState(() {
+          _scope = scope;
+          _resetPagination();
+        }),
         onFiltersChanged: (next) => setState(() {
           _filters
             ..clear()
             ..addAll(next);
+          _resetPagination();
         }),
         onOpenPeople: () => context.push(AppRoutes.people),
         selectedCategory: _selectedCategory,
-        onCategoryChanged: (cat) => setState(() => _selectedCategory = cat),
+        onCategoryChanged: (cat) => setState(() {
+          _selectedCategory = cat;
+          _resetPagination();
+        }),
         selectedLocalityName: _selectedLocalityName,
         onOpenLocalityPicker: _showLocalityPicker,
       ),
       if (widget.mode == FeedPageMode.explore) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.sm),
         SectionCard(
           child: InkWell(
             borderRadius: BorderRadius.circular(AppRadii.xl),
             onTap: () => context.push(AppRoutes.marketZones),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
               child: Row(
                 children: [
                   Container(
@@ -695,14 +780,14 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                     ),
                     child: Icon(Icons.explore_rounded, color: AppColors.primaryDeep),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Explore Local Zones',
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Theme.of(context).colorScheme.onSurface)),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: AppSpacing.xxxs),
                         Text('Browse societies, markets, and supply areas in your locality',
                             style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                       ],
@@ -715,7 +800,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           ),
         ),
       ],
-      const SizedBox(height: 16),
+      const SizedBox(height: AppSpacing.md),
       ServiqAsyncBody<MobileFeedSnapshot>(
         value: snapshot,
         errorTitle: 'Unable to load the feed',
@@ -723,7 +808,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         onRetry: _refresh,
         loadingBuilder: () => const _FeedLoadingState(),
         data: (data) {
-          final items = _filterItems(data.items);
+          final allItems = _filterItems(data.items);
+          final visibleItems = allItems.take(_visibleCount).toList();
+          final hasMore = _visibleCount < allItems.length;
           final people = _filterPeople(
             peopleSnapshot.asData?.value.people ??
                 const <MobilePersonCard>[],
@@ -731,7 +818,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
           if (widget.mode == FeedPageMode.explore) {
             return _ExploreMarketplaceLanes(
-              items: items,
+              items: visibleItems,
               people: people,
               peopleSnapshot: peopleSnapshot,
               viewerRoleFamily: data.viewerRoleFamily,
@@ -776,8 +863,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                     ? 'Connected feed'
                     : 'Live local feed',
               ),
-              const SizedBox(height: 12),
-              if (items.isEmpty)
+              const SizedBox(height: AppSpacing.sm),
+              if (visibleItems.isEmpty)
                 const SectionCard(
                   child: EmptyStateView(
                     title: 'No matching posts',
@@ -786,12 +873,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                   ),
                 )
               else
-                ...items.map(
+                ...visibleItems.map(
                   (item) {
                     final savedCardIds =
                         snapshot.asData?.value.savedCardIds ?? const {};
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                       child: FeedCard(
                         item: item,
                         onPrimaryTap: _primaryActionFor(item),
@@ -805,6 +892,16 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                       ),
                     );
                   },
+                ),
+              if (hasMore && !_isLoadingMore)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.sm),
+                  child: Center(
+                    child: TextButton(
+                      onPressed: _loadMore,
+                      child: const Text('Load more'),
+                    ),
+                  ),
                 ),
             ],
           );
@@ -1075,31 +1172,39 @@ class _ExploreFeedLane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final children = <Widget>[
-      SectionHeader(title: title),
-      const SizedBox(height: 12),
-      if (items.isEmpty)
-        SectionCard(
-          child: EmptyStateView(
-            title: emptyTitle ?? 'Nothing here yet',
-            message:
-                emptyMessage ??
-                'Clear a filter or search a broader category.',
-          ),
-        )
-      else
-        for (final item in items)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: cardBuilder(item),
-          ),
-    ];
+    final empty = items.isEmpty;
+    final itemCount = 1 + (empty ? 1 : items.length);
 
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: children.length,
-      itemBuilder: (context, index) => children[index],
+      itemCount: itemCount,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionHeader(title: title),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+          );
+        }
+        if (empty) {
+          return SectionCard(
+            child: EmptyStateView(
+              title: emptyTitle ?? 'Nothing here yet',
+              message:
+                  emptyMessage ??
+                  'Clear a filter or search a broader category.',
+            ),
+          );
+        }
+        final item = items[index - 1];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: cardBuilder(item),
+        );
+      },
     );
   }
 }
@@ -1133,7 +1238,7 @@ class _ExploreProviderLane extends StatelessWidget {
           actionLabel: 'Find',
           onAction: onOpenPeople,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.sm),
         if (snapshot?.isLoading == true)
           const SectionCard(
             child: Column(
@@ -1142,7 +1247,7 @@ class _ExploreProviderLane extends StatelessWidget {
                 LoadingShimmer(height: 18, width: 180),
                 SizedBox(height: 10),
                 LoadingShimmer(height: 14),
-                SizedBox(height: 8),
+                SizedBox(height: AppSpacing.xs),
                 LoadingShimmer(height: 14, width: 220),
               ],
             ),
@@ -1167,7 +1272,7 @@ class _ExploreProviderLane extends StatelessWidget {
         else
           ...people.map(
             (person) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: providerCardBuilder(person),
             ),
           ),
@@ -1185,7 +1290,7 @@ class _FeedLoadingState extends StatelessWidget {
       children: List.generate(
         3,
         (_) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: SectionCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1195,9 +1300,9 @@ class _FeedLoadingState extends StatelessWidget {
                 LoadingShimmer(height: 22, width: 220),
                 SizedBox(height: 10),
                 LoadingShimmer(height: 14),
-                SizedBox(height: 8),
+                SizedBox(height: AppSpacing.xs),
                 LoadingShimmer(height: 14, width: 260),
-                SizedBox(height: 16),
+                SizedBox(height: AppSpacing.md),
                 LoadingShimmer(height: 88),
               ],
             ),
