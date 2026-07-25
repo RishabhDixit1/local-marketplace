@@ -299,6 +299,14 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
           tone: ServiqToastTone.danger,
         );
       }
+    } catch (error) {
+      if (mounted) {
+        ServiqToast.show(
+          context,
+          message: AppErrorMapper.toMessage(error),
+          tone: ServiqToastTone.danger,
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _accepting = false);
@@ -313,6 +321,7 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
     );
     if (result == null) return;
 
+    setState(() => _accepting = true);
     try {
       await ref.read(quoteRepositoryProvider).rejectQuote(
         QuoteRejectInput(
@@ -349,6 +358,10 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
           message: AppErrorMapper.toMessage(error),
           tone: ServiqToastTone.danger,
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _accepting = false);
       }
     }
   }

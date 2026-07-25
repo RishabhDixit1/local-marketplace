@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/api/mobile_api_client.dart';
 import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../people/data/people_repository.dart';
@@ -123,9 +125,31 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage>
         decision: decision,
       );
       ref.invalidate(connectionsListProvider);
-    } catch (e) {
+      await ref.read(connectionsListProvider.future);
       if (!mounted) return;
-      ServiqToast.show(context, message: '$e', tone: ServiqToastTone.danger);
+      ServiqToast.show(
+        context,
+        message: decision == 'accepted'
+            ? 'Connection accepted'
+            : decision == 'rejected'
+                ? 'Connection declined'
+                : 'Request cancelled',
+        tone: ServiqToastTone.success,
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ServiqToast.show(
+        context,
+        message: error.message,
+        tone: ServiqToastTone.danger,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ServiqToast.show(
+        context,
+        message: AppErrorMapper.toMessage(error),
+        tone: ServiqToastTone.danger,
+      );
     } finally {
       if (mounted) setState(() => _busyId = null);
     }

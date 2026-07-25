@@ -143,6 +143,14 @@ class _ProviderListingsPageState extends ConsumerState<ProviderListingsPage> {
           tone: ServiqToastTone.success,
         );
       }
+    } catch (error) {
+      if (mounted) {
+        ServiqToast.show(
+          context,
+          message: AppErrorMapper.toMessage(error),
+          tone: ServiqToastTone.danger,
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _busyId = null);
@@ -166,6 +174,14 @@ class _ProviderListingsPageState extends ConsumerState<ProviderListingsPage> {
           context,
           message: product.isActive ? 'Product paused.' : 'Product live.',
           tone: ServiqToastTone.success,
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ServiqToast.show(
+          context,
+          message: AppErrorMapper.toMessage(error),
+          tone: ServiqToastTone.danger,
         );
       }
     } finally {

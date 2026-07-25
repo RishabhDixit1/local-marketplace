@@ -173,6 +173,15 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         message: error.message,
         tone: ServiqToastTone.danger,
       );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ServiqToast.show(
+        context,
+        message: AppErrorMapper.toMessage(error),
+        tone: ServiqToastTone.danger,
+      );
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -226,6 +235,13 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       ServiqToast.show(
         context,
         message: error.message,
+        tone: ServiqToastTone.danger,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ServiqToast.show(
+        context,
+        message: AppErrorMapper.toMessage(error),
         tone: ServiqToastTone.danger,
       );
     } finally {
