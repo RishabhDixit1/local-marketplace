@@ -7,6 +7,7 @@ import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../data/subscriptions_repository.dart';
 import '../domain/subscription_models.dart';
@@ -66,6 +67,20 @@ class _ProviderSubscriptionsPageState
               loadingBuilder: () => const _Loading(),
               data: (plans) {
                 final current = currentAsync.asData?.value;
+                if (plans.isEmpty) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (current != null) _CurrentSubscriptionBanner(subscription: current),
+                      if (current != null) const SizedBox(height: 16),
+                      const EmptyStateView(
+                        icon: Icons.subscriptions_outlined,
+                        title: 'No plans available',
+                        message: 'Subscription plans will appear here once they are configured.',
+                      ),
+                    ],
+                  );
+                }
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

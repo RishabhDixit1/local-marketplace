@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../shared/components/empty_state_view.dart';
 import '../data/analytics_repository.dart';
 import '../domain/analytics_models.dart';
 
@@ -68,6 +69,14 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
   }
 
   Widget _buildContent(AnalyticsData data) {
+    final hasData = data.summary.totalOrders > 0 || data.summary.totalEarnedPaise > 0;
+    if (!hasData) {
+      return const EmptyStateView(
+        icon: Icons.analytics_outlined,
+        title: 'No analytics yet',
+        message: 'Complete your first order to see performance data here.',
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

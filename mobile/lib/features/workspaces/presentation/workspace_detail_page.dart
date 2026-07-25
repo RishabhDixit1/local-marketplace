@@ -126,7 +126,21 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
       ),
       body: wsAsync.when(
         loading: () => const _DetailLoading(),
-        error: (err, _) => Center(child: Text('Unable to load workspace')),
+        error: (err, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline_rounded, size: 48, color: Colors.red),
+              const SizedBox(height: 12),
+              Text('Unable to load workspace', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _reloadAll,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
         data: (workspace) => RefreshIndicator(
           onRefresh: _reloadAll,
           child: Column(

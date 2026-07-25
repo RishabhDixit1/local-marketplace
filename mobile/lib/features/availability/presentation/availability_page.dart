@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../data/availability_repository.dart';
@@ -196,12 +195,21 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
         child: asyncSlots.isLoading && _slots.isEmpty
             ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
             : asyncSlots.hasError && _slots.isEmpty
-            ? ServiqAsyncBody<List<AvailabilitySlot>>(
-          value: asyncSlots,
-          errorTitle: 'Unable to load availability',
-          onRetry: () => ref.invalidate(availabilitySlotsProvider),
-          data: (_) => const SizedBox.shrink(),
-        )
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline_rounded, size: 48, color: Colors.red),
+                    const SizedBox(height: 12),
+                    Text('Unable to load availability', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => ref.invalidate(availabilitySlotsProvider),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              )
             : ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: [
