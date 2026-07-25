@@ -65,3 +65,20 @@
 ### P2 (2 weeks)
 - OTP cooldown timer (60s countdown on both web + Flutter)
 - Profile hub reorganization (18 flat tiles → 4 grouped sections: Provider Tools, Orders & Payments, Communication & Trust, Account)
+
+### Flutter Mobile Hardening (Phase A complete)
+- Realtime reconnect-with-backoff (exponential, 5s-60s, 20 retries)
+- Offline fail-fast on every network call via connectivity_plus
+- Session refresh timeout (8s) to prevent hung cold starts
+- FlutterSecureStorage pre-warm for faster Supabase init
+- Global OfflineBanner widget in app shell
+- Haptic feedback on feed actions, chat send, quote operations
+- Semantic labels on feed icons, chat back button, feed card images
+- Error handling fixes: catch blocks added to toggleService, toggleProduct, _runAction, _respondConnection, _respond (connections), _acceptQuote
+- Loading states added to _rejectQuote, profile sync button
+- Success toasts added to connection accept/reject/cancel
+- Offline sync endpoint path fixed (/api/orders/[id]/status → /api/orders/[id])
+- AI prompts now send auth token for user-level rate limits
+- Empty states added to: workspace detail, subscriptions, analytics, availability
+- Dead code removed (_TextField widget from provider launchpad)
+- Shared AppTextField component extracted for listing forms
