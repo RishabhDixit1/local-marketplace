@@ -1542,38 +1542,6 @@ class _StatusPanel extends StatelessWidget {
   }
 }
 
-class _TextField extends StatelessWidget {
-  const _TextField({
-    required this.controller,
-    required this.label,
-    this.hint,
-    this.maxLines = 1,
-    this.keyboardType,
-    this.validator,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final String? hint;
-  final int maxLines;
-  final TextInputType? keyboardType;
-  final String? Function(String?)? validator;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
-        controller: controller,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(labelText: label, hintText: hint),
-        validator: validator,
-      ),
-    );
-  }
-}
-
 class _DropdownField extends StatelessWidget {
   const _DropdownField({
     required this.label,
