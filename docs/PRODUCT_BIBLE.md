@@ -44,6 +44,22 @@ Neighborhood (city/zone/locality)
 └── Trust (verification, reviews, reputation, badges)
 ```
 
+### Neighborhood data model: the Provider Graph
+
+"People" in the neighborhood resolves to a **provider graph** — the concrete data model for what the Neighborhood/People concept means on the ground. Each provider is a node carrying:
+
+| Field | Meaning | Example |
+|---|---|---|
+| Category | Primary trade/vertical | Home Services |
+| Skills | Capabilities (free text, not just category) | AC repair, wiring, fixture install |
+| Service area | Locality + radius they serve | Sector 12, Dwarka — within 5 km |
+| Hours | Availability pattern | Evenings + weekends |
+| Delivery option | How fulfillment happens | Pickup / Provider-delivery / Both |
+| Verification | Identity/KYC level | ID-verified |
+| Trust score | Single computed number | 4.8 / 5 (Section 6) |
+
+Edges are typed relationships: `has-skill`, `serves-locality`, `worked-with` (job history), `reviewed-by`, `vouched-by` (connections), `responded-to` (request-routing history). Request routing walks the graph by **category → distance → availability → trust**, not a flat listing query.
+
 ### Canonical naming (use these going forward, not the old names)
 
 | Old (scattered) | Canonical |
@@ -178,17 +194,55 @@ These are not removals — they are merges into canonical concepts:
 | quotes + marketplace guidance | **Proposals** | Backend + Flutter |
 | market + search + feed + map | **Discovery** | Backend + Flutter |
 
+### Phase Boundary (pilot vs roadmap)
+
+**Phase 1 — Neighbourhood Pilot (Core, buildable now):** single locality, verified providers, request routing, manual ops support, pickup and provider-only delivery.
+
+- Provider profile with category / skills / service area / hours / delivery option / verification
+- Customer request creation: text (+ voice when built) and category
+- AI intent → category / budget / urgency / location extraction
+- Request routing to ranked nearby providers (category + distance + availability + trust)
+- Provider quick-response: Available / Price / ETA / Pickup-Delivery
+- Order status flow: Accepted → Preparing → On the way → Completed
+- Pickup vs provider-delivery choice
+- Trust score (basic: verification + completion + rating)
+
+**Phase 2/3 — Roadmap (documented, NOT in scope for the pilot or near-term sessions):**
+
+- Automated logistics network (multi-model routing, dispatch)
+- Payment-splitting engine (automated revenue share)
+- Fraud-detection AI
+- Embedding-based semantic search
+- Predictive recommendations (self-learning recommendation engine)
+
+Rule: nothing on the Roadmap list gets built until it is explicitly pulled into Phase 1+ scope. It stays documented here only — never as an active todo list.
+
 ---
 
 ## 6. Trust Framework
 
-Six concrete mechanisms. Checklist, not strategy doc.
+### Trust Score (the number, calculable)
+
+One score per provider, computed from the six inputs below. This is the primary trust signal surfaced everywhere — cards, profiles, AI "why this provider" reasoning. Inputs are fixed; weights are tuned during the pilot.
+
+| Input | Definition | Direction |
+|---|---|---|
+| Completion rate | Jobs completed ÷ jobs accepted | Higher = better |
+| Cancellation rate | Jobs cancelled ÷ jobs accepted | Lower = better |
+| On-time performance | Jobs completed by agreed time ÷ completed | Higher = better |
+| Complaint ratio | Complaints raised ÷ jobs completed | Lower = better |
+| Repeat customers | Jobs from returning seekers ÷ total jobs | Higher = better |
+| Response time | Median minutes to first reply on a routed request | Lower = better |
+
+Score = weighted blend of the six, floored while unverified and gated by review average. Zero-transaction providers fall back to a **verification-level baseline**, not zero — otherwise cold-start kills the pilot. Exact weights live with the implementation; this formula replaces the previous "checklist" framing of this section.
+
+### How trust is surfaced (mechanisms)
 
 1. **Verified badges** — Phone-verified, ID-verified, email-verified. Display on every provider card and profile.
-2. **Response time display** — Track and show "Responds in X minutes" on provider profiles. Drives accountability.
+2. **Response time display** — Show "Responds in X minutes" on provider profiles. Drives accountability.
 3. **Photo-of-work galleries** — Completed jobs include photo evidence. Gallery on provider profile shows past work quality.
 4. **Micro-task wedge** — Surface ₹50-₹500 small jobs first. Low-risk transactions build trust for larger ones. These happen daily in every neighborhood.
-5. **AI-scored matches with reasoning** — Show "Why this provider?" with transparent scoring (distance, response time, completion rate, review score). Users trust AI more when they see the reasoning.
+5. **AI-scored matches with reasoning** — Show "Why this provider?" with transparent scoring (distance, response time, trust score, review score). Users trust AI more when they see the reasoning.
 6. **Escrow payments** — Razorpay-powered escrow with clear refund policy. Branding visible at every payment step.
 
 ---
