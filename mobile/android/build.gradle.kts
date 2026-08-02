@@ -1,3 +1,5 @@
+import com.android.build.gradle.BaseExtension
+
 buildscript {
     repositories {
         google()
@@ -5,6 +7,7 @@ buildscript {
     }
     dependencies {
         classpath("com.google.gms:google-services:4.4.2")
+        classpath("com.android.tools.build:gradle:8.13.2")
     }
 }
 
@@ -32,6 +35,16 @@ subprojects {
     buildscript {
         configurations.classpath {
             resolutionStrategy.force("com.android.tools.build:gradle:8.13.2")
+        }
+    }
+}
+
+subprojects {
+    if (project.state.executed) return@subprojects
+    afterEvaluate {
+        val androidExtension = project.extensions.findByName("android")
+        if (androidExtension is BaseExtension) {
+            androidExtension.compileSdkVersion(36)
         }
     }
 }
