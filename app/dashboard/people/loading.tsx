@@ -2,7 +2,7 @@ import { ShimmerSkeleton } from "@/app/components/motion/ShimmerSkeleton";
 
 export default function PeopleLoading() {
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6">
+    <div className="mx-auto w-full max-w-[1000px] space-y-6 p-4 sm:p-6">
       <div className="space-y-1">
         <ShimmerSkeleton className="h-8 w-40" />
         <ShimmerSkeleton className="h-4 w-56" />

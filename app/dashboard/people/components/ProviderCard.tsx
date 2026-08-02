@@ -248,7 +248,7 @@ const ProviderCard = (props: Props) => {
 
         <div className="mt-auto pt-2 sm:pt-4">
           <div className="flex flex-wrap gap-2">{renderConnectionAction()}</div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="mt-2 flex gap-2">
             <button
               type="button"
               onClick={(event) => {

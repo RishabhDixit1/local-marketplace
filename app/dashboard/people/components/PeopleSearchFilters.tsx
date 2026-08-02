@@ -61,7 +61,7 @@ export default function PeopleSearchFilters({
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Search people by name, business, role, service, expertise, or location"
-              className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 sm:text-[15px]"
+              className="w-full truncate bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 sm:text-[15px]"
             />
             {search.trim() ? (
               <button

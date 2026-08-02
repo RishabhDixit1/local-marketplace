@@ -165,6 +165,35 @@ export const isAdminEmail = (email: string): boolean => {
   return admins.includes(normalizedEmail);
 };
 
+export const requireAdminAuth = async (
+  request: Request
+): Promise<{ ok: true; auth: RequestAuthContext } | AuthFailure> => {
+  const auth = await requireRequestAuth(request);
+  if (!auth.ok) return auth;
+
+  if (isAdminEmail(auth.auth.email)) {
+    return auth;
+  }
+
+  const admin = createSupabaseAdminClient();
+  if (admin) {
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", auth.auth.userId)
+      .maybeSingle<{ is_admin: boolean | null }>();
+    if (profile?.is_admin === true) {
+      return auth;
+    }
+  }
+
+  return {
+    ok: false,
+    status: 403,
+    message: "Admin access required.",
+  };
+};
+
 export const CRON_SECRET_HEADER = "x-cron-secret";
 
 export const verifyCronSecret = (request: Request): boolean => {

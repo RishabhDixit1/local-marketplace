@@ -28,35 +28,51 @@ function toSearchLabel(slug: string): string {
     .join(" ");
 }
 
-async function fetchMatchingProviders(categorySlug: string, location?: string, limit = 6): Promise<SlimProvider[]> {
+const SERVICE_STEM_SUFFIXES = ["ers", "ing", "er", "or", "s", "ian"];
+
+function serviceMatchVariants(label: string): string[] {
+  const variants = new Set<string>([label.toLowerCase()]);
+  for (const word of label.toLowerCase().split(/\s+/)) {
+    for (const suffix of SERVICE_STEM_SUFFIXES) {
+      const stem = word.slice(0, word.length - suffix.length);
+      if (word.endsWith(suffix) && stem.length >= 4) variants.add(stem);
+    }
+  }
+  return [...variants];
+}
+
+async function fetchMatchingProviders(categorySlug: string, limit = 6): Promise<SlimProvider[]> {
   const admin = createSupabaseAdminClient();
   if (!admin) return [];
 
   try {
     const label = toSearchLabel(categorySlug);
-    const lowerLabel = label.toLowerCase();
-    let query = admin
+    const variants = serviceMatchVariants(label);
+
+    const { data: profiles, error } = await admin
       .from("profiles")
       .select("id, full_name, name, location, bio, avatar_url, services")
       .in("role", ["provider", "business"])
       .not("full_name", "is", null)
-      .contains("services", [label])
-      .limit(limit * 3);
+      .order("full_name");
 
-    if (location) {
-      query = query.or(`location.ilike.%${location}%,bio.ilike.%${location}%`);
-    }
-
-    const { data: profiles, error } = await query;
     if (error) {
       console.error("[prompt] Failed to query profiles:", error.message);
       return [];
     }
     if (!profiles) return [];
 
+    const seen = new Set<string>();
     const matched = profiles.filter((p) => {
+      if (!p.id || seen.has(p.id)) return false;
       const services = (p.services || []) as string[];
-      return services.some((s) => s.toLowerCase().includes(lowerLabel));
+      const serviceMatch = services.some((s) => {
+        const lower = s.toLowerCase();
+        return variants.some((v) => lower.includes(v));
+      });
+      if (!serviceMatch) return false;
+      seen.add(p.id);
+      return true;
     }).slice(0, limit);
 
     const ids = matched.map((p) => p.id).filter(Boolean);
@@ -166,10 +182,8 @@ export async function POST(request: Request) {
     let response = result.response;
 
     if (result.redirect && SEARCH_ACTIONS.has(result.action)) {
-      const location = context.location || undefined;
       const providers = await fetchMatchingProviders(
         result.category || query,
-        location,
       );
       const actualCount = providers.length;
       response = buildResponse(result.intent, actualCount);
@@ -182,6 +196,7 @@ export async function POST(request: Request) {
       response,
       action: result.action,
       redirect: result.redirect || null,
+      redirectParams: result.redirectParams || null,
       data: data || null,
       suggestions: result.suggestions || [],
     });

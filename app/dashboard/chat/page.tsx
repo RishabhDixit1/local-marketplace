@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { useFeatureFlag } from "@/lib/feature-flags/client";
 import { supabase } from "@/lib/supabase";
 import type { CreateLiveTalkRequest, LiveTalkRequestRecord, SendChatMessageResponse } from "@/lib/api/chat";
 import { fetchAuthedJson } from "@/lib/clientApi";
@@ -125,6 +126,7 @@ export default function ChatPage() {
   const [liveTalkRequest, setLiveTalkRequest] = useState<LiveTalkRequestRecord | null>(null);
   const [liveTalkBusy, setLiveTalkBusy] = useState(false);
   const [callActive, setCallActive] = useState(false);
+  const liveTalkEnabled = useFeatureFlag("live_talk");
 
   const selectedChatRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -794,10 +796,10 @@ export default function ChatPage() {
   }, [selectedChat]);
 
   useEffect(() => {
-    if (!requestedLiveTalk || !selectedChat || autoRequestedLiveTalkRef.current) return;
+    if (!liveTalkEnabled || !requestedLiveTalk || !selectedChat || autoRequestedLiveTalkRef.current) return;
     autoRequestedLiveTalkRef.current = true;
     void startLiveTalk(selectedChat);
-  }, [requestedLiveTalk, selectedChat, startLiveTalk]);
+  }, [liveTalkEnabled, requestedLiveTalk, selectedChat, startLiveTalk]);
 
   useEffect(() => {
     if (!selectedChat || !userId) return;
@@ -1717,7 +1719,7 @@ export default function ChatPage() {
                         <span className="sm:hidden">{showQuotePanel ? "Hide" : "Quote"}</span>
                         <span className="hidden sm:inline">{showQuotePanel ? "Hide Quote" : "Send Quote"}</span>
                       </button>
-                      {selectedConversation?.otherUserId && (
+                      {liveTalkEnabled && selectedConversation?.otherUserId && (
                         <button
                           type="button"
                           onClick={() => void startLiveTalk()}
@@ -1830,7 +1832,7 @@ export default function ChatPage() {
                   </div>
                 )}
 
-                {liveTalkRequest && (
+                {liveTalkEnabled && liveTalkRequest && (
                   <div className="mb-4 rounded-2xl border border-cyan-200 bg-cyan-50/90 p-4 text-sm text-[var(--ink-700)] shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
@@ -1903,7 +1905,7 @@ export default function ChatPage() {
                     </div>
                   </div>
                 )}
-                {callActive && liveTalkRequest?.status === "accepted" && selectedConversation && selectedConversation.otherUserId && (
+                {liveTalkEnabled && callActive && liveTalkRequest?.status === "accepted" && selectedConversation && selectedConversation.otherUserId && (
                   <LiveTalkCall
                     conversationId={selectedChat!}
                     userId={userId}

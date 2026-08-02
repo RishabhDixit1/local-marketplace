@@ -738,7 +738,7 @@ export default function ProvidersPage() {
             placeholder="Search by name, service, or location..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--ink-500)]"
+            className="w-full truncate bg-transparent text-sm outline-none placeholder:text-[var(--ink-500)]"
           />
         </div>
 
@@ -926,7 +926,7 @@ export default function ProvidersPage() {
       )}
 
       {loading && (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <ProviderCardSkeleton key={`skeleton-${i}`} />
           ))}
@@ -1051,9 +1051,9 @@ export default function ProvidersPage() {
 
                       <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-[var(--ink-500)]">
                         {provider.location && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {provider.location}
+                          <span className="flex min-w-0 items-center gap-1">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{provider.location}</span>
                           </span>
                         )}
                         {provider.distanceKm != null && (

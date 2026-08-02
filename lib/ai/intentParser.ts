@@ -326,14 +326,14 @@ export function buildResponse(intent: ParsedIntent, actualCount?: number | null)
       if (actualCount != null) {
         if (actualCount === 0) {
           const base = categoryLabel
-            ? `No ${categoryLabel} products found${locationSuffix}${budgetSuffix}`
-            : `No products found${locationSuffix}${budgetSuffix}`;
-          return `${base} — post a requirement and let sellers come to you.`;
+            ? `No ${categoryLabel} providers found${locationSuffix}${budgetSuffix}`
+            : `No providers found${locationSuffix}${budgetSuffix}`;
+          return `${base} — post a requirement and let providers come to you.`;
         }
         if (categoryLabel) {
-          return `${prefix}Found ${actualCount} ${categoryLabel} product${actualCount === 1 ? "" : "s"}${locationSuffix}${budgetSuffix}.`;
+          return `${prefix}Found ${actualCount} ${categoryLabel} provider${actualCount === 1 ? "" : "s"}${locationSuffix}${budgetSuffix}.`;
         }
-        return `${prefix}Found ${actualCount} product${actualCount === 1 ? "" : "s"}${locationSuffix}${budgetSuffix}.`;
+        return `${prefix}Found ${actualCount} provider${actualCount === 1 ? "" : "s"}${locationSuffix}${budgetSuffix}.`;
       }
       if (categoryLabel) {
         return `${prefix}Searching for ${categoryLabel} products${locationSuffix}${budgetSuffix}…`;

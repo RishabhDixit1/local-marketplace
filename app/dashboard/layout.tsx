@@ -153,7 +153,22 @@ const secondaryNavGroups = [
   },
 ];
 
-const secondaryNavItems = secondaryNavGroups.flatMap((g) => g.items);
+const hiddenNavPaths = new Set([
+  "/dashboard/analytics",
+  "/dashboard/boosts",
+  "/dashboard/campaigns",
+  "/dashboard/referrals",
+  "/dashboard/referrals/leaderboard",
+  "/dashboard/payouts",
+  "/dashboard/invoices",
+  "/dashboard/subscriptions",
+  "/dashboard/workspaces",
+  "/dashboard/launchpad",
+]);
+
+const secondaryNavItems = secondaryNavGroups
+  .flatMap((g) => g.items)
+  .filter((item) => !hiddenNavPaths.has(item.path));
 
 const STARTUP_CHECK_SESSION_KEY = "serviq-startup-check-ran";
 

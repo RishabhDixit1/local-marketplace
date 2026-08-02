@@ -177,7 +177,7 @@ export default function PeoplePage() {
             {people.length} provider{people.length === 1 ? "" : "s"} in this area
           </div>
           <motion.div
-            className="grid gap-3 sm:grid-cols-2"
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
             initial="hidden"
             animate="visible"
             variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04 } } }}

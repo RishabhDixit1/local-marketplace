@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
-import { isAdminEmail, requireRequestAuth } from "@/lib/server/requestAuth";
+import { requireAdminAuth } from "@/lib/server/requestAuth";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { createRefund, isRazorpayConfigured } from "@/lib/server/razorpay";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const auth = await requireRequestAuth(request);
+  const auth = await requireAdminAuth(request);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
-  }
-  if (!isAdminEmail(auth.auth.email)) {
-    return NextResponse.json({ ok: false, code: "FORBIDDEN", message: "Admin access required." }, { status: 403 });
   }
 
   const db = createSupabaseAdminClient();
@@ -90,12 +87,9 @@ export async function GET(request: Request) {
 }
 
 export const PATCH = withErrorHandling(async (request: Request) => {
-  const auth = await requireRequestAuth(request);
+  const auth = await requireAdminAuth(request);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
-  }
-  if (!isAdminEmail(auth.auth.email)) {
-    return NextResponse.json({ ok: false, code: "FORBIDDEN", message: "Admin access required." }, { status: 403 });
   }
 
   const rateLimit = await applyRateLimit(auth.auth.userId, "admin:orders", WRITE_ROUTE_CONFIG);

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { requireAdminAuth } from "@/lib/server/requestAuth";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { withErrorHandling } from "@/lib/server/errorHandler";
@@ -7,18 +7,13 @@ import { withErrorHandling } from "@/lib/server/errorHandler";
 export const runtime = "nodejs";
 
 async function postHandler(request: Request) {
-  const auth = await requireRequestAuth(request);
+  const auth = await requireAdminAuth(request);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
   }
 
   const rateLimit = await applyRateLimit(auth.auth.userId, "admin:batch-payouts", WRITE_ROUTE_CONFIG);
   if (rateLimit.limited) return rateLimit.response;
-
-  const { isAdminEmail } = await import("@/lib/server/requestAuth");
-  if (!isAdminEmail(auth.auth.email)) {
-    return NextResponse.json({ ok: false, message: "Forbidden" }, { status: 403 });
-  }
 
   const db = createSupabaseAdminClient();
   if (!db) {

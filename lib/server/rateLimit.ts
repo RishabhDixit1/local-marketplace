@@ -107,6 +107,46 @@ async function checkRateLimitRedis(
   }
 }
 
+// ── In-memory fallback (when DB is unavailable) ─────────────────────
+// Prevents fail-closed denial of service when the rate_limits table
+// does not exist or the database is unreachable.
+
+const memoryStore = new Map<string, { count: number; windowStart: number }>();
+const MEMORY_CLEANUP_INTERVAL_MS = 60_000;
+
+const cleanupTimer = setInterval(() => {
+  const now = Math.floor(Date.now() / 1000);
+  for (const [key, entry] of memoryStore) {
+    if (now - entry.windowStart >= 120) {
+      memoryStore.delete(key);
+    }
+  }
+}, MEMORY_CLEANUP_INTERVAL_MS);
+if (typeof cleanupTimer === "object" && cleanupTimer !== null && "unref" in cleanupTimer) {
+  (cleanupTimer as { unref: () => void }).unref();
+}
+
+function checkRateLimitInMemory(
+  rateLimitKey: string,
+  config: RateLimitConfig,
+): { allowed: boolean; remaining: number; resetInSeconds: number } {
+  const now = Math.floor(Date.now() / 1000);
+  const entry = memoryStore.get(rateLimitKey);
+
+  if (!entry || now - entry.windowStart >= config.windowSeconds) {
+    memoryStore.set(rateLimitKey, { count: 1, windowStart: now });
+    return { allowed: true, remaining: config.maxRequests - 1, resetInSeconds: config.windowSeconds };
+  }
+
+  entry.count += 1;
+  if (entry.count > config.maxRequests) {
+    entry.count -= 1;
+    return { allowed: false, remaining: 0, resetInSeconds: config.windowSeconds - (now - entry.windowStart) };
+  }
+
+  return { allowed: true, remaining: config.maxRequests - entry.count, resetInSeconds: config.windowSeconds - (now - entry.windowStart) };
+}
+
 // ── Postgres fallback ──────────────────────────────────────────────
 
 async function checkRateLimitPostgres(
@@ -115,8 +155,8 @@ async function checkRateLimitPostgres(
 ): Promise<{ allowed: boolean; remaining: number; resetInSeconds: number }> {
   const adminDb = createSupabaseAdminClient();
   if (!adminDb) {
-    console.error("[rateLimit] admin client unavailable, denying request (fail-closed)");
-    return { allowed: false, remaining: 0, resetInSeconds: config.windowSeconds };
+    console.warn("[rateLimit] admin client unavailable, falling back to in-memory");
+    return checkRateLimitInMemory(rateLimitKey, config);
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -132,9 +172,8 @@ async function checkRateLimitPostgres(
     );
 
   if (upsertErr) {
-    console.error("[rateLimit] upsert failed:", upsertErr.message);
-    // Fail-closed: deny the request if we can't track it
-    return { allowed: false, remaining: 0, resetInSeconds: config.windowSeconds };
+    console.warn("[rateLimit] upsert failed, falling back to in-memory:", upsertErr.message);
+    return checkRateLimitInMemory(rateLimitKey, config);
   }
 
   // Read the current state after upsert (single read, no race since upsert created/reset the row)
@@ -202,7 +241,7 @@ export const checkRateLimit = async (
     // Fall back to Postgres
     return await checkRateLimitPostgres(rateLimitKey, config);
   } catch (err) {
-    console.error("[rateLimit] check failed, denying request (fail-closed):", key, err);
+    console.error("[rateLimit] check failed, falling back to in-memory:", key, err);
     if (typeof process !== "undefined" && process.env.NODE_ENV === "production") {
       const Sentry = await import("@sentry/nextjs").catch(() => null);
       Sentry?.captureException?.(err instanceof Error ? err : new Error(String(err)), {
@@ -210,7 +249,7 @@ export const checkRateLimit = async (
         extra: { key },
       });
     }
-    return { allowed: false, remaining: 0, resetInSeconds: config.windowSeconds };
+    return checkRateLimitInMemory(buildRateLimitKey(key.identifier, key.route), config);
   }
 };
 

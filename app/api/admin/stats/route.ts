@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
-import { isAdminEmail, requireRequestAuth } from "@/lib/server/requestAuth";
+import { requireAdminAuth } from "@/lib/server/requestAuth";
 import { withCache, queryCacheKey } from "@/lib/cache/withCache";
 
 export const runtime = "nodejs";
@@ -26,12 +26,9 @@ type StatsResult = {
 };
 
 export async function GET(request: Request) {
-  const auth = await requireRequestAuth(request);
+  const auth = await requireAdminAuth(request);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
-  }
-  if (!isAdminEmail(auth.auth.email)) {
-    return NextResponse.json({ ok: false, code: "FORBIDDEN", message: "Admin access required." }, { status: 403 });
   }
 
   const db = createSupabaseAdminClient();

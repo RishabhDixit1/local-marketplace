@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { Loader2, CreditCard } from "lucide-react";
+import { CreditCard, Loader2, Package } from "lucide-react";
 import {
   canTransitionOrderStatus,
   getAllowedTransitions,
@@ -336,8 +336,22 @@ export default function ConsumerOrdersPage() {
         })}
 
         {orders.length === 0 && (
-          <div className="rounded-xl border-[var(--surface-border)] bg-[var(--surface-elevated)] p-6 text-[var(--ink-500)]">
-            No orders yet.
+          <div className="flex flex-col items-center gap-4 rounded-xl border-[var(--surface-border)] bg-[var(--surface-elevated)] p-10 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100">
+              <Package className="h-8 w-8 text-indigo-500" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-[var(--ink-950)]">No orders yet</h3>
+              <p className="mt-1 text-sm text-[var(--ink-500)]">
+                When you book a service or buy a product, your orders will appear here.
+              </p>
+            </div>
+            <Link
+              href="/dashboard"
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+            >
+              Browse services
+            </Link>
           </div>
         )}
       </div>

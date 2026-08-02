@@ -12,6 +12,7 @@ export type ActionResult = {
   response: string;
   action: ParsedIntent["action"];
   redirect?: string;
+  redirectParams?: Record<string, string>;
   data?: Record<string, unknown>;
   category?: string;
   suggestions?: string[];
@@ -55,6 +56,13 @@ function buildSearchUrl(intent: ParsedIntent): string {
 
 function handleSearch(intent: ParsedIntent, _context: AgentContext): ActionResult {
   const url = buildSearchUrl(intent);
+  const params: Record<string, string> = {};
+  if (intent.category) params.category = toSearchLabel(intent.category);
+  const queryParts: string[] = [];
+  if (intent.category) queryParts.push(toSearchLabel(intent.category));
+  if (intent.location) queryParts.push(`near ${intent.location}`);
+  if (queryParts.length === 0) queryParts.push(...intent.keywords.slice(0, 5));
+  params.q = queryParts.join(' ');
   const suggestions = intent.category
     ? [
         `Find ${intent.category} with best rating`,
@@ -67,11 +75,18 @@ function handleSearch(intent: ParsedIntent, _context: AgentContext): ActionResul
         "Browse all categories",
       ];
 
-  return { response: intent.response, action: intent.action, redirect: url, data: intent.category ? { category: intent.category } : undefined, category: intent.category || undefined, suggestions, intent };
+  return { response: intent.response, action: intent.action, redirect: url, redirectParams: params, data: intent.category ? { category: intent.category } : undefined, category: intent.category || undefined, suggestions, intent };
 }
 
 function handleBuy(intent: ParsedIntent, _context: AgentContext): ActionResult {
   const url = buildSearchUrl(intent);
+  const params: Record<string, string> = {};
+  if (intent.category) params.category = toSearchLabel(intent.category);
+  const queryParts: string[] = [];
+  if (intent.category) queryParts.push(toSearchLabel(intent.category));
+  if (intent.location) queryParts.push(`near ${intent.location}`);
+  if (queryParts.length === 0) queryParts.push(...intent.keywords.slice(0, 5));
+  params.q = queryParts.join(' ');
   const suggestions = intent.category
     ? [
         `${intent.category} with delivery`,
@@ -84,20 +99,21 @@ function handleBuy(intent: ParsedIntent, _context: AgentContext): ActionResult {
         "Daily needs with home delivery",
       ];
 
-  return { response: intent.response, action: intent.action, redirect: url, data: intent.category ? { category: intent.category } : undefined, category: intent.category || undefined, suggestions, intent };
+  return { response: intent.response, action: intent.action, redirect: url, redirectParams: params, data: intent.category ? { category: intent.category } : undefined, category: intent.category || undefined, suggestions, intent };
 }
 
 function handlePostNeed(intent: ParsedIntent, _context: AgentContext): ActionResult {
-  const params = new URLSearchParams();
-  if (intent.category) params.set("category", intent.category);
-  if (intent.urgency) params.set("urgency", intent.urgency);
-  if (intent.budget.max) params.set("maxBudget", String(intent.budget.max));
-  const url = `/dashboard?compose=1&postType=need${params.toString() ? `&${params.toString()}` : ""}`;
+  const params: Record<string, string> = {};
+  if (intent.category) params.category = intent.category;
+  if (intent.urgency) params.urgency = intent.urgency;
+  if (intent.budget.max) params.maxBudget = String(intent.budget.max);
+  const url = `/dashboard?compose=1&postType=need${Object.keys(params).length > 0 ? `&${new URLSearchParams(params).toString()}` : ""}`;
 
   return {
     response: intent.response,
     action: intent.action,
     redirect: url,
+    redirectParams: params,
     suggestions: [
       "Add location details",
       "Set urgency",
@@ -111,11 +127,14 @@ function handleSell(intent: ParsedIntent, _context: AgentContext): ActionResult 
   const url = intent.category
     ? `/?compose=1&postType=product&category=${encodeURIComponent(intent.category)}`
     : "/?compose=1&postType=product";
+  const params: Record<string, string> = { postType: 'product' };
+  if (intent.category) params.category = intent.category;
 
   return {
     response: intent.response,
     action: intent.action,
     redirect: url,
+    redirectParams: params,
     suggestions: [
       "List with photo",
       "Set competitive price",

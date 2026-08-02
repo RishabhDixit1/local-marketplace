@@ -2,7 +2,9 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { logger } from "@/lib/server/logger";
 
 export const runtime = "nodejs";
 
@@ -13,6 +15,9 @@ async function postHandler(request: Request) {
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
   }
+
+  const rateLimitCheck = await applyRateLimit(authResult.auth.userId, "subscriptions:verify", WRITE_ROUTE_CONFIG);
+  if (rateLimitCheck.limited) return rateLimitCheck.response;
 
   if (!RAZORPAY_KEY_SECRET) {
     return NextResponse.json({ ok: false, message: "Payment gateway not configured" }, { status: 503 });
@@ -84,7 +89,9 @@ async function postHandler(request: Request) {
     .update(`${body.razorpayOrderId}|${body.razorpayPaymentId}`)
     .digest("hex");
 
-  if (expectedSignature !== body.razorpaySignature) {
+  const sigBuf = Buffer.from(body.razorpaySignature, "hex");
+  const expectedBuf = Buffer.from(expectedSignature, "hex");
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
     return NextResponse.json({ ok: false, message: "Payment signature invalid" }, { status: 400 });
   }
 

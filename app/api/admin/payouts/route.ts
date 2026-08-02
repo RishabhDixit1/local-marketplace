@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireRequestAuth, isAdminEmail } from "@/lib/server/requestAuth";
+import { requireAdminAuth } from "@/lib/server/requestAuth";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { withErrorHandling } from "@/lib/server/errorHandler";
@@ -8,13 +8,9 @@ import { isRazorpayConfigured, getRazorpay } from "@/lib/server/razorpay";
 export const runtime = "nodejs";
 
 export const GET = withErrorHandling(async function getHandler(request: Request) {
-  const auth = await requireRequestAuth(request);
+  const auth = await requireAdminAuth(request);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
-  }
-
-  if (!isAdminEmail(auth.auth.email)) {
-    return NextResponse.json({ ok: false, message: "Forbidden" }, { status: 403 });
   }
 
   const db = createSupabaseAdminClient();
@@ -52,13 +48,9 @@ type PatchBody = {
 };
 
 export const PATCH = withErrorHandling(async function patchHandler(request: Request) {
-  const auth = await requireRequestAuth(request);
+  const auth = await requireAdminAuth(request);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
-  }
-
-  if (!isAdminEmail(auth.auth.email)) {
-    return NextResponse.json({ ok: false, message: "Forbidden" }, { status: 403 });
   }
 
   const rateLimit = await applyRateLimit(auth.auth.userId, "admin:payouts-update", WRITE_ROUTE_CONFIG);

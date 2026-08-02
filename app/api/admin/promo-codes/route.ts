@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireRequestAuth, isAdminEmail } from "@/lib/server/requestAuth";
+import { requireAdminAuth } from "@/lib/server/requestAuth";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { withErrorHandling } from "@/lib/server/errorHandler";
@@ -7,9 +7,9 @@ import { withErrorHandling } from "@/lib/server/errorHandler";
 export const runtime = "nodejs";
 
 export const GET = withErrorHandling(async function getHandler(request: Request) {
-  const auth = await requireRequestAuth(request);
-  if (!auth.ok || !isAdminEmail(auth.auth.email)) {
-    return NextResponse.json({ ok: false, message: "Forbidden" }, { status: 403 });
+  const auth = await requireAdminAuth(request);
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
   }
 
   const db = createSupabaseAdminClient();
@@ -28,9 +28,9 @@ export const GET = withErrorHandling(async function getHandler(request: Request)
 }, "admin:promo-codes-list");
 
 export const POST = withErrorHandling(async function postHandler(request: Request) {
-  const auth = await requireRequestAuth(request);
-  if (!auth.ok || !isAdminEmail(auth.auth.email)) {
-    return NextResponse.json({ ok: false, message: "Forbidden" }, { status: 403 });
+  const auth = await requireAdminAuth(request);
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
   }
 
   const rateLimit = await applyRateLimit(auth.auth.userId, "admin:promo-codes-create", WRITE_ROUTE_CONFIG);
@@ -83,9 +83,9 @@ export const POST = withErrorHandling(async function postHandler(request: Reques
 }, "admin:promo-codes-create");
 
 export const PATCH = withErrorHandling(async function patchHandler(request: Request) {
-  const auth = await requireRequestAuth(request);
-  if (!auth.ok || !isAdminEmail(auth.auth.email)) {
-    return NextResponse.json({ ok: false, message: "Forbidden" }, { status: 403 });
+  const auth = await requireAdminAuth(request);
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
   }
 
   const rateLimit = await applyRateLimit(auth.auth.userId, "admin:promo-codes-update", WRITE_ROUTE_CONFIG);
