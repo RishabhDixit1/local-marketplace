@@ -439,17 +439,46 @@ const loadReviews = async (db: NonNullable<ReturnType<typeof getServerSupabase>>
     .filter((row): row is MarketplaceReviewRecord => Boolean(row));
 };
 
+type ProviderOrderStats = {
+  provider_id: string;
+  completed_jobs: number;
+  open_leads: number;
+  accepted_jobs: number;
+  repeat_consumers: number;
+};
+
+const loadProviderOrderStats = async (
+  db: NonNullable<ReturnType<typeof getServerSupabase>>,
+  profileId: string
+): Promise<ProviderOrderStats | null> => {
+  const { data, error } = await db.rpc("get_provider_order_stats", { provider_ids: [profileId] });
+
+  if (error || !Array.isArray(data) || data.length === 0) return null;
+
+  const row = data[0] as Record<string, unknown>;
+  return {
+    provider_id: profileId,
+    completed_jobs: toNumber(row.completed_jobs),
+    open_leads: toNumber(row.open_leads),
+    accepted_jobs: toNumber(row.accepted_jobs),
+    repeat_consumers: toNumber(row.repeat_consumers),
+  };
+};
+
 const loadTrustScores = async (
   db: NonNullable<ReturnType<typeof getServerSupabase>>,
   profile: ProfileRecord,
-  completionPercent: number,
   averageRating: number
 ) => {
+  const stats = await loadProviderOrderStats(db, profile.id);
+  const completionRate = stats && stats.accepted_jobs > 0 ? clamp((stats.completed_jobs / stats.accepted_jobs) * 100) : 0;
+  const repeatClients = stats && stats.repeat_consumers > 0 ? stats.repeat_consumers : profile.repeat_clients_count || 0;
+
   const calculated = calculateMarketplaceTrustScore({
     averageRating,
-    completionRate: completionPercent,
+    completionRate,
     onTimeRate: profile.on_time_rate || 0,
-    repeatClients: profile.repeat_clients_count || 0,
+    repeatClients,
     verificationLevel: profile.verification_level,
     responseTimeMinutes: profile.response_time_minutes,
   });
@@ -542,7 +571,7 @@ const loadMarketplaceProfileBundle = async (
     paymentMethods,
   });
 
-  const trustScore = await loadTrustScores(db, profile, completion.total, averageRating);
+  const trustScore = await loadTrustScores(db, profile, averageRating);
   const publicPath = buildPublicProfilePath(profile);
 
   return {

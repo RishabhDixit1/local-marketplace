@@ -18,6 +18,7 @@ import '../../../shared/components/marketplace_guidance.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/sticky_bottom_cta.dart';
 import '../../../shared/components/trust_badge.dart';
+import '../../../shared/components/voice_input_button.dart';
 import '../../feed/data/feed_repository.dart';
 import '../../feed/domain/feed_snapshot.dart';
 import '../../tasks/data/task_repository.dart';
@@ -1075,6 +1076,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
               maxLength: 160,
               textInputAction: TextInputAction.newline,
               validator: _validateTitle,
+              suffixIcon: VoiceInputButton(controller: _titleController, iconSize: 18),
             ),
           ],
         ),

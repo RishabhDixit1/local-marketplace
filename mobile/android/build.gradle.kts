@@ -28,10 +28,11 @@ subprojects {
 subprojects {
     project.evaluationDependsOn(":app")
 }
-
-allprojects {
-    tasks.matching { it.name.contains("check") && it.name.contains("AarMetadata") }.configureEach {
-        enabled = false
+subprojects {
+    buildscript {
+        configurations.classpath {
+            resolutionStrategy.force("com.android.tools.build:gradle:8.13.2")
+        }
     }
 }
 

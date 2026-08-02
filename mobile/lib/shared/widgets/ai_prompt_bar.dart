@@ -9,6 +9,7 @@ import '../../core/constants/app_routes.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../features/ai_prompt/domain/ai_prompt_models.dart';
 import '../../l10n/l10n.dart';
+import '../components/voice_input_button.dart';
 
 class AiPromptBar extends ConsumerStatefulWidget {
   const AiPromptBar({
@@ -222,15 +223,20 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
                       child: Icon(Icons.auto_awesome_rounded,
                           size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                     ),
-              suffixIcon: _controller.text.isNotEmpty
-                  ? IconButton(
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_controller.text.isNotEmpty)
+                    IconButton(
                       icon: const Icon(Icons.close_rounded, size: 16),
                       onPressed: () {
                         _controller.clear();
                         setState(() => _debounceResult = null);
                       },
-                    )
-                  : null,
+                    ),
+                  VoiceInputButton(controller: _controller, iconSize: 18),
+                ],
+              ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,

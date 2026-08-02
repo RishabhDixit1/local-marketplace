@@ -1,6 +1,7 @@
 import { createSupabaseAdminClient } from "../server/supabaseClients";
 import { parseIntentBest, type ParsedIntent } from "./intentParser";
 import { scoreLead, computeCategoryFit, haversineKm } from "../leads/scoring";
+import { calculateMarketplaceTrustScore } from "../profile/marketplace";
 import { logger } from "../server/logger";
 
 type SupabaseClient = NonNullable<ReturnType<typeof createSupabaseAdminClient>>;
@@ -57,6 +58,10 @@ type ProfileRow = {
   review_count: number | null;
   completed_jobs: number | null;
   availability: string | null;
+  verification_level: string | null;
+  response_time_minutes: number | null;
+  on_time_rate: number | null;
+  repeat_clients_count: number | null;
 };
 
 type ReviewRow = {
@@ -68,6 +73,14 @@ type PresenceRow = {
   provider_id: string;
   is_online: boolean;
   last_seen: string;
+};
+
+type OrderStatsRow = {
+  provider_id: string;
+  completed_jobs: number;
+  open_leads: number;
+  accepted_jobs: number;
+  repeat_consumers: number;
 };
 
 const MAX_CANDIDATES = 60;
@@ -176,6 +189,7 @@ async function matchProviders(
   const profiles = await fetchProfiles(db, providerIds);
   const reviews = await fetchReviews(db, providerIds);
   const presences = await fetchPresences(db, providerIds);
+  const orderStats = await fetchOrderStats(db, providerIds);
 
   const results: IntentMatchItem[] = [];
 
@@ -190,6 +204,22 @@ async function matchProviders(
     const reviewCount = providerReviews.length;
     const presence = presences.get(listing.provider_id);
     const isOnline = presence?.is_online ?? false;
+
+    const stats = orderStats.get(listing.provider_id);
+    const completedJobs = stats && stats.completed_jobs > 0 ? stats.completed_jobs : profile.completed_jobs ?? 0;
+    const acceptedJobs = stats?.accepted_jobs ?? 0;
+    const completionRate = acceptedJobs > 0 ? clampPercent((completedJobs / acceptedJobs) * 100) : 0;
+    const repeatClients = stats?.repeat_consumers ?? profile.repeat_clients_count ?? 0;
+    const responseTimeMinutes = profile.response_time_minutes ?? 30;
+
+    const trustCalc = calculateMarketplaceTrustScore({
+      averageRating: avgRating,
+      completionRate,
+      onTimeRate: profile.on_time_rate ?? 0,
+      repeatClients,
+      verificationLevel: profile.verification_level,
+      responseTimeMinutes,
+    });
 
     const categoryFit = parsed.category
       ? computeCategoryFit(parsed.category, [listing.category || "", ...(profile.headline ? [profile.headline] : [])])
@@ -207,13 +237,13 @@ async function matchProviders(
       categoryFit,
       distanceKm,
       availability: listing.availability || profile.availability || "available",
-      responseTimeMinutes: 30, // default
-      trustScore: profile.trust_score ?? 50,
-      completedJobs: profile.completed_jobs ?? 0,
+      responseTimeMinutes,
+      trustScore: trustCalc.trustScore,
+      completedJobs,
       reviewCount,
       averageRating: avgRating,
       isOnline,
-      repeatClientsCount: 0,
+      repeatClientsCount: repeatClients,
     });
 
     results.push({
@@ -387,12 +417,32 @@ async function fetchProfiles(
   for (const chunk of chunks) {
     const { data } = await db
       .from("profiles")
-      .select("id, display_name, headline, bio, locality_id, latitude, longitude, avatar_url, trust_score, average_rating, review_count, completed_jobs, availability")
+      .select("id, display_name, headline, bio, locality_id, latitude, longitude, avatar_url, trust_score, average_rating, review_count, completed_jobs, availability, verification_level, response_time_minutes, on_time_rate, repeat_clients_count")
       .in("id", chunk);
 
     if (data) {
       for (const row of data) {
         map.set(row.id, row as ProfileRow);
+      }
+    }
+  }
+  return map;
+}
+
+async function fetchOrderStats(
+  db: SupabaseClient,
+  providerIds: string[],
+): Promise<Map<string, OrderStatsRow>> {
+  const map = new Map<string, OrderStatsRow>();
+  if (providerIds.length === 0) return map;
+
+  const chunks = chunkArray(providerIds, 200);
+  for (const chunk of chunks) {
+    const { data } = await db.rpc("get_provider_order_stats", { provider_ids: chunk });
+
+    if (data) {
+      for (const row of data) {
+        map.set(row.provider_id, row as OrderStatsRow);
       }
     }
   }
@@ -571,4 +621,9 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
     chunks.push(arr.slice(i, i + size));
   }
   return chunks;
+}
+
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, value));
 }

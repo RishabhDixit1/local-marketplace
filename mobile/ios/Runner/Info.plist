@@ -46,7 +46,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>ServiQ uses your camera during live video calls with other users.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>ServiQ uses your microphone during live voice and video calls with other users.</string>
+	<string>ServiQ uses your microphone for voice input and during live voice and video calls with other users.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
