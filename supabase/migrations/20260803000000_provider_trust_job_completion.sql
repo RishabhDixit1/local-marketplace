@@ -17,6 +17,8 @@ $$;
 grant execute on function public.calculate_job_completion_rate(bigint, bigint) to authenticated;
 grant execute on function public.calculate_job_completion_rate(bigint, bigint) to anon;
 
+drop function if exists public.get_provider_order_stats(uuid[]);
+
 create or replace function public.get_provider_order_stats(provider_ids uuid[])
 returns table (
   provider_id uuid,
