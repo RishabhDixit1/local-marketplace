@@ -17,7 +17,7 @@ export default function RootLoading() {
           <ShimmerSkeleton key={i} className="h-8 w-24 rounded-xl" />
         ))}
       </div>
-      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
             <div className="flex items-start gap-3">

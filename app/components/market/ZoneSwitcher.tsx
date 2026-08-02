@@ -42,11 +42,12 @@ export default function ZoneSwitcher({ currentSlug }: { currentSlug: string }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
+        aria-label={current?.name ?? "Switch Zone"}
         className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-300)] hover:shadow-sm"
       >
-        <MapPin className="h-3.5 w-3.5 text-[var(--brand-600)]" />
-        {current?.name ?? "Switch Zone"}
-        <ChevronDown className={`h-3 w-3 transition ${open ? "rotate-180" : ""}`} />
+        <MapPin className="h-3.5 w-3.5 shrink-0 text-[var(--brand-600)]" />
+        <span className="hidden max-w-[9rem] truncate sm:inline">{current?.name ?? "Switch Zone"}</span>
+        <ChevronDown className={`h-3 w-3 shrink-0 transition ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (

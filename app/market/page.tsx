@@ -77,7 +77,7 @@ export default function MarketHubPage() {
       </section>
 
       {loading ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="nameplate-card animate-pulse p-5 pt-7">
               <div className="h-5 w-32 rounded bg-[var(--surface-soft)] mb-3" />
@@ -99,7 +99,7 @@ export default function MarketHubPage() {
                 </div>
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--ink-500)]">Live Now</h2>
               </div>
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {liveZones.map((zone) => (
                   <Link
                     key={zone.id}
@@ -149,7 +149,7 @@ export default function MarketHubPage() {
                 </div>
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--ink-500)]">Coming Soon</h2>
               </div>
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {upcomingZones.map((zone) => (
                   <Link
                     key={zone.id}

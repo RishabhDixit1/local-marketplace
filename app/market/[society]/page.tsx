@@ -206,7 +206,7 @@ export default function SocietyPage() {
             <p className="mt-1 text-xs text-[var(--ink-500)]">Check back soon or browse nearby societies.</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {providers.slice(0, 12).map((provider) => (
               <Link
                 key={provider.id}
@@ -287,7 +287,7 @@ export default function SocietyPage() {
       {otherLocalities.length > 0 && (
         <section className="mb-10">
           <h2 className="mb-5 text-xl font-normal text-[var(--ink-950)]" style={{ fontFamily: "var(--font-display)" }}>Nearby Societies</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {otherLocalities.map((l) => (
               <Link
                 key={l.id}

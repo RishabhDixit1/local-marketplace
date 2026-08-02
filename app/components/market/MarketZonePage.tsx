@@ -134,18 +134,18 @@ export default function MarketZonePage({ slug }: MarketZonePageProps) {
             {user ? (
               <Link
                 href="/dashboard"
-                className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-800)]"
+                className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-900)] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-800)] sm:px-4"
               >
-                <LayoutDashboard className="h-4 w-4" />
-                Dashboard
+                <LayoutDashboard className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Dashboard</span>
               </Link>
             ) : (
               <Link
                 href="/?signin=true"
-                className="inline-flex items-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-4 py-2 text-sm font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                className="inline-flex items-center gap-2 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] px-3 py-2 text-sm font-semibold text-[var(--ink-700)] transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] sm:px-4"
               >
-                <LogIn className="h-4 w-4" />
-                Sign In
+                <LogIn className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Sign In</span>
               </Link>
             )}
           </div>
@@ -250,7 +250,7 @@ export default function MarketZonePage({ slug }: MarketZonePageProps) {
         </div>
 
         {providersLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="nameplate-card animate-pulse p-4 pt-6">
                 <div className="flex items-start gap-3">
@@ -268,7 +268,7 @@ export default function MarketZonePage({ slug }: MarketZonePageProps) {
             ))}
           </div>
         ) : (providers ?? []).length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {(providers ?? []).map((provider) => (
               <div key={provider.id} className="h-full">
                 <ProviderCard

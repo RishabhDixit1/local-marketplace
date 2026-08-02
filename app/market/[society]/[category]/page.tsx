@@ -161,7 +161,7 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
           <h2 className="mb-4 text-xl font-normal text-[var(--ink-950)]" style={{ fontFamily: "var(--font-display)" }}>
             {catName} Providers in {data.locality.name}
           </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {data.providers.map((p) => (
               <Link
                 key={p.id}
@@ -204,7 +204,7 @@ export default async function SocietyCategoryPage({ params }: PageProps) {
         <div className="mb-4">
           <h2 className="text-xl font-normal text-[var(--ink-950)]" style={{ fontFamily: "var(--font-display)" }}>Other Societies in {areaName}</h2>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.allLocalities.filter((l) => l.id !== data.locality.id).slice(0, 6).map((l) => (
             <Link
               key={l.id}

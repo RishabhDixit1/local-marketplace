@@ -466,7 +466,7 @@ function SearchPageContent() {
           </div>
         )}
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {allProviders.map((provider) => (
             <Link
               key={provider.id}
@@ -479,7 +479,7 @@ function SearchPageContent() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
+                    <div className="min-w-0">
                       <h3 className="text-sm font-bold text-[var(--ink-950)] truncate">{provider.name}</h3>
                       <p className="mt-0.5 text-xs text-[var(--ink-500)] truncate">{provider.location || "Local area"}</p>
                     </div>
@@ -551,7 +551,7 @@ function SearchPageFallback() {
         <div className="h-10 w-full max-w-md animate-pulse rounded-xl bg-slate-200" />
         <div className="h-10 w-24 animate-pulse rounded-xl bg-slate-200" />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4">
             <div className="flex items-center gap-3">

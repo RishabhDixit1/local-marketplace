@@ -54,7 +54,7 @@ export default async function BusinessDirectoryPage() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {businesses.map((b) => (
             <Link
               key={b.id}

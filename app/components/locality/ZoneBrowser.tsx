@@ -70,7 +70,7 @@ export default function ZoneBrowser({
             <div key={tab.key} className="h-9 w-24 animate-pulse rounded-xl bg-[var(--surface-soft)]" />
           ))}
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="nameplate-card animate-pulse p-4 pt-6">
               <div className="flex items-center gap-2">
@@ -129,7 +129,7 @@ export default function ZoneBrowser({
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((locality) => {
             const colors = zoneColors[locality.zone_type] || zoneColors.society;
             return (
