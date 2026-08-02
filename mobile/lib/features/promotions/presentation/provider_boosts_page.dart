@@ -8,7 +8,6 @@ import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../data/promotions_repository.dart';
 import '../domain/promotion_models.dart';
 
@@ -42,8 +41,8 @@ class _ProviderBoostsPageState extends ConsumerState<ProviderBoostsPage> {
   Widget build(BuildContext context) {
     final async = ref.watch(boostDataProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Boosts')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Boosts'),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(boostDataProvider);
@@ -62,7 +61,7 @@ class _ProviderBoostsPageState extends ConsumerState<ProviderBoostsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _Hero(remaining: data.remainingBoosts),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   _PlacementSection(
                     title: 'Active',
                     placements: data.active,
@@ -70,7 +69,7 @@ class _ProviderBoostsPageState extends ConsumerState<ProviderBoostsPage> {
                     icon: Icons.trending_up_rounded,
                     color: AppColors.verified,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   _PlacementSection(
                     title: 'Upcoming',
                     placements: data.upcoming,
@@ -78,7 +77,7 @@ class _ProviderBoostsPageState extends ConsumerState<ProviderBoostsPage> {
                     icon: Icons.schedule_rounded,
                     color: AppColors.accent,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   _PlacementSection(
                     title: 'Expired',
                     placements: data.expired,
@@ -86,12 +85,12 @@ class _ProviderBoostsPageState extends ConsumerState<ProviderBoostsPage> {
                     icon: Icons.history_rounded,
                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.lg),
                   Text(
                     'Purchase a boost',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   ...data.plans.map(
                     (plan) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -181,7 +180,7 @@ class _Hero extends StatelessWidget {
                   'Boost your listings',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                   'Get featured placement in search results and the feed.',
                   style: Theme.of(context).textTheme.bodyMedium,
@@ -189,12 +188,12 @@ class _Hero extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: AppColors.primarySoft,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.md),
             ),
             child: Column(
               children: [
@@ -250,7 +249,7 @@ class _PlacementSection extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.xs),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
@@ -264,7 +263,7 @@ class _PlacementSection extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.xs),
         if (placements.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -298,7 +297,7 @@ class _PlacementTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Row(
@@ -308,7 +307,7 @@ class _PlacementTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(placement.placementType.replaceAll('_', ' ')),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                   '${fmt.format(placement.startsAt)} – ${fmt.format(placement.endsAt)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -351,7 +350,7 @@ class _BoostPlanCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                   plan.priceLabel,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -387,7 +386,7 @@ class _Loading extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 LoadingShimmer(height: 20, width: 160),
-                SizedBox(height: 12),
+                SizedBox(height: AppSpacing.sm),
                 LoadingShimmer(height: 50),
               ],
             ),

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
@@ -27,41 +29,55 @@ class MainBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final destinations = _mainDestinations(
       l10n: l10n,
       chatCount: chatCount,
       taskCount: taskCount,
     );
 
-    return SafeArea(
-      top: false,
-      minimum: const EdgeInsets.fromLTRB(0, 0, 0, 0),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadow,
-              blurRadius: 18,
-              offset: Offset(0, -6),
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [
+                      AppColors.darkSurface.withValues(alpha: 0.92),
+                      AppColors.darkSurfaceAlt.withValues(alpha: 0.8),
+                    ]
+                  : [
+                      Colors.white.withValues(alpha: 0.92),
+                      Colors.white.withValues(alpha: 0.85),
+                    ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-          child: Row(
-            children: [
-              for (var index = 0; index < destinations.length; index += 1)
-                Expanded(
-                  child: _NavDestinationButton(
-                    destination: destinations[index],
-                    selected: currentIndex == index,
-                    index: index,
-                    onTap: () => onTap(index),
-                  ),
-                ),
-            ],
+            border: Border(
+              top: BorderSide(
+                color: isDark ? AppColors.glassStrokeDark : AppColors.glassStroke,
+              ),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 12),
+              child: Row(
+                children: [
+                  for (var index = 0; index < destinations.length; index += 1)
+                    Expanded(
+                      child: _NavDestinationButton(
+                        destination: destinations[index],
+                        selected: currentIndex == index,
+                        index: index,
+                        onTap: () => onTap(index),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -97,7 +113,9 @@ class MainNavigationRail extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        border: Border(right: BorderSide(color: Theme.of(context).dividerColor)),
+        border: Border(
+          right: BorderSide(color: Theme.of(context).dividerColor),
+        ),
       ),
       child: SafeArea(
         right: false,
@@ -119,8 +137,8 @@ class MainNavigationRail extends StatelessWidget {
                 height: 46,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  gradient: AppGradients.premiumDark,
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
                   boxShadow: AppShadows.glow,
                 ),
                 child: Text(
@@ -160,6 +178,11 @@ List<_NavDestination> _mainDestinations({
       label: l10n.home,
       icon: Icons.home_outlined,
       selectedIcon: Icons.home_rounded,
+    ),
+    _NavDestination(
+      label: l10n.discovery,
+      icon: Icons.explore_outlined,
+      selectedIcon: Icons.explore_rounded,
     ),
     _NavDestination(
       label: l10n.market,
@@ -203,7 +226,9 @@ class _NavRailIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = selected ? AppColors.accentDeep : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+    final foreground = selected
+        ? AppColors.accent
+        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
     final icon = selected ? destination.selectedIcon : destination.icon;
 
     return Tooltip(
@@ -242,10 +267,13 @@ class _NavDestinationButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = selected ? AppColors.primaryDeep : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = selected
+        ? AppColors.accent
+        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
     final icon = selected ? destination.selectedIcon : destination.icon;
     final selectedBackground = selected
-        ? AppColors.primarySoft
+        ? (isDark ? AppColors.accentDeep.withValues(alpha: 0.3) : AppColors.accentSoft)
         : Colors.transparent;
     final badgeCount = destination.badgeCount;
     final semanticLabel = badgeCount > 0
@@ -263,19 +291,19 @@ class _NavDestinationButton extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(AppRadii.md),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
             child: AnimatedContainer(
               duration: AppDurations.fast,
               curve: Curves.easeOutCubic,
               constraints: const BoxConstraints(
                 minHeight: AppTouchTargets.minimum,
               ),
-              height: 58,
+              height: 56,
               margin: const EdgeInsets.symmetric(horizontal: 2),
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               decoration: BoxDecoration(
                 color: selectedBackground,
-                borderRadius: BorderRadius.circular(AppRadii.md),
+                borderRadius: BorderRadius.circular(AppRadii.lg),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -287,7 +315,19 @@ class _NavDestinationButton extends StatelessWidget {
                       clipBehavior: Clip.none,
                       alignment: Alignment.center,
                       children: [
-                        Icon(icon, size: AppIconSize.lg, color: foreground),
+                        AnimatedSwitcher(
+                          duration: AppDurations.fast,
+                          transitionBuilder: (child, anim) => ScaleTransition(
+                            scale: anim,
+                            child: child,
+                          ),
+                          child: Icon(
+                            icon,
+                            size: AppIconSize.lg,
+                            color: foreground,
+                            key: ValueKey(selected),
+                          ),
+                        ),
                         Positioned(
                           top: -6,
                           right: -8,
@@ -296,14 +336,14 @@ class _NavDestinationButton extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   Text(
                     destination.label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: foreground,
-                      fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                     ),
                   ),
                 ],

@@ -3,93 +3,91 @@ import 'package:flutter/material.dart';
 class AppColors {
   const AppColors._();
 
-  /// Canvas behind scrollable content (warm paper, not pure gray).
-  static const background = Color(0xFFF8F6F1);
-  static const backgroundRaised = Color(0xFFECE9E2);
+  static const background = Color(0xFFFCFCFD);
+  static const backgroundAlt = Color(0xFFF5F6FA);
   static const surface = Color(0xFFFFFFFF);
-  static const surfaceAlt = Color(0xFFF0EDE6);
-  static const surfaceTint = Color(0xFFE8EEF8);
-  static const surfacePressed = Color(0xFFE6E3DC);
+  static const surfaceAlt = Color(0xFFF0F1F5);
+  static const surfaceTint = Color(0xFFE8EDF5);
+  static const surfacePressed = Color(0xFFE5E6EB);
   static const surfaceMuted = surfaceAlt;
-  static const surfaceRaised = backgroundRaised;
 
-  // Text/border tokens are private to app_theme.dart (Theme.of(context) preferred).
+  static const primary = Color(0xFF0D2137);
+  static const primaryDeep = Color(0xFF071526);
+  static const primarySoft = Color(0xFFE8EDF5);
+  static const primaryPressed = Color(0xFF1A3552);
 
-  /// Primary commerce / success-adjacent action (calmer blue-teal vs generic green).
-  static const primary = Color(0xFF0F766E);
-  static const primaryDeep = Color(0xFF115E57);
-  static const primarySoft = Color(0xFFCCFBF1);
-  static const primaryPressed = Color(0xFF0D9488);
+  static const accent = Color(0xFF0F766E);
+  static const accentDeep = Color(0xFF0A5C56);
+  static const accentSoft = Color(0xFFCCFBF1);
 
-  /// Trust & navigation emphasis — reduces “all-green” UI while keeping primary for CTAs.
-  static const accent = Color(0xFF3557D5);
-  static const accentDeep = Color(0xFF253C99);
-  static const accentSoft = Color(0xFFEEF2FF);
+  static const warm = Color(0xFFD97706);
+  static const warmDeep = Color(0xFFB85D04);
+  static const warmSoft = Color(0xFFFFF3E0);
 
-  static const warm = Color(0xFFB66B1E);
-  static const warmDeep = Color(0xFF7A4313);
-  static const warmSoft = Color(0xFFFFF0DA);
-
-  static const warning = Color(0xFFAD6B00);
-  static const warningSoft = Color(0xFFFFF4D8);
-  static const danger = Color(0xFFC2415A);
-  static const dangerSoft = Color(0xFFFFE6EC);
-  static const success = Color(0xFF158463);
-  static const successSoft = Color(0xFFE2F6EE);
+  static const warning = Color(0xFFDC6803);
+  static const warningSoft = Color(0xFFFFF2CC);
+  static const danger = Color(0xFFE03E5A);
+  static const dangerSoft = Color(0xFFFFE5E9);
+  static const success = Color(0xFF0E8345);
+  static const successSoft = Color(0xFFDCFCE6);
   static const verified = Color(0xFF2563EB);
   static const verifiedSoft = Color(0xFFEFF6FF);
-  static const urgent = Color(0xFFB84A1C);
-  static const urgentSoft = Color(0xFFFFEBDD);
-  static const premium = Color(0xFF7147A8);
-  static const premiumSoft = Color(0xFFF4ECFF);
+  static const urgent = Color(0xFFDC6803);
+  static const urgentSoft = Color(0xFFFFF2CC);
+  static const premium = Color(0xFF7C3AED);
+  static const premiumSoft = Color(0xFFF3ECFF);
 
-  /// Marigold / turmeric accent — warm yellow-orange for "Live" states and highlights.
-  static const marigold = Color(0xFFD4920A);
-  static const marigoldDeep = Color(0xFF8F5E06);
-  static const marigoldSoft = Color(0xFFFEF9EC);
-  static const marigoldMuted = Color(0xFFFDF0CC);
+  static const marigold = Color(0xFFF59E0B);
+  static const marigoldDeep = Color(0xFFD97706);
+  static const marigoldSoft = Color(0xFFFEF3C7);
+  static const marigoldMuted = Color(0xFFFDE68A);
 
-  /// Sage / mint tint — subtle backgrounds and "Coming Soon" dormant states.
-  static const sage = Color(0xFF5AAD7A);
-  static const sageDeep = Color(0xFF3A7A55);
-  static const sageSoft = Color(0xFFF2F9F5);
-  static const sageMuted = Color(0xFFE8F3EC);
+  static const whatsapp = Color(0xFF25D366);
+  static const whatsappDeep = Color(0xFF20BD5A);
+  static const whatsappSoft = Color(0xFFDCF8C6);
 
-  static const scrim = Color(0xA6141A22);
-  static const shadow = Color(0x15141A22);
-  static const glow = Color(0x220F766E);
+  static const sage = Color(0xFF10B981);
+  static const sageDeep = Color(0xFF059669);
+  static const sageSoft = Color(0xFFD1FAE5);
+  static const sageMuted = Color(0xFFA7F3D0);
 
-  // Dark theme surfaces
-  static const darkBackground = Color(0xFF0E1217);
-  static const darkBackgroundRaised = Color(0xFF161C23);
-  static const darkSurface = Color(0xFF1A2129);
-  static const darkSurfaceAlt = Color(0xFF222B35);
-  static const darkSurfaceTint = Color(0xFF1E2A3A);
-  static const darkSurfacePressed = Color(0xFF2A3543);
-  static const darkInk = Color(0xFFE6EDF5);
-  static const darkInkStrong = Color(0xFFF2F7FC);
-  static const darkInkSubtle = Color(0xFF9CAAB8);
-  static const darkInkFaint = Color(0xFF6F7E8C);
-  static const darkBorder = Color(0xFF2E3A47);
-  static const darkBorderStrong = Color(0xFF3E4B59);
+  static const scrim = Color(0xCC0D2137);
+  static const shadow = Color(0x1A0D2137);
+  static const glow = Color(0x1A0F766E);
 
-  /// Skeleton / shimmer tracks (tokenized — avoid one-off grays in loaders).
-  static const shimmerBase = Color(0xFFE7EBF1);
-  static const shimmerHighlight = Color(0xFFF4F6FA);
+  static const darkBackground = Color(0xFF0A0E17);
+  static const darkBackgroundAlt = Color(0xFF111827);
+  static const darkSurface = Color(0xFF1F2937);
+  static const darkSurfaceAlt = Color(0xFF374151);
+  static const darkSurfaceTint = Color(0xFF1E2D40);
+  static const darkSurfacePressed = Color(0xFF4B5563);
+  static const darkInk = Color(0xFFF9FAFB);
+  static const darkInkStrong = Color(0xFFFFFFFF);
+  static const darkInkSubtle = Color(0xFF9CA3AF);
+  static const darkInkFaint = Color(0xFF6B7280);
+  static const darkBorder = Color(0xFF374151);
+  static const darkBorderStrong = Color(0xFF4B5563);
 
-  /// Semi-transparent overlay on hero images / gradients.
-  static const heroOverlay = Color(0xAA090F17);
-  static const heroOverlayDeep = Color(0xB0090F17);
+  static const shimmerBase = Color(0xFFE5E7EB);
+  static const shimmerHighlight = Color(0xFFF3F4F6);
 
-  /// Avatar fallback circle (light / dark).
-  static const avatarFallback = Color(0xFFE7EEF6);
+  static const heroOverlay = Color(0xCC0A0E17);
+  static const heroOverlayDeep = Color(0xE00A0E17);
+
+  static const avatarFallback = Color(0xFFE5E7EB);
   static const darkAvatarFallback = darkSurfaceAlt;
 
-  /// Dark-mode status chip backgrounds (booking / order status).
-  static const darkConfirmed = Color(0xFF0D2E2A);
+  static const darkConfirmed = Color(0xFF0D3328);
   static const darkCompleted = Color(0xFF0D2418);
-  static const darkCancelled = Color(0xFF2D0F17);
-  static const darkRescheduled = Color(0xFF2D2008);
+  static const darkCancelled = Color(0xFF3B0F1F);
+  static const darkRescheduled = Color(0xFF3B2F08);
+
+  static const glassWhite = Color(0xE6FFFFFF);
+  static const glassWhiteLight = Color(0xB3FFFFFF);
+  static const glassDark = Color(0xB31F2937);
+  static const glassDarkLight = Color(0x801F2937);
+  static const glassStroke = Color(0x33FFFFFF);
+  static const glassStrokeDark = Color(0x1AFFFFFF);
 }
 
 class AppSpacing {
@@ -127,6 +125,7 @@ class AppRadii {
   static const md = 8.0;
   static const lg = 12.0;
   static const xl = 16.0;
+  static const xxl = 20.0;
   static const pill = 999.0;
 }
 
@@ -141,83 +140,182 @@ class AppBreakpoints {
 class AppDurations {
   const AppDurations._();
 
-  static const fast = Duration(milliseconds: 160);
-  static const standard = Duration(milliseconds: 240);
-  static const slow = Duration(milliseconds: 360);
+  static const fast = Duration(milliseconds: 200);
+  static const standard = Duration(milliseconds: 300);
+  static const slow = Duration(milliseconds: 500);
 }
 
 class AppShadows {
   const AppShadows._();
 
   static const soft = <BoxShadow>[
-    BoxShadow(color: AppColors.shadow, blurRadius: 12, offset: Offset(0, 4)),
+    BoxShadow(color: AppColors.shadow, blurRadius: 8, offset: Offset(0, 2)),
   ];
 
   static const card = <BoxShadow>[
-    BoxShadow(color: AppColors.shadow, blurRadius: 18, offset: Offset(0, 8)),
+    BoxShadow(color: AppColors.shadow, blurRadius: 12, offset: Offset(0, 4)),
   ];
 
   static const md = <BoxShadow>[
-    BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: Offset(0, 4)),
+    BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: Offset(0, 3)),
   ];
 
   static const lg = <BoxShadow>[
-    BoxShadow(color: AppColors.shadow, blurRadius: 15, offset: Offset(0, 10)),
+    BoxShadow(color: AppColors.shadow, blurRadius: 20, offset: Offset(0, 8)),
   ];
 
   static const xl = <BoxShadow>[
-    BoxShadow(color: AppColors.shadow, blurRadius: 25, offset: Offset(0, 20)),
+    BoxShadow(color: AppColors.shadow, blurRadius: 30, offset: Offset(0, 12)),
   ];
 
-  /// Elevated / floating action elements (FABs, floating panels).
   static const floating = <BoxShadow>[
-    BoxShadow(color: AppColors.shadow, blurRadius: 30, offset: Offset(0, 16)),
+    BoxShadow(color: AppColors.shadow, blurRadius: 24, offset: Offset(0, 8)),
   ];
 
-  /// Top / bottom navigation bars (thin bar-level shadow).
   static const nav = <BoxShadow>[
-    BoxShadow(color: AppColors.shadow, blurRadius: 22, offset: Offset(0, -8)),
+    BoxShadow(color: AppColors.shadow, blurRadius: 20, offset: Offset(0, -4)),
   ];
 
-  /// Header / sticky top bar.
   static const header = <BoxShadow>[
-    BoxShadow(color: AppColors.shadow, blurRadius: 18, offset: Offset(0, 8)),
+    BoxShadow(color: AppColors.shadow, blurRadius: 12, offset: Offset(0, 4)),
   ];
 
-  /// Popovers, dropdowns, tooltips (float above all content).
   static const popover = <BoxShadow>[
-    BoxShadow(color: AppColors.shadow, blurRadius: 46, offset: Offset(0, 20)),
+    BoxShadow(color: AppColors.shadow, blurRadius: 40, offset: Offset(0, 16)),
   ];
 
-  /// Brand glow / hover highlight.
   static const glow = <BoxShadow>[
-    BoxShadow(color: AppColors.glow, blurRadius: 28, offset: Offset(0, 10)),
+    BoxShadow(color: AppColors.glow, blurRadius: 24, offset: Offset(0, 6)),
+  ];
+
+  static const glass = <BoxShadow>[
+    BoxShadow(color: Color(0x1A0D2137), blurRadius: 20, offset: Offset(0, 8)),
   ];
 }
 
-/// Semantic tints for marketplace card types and surfaces (Phase 1 parity references).
 class AppRoleColors {
   const AppRoleColors._();
 
-  static const helpRequestBg = Color(0xFFFFF7ED);
-  static const helpRequestFg = Color(0xFF9A3412);
-  static const serviceBg = AppColors.primarySoft;
-  static const serviceFg = AppColors.primaryDeep;
+  static const helpRequestBg = Color(0xFFFFF3E0);
+  static const helpRequestFg = Color(0xFFB85D04);
+  static const serviceBg = AppColors.accentSoft;
+  static const serviceFg = AppColors.accentDeep;
   static const productBg = AppColors.warmSoft;
   static const productFg = AppColors.warmDeep;
-  static const orderBg = AppColors.accentSoft;
-  static const orderFg = AppColors.accentDeep;
+  static const orderBg = AppColors.primarySoft;
+  static const orderFg = AppColors.primaryDeep;
   static const trustBg = AppColors.verifiedSoft;
   static const trustFg = AppColors.verified;
 }
 
-/// Minimum interactive targets (accessibility / Phase 1 polish).
 class AppTouchTargets {
   const AppTouchTargets._();
 
   static const minimum = 48.0;
-  static const buttonHeight = 50.0;
+  static const buttonHeight = 52.0;
   static const iconButton = 44.0;
+}
+
+class AppGradients {
+  const AppGradients._();
+
+  static const premiumDark = LinearGradient(
+    colors: [Color(0xFF0D2137), Color(0xFF1A3552), Color(0xFF1E4D6B)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const premiumAccent = LinearGradient(
+    colors: [Color(0xFF0F766E), Color(0xFF2563EB)],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
+
+  static const premiumWarm = LinearGradient(
+    colors: [Color(0xFFD97706), Color(0xFFF59E0B)],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
+
+  static const glassLight = LinearGradient(
+    colors: [Color(0xE6FFFFFF), Color(0xB3FFFFFF)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const glassDark = LinearGradient(
+    colors: [Color(0xB31F2937), Color(0x801F2937)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const hero = LinearGradient(
+    colors: [Color(0xFF0A0E17), Color(0xFF0D2137), Color(0xFF1E4D6B)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const heroLight = LinearGradient(
+    colors: [Color(0xFFE8EDF5), Color(0xFFCCFBF1)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const explore = LinearGradient(
+    colors: [Color(0xFFE8EDF5), Color(0xFFFEF3C7)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const people = LinearGradient(
+    colors: [Color(0xFFEFF6FF), Color(0xFFD1FAE5)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+}
+
+class AppGlassStyles {
+  const AppGlassStyles._();
+
+  static BoxDecoration light({
+    double blur = 20,
+    double opacity = 0.9,
+    BorderRadiusGeometry borderRadius = const BorderRadius.all(Radius.circular(16)),
+  }) {
+    return BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Colors.white.withValues(alpha: opacity),
+          Colors.white.withValues(alpha: opacity - 0.2),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: borderRadius,
+      border: Border.all(color: AppColors.glassStroke),
+      boxShadow: AppShadows.glass,
+    );
+  }
+
+  static BoxDecoration dark({
+    double blur = 20,
+    double opacity = 0.85,
+    BorderRadiusGeometry borderRadius = const BorderRadius.all(Radius.circular(16)),
+  }) {
+    return BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          AppColors.darkSurface.withValues(alpha: opacity),
+          AppColors.darkSurfaceAlt.withValues(alpha: opacity - 0.15),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: borderRadius,
+      border: Border.all(color: AppColors.glassStrokeDark),
+      boxShadow: AppShadows.glass,
+    );
+  }
 }
 
 @immutable
@@ -230,74 +328,77 @@ class ServiqThemeTokens extends ThemeExtension<ServiqThemeTokens> {
     required this.authGradient,
     required this.actionGradient,
     required this.glassBorder,
+    required this.glassBackground,
   });
 
   static const light = ServiqThemeTokens(
     heroGradient: LinearGradient(
-      colors: [Color(0xFF10262B), Color(0xFF115E57), Color(0xFF14B8A6)],
+      colors: [Color(0xFF0A0E17), Color(0xFF0D2137)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     exploreGradient: LinearGradient(
-      colors: [Color(0xFFE8F7F5), Color(0xFFFFF4D8)],
+      colors: [Color(0xFFE8EDF5), Color(0xFFFEF3C7)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     peopleGradient: LinearGradient(
-      colors: [Color(0xFFEEF2FF), Color(0xFFE8F7F1)],
+      colors: [Color(0xFFEFF6FF), Color(0xFFD1FAE5)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     trustGradient: LinearGradient(
-      colors: [Color(0xFFFFF0DA), Color(0xFFEFF6FF)],
+      colors: [Color(0xFFFFF3E0), Color(0xFFEFF6FF)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     authGradient: LinearGradient(
-      colors: [Color(0xFFF7F8F4), Color(0xFFE6F7F4), Color(0xFFFFF7E8)],
+      colors: [Color(0xFFFCFCFD), Color(0xFFE8EDF5), Color(0xFFCCFBF1)],
       begin: Alignment.topCenter,
       end: Alignment.bottomRight,
     ),
     actionGradient: LinearGradient(
-      colors: [Color(0xFF0F766E), Color(0xFF3557D5)],
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-    ),
-    glassBorder: Color(0x66FFFFFF),
-  );
-
-  static const dark = ServiqThemeTokens(
-    heroGradient: LinearGradient(
-      colors: [Color(0xFF0A1A1E), Color(0xFF0D4A45), Color(0xFF0A8A7A)],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    ),
-    exploreGradient: LinearGradient(
-      colors: [Color(0xFF0D1F1E), Color(0xFF1A1408)],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    ),
-    peopleGradient: LinearGradient(
-      colors: [Color(0xFF0E1225), Color(0xFF0D1F16)],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    ),
-    trustGradient: LinearGradient(
-      colors: [Color(0xFF1A0E05), Color(0xFF0E1425)],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    ),
-    authGradient: LinearGradient(
-      colors: [Color(0xFF121310), Color(0xFF0D1F1C), Color(0xFF1A1108)],
-      begin: Alignment.topCenter,
-      end: Alignment.bottomRight,
-    ),
-    actionGradient: LinearGradient(
-      colors: [Color(0xFF0A5C56), Color(0xFF1E3C8A)],
+      colors: [Color(0xFF0F766E), Color(0xFF2563EB)],
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
     ),
     glassBorder: Color(0x33FFFFFF),
+    glassBackground: Color(0xE6FFFFFF),
+  );
+
+  static const dark = ServiqThemeTokens(
+    heroGradient: LinearGradient(
+      colors: [Color(0xFF05080E), Color(0xFF0A1525)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    exploreGradient: LinearGradient(
+      colors: [Color(0xFF0A0E17), Color(0xFF111827)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    peopleGradient: LinearGradient(
+      colors: [Color(0xFF0A0E17), Color(0xFF111827)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    trustGradient: LinearGradient(
+      colors: [Color(0xFF0A0E17), Color(0xFF111827)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    authGradient: LinearGradient(
+      colors: [Color(0xFF0A0E17), Color(0xFF111827), Color(0xFF0D3328)],
+      begin: Alignment.topCenter,
+      end: Alignment.bottomRight,
+    ),
+    actionGradient: LinearGradient(
+      colors: [Color(0xFF0D5E56), Color(0xFF1D4ED8)],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    ),
+    glassBorder: Color(0x1AFFFFFF),
+    glassBackground: Color(0xB31F2937),
   );
 
   final Gradient heroGradient;
@@ -307,6 +408,7 @@ class ServiqThemeTokens extends ThemeExtension<ServiqThemeTokens> {
   final Gradient authGradient;
   final Gradient actionGradient;
   final Color glassBorder;
+  final Color glassBackground;
 
   @override
   ThemeExtension<ServiqThemeTokens> copyWith({
@@ -317,6 +419,7 @@ class ServiqThemeTokens extends ThemeExtension<ServiqThemeTokens> {
     Gradient? authGradient,
     Gradient? actionGradient,
     Color? glassBorder,
+    Color? glassBackground,
   }) {
     return ServiqThemeTokens(
       heroGradient: heroGradient ?? this.heroGradient,
@@ -326,6 +429,7 @@ class ServiqThemeTokens extends ThemeExtension<ServiqThemeTokens> {
       authGradient: authGradient ?? this.authGradient,
       actionGradient: actionGradient ?? this.actionGradient,
       glassBorder: glassBorder ?? this.glassBorder,
+      glassBackground: glassBackground ?? this.glassBackground,
     );
   }
 
@@ -337,7 +441,6 @@ class ServiqThemeTokens extends ThemeExtension<ServiqThemeTokens> {
     if (other is! ServiqThemeTokens) {
       return this;
     }
-
     return t < 0.5 ? this : other;
   }
 }

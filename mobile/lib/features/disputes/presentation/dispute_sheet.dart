@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/dispute_repository.dart';
 import '../domain/dispute_models.dart';
@@ -149,12 +150,10 @@ class _DisputeSheetState extends ConsumerState<DisputeSheet> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  TextField(
+                  AppTextField(
+                    label: 'Description',
+                    hint: 'Describe the issue in detail (min 10 characters)...',
                     controller: _descriptionController,
-                    decoration: InputDecoration(
-                      hintText: 'Describe the issue in detail (min 10 characters)...',
-                      border: OutlineInputBorder(),
-                    ),
                     maxLines: 5,
                     minLines: 3,
                     onChanged: (_) => setState(() {}),

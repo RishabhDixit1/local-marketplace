@@ -3,16 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
-import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../quotes/domain/quote_models.dart';
 import '../../tasks/data/task_repository.dart';
 import '../../tasks/domain/task_snapshot.dart';
+import '../../../l10n/l10n.dart';
+import '../../../shared/widgets/ai_prompt_bar.dart';
 
 enum _OrderFilter { all, active, completed, cancelled }
 
@@ -56,14 +56,20 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
   Widget build(BuildContext context) {
     final snapshot = ref.watch(taskSnapshotProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Orders'),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 28),
             children: [
+              AiPromptBar(
+                placeholder: AppLocalizations.of(context).aiPlaceholder,
+                enableDebounce: true,
+                onResult: (result) {},
+              ),
+              const SizedBox(height: 12),
               ServiqAsyncBody<MobileTaskSnapshot>(
                 value: snapshot,
                 errorTitle: 'Unable to load orders',
@@ -80,15 +86,15 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _OrdersHero(orders: allOrders),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
                       _OrdersStats(orders: allOrders),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
                       _FilterTabs(
                         selected: _selectedFilter,
                         allOrders: allOrders,
                         onSelected: (f) => setState(() => _selectedFilter = f),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.sm),
                       if (filtered.isEmpty)
                         SectionCard(
                           child: EmptyStateView(
@@ -206,7 +212,7 @@ class _OrdersHero extends StatelessWidget {
             'Orders and checkout',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             'Track marketplace purchases, payment state, fulfillment notes, and quote-to-order conversion.',
             style: Theme.of(context).textTheme.bodyMedium,
@@ -287,7 +293,7 @@ class _OrderTaskCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _StatusChip(status: order.status),
+              _OrderStatusPill(status: order.status),
               Chip(label: Text(order.isProviderTask ? 'Selling' : 'Buying')),
               Chip(label: Text(order.budgetLabel)),
             ],
@@ -335,24 +341,23 @@ class _OrderTaskCard extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
+class _OrderStatusPill extends StatelessWidget {
+  const _OrderStatusPill({required this.status});
 
   final MobileTaskStatus status;
 
   @override
   Widget build(BuildContext context) {
-    final (color, label) = switch (status) {
-      MobileTaskStatus.active => (AppColors.primary, 'Active'),
-      MobileTaskStatus.inProgress => (Colors.orange, 'In progress'),
-      MobileTaskStatus.completed => (Colors.green, 'Completed'),
-      MobileTaskStatus.cancelled => (Colors.red, 'Cancelled'),
+    final (bg, fg, label) = switch (status) {
+      MobileTaskStatus.active => (AppColors.primarySoft, AppColors.primary, 'Active'),
+      MobileTaskStatus.inProgress => (AppColors.warmSoft, AppColors.warm, 'In progress'),
+      MobileTaskStatus.completed => (AppColors.successSoft, AppColors.success, 'Completed'),
+      MobileTaskStatus.cancelled => (AppColors.dangerSoft, AppColors.danger, 'Cancelled'),
     };
-    return Chip(
-      label: Text(label),
-      backgroundColor: color.withValues(alpha: 0.1),
-      side: BorderSide(color: color.withValues(alpha: 0.3)),
-      labelStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
+    return AppPill(
+      label: label,
+      backgroundColor: bg,
+      foregroundColor: fg,
     );
   }
 }

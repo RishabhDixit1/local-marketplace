@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
-import '../../../core/design_system/serviq_async_state.dart';
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
@@ -42,8 +41,8 @@ class _BlockedUsersPageState extends ConsumerState<BlockedUsersPage> {
   Widget build(BuildContext context) {
     final blockedAsync = ref.watch(blockedUsersProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Blocked Users')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Blocked Users'),
       body: ServiqAsyncBody<List<BlockedUser>>(
         value: blockedAsync,
         errorTitle: 'Unable to load blocked users',

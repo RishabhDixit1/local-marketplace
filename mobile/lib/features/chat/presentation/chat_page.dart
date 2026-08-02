@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/feature_flags.dart';
 import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/design_system/serviq_surface.dart';
 import '../../../core/error/app_error_mapper.dart';
@@ -22,6 +24,7 @@ import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/profile_avatar_tile.dart';
 import '../../../shared/components/trust_badge.dart';
+import '../../live_talk/presentation/live_talk_bar.dart';
 import '../data/chat_repository.dart';
 import '../domain/chat_models.dart';
 
@@ -262,7 +265,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       onChanged: (_) => setState(() {}),
                     ),
                   ],
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   if (_openingConversation)
                     const SectionCard(
                       child: Column(
@@ -332,7 +335,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                             ),
                           if (grouped.quotes.isNotEmpty) ...[
                             if (grouped.needsReply.isNotEmpty)
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.md),
                             _ConversationSection(
                               title: 'Quotes',
                               subtitle:
@@ -344,7 +347,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                           if (grouped.activeTasks.isNotEmpty) ...[
                             if (grouped.needsReply.isNotEmpty ||
                                 grouped.quotes.isNotEmpty)
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.md),
                             _ConversationSection(
                               title: 'Active tasks',
                               subtitle:
@@ -357,7 +360,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                             if (grouped.needsReply.isNotEmpty ||
                                 grouped.quotes.isNotEmpty ||
                                 grouped.activeTasks.isNotEmpty)
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.md),
                             _ConversationSection(
                               title: 'Archived',
                               subtitle:
@@ -518,7 +521,7 @@ class _InboxEmptyCommandCenter extends StatelessWidget {
             message:
                 'Your provider replies, customer leads, quote follow-ups, task timing, and order handoffs will appear here as soon as a conversation starts.',
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           _InboxStartAction(
             icon: Icons.add_circle_outline_rounded,
             title: 'Post a Need',
@@ -565,7 +568,7 @@ class _InboxErrorRecovery extends StatelessWidget {
             message:
                 '$message\n\nCheck the connection and try again. You can still move into the main marketplace actions below.',
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           _InboxStartAction(
             icon: Icons.refresh_rounded,
             title: 'Try again',
@@ -609,11 +612,11 @@ class _InboxStartAction extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadii.sm),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpacing.sm),
             child: Row(
               children: [
                 Icon(icon, color: AppColors.primary),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -659,10 +662,10 @@ class _ConversationSection extends StatelessWidget {
         Text(title, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 6),
         Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.sm),
         ...conversations.map(
           (conversation) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
             child: _ConversationTile(
               conversation: conversation,
               onTap: () => onTapConversation(conversation),
@@ -813,7 +816,7 @@ class _RequestContextCard extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadii.lg),
             ),
             child: Icon(
               Icons.assignment_outlined,
@@ -832,7 +835,7 @@ class _RequestContextCard extends StatelessWidget {
                     context,
                   ).textTheme.labelLarge?.copyWith(color: AppColors.primary),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                   title,
                   maxLines: 2,
@@ -905,7 +908,7 @@ class _ThreadEmptyState extends StatelessWidget {
             text:
                 'Keep quotes, timing changes, and acceptance decisions in this thread.',
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           _SafetyNote(
             icon: Icons.assignment_turned_in_outlined,
             text:
@@ -929,7 +932,7 @@ class _SafetyNote extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.xs),
         Expanded(
           child: Text(text, style: Theme.of(context).textTheme.bodySmall),
         ),
@@ -1110,6 +1113,11 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
               contextData: requestContext,
               conversationId: widget.conversationId,
             ),
+          if (kLiveTalkEnabled)
+            LiveTalkBar(
+              conversationId: widget.conversationId,
+              otherUserId: conversation?.otherUserId ?? '',
+            ),
           Expanded(
             child: ServiqAsyncBody<List<ChatMessageItem>>(
               value: messagesAsync,
@@ -1118,13 +1126,13 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
               onRetry: () =>
                   ref.invalidate(chatMessagesProvider((conversationId: widget.conversationId, offset: 0))),
               loadingBuilder: () => const Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(AppSpacing.md),
                 child: _MessageListLoading(),
               ),
               data: (messages) {
                 if (messages.isEmpty && _olderMessages.isEmpty) {
                   return Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpacing.md),
                     child: _ThreadEmptyState(contextData: requestContext),
                   );
                 }
@@ -1153,7 +1161,7 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
                       return _loadingOlder
                           ? const Center(
                               child: Padding(
-                                padding: EdgeInsets.all(12),
+                                padding: EdgeInsets.all(AppSpacing.sm),
                                 child: SizedBox(
                                   width: 20,
                                   height: 20,
@@ -1173,250 +1181,412 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
                       alignment: isMine
                           ? Alignment.centerRight
                           : Alignment.centerLeft,
-                      child: Container(
-                        constraints: BoxConstraints(maxWidth: 300),
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isMine ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.circular(AppRadii.md),
-                          border: Border.all(
-                            color: isMine ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.outline,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (message.metadata?['imageUrl'] != null)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      maxWidth: 220,
-                                      maxHeight: 160,
-                                    ),
-                                    child: Semantics(
-                                      label: 'Chat image attachment',
-                                      child: CachedNetworkImage(
-                                        imageUrl: message.metadata!['imageUrl'] as String,
-                                        fit: BoxFit.cover,
-                                        placeholder: (_, _) => Container(
-                                          width: 220,
-                                          height: 120,
-                                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                          child: const Center(
-                                            child: SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(strokeWidth: 2),
-                                            ),
-                                          ),
-                                        ),
-                                        errorWidget: (_, _, _) => Container(
-                                          width: 220,
-                                          height: 120,
-                                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                          child: Icon(
-                                            Icons.broken_image_rounded,
-                                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            if (message.content.isNotEmpty)
-                              Text(
-                                message.content,
-                                maxLines: 20,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodyLarge
-                                    ?.copyWith(
-                                      color: isMine
-                                          ? Theme.of(context).colorScheme.onPrimary
-                                          : Theme.of(context).colorScheme.onSurface,
-                                    ),
-                              ),
-                            const SizedBox(height: 6),
-                            Text(
-                              _formatMessageTime(message.createdAt),
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    fontSize: 10,
-                                    color: isMine
-                                        ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.5)
-                                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-                                  ),
+                      child: isMine
+                          ? _MineBubble(
+                              message: message,
+                              isLatestMine: index == lastMineIndex,
+                            )
+                          : _TheirsBubble(
+                              message: message,
+                              isLatestMine: index == lastMineIndex,
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (isMine)
-                                  Icon(
-                                    Icons.done_rounded,
-                                    size: 14,
-                                    color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.72),
-                                  ),
-                                if (isMine) const SizedBox(width: 4),
-                                Text(
-                                  _messageStatusLabel(
-                                    message,
-                                    isMine: isMine,
-                                    isLatestMine: index == lastMineIndex,
-                                  ),
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: isMine
-                                            ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7)
-                                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
                     );
                   },
                 );
               },
             ),
           ),
-          Container(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              12,
-              16,
-              16 + MediaQuery.viewInsetsOf(context).bottom,
-            ),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline)),
-            ),
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (!hasMessages)
-                          Text(
-                            'Suggested first replies',
-                            style: Theme.of(context).textTheme.labelLarge,
-                          )
-                        else
-                          Text(
-                            'Quick replies',
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                        const SizedBox(height: 8),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children:
-                                _quickRepliesFor(
-                                      contextTitle: widget.contextTitle,
-                                      contextStatus: widget.contextStatus,
-                                      contextSource: widget.contextSource,
-                                    )
-                                    .map(
-                                      (reply) => Padding(
-                                        padding: const EdgeInsets.only(
-                                          right: 8,
-                                        ),
-                                        child: ActionChip(
-                                          label: Text(reply),
-                                          onPressed: widget.sending
-                                              ? null
-                                              : () {
-                                                  widget.composerController
-                                                      .value = TextEditingValue(
-                                                    text: reply,
-                                                    selection:
-                                                        TextSelection.collapsed(
-                                                          offset: reply.length,
-                                                        ),
-                                                  );
-                                                },
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                          ),
-                        ),
-                      ],
+          ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                  AppSpacing.sm + MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkSurface.withValues(alpha: 0.92)
+                      : Colors.white.withValues(alpha: 0.92),
+                  border: Border(
+                    top: BorderSide(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.glassStrokeDark
+                          : AppColors.glassStroke,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Semantics(
-                        label: 'Send image',
-                        child: IconButton(
-                          onPressed: _uploadingImage ? null : _pickAndSendImage,
-                          icon: _uploadingImage
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.image_outlined),
-                          tooltip: 'Send image',
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              !hasMessages
+                                  ? 'Suggested first replies'
+                                  : 'Quick replies',
+                              style: Theme.of(context).textTheme.labelLarge,
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children:
+                                    _quickRepliesFor(
+                                          contextTitle: widget.contextTitle,
+                                          contextStatus: widget.contextStatus,
+                                          contextSource: widget.contextSource,
+                                        )
+                                        .map(
+                                          (reply) => Padding(
+                                            padding: const EdgeInsets.only(
+                                              right: 8,
+                                            ),
+                                            child: ActionChip(
+                                              label: Text(reply),
+                                              onPressed: widget.sending
+                                                  ? null
+                                                  : () {
+                                                      widget.composerController
+                                                          .value = TextEditingValue(
+                                                        text: reply,
+                                                        selection:
+                                                            TextSelection.collapsed(
+                                                              offset: reply.length,
+                                                            ),
+                                                      );
+                                                    },
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Expanded(
-                        child: TextField(
-                          controller: widget.composerController,
-                          minLines: 1,
-                          maxLines: 4,
-                          textInputAction: TextInputAction.send,
-                          decoration: const InputDecoration(
-                            hintText: 'Write a message',
+                      const SizedBox(height: AppSpacing.sm),
+                      Row(
+                        children: [
+                          Semantics(
+                            label: 'Send image',
+                            child: IconButton(
+                              onPressed: _uploadingImage ? null : _pickAndSendImage,
+                              icon: _uploadingImage
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.image_outlined),
+                              tooltip: 'Send image',
+                            ),
                           ),
-                          onSubmitted: (_) => widget.onSend(),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 56,
-                        height: 48,
-                        child: FilledButton(
-                          onPressed: widget.sending
-                              ? null
-                              : () {
-                                  HapticFeedback.lightImpact();
-                                  widget.onSend();
-                                },
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size(56, 48),
-                            padding: EdgeInsets.zero,
+                          Expanded(
+                            child: TextField(
+                              controller: widget.composerController,
+                              minLines: 1,
+                              maxLines: 4,
+                              textInputAction: TextInputAction.send,
+                              decoration: InputDecoration(
+                                hintText: 'Write a message',
+                                filled: true,
+                                fillColor: Theme.of(context).brightness == Brightness.dark
+                                    ? AppColors.darkSurfaceAlt.withValues(alpha: 0.6)
+                                    : AppColors.surfaceAlt.withValues(alpha: 0.6),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.sm,
+                                  vertical: AppSpacing.sm,
+                                ),
+                              ),
+                              onSubmitted: (_) => widget.onSend(),
+                            ),
                           ),
-                          child: widget.sending
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Icon(Icons.send_rounded),
-                        ),
+                          const SizedBox(width: AppSpacing.sm),
+                          SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: FilledButton(
+                              onPressed: widget.sending
+                                  ? null
+                                  : () {
+                                      HapticFeedback.lightImpact();
+                                      widget.onSend();
+                                    },
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size(48, 48),
+                                padding: EdgeInsets.zero,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                                ),
+                              ),
+                              child: widget.sending
+                                  ? const SizedBox(
+                                      width: AppSpacing.md,
+                                      height: AppSpacing.md,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.send_rounded),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MineBubble extends StatelessWidget {
+  const _MineBubble({
+    required this.message,
+    required this.isLatestMine,
+  });
+
+  final ChatMessageItem message;
+  final bool isLatestMine;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 300),
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        gradient: AppGradients.premiumAccent,
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(AppRadii.xl),
+          topRight: const Radius.circular(AppRadii.xl),
+          bottomLeft: const Radius.circular(AppRadii.xl),
+          bottomRight: const Radius.circular(AppRadii.sm),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accent.withValues(alpha: 0.25),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (message.metadata?['imageUrl'] != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 220,
+                      maxHeight: 160,
+                    ),
+                    child: Semantics(
+                      label: 'Chat image attachment',
+                      child: CachedNetworkImage(
+                        imageUrl: message.metadata!['imageUrl'] as String,
+                        fit: BoxFit.cover,
+                        placeholder: (_, _) => Container(
+                          width: 220,
+                          height: 120,
+                          color: Colors.white.withValues(alpha: 0.15),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        errorWidget: (_, _, _) => Container(
+                          width: 220,
+                          height: 120,
+                          color: Colors.white.withValues(alpha: 0.15),
+                          child: const Icon(
+                            Icons.broken_image_rounded,
+                            color: Colors.white54,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            if (message.content.isNotEmpty)
+              Text(
+                message.content,
+                maxLines: 20,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Colors.white,
+                ),
+              ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatMessageTime(message.createdAt),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.white60,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xxs),
+                Icon(
+                  Icons.done_rounded,
+                  size: 14,
+                  color: Colors.white60,
+                ),
+                const SizedBox(width: AppSpacing.xxs),
+                Text(
+                  _messageStatusLabel(message, isMine: true, isLatestMine: isLatestMine),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.white60,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TheirsBubble extends StatelessWidget {
+  const _TheirsBubble({
+    required this.message,
+    required this.isLatestMine,
+  });
+
+  final ChatMessageItem message;
+  final bool isLatestMine;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(AppRadii.sm),
+        topRight: Radius.circular(AppRadii.xl),
+        bottomLeft: Radius.circular(AppRadii.xl),
+        bottomRight: Radius.circular(AppRadii.xl),
+      ),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 300),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppColors.darkSurface.withValues(alpha: 0.85)
+                : Colors.white.withValues(alpha: 0.85),
+            border: Border.all(
+              color: isDark ? AppColors.glassStrokeDark : AppColors.glassStroke,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (message.metadata?['imageUrl'] != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: 220,
+                        maxHeight: 160,
+                      ),
+                      child: Semantics(
+                        label: 'Chat image attachment',
+                        child: CachedNetworkImage(
+                          imageUrl: message.metadata!['imageUrl'] as String,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) => Container(
+                            width: 220,
+                            height: 120,
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (_, _, _) => Container(
+                            width: 220,
+                            height: 120,
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                            child: Icon(
+                              Icons.broken_image_rounded,
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (message.content.isNotEmpty)
+                Text(
+                  message.content,
+                  maxLines: 20,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              const SizedBox(height: 6),
+              Text(
+                _formatMessageTime(message.createdAt),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: 10,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
+              ),
+              if (isLatestMine || true)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _messageStatusLabel(message, isMine: false, isLatestMine: false),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontSize: 10,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1513,7 +1683,7 @@ class _ConversationTile extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1533,7 +1703,7 @@ class _ConversationTile extends StatelessWidget {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text(
                     conversation.subtitle,
                     maxLines: 1,
@@ -1558,7 +1728,7 @@ class _ConversationTile extends StatelessWidget {
                         ),
                       ),
                       if (conversation.unreadCount > 0) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.xs),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -1604,7 +1774,7 @@ class _ConversationListLoading extends StatelessWidget {
                 LoadingShimmer(height: 18, width: 120),
                 SizedBox(height: 10),
                 LoadingShimmer(height: 14),
-                SizedBox(height: 8),
+                SizedBox(height: AppSpacing.xs),
                 LoadingShimmer(height: 14, width: 200),
               ],
             ),
@@ -1627,12 +1797,12 @@ class _MessageListLoading extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: LoadingShimmer(height: 62, width: 220),
         ),
-        SizedBox(height: 12),
+        SizedBox(height: AppSpacing.sm),
         Align(
           alignment: Alignment.centerRight,
           child: LoadingShimmer(height: 54, width: 180),
         ),
-        SizedBox(height: 12),
+        SizedBox(height: AppSpacing.sm),
         Align(
           alignment: Alignment.centerLeft,
           child: LoadingShimmer(height: 68, width: 240),

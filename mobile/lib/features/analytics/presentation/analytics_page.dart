@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
 import '../data/analytics_repository.dart';
 import '../domain/analytics_models.dart';
 
@@ -40,8 +39,8 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
   Widget build(BuildContext context) {
     final asyncData = ref.watch(analyticsProvider(_selectedYear));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Analytics')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Analytics'),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
@@ -49,11 +48,11 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
             await ref.read(analyticsProvider(_selectedYear).future);
           },
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 28),
             children: [
               Text('Your performance and earnings overview.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               ServiqAsyncBody<AnalyticsData>(
                 value: asyncData,
                 errorTitle: 'Unable to load analytics',
@@ -81,11 +80,11 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildYearSelector(),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         _buildSummaryGrid(data.summary),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         _buildEarningsChart(data),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -95,7 +94,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
           ],
         ),
         if (data.topCustomers.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           _buildTopCustomers(data.topCustomers),
         ],
       ],
@@ -109,7 +108,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
     return Row(
       children: [
         const Text('Year: ', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.xs),
         DropdownButton<int>(
           value: _selectedYear,
           items: years.map((y) => DropdownMenuItem(value: y, child: Text('$y'))).toList(),
@@ -148,14 +147,14 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 20, color: color),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
           const SizedBox(height: 4),
           Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
@@ -174,8 +173,8 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
               Expanded(child: Text('Earnings', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
               if (data.conversionRate > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: 3),
+                  decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadii.lg)),
                   child: Text('${data.conversionRate}% conversion', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.accent)),
                 ),
             ],
@@ -242,7 +241,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Orders by Status', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Builder(builder: (context) {
             final colors = _chartColors(context);
             return SizedBox(
@@ -269,7 +268,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
             final colors = _chartColors(context);
             final ci = entries.indexOf(e) % colors.length;
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxxs),
               child: Row(
                 children: [
                   Container(width: 8, height: 8, decoration: BoxDecoration(color: colors[ci], shape: BoxShape.circle)),
@@ -291,7 +290,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Orders / Month', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           SizedBox(
             height: 130,
             child: LineChart(
@@ -349,15 +348,15 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
           ...List.generate(customers.length, (i) {
             final c = customers[i];
             return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 10),
               decoration: BoxDecoration(color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(10)),
               child: Row(
                 children: [
                   Container(
                     width: 28, height: 28,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(AppRadii.md)),
                     child: Text('${i + 1}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary)),
                   ),
                   const SizedBox(width: 10),

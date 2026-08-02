@@ -102,13 +102,13 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
             Row(
               children: [
                 _StarRating(rating: review.rating),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.xs),
                 if (review.isVerifiedPurchase)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppColors.verifiedSoft,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppRadii.xs),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -127,7 +127,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
               ],
             ),
             if (review.comment != null && review.comment!.trim().isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
               Text(review.comment!,
                   maxLines: 4,
                   overflow: TextOverflow.ellipsis,
@@ -143,7 +143,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                   separatorBuilder: (_, _) => const SizedBox(width: 6),
                   itemBuilder: (context, index) {
                     return ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppRadii.md),
                       child: CachedNetworkImage(
                         imageUrl: review.photos[index],
                         width: 72,
@@ -178,7 +178,7 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                   loading: _loadingVote,
                   onPressed: () => _toggleVote('helpful'),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
                 _VoteButton(
                   icon: Icons.thumb_down_off_alt,
                   activeIcon: Icons.thumb_down_alt,
@@ -242,7 +242,7 @@ class _VoteButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: isActive ? AppColors.surfaceTint : AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppRadii.sm),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

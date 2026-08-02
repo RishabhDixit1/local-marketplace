@@ -50,9 +50,10 @@ void main() {
   test('post action stays contextual and off dense workflow branches', () {
     expect(shouldShowPostActionForBranch(0), isTrue);
     expect(shouldShowPostActionForBranch(1), isTrue);
-    expect(shouldShowPostActionForBranch(2), isFalse);
+    expect(shouldShowPostActionForBranch(2), isTrue);
     expect(shouldShowPostActionForBranch(3), isFalse);
     expect(shouldShowPostActionForBranch(4), isFalse);
+    expect(shouldShowPostActionForBranch(5), isFalse);
   });
 
   test('navigation adapts at tablet width', () {
@@ -78,6 +79,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Discover'), findsOneWidget);
     expect(find.text('Market'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget);
     expect(find.text('Inbox'), findsOneWidget);
@@ -104,6 +106,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Discover'), findsOneWidget);
     expect(find.text('Market'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget);
     expect(find.text('Inbox'), findsOneWidget);

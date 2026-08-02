@@ -44,6 +44,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get market => 'Market';
   @override
+  String get discovery => 'Discover';
+  @override
   String get work => 'Work';
   @override
   String get inbox => 'Inbox';

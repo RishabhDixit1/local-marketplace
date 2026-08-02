@@ -329,7 +329,7 @@ class ChatRepository {
         '/api/upload/chat-media',
         filePath: file.path,
         fileName: file.path.split('/').last,
-        mediaType: 'image/jpeg',
+        mediaType: _mimeFromPath(file.path),
       );
       if (payload['ok'] != true) {
         throw ApiException(
@@ -402,5 +402,26 @@ class ChatRepository {
       return null;
     }
     return DateTime.tryParse(value.trim())?.toLocal();
+  }
+
+  static String _mimeFromPath(String path) {
+    final ext = path.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      case 'heic':
+      case 'heif':
+        return 'image/heic';
+      case 'svg':
+        return 'image/svg+xml';
+      case 'bmp':
+        return 'image/bmp';
+      default:
+        return 'image/jpeg';
+    }
   }
 }

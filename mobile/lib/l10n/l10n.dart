@@ -56,6 +56,7 @@ abstract class AppLocalizations {
   String get explore;
   String get people;
   String get market;
+  String get discovery;
   String get work;
   String get inbox;
   String get youTab;

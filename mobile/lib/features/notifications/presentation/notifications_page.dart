@@ -11,7 +11,6 @@ import '../../../core/theme/design_tokens.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
-import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/trust_badge.dart';
 
 import '../data/notification_repository.dart';
@@ -294,10 +293,31 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             tooltip: 'Clear all',
             onPressed: _busy
                 ? null
-                : () => _runAction(
-                    ref.read(notificationRepositoryProvider).clearAll,
-                    successMessage: 'Notifications cleared.',
-                  ),
+                : () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Clear all notifications?'),
+                        content: const Text('This will permanently remove all notifications.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Clear'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true) {
+                      _runAction(
+                        ref.read(notificationRepositoryProvider).clearAll,
+                        successMessage: 'Notifications cleared.',
+                      );
+                    }
+                  },
             icon: const Icon(Icons.delete_outline_rounded),
           ),
         ],
@@ -451,7 +471,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
               color: AppColors.surfaceMuted,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.md),
             ),
             child: Text(
               '$count',
@@ -556,7 +576,7 @@ class _NotificationCard extends StatelessWidget {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxxs),
                     Text(
                       item.message,
                       maxLines: 3,

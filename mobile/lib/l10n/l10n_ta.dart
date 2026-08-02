@@ -44,6 +44,8 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get market => 'சந்தை';
   @override
+  String get discovery => 'கண்டுபிடி';
+  @override
   String get work => 'வேலை';
   @override
   String get inbox => 'இன்பாக்ஸ்';

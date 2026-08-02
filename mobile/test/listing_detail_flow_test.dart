@@ -8,6 +8,8 @@ import 'package:serviq_mobile/core/theme/app_theme.dart';
 import 'package:serviq_mobile/features/feed/domain/feed_snapshot.dart';
 import 'package:serviq_mobile/features/listings/presentation/listing_detail_page.dart';
 
+import 'helpers/serviq_test_app.dart';
+
 void main() {
   testWidgets('listing detail connects offer chat and checkout actions', (
     tester,
@@ -53,6 +55,8 @@ void main() {
       ProviderScope(
         child: MaterialApp.router(
           theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
           routerConfig: router,
         ),
       ),
@@ -75,12 +79,12 @@ void main() {
     expect(find.text('4.7 (11)'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('Pickup and delivery'),
+      find.text('Service details'),
       180,
       scrollable: scrollable,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Pickup and delivery'), findsOneWidget);
+    expect(find.text('Service details'), findsOneWidget);
 
     await tester.tap(find.text('Make offer'));
     await tester.pumpAndSettle();

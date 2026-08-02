@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../theme/design_tokens.dart';
 
-/// App shell scaffold with consistent canvas + optional edge-to-edge background.
 class ServiqScaffold extends StatelessWidget {
   const ServiqScaffold({
     super.key,
@@ -12,6 +11,8 @@ class ServiqScaffold extends StatelessWidget {
     this.floatingActionButton,
     this.floatingActionButtonLocation,
     this.extendBody = false,
+    this.gradient,
+    this.glassNav = false,
   });
 
   final Widget body;
@@ -20,17 +21,33 @@ class ServiqScaffold extends StatelessWidget {
   final Widget? floatingActionButton;
   final FloatingActionButtonLocation? floatingActionButtonLocation;
   final bool extendBody;
+  final Gradient? gradient;
+  final bool glassNav;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    Widget scaffold = Scaffold(
       extendBody: extendBody,
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: appBar,
       body: body,
       bottomNavigationBar: bottomNavigationBar,
       floatingActionButton: floatingActionButton,
       floatingActionButtonLocation: floatingActionButtonLocation,
     );
+
+    if (gradient != null) {
+      scaffold = Container(
+        decoration: BoxDecoration(gradient: gradient),
+        child: scaffold,
+      );
+    } else {
+      scaffold = Container(
+        color: AppColors.background,
+        child: scaffold,
+      );
+    }
+
+    return scaffold;
   }
 }

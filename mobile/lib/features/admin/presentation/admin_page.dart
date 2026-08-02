@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../data/admin_repository.dart';
@@ -79,9 +79,9 @@ class _OverviewTab extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error_outline, size: 40, color: AppColors.danger),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Text(AppErrorMapper.toMessage(e)),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             FilledButton.tonal(
               onPressed: () => ref.invalidate(adminStatsProvider),
               child: const Text('Retry'),
@@ -103,21 +103,21 @@ class _OverviewTab extends ConsumerWidget {
               value: '${stats.totalUsers}',
               color: AppColors.primary,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             _StatCard(
               icon: Icons.handyman_rounded,
               label: 'Providers',
               value: '${stats.totalProviders}',
               color: AppColors.verified,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             _StatCard(
               icon: Icons.person_search_rounded,
               label: 'Seekers',
               value: '${stats.totalSeekers}',
               color: AppColors.accent,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             _StatCard(
               icon: Icons.shopping_bag_rounded,
               label: 'Orders',
@@ -125,14 +125,14 @@ class _OverviewTab extends ConsumerWidget {
               subValue: '${stats.completedOrders} completed',
               color: Theme.of(context).colorScheme.onSurface,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             _StatCard(
               icon: Icons.star_rounded,
               label: 'Avg rating',
               value: stats.averageRating.toStringAsFixed(1),
               color: AppColors.accent,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             _StatCard(
               icon: Icons.shield_rounded,
               label: 'Avg trust score',
@@ -224,9 +224,9 @@ class _UsersTab extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error_outline, size: 40, color: AppColors.danger),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Text(AppErrorMapper.toMessage(e)),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             FilledButton.tonal(
               onPressed: () => ref.invalidate(adminUsersProvider),
               child: const Text('Retry'),
@@ -249,7 +249,7 @@ class _UsersTab extends ConsumerWidget {
               margin: const EdgeInsets.only(bottom: 6),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppRadii.md),
                 border: Border.all(
                   color: Theme.of(context).colorScheme.outline,
                 ),
@@ -317,16 +317,11 @@ class _Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color ?? Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
-      ),
+    return AppPill(
+      label: text,
+      backgroundColor: color ?? Theme.of(context).colorScheme.surfaceContainerHighest,
+      foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+      size: AppPillSize.mini,
     );
   }
 }
@@ -352,9 +347,9 @@ class _ReportsTabState extends ConsumerState<_ReportsTab> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error_outline, size: 40, color: AppColors.danger),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Text(AppErrorMapper.toMessage(e)),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             FilledButton.tonal(
               onPressed: () => ref.invalidate(adminReportsProvider),
               child: const Text('Retry'),
@@ -389,7 +384,7 @@ class _ReportsTabState extends ConsumerState<_ReportsTab> {
                 margin: const EdgeInsets.only(bottom: 6),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
                   border: Border.all(
                     color: Theme.of(context).colorScheme.outline,
                   ),
@@ -419,7 +414,7 @@ class _ReportsTabState extends ConsumerState<_ReportsTab> {
                               .withValues(alpha: 0.45),
                         ),
                       ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                     Row(
                       children: [
                         FilledButton.tonal(
@@ -453,8 +448,8 @@ class _ReportsTabState extends ConsumerState<_ReportsTab> {
                                 },
                           child: _busyReportId == report.id
                               ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
+                                  width: AppSpacing.md,
+                                  height: AppSpacing.md,
                                   child: CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Text('Dismiss'),
@@ -524,9 +519,9 @@ class _ListingsTabState extends ConsumerState<_ListingsTab> {
                     size: 40,
                     color: AppColors.danger,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(AppErrorMapper.toMessage(e)),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   FilledButton.tonal(
                     onPressed: () => ref.invalidate(adminListingsProvider),
                     child: const Text('Retry'),
@@ -623,7 +618,7 @@ class _ListingCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
@@ -669,7 +664,7 @@ class _ListingCard extends StatelessWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -712,37 +707,17 @@ class _ListingStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bg;
-    Color fg;
-    switch (status) {
-      case 'active':
-        bg = AppColors.successSoft;
-        fg = AppColors.success;
-      case 'flagged':
-        bg = AppColors.warningSoft;
-        fg = AppColors.warning;
-      case 'removed':
-        bg = AppColors.dangerSoft;
-        fg = AppColors.danger;
-      default:
-        bg = Theme.of(context).colorScheme.surfaceContainerHighest;
-        fg = Theme.of(context).colorScheme.onSurface;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        status[0].toUpperCase() + status.substring(1),
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: fg,
-        ),
-      ),
+    const colors = <String, (Color, Color)>{
+      'active': (AppColors.successSoft, AppColors.success),
+      'flagged': (AppColors.warningSoft, AppColors.warning),
+      'removed': (AppColors.dangerSoft, AppColors.danger),
+    };
+    final (bg, fg) = colors[status] ?? (Theme.of(context).colorScheme.surfaceContainerHighest, Theme.of(context).colorScheme.onSurface);
+    return AppPill(
+      label: status[0].toUpperCase() + status.substring(1),
+      backgroundColor: bg,
+      foregroundColor: fg,
+      size: AppPillSize.mini,
     );
   }
 }
@@ -806,9 +781,9 @@ class _OrdersTabState extends ConsumerState<_OrdersTab> {
                     size: 40,
                     color: AppColors.danger,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(AppErrorMapper.toMessage(e)),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   FilledButton.tonal(
                     onPressed: () => ref.invalidate(adminOrdersProvider),
                     child: const Text('Retry'),
@@ -902,7 +877,7 @@ class _OrderCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
@@ -973,7 +948,7 @@ class _OrderCard extends StatelessWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -1008,44 +983,20 @@ class _OrderStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bg;
-    Color fg;
-    switch (status) {
-      case 'new_lead':
-        bg = AppColors.accentSoft;
-        fg = AppColors.accent;
-      case 'quoted':
-        bg = AppColors.warningSoft;
-        fg = AppColors.warning;
-      case 'accepted':
-      case 'in_progress':
-        bg = AppColors.primarySoft;
-        fg = AppColors.primary;
-      case 'completed':
-        bg = AppColors.successSoft;
-        fg = AppColors.success;
-      case 'cancelled':
-        bg = AppColors.dangerSoft;
-        fg = AppColors.danger;
-      default:
-        bg = Theme.of(context).colorScheme.surfaceContainerHighest;
-        fg = Theme.of(context).colorScheme.onSurface;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        status.replaceAll('_', ' '),
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: fg,
-        ),
-      ),
+    const colors = <String, (Color, Color)>{
+      'new_lead': (AppColors.accentSoft, AppColors.accent),
+      'quoted': (AppColors.warningSoft, AppColors.warning),
+      'accepted': (AppColors.primarySoft, AppColors.primary),
+      'in_progress': (AppColors.primarySoft, AppColors.primary),
+      'completed': (AppColors.successSoft, AppColors.success),
+      'cancelled': (AppColors.dangerSoft, AppColors.danger),
+    };
+    final (bg, fg) = colors[status] ?? (Theme.of(context).colorScheme.surfaceContainerHighest, Theme.of(context).colorScheme.onSurface);
+    return AppPill(
+      label: status.replaceAll('_', ' '),
+      backgroundColor: bg,
+      foregroundColor: fg,
+      size: AppPillSize.mini,
     );
   }
 }
@@ -1064,9 +1015,9 @@ class _DisputesTab extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error_outline, size: 40, color: AppColors.danger),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Text(AppErrorMapper.toMessage(e)),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             FilledButton.tonal(
               onPressed: () => ref.invalidate(adminDisputesProvider),
               child: const Text('Retry'),
@@ -1166,7 +1117,7 @@ class _DisputeCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
@@ -1227,7 +1178,7 @@ class _DisputeCard extends StatelessWidget {
               ),
             ),
           if (dispute.status == 'open') ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             Wrap(
               spacing: 6,
               runSpacing: 6,
@@ -1259,37 +1210,17 @@ class _DisputeStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bg;
-    Color fg;
-    switch (status) {
-      case 'open':
-        bg = AppColors.warningSoft;
-        fg = AppColors.warning;
-      case 'resolved_for_consumer':
-        bg = AppColors.accentSoft;
-        fg = AppColors.accent;
-      case 'resolved_for_provider':
-        bg = AppColors.successSoft;
-        fg = AppColors.success;
-      default:
-        bg = Theme.of(context).colorScheme.surfaceContainerHighest;
-        fg = Theme.of(context).colorScheme.onSurface;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        status.replaceAll('_', ' '),
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: fg,
-        ),
-      ),
+    const colors = <String, (Color, Color)>{
+      'open': (AppColors.warningSoft, AppColors.warning),
+      'resolved_for_consumer': (AppColors.accentSoft, AppColors.accent),
+      'resolved_for_provider': (AppColors.successSoft, AppColors.success),
+    };
+    final (bg, fg) = colors[status] ?? (Theme.of(context).colorScheme.surfaceContainerHighest, Theme.of(context).colorScheme.onSurface);
+    return AppPill(
+      label: status.replaceAll('_', ' '),
+      backgroundColor: bg,
+      foregroundColor: fg,
+      size: AppPillSize.mini,
     );
   }
 }
@@ -1308,9 +1239,9 @@ class _VerificationsTab extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error_outline, size: 40, color: AppColors.danger),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Text(AppErrorMapper.toMessage(e)),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             FilledButton.tonal(
               onPressed: () => ref.invalidate(adminVerificationsProvider),
               child: const Text('Retry'),
@@ -1395,7 +1326,7 @@ class _VerificationCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
@@ -1426,7 +1357,7 @@ class _VerificationCard extends StatelessWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Row(
             children: [
               FilledButton.tonal(
@@ -1465,24 +1396,15 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary
-              : Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: selected
-                ? Colors.white
-                : Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
+      child: AppPill(
+        label: label,
+        backgroundColor: selected
+            ? AppColors.primary
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
+        foregroundColor: selected
+            ? Colors.white
+            : Theme.of(context).colorScheme.onSurface,
+        size: AppPillSize.mini,
       ),
     );
   }

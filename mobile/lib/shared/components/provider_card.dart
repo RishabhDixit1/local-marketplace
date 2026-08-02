@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../core/design_system/design_system.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/section_card.dart';
 import '../../features/people/domain/people_snapshot.dart';
 import 'profile_avatar_tile.dart';
 import 'trust_badge.dart';
@@ -33,58 +32,68 @@ class ProviderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final signals = _providerSummarySignals(person, Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6));
 
-    return SectionCard(
-      variant: ServiqSurfaceVariant.raised,
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ProfileAvatarTile(
-            name: person.name,
-            subtitle: person.headline,
-            avatarUrl: person.avatarUrl,
-            trailing: onSave == null && onMore == null && onReport == null
-                ? _AvailabilityPill(online: person.isOnline)
-                : _ProviderActions(
-                    online: person.isOnline,
-                    isSaved: isSaved,
-                    onSave: onSave,
-                    onMore: onMore,
-                    onReport: onReport,
-                  ),
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(
+            color: person.isOnline ? AppColors.accent : AppColors.warm,
+            width: 3,
           ),
-          const SizedBox(height: AppSpacing.sm),
-          if (signals.isNotEmpty)
-            Wrap(
-              spacing: AppSpacing.xs,
-              runSpacing: AppSpacing.xs,
-              children: signals
-                  .map(
-                    (signal) => TrustBadge(
-                      label: signal.label,
-                      icon: signal.icon,
-                      backgroundColor: signal.background,
-                      foregroundColor: signal.foreground,
+        ),
+      ),
+      child: ServiqSurface(
+        variant: ServiqSurfaceVariant.glass,
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ProfileAvatarTile(
+              name: person.name,
+              subtitle: person.headline,
+              avatarUrl: person.avatarUrl,
+              trailing: onSave == null && onMore == null && onReport == null
+                  ? _AvailabilityPill(online: person.isOnline)
+                  : _ProviderActions(
+                      online: person.isOnline,
+                      isSaved: isSaved,
+                      onSave: onSave,
+                      onMore: onMore,
+                      onReport: onReport,
                     ),
-                  )
-                  .toList(),
             ),
-          if (onOpenProfile != null || onMessage != null) ...[
             const SizedBox(height: AppSpacing.sm),
-            ServiqActionBar(
-              primaryLabel: 'View',
-              primaryIcon: Icons.person_outline_rounded,
-              onPrimary: onOpenProfile,
-              secondaryActions: [
-                ServiqCompactAction(
-                  icon: Icons.chat_bubble_outline_rounded,
-                  tooltip: 'Message',
-                  onPressed: onMessage,
-                ),
-              ],
-            ),
+            if (signals.isNotEmpty)
+              Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: signals
+                    .map(
+                      (signal) => TrustBadge(
+                        label: signal.label,
+                        icon: signal.icon,
+                        backgroundColor: signal.background,
+                        foregroundColor: signal.foreground,
+                      ),
+                    )
+                    .toList(),
+              ),
+            if (onOpenProfile != null || onMessage != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              ServiqActionBar(
+                primaryLabel: 'View',
+                primaryIcon: Icons.person_outline_rounded,
+                onPrimary: onOpenProfile,
+                secondaryActions: [
+                  ServiqCompactAction(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    tooltip: 'Message',
+                    onPressed: onMessage,
+                  ),
+                ],
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -166,9 +175,10 @@ class ProviderDirectoryCard extends StatelessWidget {
     final showPrice = _hasRealProviderPrice(person.priceLabel);
     final showRating =
         person.ratingLabel.trim().toLowerCase() != 'new to reviews';
+    final priceInt = showPrice ? person.priceLabel : null;
 
-    return SectionCard(
-      variant: ServiqSurfaceVariant.raised,
+    return ServiqSurface(
+      variant: ServiqSurfaceVariant.glass,
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,6 +225,14 @@ class ProviderDirectoryCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (priceInt != null)
+                Text(
+                  priceInt,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),

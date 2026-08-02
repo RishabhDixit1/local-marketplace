@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
@@ -25,26 +26,26 @@ Future<void> main() async {
     () async {
       WidgetsFlutterBinding.ensureInitialized();
 
-      // Use the synchronous compile-time config so runApp() is not blocked
-      // by the asset-bundle platform channel in AppConfig.load() (which reads
-      // config/local.json via rootBundle.loadString).  The full config
-      // (including local.json overlay) is loaded inside _startBootstrap().
       final appConfig = AppConfig.fromEnvironment();
-      final firebaseFuture = AppFirebase.initialize(config: appConfig);
-      MobilePushNotificationService.registerBackgroundHandler();
+
+      // Pre-warm the FlutterSecureStorage platform channel BEFORE runApp().
+      // On cold Android start, the first FlutterSecureStorage read triggers
+      // Keystore init (100-500ms blocking). By doing a dummy read here, the
+      // platform channel is warm by the time Supabase.initialize() runs
+      // inside _startBootstrap(). This overlaps with the first-frame rendering
+      // so the main thread is not idle during the warm-up.
+      unawaited(_prewarmSecureStorage());
 
       runApp(
         _BootstrapHost(
           appConfig: appConfig,
-          firebaseFuture: firebaseFuture,
         ),
       );
 
-      // Deferred until after first frame: notification plugin init makes a
-      // platform channel call that competes with the first frame for the main
-      // thread. Not needed for first paint.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         initializeLocalNotifications();
+        MobilePushNotificationService.registerBackgroundHandler();
+        AppFirebase.initialize(config: appConfig);
       });
     },
     (error, stackTrace) {
@@ -54,14 +55,23 @@ Future<void> main() async {
   );
 }
 
+Future<void> _prewarmSecureStorage() async {
+  try {
+    const warmupStorage = FlutterSecureStorage();
+    await warmupStorage.containsKey(key: 'warmup');
+  } catch (_) {
+    // Pre-warm is best-effort. If it fails, Supabase will still work
+    // but the first SecureStorage read inside Supabase.initialize() will
+    // be slower on cold Android start.
+  }
+}
+
 class _BootstrapHost extends StatefulWidget {
   const _BootstrapHost({
     required this.appConfig,
-    required this.firebaseFuture,
   });
 
   final AppConfig appConfig;
-  final Future<AppFirebaseState> firebaseFuture;
 
   @override
   State<_BootstrapHost> createState() => _BootstrapHostState();
@@ -69,7 +79,6 @@ class _BootstrapHost extends StatefulWidget {
 
 class _BootstrapHostState extends State<_BootstrapHost> {
   AppBootstrap? _bootstrap;
-  AppFirebaseState? _firebaseState;
   String? _bootstrapError;
   bool _timedOut = false;
   Timer? _timeoutTimer;
@@ -77,12 +86,6 @@ class _BootstrapHostState extends State<_BootstrapHost> {
   @override
   void initState() {
     super.initState();
-    // Deferred until after first frame: Supabase.initialize() does 3
-    // sequential FlutterSecureStorage platform-channel reads (Keystore init
-    // on cold Android start, 100-500 ms each) and Firebase.initializeApp()
-    // makes a heavy platform-channel call (200-800 ms). Running these in
-    // Future.wait after the first frame paints keeps the loading screen
-    // responsive while the heavy init happens in the background.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startBootstrap();
       _scheduleTimeout();
@@ -99,7 +102,6 @@ class _BootstrapHostState extends State<_BootstrapHost> {
     _timeoutTimer?.cancel();
     setState(() {
       _bootstrap = null;
-      _firebaseState = null;
       _bootstrapError = null;
       _timedOut = false;
     });
@@ -108,32 +110,21 @@ class _BootstrapHostState extends State<_BootstrapHost> {
   }
 
   Future<void> _startBootstrap() async {
-    // Load the full config (including local.json overlay) now that the first
-    // frame has already painted.  This replaces the earlier await that blocked
-    // runApp().
-    AppConfig config;
-    try {
-      config = await AppConfig.load();
-    } catch (e) {
-      if (!mounted) return;
-      _bootstrapError = 'Failed to load config: $e';
-      setState(() {});
-      return;
-    }
+    // Reuse the compile-time config. AppConfig.load() adds local.json
+    // overlay but when dart-defines provide all values (the common case
+    // with flutter run / CI), load() short-circuits. Calling it here
+    // only for the edge case where dart-defines are incomplete.
+    final envConfig = widget.appConfig;
+    final config = envConfig.hasSupabaseConfig
+        ? envConfig
+        : await AppConfig.load().catchError((_) => envConfig);
 
     if (!mounted) return;
 
     try {
-      final results = await Future.wait([
-        AppBootstrap.initialize(config: config),
-        widget.firebaseFuture.catchError(
-          (_) => const AppFirebaseState.disabled(),
-        ),
-      ]);
+      final bootstrap = await AppBootstrap.initialize(config: config);
 
       if (!mounted) return;
-      final bootstrap = results[0] as AppBootstrap;
-      _firebaseState = results[1] as AppFirebaseState;
       if (bootstrap.initializationError != null) {
         _bootstrapError = bootstrap.initializationError;
       } else {
@@ -180,8 +171,6 @@ class _BootstrapHostState extends State<_BootstrapHost> {
     return ProviderScope(
       overrides: [
         appBootstrapProvider.overrideWithValue(_bootstrap!),
-        if (_firebaseState != null)
-          appFirebaseProvider.overrideWithValue(_firebaseState!),
       ],
       child: const ServiQApp(),
     );
@@ -208,7 +197,7 @@ class _BootstrapErrorApp extends StatelessWidget {
             child: SingleChildScrollView(
               child: Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(AppSpacing.xl),
                   child: Container(
                     width: double.infinity,
                     constraints: const BoxConstraints(maxWidth: 420),
@@ -223,11 +212,11 @@ class _BootstrapErrorApp extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.cloud_off_rounded, color: AppColors.danger, size: 48),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.md),
                         Text('Could not connect', style: Theme.of(context).textTheme.titleLarge),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.xs),
                         Text(message, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: AppSpacing.xl),
                         FilledButton.icon(
                           onPressed: onRetry,
                           icon: const Icon(Icons.refresh_rounded),
@@ -263,7 +252,7 @@ class _BootstrapLoadingApp extends StatelessWidget {
             child: SingleChildScrollView(
               child: Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(AppSpacing.xl),
                   child: Container(
                     width: double.infinity,
                     constraints: const BoxConstraints(maxWidth: 420),
@@ -287,7 +276,7 @@ class _BootstrapLoadingApp extends StatelessWidget {
                               height: 48,
                               decoration: BoxDecoration(
                                 color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(AppRadii.xl),
                               ),
                               child: const Icon(
                                 Icons.bolt_rounded,
@@ -303,7 +292,7 @@ class _BootstrapLoadingApp extends StatelessWidget {
                                     'ServiQ',
                                     style: Theme.of(context).textTheme.titleLarge,
                                   ),
-                                  const SizedBox(height: 2),
+                                  const SizedBox(height: AppSpacing.xxxs),
                                   Text(
                                     'Preparing your local marketplace',
                                     style: Theme.of(context).textTheme.bodySmall,
@@ -318,7 +307,7 @@ class _BootstrapLoadingApp extends StatelessWidget {
                           'Starting ServiQ mobile',
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.xs),
                         Text(
                           'Checking your session, syncing live trust signals, and getting Home ready.',
                           style: Theme.of(context).textTheme.bodyMedium,

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
@@ -16,6 +17,7 @@ import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../features/chat/data/chat_repository.dart';
 import '../../../features/feed/data/feed_interactions_repository.dart';
@@ -26,12 +28,10 @@ import '../../../features/feed/domain/feed_snapshot.dart';
 import '../../../features/people/data/people_repository.dart';
 import '../../../features/people/domain/people_snapshot.dart';
 import '../../../features/tasks/data/task_repository.dart';
-import '../../../shared/components/app_buttons.dart';
-import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/feed_card.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/provider_card.dart';
 import '../../../shared/components/section_header.dart';
+import '../../../shared/widgets/ai_prompt_bar.dart';
 
 part 'welcome_widgets.dart';
 
@@ -321,6 +321,28 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     }
   }
 
+  Future<void> _shareViaWhatsApp(_WelcomeFeedEntry entry) async {
+    HapticFeedback.mediumImpact();
+    final card = _buildInteractionContext(entry);
+    final config = ref.read(appBootstrapProvider).config;
+    final shareUrl = _resolveShareUrl(config.apiBaseUrl, card.actionPath);
+    final text = shareUrl == null
+        ? card.title
+        : '$card.title\n\n$shareUrl';
+    final uri = Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ServiqToast.show(context, message: 'Could not open WhatsApp', tone: ServiqToastTone.warning);
+      }
+    }
+    ref.read(analyticsServiceProvider).trackEvent(
+      'home_item_whatsapp_share',
+      extras: {'item_id': entry.storageKey, 'surface': _resolvedSurface.analyticsValue},
+    );
+  }
+
   String? _debugRecoveryHint(String publicMessage) {
     if (!kDebugMode) {
       return null;
@@ -460,7 +482,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                   'Choose what to do next with this item.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.sm),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
@@ -481,6 +503,15 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                   onTap: () async {
                     Navigator.of(context).pop();
                     await _shareEntry(entry);
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.chat_rounded),
+                  title: const Text('Share on WhatsApp'),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await _shareViaWhatsApp(entry);
                   },
                 ),
                 if (canCall)
@@ -709,7 +740,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                     tooltip: 'Chat',
                     onPressed: () => context.push(AppRoutes.chat),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                 ],
               ),
               SliverPadding(
@@ -735,6 +766,16 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     required _WelcomeViewModel model,
   }) {
     return [
+      Padding(
+        padding: const EdgeInsets.only(
+          top: 8,
+          bottom: 16,
+        ),
+        child: AiPromptBar(
+          placeholder: 'What do you need today?',
+          enableDebounce: true,
+        ),
+      ),
       _HeroSection(
         greeting: greeting,
         activeTaskCount: activeTaskCount,
@@ -776,7 +817,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
         value: _resolvedSurface,
         onChanged: _setSurface,
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpacing.sm),
       for (final entry in model.entriesFor(_resolvedSurface))
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -805,7 +846,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
           },
         ),
       ],
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpacing.sm),
       InkWell(
         onTap: () => context.push(AppRoutes.mapDiscovery),
         borderRadius: BorderRadius.circular(10),

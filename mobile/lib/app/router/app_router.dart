@@ -16,6 +16,7 @@ import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
 import '../../features/connections/presentation/connections_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
+import '../../features/discovery/presentation/discovery_page.dart';
 import '../../features/listings/presentation/listing_detail_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/onboarding/presentation/seeker_onboarding_page.dart';
@@ -65,6 +66,26 @@ import '../presentation/app_shell.dart';
 import 'post_auth_route_resolver.dart';
 
 final appNavigatorKey = GlobalKey<NavigatorState>();
+
+Page _smoothPage(Widget child, GoRouterState state) => CustomTransitionPage(
+  key: state.pageKey,
+  child: child,
+  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0.08, 0),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+      )),
+      child: FadeTransition(
+        opacity: Tween<double>(begin: 0.0, end: 1.0).animate(animation),
+        child: child,
+      ),
+    );
+  },
+);
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final bootstrap = ref.watch(appBootstrapProvider);
@@ -142,35 +163,35 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: AppRoutes.root,
-        builder: (context, state) => const MarketplaceLandingPage(),
+        pageBuilder: (context, state) => _smoothPage(const MarketplaceLandingPage(), state),
       ),
       GoRoute(
         path: AppRoutes.setup,
-        builder: (context, state) => const SetupPage(),
+        pageBuilder: (context, state) => _smoothPage(const SetupPage(), state),
       ),
       GoRoute(
         path: AppRoutes.signIn,
-        builder: (context, state) => const LoginPage(),
+        pageBuilder: (context, state) => _smoothPage(const LoginPage(), state),
       ),
       GoRoute(
         path: AppRoutes.signUp,
-        builder: (context, state) => const SignUpPage(),
+        pageBuilder: (context, state) => _smoothPage(const SignUpPage(), state),
       ),
       GoRoute(
         path: AppRoutes.forgotPassword,
-        builder: (context, state) => const ForgotPasswordPage(),
+        pageBuilder: (context, state) => _smoothPage(const ForgotPasswordPage(), state),
       ),
       GoRoute(
         path: AppRoutes.onboarding,
-        builder: (context, state) => const OnboardingWalkthroughPage(),
+        pageBuilder: (context, state) => _smoothPage(const OnboardingWalkthroughPage(), state),
       ),
       GoRoute(
         path: AppRoutes.createNeed,
-        builder: (context, state) => CreateNeedPage(
+        pageBuilder: (context, state) => _smoothPage(CreateNeedPage(
           initialTitle: state.uri.queryParameters['title'],
           initialDetails: state.uri.queryParameters['details'],
           initialCategory: state.uri.queryParameters['category'],
-        ),
+        ), state),
       ),
       GoRoute(
         path: '/app/post-task',
@@ -178,16 +199,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.search,
-        builder: (context, state) =>
-            SearchPage(initialQuery: state.uri.queryParameters['q']),
+        pageBuilder: (context, state) => _smoothPage(
+            SearchPage(initialQuery: state.uri.queryParameters['q']), state),
       ),
       GoRoute(
         path: AppRoutes.mapDiscovery,
-        builder: (context, state) => const MapDiscoveryPage(),
+        pageBuilder: (context, state) => _smoothPage(const MapDiscoveryPage(), state),
       ),
       GoRoute(
         path: AppRoutes.notifications,
-        builder: (context, state) => const NotificationsPage(),
+        pageBuilder: (context, state) => _smoothPage(const NotificationsPage(), state),
       ),
       GoRoute(
         path: AppRoutes.profilePublic,
@@ -195,7 +216,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.publicBusiness,
-        builder: (context, state) => const PublicBusinessPage(),
+        pageBuilder: (context, state) => _smoothPage(const PublicBusinessPage(), state),
       ),
       GoRoute(
         path: AppRoutes.profileEdit,
@@ -207,11 +228,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.profileSettings,
-        builder: (context, state) => const SettingsPage(),
+        pageBuilder: (context, state) => _smoothPage(const SettingsPage(), state),
       ),
       GoRoute(
         path: AppRoutes.blockedUsers,
-        builder: (context, state) => const BlockedUsersPage(),
+        pageBuilder: (context, state) => _smoothPage(const BlockedUsersPage(), state),
       ),
       GoRoute(
         path: AppRoutes.control,
@@ -219,171 +240,171 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.seekerOnboarding,
-        builder: (context, state) => const SeekerOnboardingPage(),
+        pageBuilder: (context, state) => _smoothPage(const SeekerOnboardingPage(), state),
       ),
       GoRoute(
         path: AppRoutes.providerOnboarding,
-        builder: (context, state) => const ProviderOnboardingPage(),
+        pageBuilder: (context, state) => _smoothPage(const ProviderOnboardingPage(), state),
       ),
       GoRoute(
         path: AppRoutes.providerLaunchpad,
-        builder: (context, state) => const ProviderLaunchpadPage(),
+        pageBuilder: (context, state) => _smoothPage(const ProviderLaunchpadPage(), state),
       ),
       GoRoute(
         path: AppRoutes.providerListings,
-        builder: (context, state) => const ProviderListingsPage(),
+        pageBuilder: (context, state) => _smoothPage(const ProviderListingsPage(), state),
       ),
       GoRoute(
         path: AppRoutes.payouts,
-        builder: (context, state) => const PayoutsPage(),
+        pageBuilder: (context, state) => _smoothPage(const PayoutsPage(), state),
       ),
       GoRoute(
         path: AppRoutes.transactions,
-        builder: (context, state) => const TransactionsPage(),
+        pageBuilder: (context, state) => _smoothPage(const TransactionsPage(), state),
       ),
       GoRoute(
         path: AppRoutes.referrals,
-        builder: (context, state) => const ReferralsPage(),
+        pageBuilder: (context, state) => _smoothPage(const ReferralsPage(), state),
       ),
       GoRoute(
         path: AppRoutes.verification,
-        builder: (context, state) => const VerificationPage(),
+        pageBuilder: (context, state) => _smoothPage(const VerificationPage(), state),
       ),
       GoRoute(
         path: AppRoutes.analytics,
-        builder: (context, state) => const AnalyticsPage(),
+        pageBuilder: (context, state) => _smoothPage(const AnalyticsPage(), state),
       ),
       GoRoute(
         path: AppRoutes.availability,
-        builder: (context, state) => const AvailabilityPage(),
+        pageBuilder: (context, state) => _smoothPage(const AvailabilityPage(), state),
       ),
       GoRoute(
         path: AppRoutes.bookings,
-        builder: (context, state) => const BookingsPage(),
+        pageBuilder: (context, state) => _smoothPage(const BookingsPage(), state),
       ),
       GoRoute(
         path: AppRoutes.workspaces,
-        builder: (context, state) => const WorkspacesPage(),
+        pageBuilder: (context, state) => _smoothPage(const WorkspacesPage(), state),
         routes: [
           GoRoute(
             path: ':workspaceId',
-            builder: (context, state) => WorkspaceDetailPage(
+            pageBuilder: (context, state) => _smoothPage(WorkspaceDetailPage(
               workspaceId: state.pathParameters['workspaceId']?.trim() ?? '',
-            ),
+            ), state),
           ),
         ],
       ),
       GoRoute(
         path: AppRoutes.orders,
-        builder: (context, state) => const OrdersPage(),
+        pageBuilder: (context, state) => _smoothPage(const OrdersPage(), state),
         routes: [
           GoRoute(
             path: ':orderId',
-            builder: (context, state) => OrderDetailPage(
+            pageBuilder: (context, state) => _smoothPage(OrderDetailPage(
               orderId: state.pathParameters['orderId']?.trim() ?? '',
-            ),
+            ), state),
           ),
         ],
       ),
       GoRoute(
         path: AppRoutes.providerOrders,
-        builder: (context, state) => const ProviderOrdersPage(),
+        pageBuilder: (context, state) => _smoothPage(const ProviderOrdersPage(), state),
         routes: [
           GoRoute(
             path: ':orderId',
-            builder: (context, state) => OrderDetailPage(
+            pageBuilder: (context, state) => _smoothPage(OrderDetailPage(
               orderId: state.pathParameters['orderId']?.trim() ?? '',
-            ),
+            ), state),
           ),
         ],
       ),
       GoRoute(
         path: AppRoutes.providerLeads,
-        builder: (context, state) => const ProviderLeadsPage(),
+        pageBuilder: (context, state) => _smoothPage(const ProviderLeadsPage(), state),
         routes: [
           GoRoute(
             path: ':orderId',
-            builder: (context, state) => OrderDetailPage(
+            pageBuilder: (context, state) => _smoothPage(OrderDetailPage(
               orderId: state.pathParameters['orderId']?.trim() ?? '',
-            ),
+            ), state),
           ),
         ],
       ),
       GoRoute(
         path: AppRoutes.providerBoosts,
-        builder: (context, state) => const ProviderBoostsPage(),
+        pageBuilder: (context, state) => _smoothPage(const ProviderBoostsPage(), state),
       ),
       GoRoute(
         path: AppRoutes.providerSubscriptions,
-        builder: (context, state) => const ProviderSubscriptionsPage(),
+        pageBuilder: (context, state) => _smoothPage(const ProviderSubscriptionsPage(), state),
       ),
       GoRoute(
         path: AppRoutes.invoices,
-        builder: (context, state) => const InvoicesPage(),
+        pageBuilder: (context, state) => _smoothPage(const InvoicesPage(), state),
       ),
       GoRoute(
         path: '${AppRoutes.invoices}/:invoiceId',
-        builder: (context, state) => InvoiceDetailPage(
+        pageBuilder: (context, state) => _smoothPage(InvoiceDetailPage(
           invoiceId: state.pathParameters['invoiceId']!,
-        ),
+        ), state),
       ),
       GoRoute(
         path: AppRoutes.connections,
-        builder: (context, state) => const ConnectionsPage(),
+        pageBuilder: (context, state) => _smoothPage(const ConnectionsPage(), state),
       ),
       GoRoute(
         path: AppRoutes.admin,
-        builder: (context, state) => const AdminPage(),
+        pageBuilder: (context, state) => _smoothPage(const AdminPage(), state),
       ),
       GoRoute(
         path: AppRoutes.checkout,
-        builder: (context, state) => CheckoutPage(
+        pageBuilder: (context, state) => _smoothPage(CheckoutPage(
           item: _checkoutItemFromQuery(state),
           fromCart: state.uri.queryParameters['source'] == 'cart',
-        ),
+        ), state),
       ),
       GoRoute(
         path: AppRoutes.saved,
-        builder: (context, state) => const SavedFeedPage(),
+        pageBuilder: (context, state) => _smoothPage(const SavedFeedPage(), state),
       ),
       GoRoute(
         path: '${AppRoutes.listings}/:itemId',
-        builder: (context, state) => ListingDetailPage(
+        pageBuilder: (context, state) => _smoothPage(ListingDetailPage(
           itemId: state.pathParameters['itemId']?.trim() ?? '',
           source: _queryParam(state, 'source'),
-        ),
+        ), state),
       ),
       GoRoute(
         path: AppRoutes.providerLaunchpadReview,
-        builder: (context, state) => const ProviderLaunchpadReviewPage(),
+        pageBuilder: (context, state) => _smoothPage(const ProviderLaunchpadReviewPage(), state),
       ),
       GoRoute(
         path: AppRoutes.quote,
-        builder: (context, state) => QuoteRoomPage(
+        pageBuilder: (context, state) => _smoothPage(QuoteRoomPage(
           mode: quoteTargetModeFromSource(_queryParam(state, 'mode')),
           targetId: _queryParam(state, 'targetId') ?? '',
           conversationId: _queryParam(state, 'conversationId'),
-        ),
+        ), state),
       ),
       GoRoute(
         path: AppRoutes.quoteComparison,
-        builder: (context, state) => QuoteComparisonPage(
+        pageBuilder: (context, state) => _smoothPage(QuoteComparisonPage(
           helpRequestId: _queryParam(state, 'helpRequestId') ?? '',
-        ),
+        ), state),
       ),
       GoRoute(
         path: AppRoutes.profile,
-        builder: (context, state) => const ProfilePage(),
+        pageBuilder: (context, state) => _smoothPage(const ProfilePage(), state),
       ),
       GoRoute(
         path: AppRoutes.people,
-        builder: (context, state) => const PeoplePage(),
+        pageBuilder: (context, state) => _smoothPage(const PeoplePage(), state),
       ),
       GoRoute(
         path: AppRoutes.provider(':providerId'),
-        builder: (context, state) => ProviderProfilePage(
+        pageBuilder: (context, state) => _smoothPage(ProviderProfilePage(
           providerId: state.pathParameters['providerId'] ?? '',
-        ),
+        ), state),
       ),
       GoRoute(
         path: AppRoutes.inbox,
@@ -422,12 +443,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.welcome,
-                builder: (context, state) => const WelcomePage(),
+                pageBuilder: (context, state) => _smoothPage(const WelcomePage(), state),
               ),
               GoRoute(
                 path: AppRoutes.explore,
-                builder: (context, state) =>
-                    const FeedPage(mode: FeedPageMode.explore),
+                pageBuilder: (context, state) =>
+                    _smoothPage(const FeedPage(mode: FeedPageMode.explore), state),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.discovery,
+                pageBuilder: (context, state) =>
+                    _smoothPage(const DiscoveryPage(), state),
               ),
             ],
           ),
@@ -435,7 +465,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.marketZones,
-                builder: (context, state) => const MarketZonesScreen(),
+                pageBuilder: (context, state) => _smoothPage(const MarketZonesScreen(), state),
               ),
             ],
           ),
@@ -443,10 +473,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.tasks,
-                builder: (context, state) => TasksPage(
+                pageBuilder: (context, state) => _smoothPage(TasksPage(
                   focusTaskId: state.uri.queryParameters['focus'],
                   focusSource: state.uri.queryParameters['source'],
-                ),
+                ), state),
               ),
             ],
           ),
@@ -454,7 +484,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.chat,
-                builder: (context, state) => ChatPage(
+                pageBuilder: (context, state) => _smoothPage(ChatPage(
                   recipientId: _queryParam(state, 'recipientId'),
                   initialDraft: _queryParam(state, 'draft'),
                   contextTitle: _firstQueryParam(state, [
@@ -467,11 +497,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   ]),
                   contextStatus: _queryParam(state, 'status'),
                   contextSource: _queryParam(state, 'source'),
-                ),
+                ), state),
                 routes: [
                   GoRoute(
                     path: 'thread/:threadId',
-                    builder: (context, state) => ChatPage(
+                    pageBuilder: (context, state) => _smoothPage(ChatPage(
                       initialConversationId: state.pathParameters['threadId']
                           ?.trim(),
                       initialDraft: _queryParam(state, 'draft'),
@@ -485,7 +515,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       ]),
                       contextStatus: _queryParam(state, 'status'),
                       contextSource: _queryParam(state, 'source'),
-                    ),
+                    ), state),
                   ),
                 ],
               ),

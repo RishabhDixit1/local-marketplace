@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
 import '../data/booking_repository.dart';
 import '../domain/booking_model.dart';
 
@@ -21,8 +21,8 @@ class _BookingsPageState extends ConsumerState<BookingsPage> {
   Widget build(BuildContext context) {
     final asyncBookings = ref.watch(bookingsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Bookings')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Bookings'),
       body: SafeArea(
         child: asyncBookings.isLoading
             ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
@@ -37,7 +37,7 @@ class _BookingsPageState extends ConsumerState<BookingsPage> {
     final message = error is Exception ? error.toString() : 'Unable to load bookings.';
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: EmptyStateView(
           title: 'Failed to load',
           message: message,
@@ -94,7 +94,7 @@ class _BookingsPageState extends ConsumerState<BookingsPage> {
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontWeight: FontWeight.bold)),
             ),
             ...upcoming.map((b) => _BookingCard(booking: b)),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
           ],
           if (past.isNotEmpty) ...[
             Padding(
@@ -161,7 +161,7 @@ class _BookingCard extends StatelessWidget {
                                 color: booking.statusBgColor(
                                   brightness: Theme.of(context).brightness,
                                 ),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(AppRadii.xs),
                               ),
                               child: Text(
                                 booking.status,
@@ -188,7 +188,7 @@ class _BookingCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.sm),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [

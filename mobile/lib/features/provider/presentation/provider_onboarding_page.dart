@@ -1,15 +1,16 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
-import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../features/profile/data/profile_repository.dart';
 import '../../../features/profile/domain/mobile_profile_snapshot.dart';
-import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/section_header.dart';
 
@@ -20,8 +21,8 @@ class ProviderOnboardingPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final snapshot = ref.watch(profileSnapshotProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Provider setup')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Provider setup'),
       body: SafeArea(
         child: ServiqAsyncBody<MobileProfileSnapshot>(
           value: snapshot,
@@ -135,19 +136,34 @@ class _ChecklistCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: item.done
-                  ? AppColors.successSoft
-                  : AppColors.surfaceMuted,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              item.done ? Icons.check_rounded : Icons.circle_outlined,
-              size: 16,
-              color: item.done ? AppColors.success : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: item.done
+                        ? [AppColors.success.withValues(alpha: 0.3), AppColors.success.withValues(alpha: 0.1)]
+                        : [AppColors.surfaceMuted.withValues(alpha: 0.5), AppColors.surfaceMuted.withValues(alpha: 0.2)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: item.done
+                        ? AppColors.success.withValues(alpha: 0.4)
+                        : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Icon(
+                  item.done ? Icons.check_rounded : Icons.circle_outlined,
+                  size: 16,
+                  color: item.done ? AppColors.success : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 12),

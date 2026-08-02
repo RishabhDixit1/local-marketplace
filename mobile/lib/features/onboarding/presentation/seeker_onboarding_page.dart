@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../features/profile/data/profile_repository.dart';
 
@@ -150,28 +153,26 @@ class _SeekerOnboardingPageState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _step == _SeekerOnboardingStep.welcome
-              ? 'Welcome'
-              : _step == _SeekerOnboardingStep.profile
-                  ? 'Set up your profile'
-                  : 'You\'re all set',
-        ),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(
+        title: _step == _SeekerOnboardingStep.welcome
+            ? 'Welcome'
+            : _step == _SeekerOnboardingStep.profile
+                ? 'Set up your profile'
+                : 'You\'re all set',
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xxs, AppSpacing.lg, AppSpacing.lg),
           child: Column(
             children: [
               _StepIndicator(
                 currentStep: _step,
                 totalSteps: 3,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.xl),
               Expanded(child: _buildStepContent()),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               _buildNavigation(),
             ],
           ),
@@ -195,28 +196,42 @@ class _SeekerOnboardingPageState
     return SingleChildScrollView(
       child: Column(
         children: [
-          const SizedBox(height: 24),
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Icon(
-              Icons.bolt_rounded,
-              size: 40,
-              color: Theme.of(context).colorScheme.primary,
+          const SizedBox(height: AppSpacing.xl),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)),
+                ),
+                child: Icon(
+                  Icons.bolt_rounded,
+                  size: 40,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
           Text(
             'Welcome to ServiQ',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'Your local marketplace for trusted help nearby. '
             'Post what you need, get replies from vetted providers in your area.',
@@ -226,19 +241,19 @@ class _SeekerOnboardingPageState
               height: 1.5,
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpacing.xxl),
           _InfoCard(
             icon: Icons.search_rounded,
             title: 'Find help nearby',
             description: 'Browse providers or post a task and let them come to you.',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           _InfoCard(
             icon: Icons.chat_rounded,
             title: 'Chat & compare',
             description: 'Message providers, compare quotes, and choose the best fit.',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           _InfoCard(
             icon: Icons.shield_rounded,
             title: 'Trust & safety',
@@ -260,75 +275,66 @@ class _SeekerOnboardingPageState
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xxs),
           Text(
             'This helps nearby providers know who they\'re talking to.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
-          const SizedBox(height: 20),
-          TextField(
+          const SizedBox(height: AppSpacing.lg),
+          AppTextField(
             controller: _nameController,
-            decoration: const InputDecoration(
-              labelText: 'Full name',
-              hintText: 'Your full name',
-              prefixIcon: Icon(Icons.person_outline_rounded),
-              border: OutlineInputBorder(),
-            ),
+            label: 'Full name',
+            hint: 'Your full name',
+            prefixIcon: Icons.person_outline_rounded,
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.next,
           ),
-          const SizedBox(height: 14),
-          TextField(
+          const SizedBox(height: AppSpacing.sm),
+          AppTextField(
             controller: _locationController,
-            decoration: InputDecoration(
-              labelText: 'Location',
-              hintText: 'City or area (e.g. "Andheri West, Mumbai")',
-              prefixIcon: Icon(Icons.location_on_outlined),
-              border: OutlineInputBorder(),
-            ),
+            label: 'Location',
+            hint: 'City or area (e.g. "Andheri West, Mumbai")',
+            prefixIcon: Icons.location_on_outlined,
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.next,
           ),
-          const SizedBox(height: 14),
-          TextField(
+          const SizedBox(height: AppSpacing.sm),
+          AppTextField(
             controller: _phoneController,
-            decoration: InputDecoration(
-              labelText: 'Phone number',
-              hintText: '10-digit mobile number',
-              prefixIcon: Icon(Icons.phone_outlined),
-              border: OutlineInputBorder(),
-            ),
+            label: 'Phone number',
+            hint: '10-digit mobile number',
+            prefixIcon: Icons.phone_outlined,
             keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.done,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
           Text(
             'What are you interested in?',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xxs),
           Text(
             'Select categories you might need help with.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
             children: _interestCategories.map((category) {
               final selected = _interests.contains(category);
-              return FilterChip(
-                label: Text(category),
+              return _GlassInterestChip(
+                label: category,
                 selected: selected,
-                onSelected: (isSelected) {
+                onTap: () {
                   setState(() {
-                    if (isSelected) {
+                    if (!selected) {
                       _interests.add(category);
                     } else {
                       _interests.remove(category);
@@ -339,21 +345,25 @@ class _SeekerOnboardingPageState
             }).toList(),
           ),
           if (_error.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                _error,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
+            const SizedBox(height: AppSpacing.md),
+            ServiqSurface(
+              variant: ServiqSurfaceVariant.glass,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, size: 16, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      _error,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -366,28 +376,42 @@ class _SeekerOnboardingPageState
     return SingleChildScrollView(
       child: Column(
         children: [
-          const SizedBox(height: 24),
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Icon(
-              Icons.check_circle_rounded,
-              size: 48,
-              color: AppColors.success,
+          const SizedBox(height: AppSpacing.xl),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.success.withValues(alpha: 0.25),
+                      AppColors.success.withValues(alpha: 0.08),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+                ),
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  size: 48,
+                  color: AppColors.success,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
           Text(
             'You\'re all set!',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'Your profile is ready. Here are the fastest ways to get started.',
             textAlign: TextAlign.center,
@@ -396,21 +420,21 @@ class _SeekerOnboardingPageState
               height: 1.5,
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpacing.xxl),
           _ActionCard(
             icon: Icons.edit_note_rounded,
             title: 'Post your first need',
             description: 'Describe what you need and nearby providers will reply.',
             onTap: () => context.go(AppRoutes.createNeed),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           _ActionCard(
             icon: Icons.people_rounded,
             title: 'Browse providers',
             description: 'Explore trusted providers and services in your area.',
             onTap: () => context.go(AppRoutes.people),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           _ActionCard(
             icon: Icons.explore_rounded,
             title: 'Explore the feed',
@@ -425,56 +449,51 @@ class _SeekerOnboardingPageState
   Widget _buildNavigation() {
     switch (_step) {
       case _SeekerOnboardingStep.welcome:
-        return SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: () => setState(() {
-              _step = _SeekerOnboardingStep.profile;
-              _error = '';
-            }),
-            child: const Text('Get started'),
-          ),
+        return PrimaryButton(
+          label: 'Get started',
+          onPressed: () => setState(() {
+            _step = _SeekerOnboardingStep.profile;
+            _error = '';
+          }),
         );
       case _SeekerOnboardingStep.profile:
         return Row(
           children: [
             Expanded(
-              child: OutlinedButton(
+              child: SecondaryButton(
+                label: 'Back',
                 onPressed: _saving
                     ? null
                     : () => setState(() {
                           _step = _SeekerOnboardingStep.welcome;
                           _error = '';
                         }),
-                child: const Text('Back'),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               flex: 2,
-              child: FilledButton(
-                onPressed: _saving ? null : () => _save(),
-                child: _saving
+              child: PrimaryButton(
+                label: _saving ? 'Saving...' : 'Save & continue',
+                icon: _saving
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: AppSpacing.lg,
+                        height: AppSpacing.lg,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Save & continue'),
+                    : null,
+                onPressed: _saving ? null : () => _save(),
               ),
             ),
           ],
         );
       case _SeekerOnboardingStep.complete:
-        return SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: () => context.go(AppRoutes.welcome),
-            child: const Text('Start exploring'),
-          ),
+        return PrimaryButton(
+          label: 'Start exploring',
+          onPressed: () => context.go(AppRoutes.welcome),
         );
     }
   }
@@ -510,7 +529,7 @@ class _StepIndicator extends StatelessWidget {
         return Expanded(
           child: Padding(
             padding: EdgeInsets.only(
-              right: index < totalSteps - 1 ? 8 : 0,
+              right: index < totalSteps - 1 ? AppSpacing.xs : 0,
             ),
             child: Row(
               children: [
@@ -576,22 +595,25 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
-      ),
+    return ServiqSurface(
+      variant: ServiqSurfaceVariant.glass,
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
         children: [
           Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)),
             ),
             child: Icon(
               icon,
@@ -611,7 +633,7 @@ class _InfoCard extends StatelessWidget {
                     fontSize: 15,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xxxs),
                 Text(
                   description,
                   style: TextStyle(
@@ -644,66 +666,121 @@ class _ActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Theme.of(context).colorScheme.outline),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  icon,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      description,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                        fontSize: 13,
-                        height: 1.4,
-                      ),
-                    ),
+    return GestureDetector(
+      onTap: onTap,
+      child: ServiqSurface(
+        variant: ServiqSurfaceVariant.glass,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
                   ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)),
               ),
-              Icon(
+              child: Icon(
+                icon,
+                color: Theme.of(context).colorScheme.primary,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxxs),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+              ),
+              child: Icon(
                 Icons.chevron_right_rounded,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                size: 14,
+                color: AppColors.primary,
               ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassInterestChip extends StatelessWidget {
+  const _GlassInterestChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: selected
+                    ? [AppColors.primary.withValues(alpha: 0.25), AppColors.primary.withValues(alpha: 0.08)]
+                    : [Colors.transparent, Colors.transparent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(AppRadii.pill),
+              border: Border.all(
+                color: selected
+                    ? AppColors.primary.withValues(alpha: 0.5)
+                    : Theme.of(context).colorScheme.outline.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
           ),
         ),
       ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../shared/widgets/chips.dart';
 import '../domain/task_snapshot.dart';
 
 class TaskStatusTabData {
@@ -151,24 +153,24 @@ class TaskCard extends StatelessWidget {
                       spacing: 7,
                       runSpacing: 7,
                       children: [
-                        _TaskPill(
+                        AppPill(
                           label: task.statusLabel,
-                          background: _statusTint(task.status),
-                          foreground: _statusInk(task.status, Theme.of(context).colorScheme.onSurface),
+                          backgroundColor: _statusTint(task.status),
+                          foregroundColor: _statusInk(task.status, Theme.of(context).colorScheme.onSurface),
                         ),
-                        _TaskPill(
+                        AppPill(
                           label: task.isProviderTask ? 'Helping' : 'Requested',
-                          background: AppColors.surfaceMuted,
-                          foreground: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          backgroundColor: AppColors.surfaceMuted,
+                          foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                         if (task.needsDeliveryTracking &&
                             !task.isFinalDeliveryStatus)
-                          _TaskPill(
+                          AppPill(
                             label: task.deliveryStatus.isNotEmpty
                                 ? 'Delivery: ${task.deliveryStatus}'
                                 : 'Awaiting delivery',
-                            background: AppColors.primarySoft,
-                            foreground: AppColors.primary,
+                            backgroundColor: AppColors.primarySoft,
+                            foregroundColor: AppColors.primary,
                           ),
                       ],
                     ),
@@ -198,12 +200,24 @@ class TaskCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _MetaPill(icon: Icons.payments_outlined, label: task.budgetLabel),
-              _MetaPill(
+              AppPill(
+                icon: Icons.payments_outlined,
+                label: task.budgetLabel,
+                backgroundColor: AppColors.surfaceMuted,
+                foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+              AppPill(
                 icon: Icons.location_on_outlined,
                 label: task.locationLabel,
+                backgroundColor: AppColors.surfaceMuted,
+                foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
-              _MetaPill(icon: Icons.schedule_rounded, label: task.createdLabel),
+              AppPill(
+                icon: Icons.schedule_rounded,
+                label: task.createdLabel,
+                backgroundColor: AppColors.surfaceMuted,
+                foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -467,74 +481,6 @@ class _TrackerStep extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TaskPill extends StatelessWidget {
-  const _TaskPill({
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
-
-  final String label;
-  final Color background;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 170),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(
-          context,
-        ).textTheme.labelMedium?.copyWith(color: foreground),
-      ),
-    );
-  }
-}
-
-class _MetaPill extends StatelessWidget {
-  const _MetaPill({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: 180),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceMuted,
-          borderRadius: BorderRadius.circular(AppRadii.pill),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-            const SizedBox(width: 5),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
           ],

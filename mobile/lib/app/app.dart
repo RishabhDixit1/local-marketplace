@@ -244,7 +244,7 @@ class _UpdateGatePage extends StatelessWidget {
       child: Scaffold(
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpacing.xl),
             child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -254,27 +254,27 @@ class _UpdateGatePage extends StatelessWidget {
                     size: 64,
                     color: info.isCritical ? AppColors.danger : AppColors.primary,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.xl),
                   Text(
                     info.isCritical ? l10n.updateRequired : l10n.updateAvailable,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   Text(l10n.newVersionAvailable(info.latestVersion)),
                   if (info.releaseNotes != null && info.releaseNotes!.isNotEmpty) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     Text(l10n.whatsNew, style: Theme.of(context).textTheme.labelLarge),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xxs),
                     Text(info.releaseNotes!),
                   ],
-                  const SizedBox(height: 32),
+                  const SizedBox(height: AppSpacing.xxl),
                   FilledButton.icon(
                     onPressed: () => Navigator.pop(context, true),
                     icon: const Icon(Icons.download_rounded),
                     label: Text(l10n.update),
                   ),
                   if (!info.isCritical) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.sm),
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
                       child: Text(l10n.later),

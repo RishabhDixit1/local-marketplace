@@ -14,8 +14,11 @@ import 'package:serviq_mobile/features/profile/data/profile_repository.dart';
 import 'package:serviq_mobile/features/profile/domain/mobile_profile_snapshot.dart';
 import 'package:serviq_mobile/features/profile/presentation/profile_page.dart';
 import 'package:serviq_mobile/features/provider/presentation/provider_profile_page.dart';
+import 'package:serviq_mobile/features/reviews/data/review_repository.dart';
 import 'package:serviq_mobile/features/welcome/presentation/welcome_page.dart';
 import 'package:serviq_mobile/shared/components/feed_card.dart';
+
+import 'helpers/serviq_test_app.dart';
 
 const _bootstrap = AppBootstrap(
   config: AppConfig(
@@ -42,6 +45,8 @@ void main() {
         overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
         child: MaterialApp(
           theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
           home: const WelcomePage(
             snapshotOverride: AsyncData(_sampleSnapshot),
             trustedSnapshotOverride: AsyncData(_sampleSnapshot),
@@ -80,9 +85,12 @@ void main() {
           feedSnapshotProvider(
             MobileFeedScope.all,
           ).overrideWith((ref) async => _sampleSnapshot),
+          providerReviewsProvider('provider-1').overrideWith((ref) async => []),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
           home: const ProviderProfilePage(providerId: 'provider-1'),
         ),
       ),
@@ -111,6 +119,8 @@ void main() {
         overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
         child: MaterialApp(
           theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
           home: Scaffold(
             body: ListView(
               padding: const EdgeInsets.all(16),
@@ -153,6 +163,8 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
           home: const ProfilePage(snapshotOverride: AsyncData(_sampleProfile)),
         ),
       ),
@@ -175,6 +187,8 @@ void main() {
         overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
         child: MaterialApp(
           theme: AppTheme.dark(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
           home: const FeedPage(
             snapshotOverride: AsyncData(_sampleSnapshot),
             peopleOverride: AsyncData(_samplePeopleSnapshot),

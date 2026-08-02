@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../data/task_post_repository.dart';
 
 class TaskPostPage extends ConsumerStatefulWidget {
@@ -83,8 +83,8 @@ class _TaskPostPageState extends ConsumerState<TaskPostPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Post Task')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Post Task'),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
@@ -103,37 +103,34 @@ class _TaskPostPageState extends ConsumerState<TaskPostPage> {
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 20),
-                TextFormField(
+                AppTextField(
+                  label: 'Task title',
                   controller: _titleController,
-                  decoration: const InputDecoration(labelText: 'Task title'),
                   validator: (value) => (value ?? '').trim().isEmpty
                       ? 'Enter a short task title.'
                       : null,
                 ),
                 const SizedBox(height: 14),
-                TextFormField(
+                AppTextField(
+                  label: 'Details',
                   controller: _detailsController,
                   minLines: 4,
                   maxLines: 6,
-                  decoration: const InputDecoration(
-                    labelText: 'Details',
-                    alignLabelWithHint: true,
-                  ),
                   validator: (value) => (value ?? '').trim().length < 12
                       ? 'Add a bit more detail so providers can respond.'
                       : null,
                 ),
                 const SizedBox(height: 14),
-                TextFormField(
+                AppTextField(
+                  label: 'Category',
                   controller: _categoryController,
-                  decoration: const InputDecoration(labelText: 'Category'),
                   validator: (value) =>
                       (value ?? '').trim().isEmpty ? 'Enter a category.' : null,
                 ),
                 const SizedBox(height: 14),
-                TextFormField(
+                AppTextField(
+                  label: 'Location',
                   controller: _locationController,
-                  decoration: const InputDecoration(labelText: 'Location'),
                   validator: (value) => (value ?? '').trim().isEmpty
                       ? 'Add a location label.'
                       : null,

@@ -8,8 +8,6 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../tasks/data/task_repository.dart';
 import '../../tasks/domain/task_snapshot.dart';
@@ -60,8 +58,8 @@ class _ProviderLeadsPageState extends ConsumerState<ProviderLeadsPage> {
   Widget build(BuildContext context) {
     final snapshot = ref.watch(taskSnapshotProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Provider Leads')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Provider Leads'),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {

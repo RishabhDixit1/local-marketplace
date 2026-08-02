@@ -3,16 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/design_system/serviq_async_state.dart';
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/app_buttons.dart';
-import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../tasks/data/task_repository.dart';
 import '../data/quote_repository.dart';
 import '../domain/quote_drafting.dart';
@@ -370,11 +365,11 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
   Widget build(BuildContext context) {
     final targetId = widget.targetId.trim();
     if (targetId.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Quote')),
+      return ServiqScaffold(
+        appBar: ServiqTopBar(title: 'Quote'),
         body: const SafeArea(
           child: Padding(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(AppSpacing.md),
             child: SectionCard(
               child: EmptyStateView(
                 title: 'Quote target missing',
@@ -391,15 +386,13 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
         ? ref.watch(dealRoomProvider(widget.targetId))
         : null;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_isOrderMode ? 'Deal room' : 'Quote room'),
-      ),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: _isOrderMode ? 'Deal room' : 'Quote room'),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 28),
             children: [
               if (_isOrderMode && dealRoomAsync != null)
                 dealRoomAsync.when(
@@ -423,9 +416,9 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _QuoteContextCard(workspace: workspace),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
                       _QuoteTimelineCard(workspace: workspace),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
                       if (draft != null)
                         _QuoteStatusCard(
                           draft: draft,
@@ -441,7 +434,7 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
                           onAccept: () => _acceptQuote(draft),
                           onReject: () => _rejectQuote(draft),
                         ),
-                      if (draft != null) const SizedBox(height: 16),
+                      if (draft != null) const SizedBox(height: AppSpacing.md),
                       if (_isOrderMode && dealRoomAsync != null)
                         dealRoomAsync.when(
                           loading: () => const SizedBox.shrink(),
@@ -451,7 +444,7 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
                               ? Column(
                                   children: [
                                     _VersionHistoryCard(versions: ctx.versions),
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: AppSpacing.md),
                                   ],
                                 )
                               : const SizedBox.shrink(),
@@ -490,7 +483,7 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
                                   ctx.timelineEvents.isNotEmpty
                               ? Column(
                                   children: [
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: AppSpacing.md),
                                     _ActivityTimelineCard(
                                       events: ctx.timelineEvents,
                                     ),
@@ -531,7 +524,7 @@ class _OrderProgressSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Order progress', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: List.generate(stages.length * 2 - 1, (i) {
               if (i.isOdd) {
@@ -571,7 +564,7 @@ class _OrderProgressSection extends StatelessWidget {
               );
             }),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Row(
             children: List.generate(stages.length * 2 - 1, (i) {
               if (i.isOdd) return const Expanded(child: SizedBox());
@@ -615,12 +608,17 @@ class _VersionHistoryCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              _LabelChip(text: '${versions.length} versions'),
+              AppPill(
+                label: '${versions.length} versions',
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                size: AppPillSize.mini,
+              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           ...versions.map((v) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
             child: Row(
               children: [
                 Container(
@@ -655,7 +653,12 @@ class _VersionHistoryCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          _LabelChip(text: v.status),
+                          AppPill(
+                            label: v.status,
+                            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                            size: AppPillSize.mini,
+                          ),
                         ],
                       ),
                       if (v.sentAt != null)
@@ -701,7 +704,7 @@ class _ActivityTimelineCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Activity', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           ...events.take(10).map((e) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: Row(
@@ -753,29 +756,7 @@ class _ActivityTimelineCard extends StatelessWidget {
   }
 }
 
-class _LabelChip extends StatelessWidget {
-  const _LabelChip({required this.text});
-  final String text;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-        ),
-      ),
-    );
-  }
-}
 
 class _RejectResult {
   const _RejectResult({this.reason, this.counterAmount});
@@ -818,16 +799,14 @@ class _RejectQuoteDialogState extends State<_RejectQuoteDialog> {
                 color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
-            const SizedBox(height: 16),
-            TextFormField(
+            const SizedBox(height: AppSpacing.md),
+            AppTextField(
+              label: 'Reason (optional)',
+              hint: 'Why are you rejecting this quote?',
               controller: _reasonController,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Reason (optional)',
-                hintText: 'Why are you rejecting this quote?',
-              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             CheckboxListTile(
               value: _wantsCounter,
               onChanged: (v) => setState(() => _wantsCounter = v ?? false),
@@ -835,14 +814,12 @@ class _RejectQuoteDialogState extends State<_RejectQuoteDialog> {
               title: const Text('Suggest counter-offer'),
             ),
             if (_wantsCounter) ...[
-              const SizedBox(height: 8),
-              TextFormField(
+              const SizedBox(height: AppSpacing.xs),
+              AppTextField(
+                label: 'Counter amount (INR)',
+                hint: 'Current: INR ${widget.currentTotal.round()}',
                 controller: _counterController,
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Counter amount (INR)',
-                  hintText: 'Current: INR ${widget.currentTotal.round()}',
-                ),
               ),
             ],
           ],
@@ -888,14 +865,14 @@ class _QuoteContextCard extends StatelessWidget {
             quoteContext.taskTitle,
             style: Theme.of(context).textTheme.headlineSmall,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             quoteContext.taskDescription.isEmpty
                 ? 'Scope, price, acceptance, and task conversion stay linked here.'
                 : quoteContext.taskDescription,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -949,7 +926,7 @@ class _QuoteStatusCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             draft.sentAt == null
                 ? 'Draft saved locally to this quote room.'
@@ -1044,15 +1021,15 @@ class _QuoteTimelineCard extends StatelessWidget {
             'Quote timeline',
             style: Theme.of(context).textTheme.titleLarge,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             'Scope, quote, acceptance, and task handoff stay visible together.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           ...steps.map(
             (step) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: _TimelineStepRow(step: step),
             ),
           ),
@@ -1186,7 +1163,7 @@ class _QuoteForm extends StatelessWidget {
                         'Quote composer',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(
                         canEdit
                             ? 'Build a clear price, scope, expiry, and next action.'
@@ -1214,27 +1191,27 @@ class _QuoteForm extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            TextFormField(
+            const SizedBox(height: AppSpacing.sm),
+            AppTextField(
+              label: 'Summary',
               controller: summaryController,
               enabled: canEdit,
-              decoration: const InputDecoration(labelText: 'Summary'),
               validator: _required('Add a quote summary.'),
             ),
-            const SizedBox(height: 12),
-            TextFormField(
+            const SizedBox(height: AppSpacing.sm),
+            AppTextField(
+              label: 'Notes',
               controller: notesController,
               enabled: canEdit,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Notes'),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             Text('Line items', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
             ...lineItems.asMap().entries.map(
               (entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                 child: _LineItemCard(
                   controllers: entry.value,
                   enabled: canEdit,
@@ -1255,30 +1232,28 @@ class _QuoteForm extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
-                    controller: taxController,
-                    enabled: canEdit,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Tax'),
-                  ),
+                  child: AppTextField(
+                  label: 'Tax',
+                  controller: taxController,
+                  enabled: canEdit,
+                  keyboardType: TextInputType.number,
                 ),
-                const SizedBox(width: 12),
+                ),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: TextFormField(
-                    controller: expiresDaysController,
-                    enabled: canEdit,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Expires days',
-                    ),
-                  ),
+                  child: AppTextField(
+                  label: 'Expires days',
+                  controller: expiresDaysController,
+                  enabled: canEdit,
+                  keyboardType: TextInputType.number,
+                ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest
                     .withValues(alpha: 0.5),
@@ -1295,7 +1270,7 @@ class _QuoteForm extends StatelessWidget {
               ),
             ),
             if (canEdit) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
                   Expanded(
@@ -1345,7 +1320,7 @@ class _QuoteAttachmentGuidance extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest
             .withValues(alpha: 0.5),
@@ -1359,7 +1334,7 @@ class _QuoteAttachmentGuidance extends StatelessWidget {
             'Attachment checklist',
             style: Theme.of(context).textTheme.titleSmall,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -1405,7 +1380,7 @@ class _LineItemCardState extends State<_LineItemCard> {
   Widget build(BuildContext context) {
     final item = widget.controllers;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest
             .withValues(alpha: 0.5),
@@ -1417,15 +1392,15 @@ class _LineItemCardState extends State<_LineItemCard> {
           Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  controller: item.label,
-                  enabled: widget.enabled,
-                  decoration: const InputDecoration(labelText: 'Item'),
-                  validator: _required('Add an item label.'),
-                ),
+              child: AppTextField(
+                label: 'Item',
+                controller: item.label,
+                enabled: widget.enabled,
+                validator: _required('Add an item label.'),
+              ),
               ),
               if (widget.enabled && widget.canRemove) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.xs),
                 IconButton.outlined(
                   tooltip: 'Remove line',
                   onPressed: widget.onRemove,
@@ -1435,34 +1410,34 @@ class _LineItemCardState extends State<_LineItemCard> {
             ],
           ),
           const SizedBox(height: 10),
-          TextFormField(
+          AppTextField(
+            label: 'Description',
             controller: item.description,
             enabled: widget.enabled,
-            decoration: const InputDecoration(labelText: 'Description'),
           ),
           const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  controller: item.quantity,
-                  enabled: widget.enabled,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Qty'),
-                ),
+              child: AppTextField(
+                label: 'Qty',
+                controller: item.quantity,
+                enabled: widget.enabled,
+                keyboardType: TextInputType.number,
+              ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: TextFormField(
-                  controller: item.unitPrice,
-                  enabled: widget.enabled,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Unit price'),
-                ),
+              child: AppTextField(
+                label: 'Unit price',
+                controller: item.unitPrice,
+                enabled: widget.enabled,
+                keyboardType: TextInputType.number,
+              ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Align(
             alignment: Alignment.centerRight,
             child: Text(
@@ -1493,7 +1468,7 @@ class _AmountRow extends StatelessWidget {
         ? Theme.of(context).textTheme.titleMedium
         : Theme.of(context).textTheme.bodyMedium;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
       child: Row(
         children: [
           Expanded(child: Text(label, style: style)),
@@ -1519,7 +1494,7 @@ class _QuoteLoading extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 LoadingShimmer(height: 20, width: 180),
-                SizedBox(height: 12),
+                SizedBox(height: AppSpacing.sm),
                 LoadingShimmer(height: 14),
                 SizedBox(height: 10),
                 LoadingShimmer(height: 80),

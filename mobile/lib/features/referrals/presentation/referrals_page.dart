@@ -1,13 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/design_system/serviq_async_state.dart';
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
 import '../data/referrals_repository.dart';
 import '../domain/referral_models.dart';
 
@@ -62,6 +63,19 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
 
   void _shareCode(String code) {
     ref.read(referralsRepositoryProvider).shareCode(code);
+  }
+
+  Future<void> _shareCodeViaWhatsApp(String code) async {
+    final url = 'https://www.serviqapp.com/referral?code=$code';
+    final text = 'Join ServiQ using my referral code: $code\n\n$url';
+    final uri = Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ServiqToast.show(context, message: 'Could not open WhatsApp', tone: ServiqToastTone.warning);
+      }
+    }
   }
 
   Future<void> _requestPayout(int availablePoints) async {
@@ -125,7 +139,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
           children: [
             Text('Invite providers, earn \u{20B9}50 per signup.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             ServiqAsyncBody<ReferralBundle>(
               value: bundleAsync,
               errorTitle: 'Unable to load referrals',
@@ -151,7 +165,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
           children: [
             Text('Top referrers in the community',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             ServiqAsyncBody<LeaderboardData>(
               value: leaderboardAsync,
               errorTitle: 'Unable to load leaderboard',
@@ -172,10 +186,10 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
       children: [
         if (data.currentUserRank != null && data.currentUserRank!.rank > 20) ...[
           _buildYourRankCard(data.currentUserRank!),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
         ],
         _buildLeaderboardList(data),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.sm),
         Center(
           child: Text(
             '${data.totalReferrers} referrers total',
@@ -234,7 +248,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
             width: 32,
             child: _rankBadge(entry.rank),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.xs),
           CircleAvatar(
             radius: 16,
             backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -269,7 +283,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: AppColors.primarySoft,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(AppRadii.md),
                         ),
                         child: const Text('You', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary)),
                       ),
@@ -323,18 +337,18 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildHeader(bundle),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         _buildStats(bundle),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         _buildPayoutSection(bundle.availablePoints),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         _buildCodesSection(bundle.codes),
         if (bundle.referrals.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           _buildReferralHistory(bundle.referrals),
         ],
         if (bundle.payouts.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           _buildPayoutHistory(bundle.payouts),
         ],
       ],
@@ -355,7 +369,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: AppColors.warningSoft,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
             border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
           ),
           child: Column(
@@ -386,7 +400,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
@@ -410,22 +424,19 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
           const SizedBox(height: 6),
           Text('1 point = \u{20B9}1. Minimum 50 points to withdraw.',
               style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               SizedBox(
                 width: 100,
-                child: TextField(
+                child: AppTextField(
+                  label: 'Points',
                   keyboardType: TextInputType.number,
                   controller: TextEditingController(text: '$_payoutPoints'),
                   onChanged: (v) {
                     final parsed = int.tryParse(v);
                     if (parsed != null) setState(() => _payoutPoints = parsed < 50 ? 50 : parsed);
                   },
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -448,7 +459,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: AppColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppRadii.md),
               ),
               child: Text(_payoutMsg, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
             ),
@@ -523,6 +534,24 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
               textStyle: TextStyle(fontSize: 12),
             ),
           ),
+          const SizedBox(width: AppSpacing.xs),
+          Semantics(
+            label: 'Share on WhatsApp',
+            child: Tooltip(
+              message: 'Share on WhatsApp',
+              child: IconButton(
+                icon: Icon(Icons.chat_rounded, size: 18, color: AppColors.whatsapp),
+                onPressed: () => _shareCodeViaWhatsApp(c.code),
+                style: IconButton.styleFrom(
+                  minimumSize: Size.zero,
+                  padding: const EdgeInsets.all(6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -567,7 +596,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: AppColors.successSoft,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadii.lg),
             ),
             child: Text('+${_inr(r.rewardPoints)}',
                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.success)),
@@ -636,7 +665,7 @@ class _ReferralsPageState extends ConsumerState<ReferralsPage>
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadii.lg)),
       child: Text(status[0].toUpperCase() + status.substring(1),
           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: fg)),
     );

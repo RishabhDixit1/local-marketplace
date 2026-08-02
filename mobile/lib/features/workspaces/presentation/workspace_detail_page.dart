@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../data/workspace_repository.dart';
 import '../domain/workspace_models.dart';
 
@@ -114,15 +114,13 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
     final rulesAsync = ref.watch(workspaceRulesProvider(widget.workspaceId));
     final analyticsAsync = ref.watch(workspaceAnalyticsProvider(widget.workspaceId));
 
-    return Scaffold(
-      appBar: AppBar(
+    return ServiqScaffold(
+      appBar: ServiqTopBar(
+        title: wsAsync.hasValue ? wsAsync.value!.name : 'Workspace',
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
         ),
-        title: wsAsync.hasValue
-            ? Text(wsAsync.value!.name)
-            : const Text('Workspace'),
       ),
       body: wsAsync.when(
         loading: () => const _DetailLoading(),
@@ -131,9 +129,9 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline_rounded, size: 48, color: Colors.red),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               Text('Unable to load workspace', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
               TextButton(
                 onPressed: _reloadAll,
                 child: const Text('Retry'),
@@ -147,7 +145,7 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
                 child: Row(
                   children: [
                     Expanded(
@@ -157,7 +155,7 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
                           if (workspace.description != null &&
                               workspace.description!.isNotEmpty)
                             Padding(
-                              padding: const EdgeInsets.only(top: 2),
+                              padding: const EdgeInsets.only(top: AppSpacing.xxxs),
                               child: Text(
                                 workspace.description!,
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -172,7 +170,7 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
                       children: [
                         Icon(Icons.people_outline_rounded,
                             size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: AppSpacing.xxxs),
                         Text(
                           '${membersAsync.hasValue ? membersAsync.value!.length : 0}/${workspace.maxMembers}',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -184,15 +182,15 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Container(
                     decoration: BoxDecoration(
                       color: AppColors.surfaceAlt,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
                     ),
                     padding: const EdgeInsets.all(3),
                     child: Row(
@@ -203,7 +201,7 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
-                              vertical: 8,
+                              vertical: AppSpacing.xs,
                             ),
                             decoration: BoxDecoration(
                               color: selected ? AppColors.surface : null,
@@ -234,10 +232,10 @@ class _WorkspaceDetailPageState extends ConsumerState<WorkspaceDetailPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, 28),
                   children: [
                     switch (_tabIndex) {
                       0 => _OverviewTab(analyticsAsync),
@@ -292,13 +290,13 @@ class _OverviewTab extends StatelessWidget {
           label: 'Total Orders',
           value: '${analytics?.totalOrders ?? 0}',
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.sm),
         _StatCard(
           label: 'Completed Jobs',
           value: '${analytics?.completedOrders ?? 0}',
           valueColor: AppColors.success,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.sm),
         _StatCard(
           label: 'Revenue',
           value: '₹${_formatInr(analytics?.totalRevenue ?? 0)}',
@@ -335,7 +333,7 @@ class _StatCard extends StatelessWidget {
                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                   value,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -379,7 +377,7 @@ class _MembersTab extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           if (members.isEmpty)
             _emptyHint('No members yet.', Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))
           else
@@ -423,7 +421,7 @@ class _MemberTile extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -444,12 +442,12 @@ class _MemberTile extends StatelessWidget {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: AppSpacing.xxs),
             decoration: BoxDecoration(
               color: member.role == 'owner'
                   ? AppColors.warmSoft
                   : AppColors.accentSoft,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.md),
             ),
             child: Text(
               member.role,
@@ -513,26 +511,20 @@ class _BranchesTab extends StatelessWidget {
             ],
           ),
           if (addingBranch) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             SectionCard(
               child: Column(
                 children: [
-                  TextField(
+                  AppTextField(
+                    label: 'Branch name',
                     controller: branchNameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Branch name',
-                      border: OutlineInputBorder(),
-                    ),
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
+                  const SizedBox(height: AppSpacing.sm),
+                  AppTextField(
+                    label: 'Address (optional)',
                     controller: branchAddrCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Address (optional)',
-                      border: OutlineInputBorder(),
-                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   Row(
                     children: [
                       FilledButton(
@@ -549,7 +541,7 @@ class _BranchesTab extends StatelessWidget {
                               )
                             : const Text('Save'),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.xs),
                       TextButton(
                         onPressed: onToggleForm,
                         child: const Text('Cancel'),
@@ -559,7 +551,7 @@ class _BranchesTab extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
           ],
           if (branches.isEmpty && !addingBranch)
             _emptyHint('No branches added yet.', Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))
@@ -594,7 +586,7 @@ class _BranchTile extends StatelessWidget {
             child: Icon(Icons.location_on_outlined,
                 size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -675,26 +667,20 @@ class _RulesTab extends StatelessWidget {
             ],
           ),
           if (addingRule) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             SectionCard(
               child: Column(
                 children: [
-                  TextField(
+                  AppTextField(
+                    label: 'Rule name',
                     controller: ruleNameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Rule name',
-                      border: OutlineInputBorder(),
-                    ),
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
+                  const SizedBox(height: AppSpacing.sm),
+                  AppTextField(
+                    label: 'Category (optional)',
                     controller: ruleCatCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Category (optional)',
-                      border: OutlineInputBorder(),
-                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   Row(
                     children: [
                       FilledButton(
@@ -711,7 +697,7 @@ class _RulesTab extends StatelessWidget {
                               )
                             : const Text('Save'),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.xs),
                       TextButton(
                         onPressed: onToggleForm,
                         child: const Text('Cancel'),
@@ -721,7 +707,7 @@ class _RulesTab extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
           ],
           if (rules.isEmpty && !addingRule)
             _emptyHint('No assignment rules yet.', Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))
@@ -766,16 +752,16 @@ class _RuleTile extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Wrap(
             spacing: 8,
             runSpacing: 6,
             children: [
               if (rule.category != null && rule.category!.isNotEmpty)
-                _Tag(rule.category!),
-              _Tag('SLA: ${rule.slaMinutes}m'),
-              _Tag('Max leads: ${rule.maxLeadsPerMember}'),
-              _Tag(rule.roundRobin ? 'Round-robin' : 'Fixed'),
+                AppPill(label: rule.category!, backgroundColor: AppColors.surfaceAlt, foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), size: AppPillSize.mini),
+              AppPill(label: 'SLA: ${rule.slaMinutes}m', backgroundColor: AppColors.surfaceAlt, foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), size: AppPillSize.mini),
+              AppPill(label: 'Max leads: ${rule.maxLeadsPerMember}', backgroundColor: AppColors.surfaceAlt, foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), size: AppPillSize.mini),
+              AppPill(label: rule.roundRobin ? 'Round-robin' : 'Fixed', backgroundColor: AppColors.surfaceAlt, foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), size: AppPillSize.mini),
             ],
           ),
         ],
@@ -784,29 +770,7 @@ class _RuleTile extends StatelessWidget {
   }
 }
 
-class _Tag extends StatelessWidget {
-  const _Tag(this.text);
 
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-          fontSize: 10,
-        ),
-      ),
-    );
-  }
-}
 
 // ── Analytics Tab ──
 
@@ -832,21 +796,21 @@ class _AnalyticsTab extends StatelessWidget {
               label: 'Members',
               value: '${analytics.activeMembers} / ${analytics.totalMembers}',
             )),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(child: _MiniStatCard(
               label: 'Orders',
               value: '${analytics.totalOrders}',
             )),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.sm),
         Row(
           children: [
             Expanded(child: _MiniStatCard(
               label: 'Completed',
               value: '${analytics.completedOrders}',
             )),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(child: _MiniStatCard(
               label: 'Avg Order',
               value: '₹${_formatInr(analytics.avgOrderValue)}',
@@ -856,7 +820,7 @@ class _AnalyticsTab extends StatelessWidget {
 
         // Recent activity
         if (analytics.recentActivity.isNotEmpty) ...[
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.lg),
           SectionCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -867,7 +831,7 @@ class _AnalyticsTab extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.sm),
                 ...analytics.recentActivity.take(10).map((a) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Row(
@@ -930,7 +894,7 @@ class _MiniStatCard extends StatelessWidget {
               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xxs),
           Text(
             value,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -947,7 +911,7 @@ class _MiniStatCard extends StatelessWidget {
 
 Widget _emptyHint(String message, Color faintColor) {
   return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 24),
+    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
     child: Center(
       child: Text(
         message,
@@ -963,11 +927,11 @@ class _DetailLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       children: List.generate(
         4,
         (_) => const Padding(
-          padding: EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.only(bottom: AppSpacing.sm),
           child: SectionCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

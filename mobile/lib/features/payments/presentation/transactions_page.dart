@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/design_tokens.dart';
-import '../../../shared/components/empty_state_view.dart';
 import '../data/payment_repository.dart';
 import '../domain/payment_models.dart';
 
@@ -15,8 +15,8 @@ class TransactionsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(transactionHistoryProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Transactions')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Transactions'),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         error: (e, _) => Center(
@@ -24,10 +24,10 @@ class TransactionsPage extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.error_outline, size: 40, color: AppColors.danger),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               Text('Unable to load transactions',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               FilledButton.tonal(
                 onPressed: () => ref.invalidate(transactionHistoryProvider),
                 child: const Text('Retry'),
@@ -55,7 +55,7 @@ class TransactionsPage extends ConsumerWidget {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
                 ),
                 child: Row(
                   children: [
@@ -67,7 +67,7 @@ class TransactionsPage extends ConsumerWidget {
                         children: [
                           Text('Total spent',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AppSpacing.xxxs),
                           Text('₹${total.toStringAsFixed(0)}',
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                         ],
@@ -78,7 +78,7 @@ class TransactionsPage extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               ...transactions.map((t) => _TransactionTile(transaction: t)),
             ],
           );
@@ -113,7 +113,7 @@ class _TransactionTile extends StatelessWidget {
                       : transaction.isRefunded
                           ? AppColors.dangerSoft
                           : AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
                 ),
                 child: Icon(
                   transaction.isPaid ? Icons.check_circle : transaction.isRefunded ? Icons.replay : Icons.access_time,
@@ -130,7 +130,7 @@ class _TransactionTile extends StatelessWidget {
                         style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxxs),
                     Text(
                       '${transaction.paymentMethod.toUpperCase()} · ${transaction.statusLabel}',
                       style: TextStyle(fontSize: 11, color: transaction.isPaid ? AppColors.primary : transaction.isRefunded ? AppColors.danger : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),

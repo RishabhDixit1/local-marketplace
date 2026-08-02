@@ -30,7 +30,7 @@ class AppSkeleton extends StatelessWidget {
             gradient: LinearGradient(
               colors: [
                 AppColors.surfaceAlt.withValues(alpha: value),
-                AppColors.backgroundRaised.withValues(alpha: value),
+                AppColors.surfaceTint.withValues(alpha: value),
               ],
             ),
           ),

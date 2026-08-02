@@ -23,7 +23,7 @@ class PayoutSummaryCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(

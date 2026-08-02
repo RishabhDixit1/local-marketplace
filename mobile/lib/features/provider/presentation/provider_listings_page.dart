@@ -6,15 +6,10 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/categories.dart';
-import '../../../core/design_system/serviq_async_state.dart';
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/app_buttons.dart';
-import '../../../shared/components/app_text_field.dart';
-import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../data/provider_listing_repository.dart';
 import '../domain/provider_listing_models.dart';
@@ -195,9 +190,9 @@ class _ProviderListingsPageState extends ConsumerState<ProviderListingsPage> {
   Widget build(BuildContext context) {
     final listings = ref.watch(providerListingsProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Listing manager'),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(
+        title: 'Listing manager',
         actions: [
           IconButton(
             tooltip: 'Add listing',
@@ -1035,7 +1030,8 @@ class _SheetDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      initialValue: value,
+      // ignore: deprecated_member_use – reactive value needed; initialValue is read-once
+      value: value,
       decoration: InputDecoration(labelText: label),
       items: values
           .map(

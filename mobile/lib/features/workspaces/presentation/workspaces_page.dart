@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../data/workspace_repository.dart';
 import '../domain/workspace_models.dart';
 
@@ -91,37 +90,28 @@ class _WorkspacesPageState extends ConsumerState<WorkspacesPage> {
                   shrinkWrap: true,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   children: [
-                    TextField(
+                    AppTextField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Business name',
-                        hintText: 'Your business or team name',
-                        border: OutlineInputBorder(),
-                      ),
+                      label: 'Business name',
+                      hint: 'Your business or team name',
                       textCapitalization: TextCapitalization.words,
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
                       controller: _descController,
-                      decoration: const InputDecoration(
-                        labelText: 'Description (optional)',
-                        hintText: 'What does your team do?',
-                        border: OutlineInputBorder(),
-                      ),
+                      label: 'Description (optional)',
+                      hint: 'What does your team do?',
                       maxLines: 2,
                       textCapitalization: TextCapitalization.sentences,
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
                       controller: _typeController,
-                      decoration: InputDecoration(
-                        labelText: 'Business type (optional)',
-                        hintText: 'e.g. Plumbing, Design, Consulting',
-                        border: OutlineInputBorder(),
-                      ),
+                      label: 'Business type (optional)',
+                      hint: 'e.g. Plumbing, Design, Consulting',
                       textCapitalization: TextCapitalization.sentences,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpacing.lg),
                   ],
                 ),
               ),
@@ -162,9 +152,9 @@ class _WorkspacesPageState extends ConsumerState<WorkspacesPage> {
   Widget build(BuildContext context) {
     final workspacesAsync = ref.watch(workspaceListProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Team Workspaces'),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(
+        title: 'Team Workspaces',
         actions: [
           IconButton(
             icon: Icon(Icons.add_rounded),
@@ -220,7 +210,7 @@ class _WorkspaceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SectionCard(
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         onTap: onTap,
         child: Row(
           children: [
@@ -229,7 +219,7 @@ class _WorkspaceCard extends StatelessWidget {
               height: 48,
               decoration: BoxDecoration(
                 color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadii.lg),
               ),
               child: Center(
                 child: Text(

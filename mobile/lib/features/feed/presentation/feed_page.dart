@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../l10n/l10n.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/constants/categories.dart';
@@ -21,14 +22,13 @@ import '../../orders/domain/order_models.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../reporting/domain/report_models.dart';
 import '../../reporting/presentation/report_sheet.dart';
-import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/feed_card.dart';
 import '../../../shared/components/filter_chip_group.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/marketplace_guidance.dart';
 import '../../../shared/components/provider_card.dart';
 import '../../../shared/components/section_header.dart';
+import '../../../shared/widgets/ai_prompt_bar.dart';
 import '../../chat/data/chat_repository.dart';
 import '../../people/data/people_repository.dart';
 import '../../people/domain/people_snapshot.dart';
@@ -626,9 +626,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       peopleSnapshot: peopleSnapshot,
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.mode.title),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(
+        title: widget.mode.title,
         actions: [
           Semantics(
             label: 'Search',
@@ -700,22 +700,50 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             return <Widget>[];
           }
           return [
-            SectionCard(
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  Icons.assignment_turned_in_outlined,
-                  color: AppColors.primary,
-                ),
-                title: const Text('Finish your public profile'),
-                subtitle: Text(
-                  'You are at ${profile.completionPercent}% — add name, area, and contact so nearby customers trust you faster.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                trailing: FilledButton.tonal(
-                  onPressed: () => context.push(AppRoutes.profile),
-                  child: const Text('Go'),
-                ),
+            ServiqSurface(
+              variant: ServiqSurfaceVariant.glass,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                    ),
+                    child: Icon(
+                      Icons.assignment_turned_in_outlined,
+                      color: AppColors.primaryDeep,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Finish your public profile',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xxxs),
+                        Text(
+                          'You are at ${profile.completionPercent}% — add name, area, and contact so nearby customers trust you faster.',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  FilledButton.tonal(
+                    onPressed: () => context.push(AppRoutes.profile),
+                    child: const Text('Go'),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -734,6 +762,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         ),
         onPrimaryTap: _openPostTask,
         onSearchTap: () => context.push(AppRoutes.search),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      AiPromptBar(
+        placeholder: AppLocalizations.of(context).aiPlaceholder,
+        enableDebounce: true,
+        onResult: (result) {},
       ),
       const SizedBox(height: AppSpacing.md),
       _ExploreIntentPanel(
@@ -762,40 +796,38 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         onOpenLocalityPicker: _showLocalityPicker,
       ),
       if (widget.mode == FeedPageMode.explore) ...[
-        const SizedBox(height: AppSpacing.sm),
-        SectionCard(
+        ServiqSurface(
+          variant: ServiqSurfaceVariant.glass,
+          padding: const EdgeInsets.all(AppSpacing.sm),
           child: InkWell(
             borderRadius: BorderRadius.circular(AppRadii.xl),
             onTap: () => context.push(AppRoutes.marketZones),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.primarySoft,
-                      borderRadius: BorderRadius.circular(AppRadii.lg),
-                    ),
-                    child: Icon(Icons.explore_rounded, color: AppColors.primaryDeep),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Explore Local Zones',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Theme.of(context).colorScheme.onSurface)),
-                        const SizedBox(height: AppSpacing.xxxs),
-                        Text('Browse societies, markets, and supply areas in your locality',
-                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-                      ],
-                    ),
+                  child: Icon(Icons.explore_rounded, color: AppColors.primaryDeep),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Explore Local Zones',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Theme.of(context).colorScheme.onSurface)),
+                      const SizedBox(height: AppSpacing.xxxs),
+                      Text('Browse societies, markets, and supply areas in your locality',
+                          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
+                    ],
                   ),
-                  Icon(Icons.chevron_right_rounded, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-                ],
-              ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
+              ],
             ),
           ),
         ),
@@ -958,7 +990,9 @@ class _ExploreIntentPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
+    return ServiqSurface(
+      variant: ServiqSurfaceVariant.glass,
+      padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

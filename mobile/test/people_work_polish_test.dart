@@ -12,6 +12,8 @@ import 'package:serviq_mobile/features/tasks/data/task_repository.dart';
 import 'package:serviq_mobile/features/tasks/domain/task_snapshot.dart';
 import 'package:serviq_mobile/features/tasks/presentation/tasks_page.dart';
 
+import 'helpers/serviq_test_app.dart';
+
 class _MockPeopleNotifier extends PeopleListNotifier {
   @override
   PeopleListState build() => PeopleListState(
@@ -57,7 +59,12 @@ void main() {
           appBootstrapProvider.overrideWithValue(_bootstrap),
           peopleListNotifierProvider.overrideWith(() => _MockPeopleNotifier()),
         ],
-        child: MaterialApp(theme: AppTheme.light(), home: const PeoplePage()),
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
+          home: const PeoplePage(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -92,7 +99,12 @@ void main() {
           appBootstrapProvider.overrideWithValue(_bootstrap),
           taskSnapshotProvider.overrideWith((ref) async => _taskSnapshot),
         ],
-        child: MaterialApp(theme: AppTheme.light(), home: const TasksPage()),
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
+          home: const TasksPage(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -130,7 +142,12 @@ void main() {
             (ref) async => _partialTaskSnapshot,
           ),
         ],
-        child: MaterialApp(theme: AppTheme.light(), home: const TasksPage()),
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
+          home: const TasksPage(),
+        ),
       ),
     );
     await tester.pumpAndSettle();

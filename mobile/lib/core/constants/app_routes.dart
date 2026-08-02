@@ -9,6 +9,7 @@ class AppRoutes {
   static const home = welcome;
   static const welcome = '/app/welcome';
   static const explore = '/app/explore';
+  static const discovery = '/app/discovery';
   static const people = '/app/people';
   static const tasks = '/app/tasks';
   static const chat = '/app/chat';

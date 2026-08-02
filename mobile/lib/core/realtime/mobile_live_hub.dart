@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -176,8 +176,13 @@ final mobileLiveHubProvider = Provider<MobileLiveHub?>((ref) {
   const baseDelayMs = 5000;
   const maxDelayMs = 60000;
   Timer? reconnectTimer;
+  var isBackgrounded = false;
 
   void scheduleReconnect() {
+    if (isBackgrounded) {
+      debugPrint('ServiQ MobileLiveHub: skipping reconnect — app is backgrounded');
+      return;
+    }
     if (retryCount >= maxRetries) {
       debugPrint(
         'ServiQ MobileLiveHub: gave up reconnecting after $maxRetries attempts',
@@ -196,6 +201,7 @@ final mobileLiveHubProvider = Provider<MobileLiveHub?>((ref) {
     );
     reconnectTimer?.cancel();
     reconnectTimer = Timer(delay, () {
+      if (isBackgrounded) return;
       // ignore: invalid_use_of_internal_member — no public API exposed.
       if (!channel.isJoined) {
         debugPrint('ServiQ MobileLiveHub: reconnecting...');
@@ -204,6 +210,23 @@ final mobileLiveHubProvider = Provider<MobileLiveHub?>((ref) {
       }
     });
   }
+
+  final lifecycleObserver = _AppLifecycleObserver(
+    onForeground: () {
+      isBackgrounded = false;
+      // ignore: invalid_use_of_internal_member
+      if (!channel.isJoined && retryCount < maxRetries) {
+        debugPrint('ServiQ MobileLiveHub: app foregrounded — resuming reconnect');
+        scheduleReconnect();
+      }
+    },
+    onBackground: () {
+      isBackgrounded = true;
+      reconnectTimer?.cancel();
+      debugPrint('ServiQ MobileLiveHub: app backgrounded — pausing reconnect');
+    },
+  );
+  WidgetsBinding.instance.addObserver(lifecycleObserver);
 
   channel.subscribe((status, [error]) {
     if (status == RealtimeSubscribeStatus.subscribed) {
@@ -218,6 +241,7 @@ final mobileLiveHubProvider = Provider<MobileLiveHub?>((ref) {
   });
 
   ref.onDispose(() {
+    WidgetsBinding.instance.removeObserver(lifecycleObserver);
     reconnectTimer?.cancel();
     client.removeChannel(channel);
   });
@@ -229,4 +253,27 @@ class MobileLiveHub {
   const MobileLiveHub({required this.channel});
 
   final RealtimeChannel channel;
+}
+
+class _AppLifecycleObserver extends WidgetsBindingObserver {
+  _AppLifecycleObserver({
+    required this.onForeground,
+    required this.onBackground,
+  });
+
+  final VoidCallback onForeground;
+  final VoidCallback onBackground;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        onForeground();
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        onBackground();
+    }
+  }
 }

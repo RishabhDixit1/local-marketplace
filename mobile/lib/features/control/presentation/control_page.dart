@@ -3,13 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
-import '../../../core/design_system/serviq_async_state.dart';
-import '../../../core/design_system/serviq_surface.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
+import '../../../core/feature_flags.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/trust_badge.dart';
 import '../../chat/data/chat_repository.dart';
@@ -43,9 +42,9 @@ class ControlPage extends ConsumerWidget {
     final tasks = ref.watch(taskSnapshotProvider).asData?.value;
     final conversations = ref.watch(chatConversationsProvider).asData?.value;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Business Control'),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(
+        title: 'Business Control',
         actions: [
           IconButton(
             tooltip: 'Refresh control data',
@@ -213,11 +212,11 @@ class _ControlHero extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _DarkPill(label: '$setupScore% setup'),
-              _DarkPill(label: '$offerCount offers'),
-              _DarkPill(label: '$unreadCount unread'),
-              _DarkPill(label: '$needsAction actions'),
-              _DarkPill(label: '$activeTasks active work'),
+              AppPill(label: '$setupScore% setup', backgroundColor: Colors.white.withValues(alpha: 0.12), foregroundColor: Colors.white),
+              AppPill(label: '$offerCount offers', backgroundColor: Colors.white.withValues(alpha: 0.12), foregroundColor: Colors.white),
+              AppPill(label: '$unreadCount unread', backgroundColor: Colors.white.withValues(alpha: 0.12), foregroundColor: Colors.white),
+              AppPill(label: '$needsAction actions', backgroundColor: Colors.white.withValues(alpha: 0.12), foregroundColor: Colors.white),
+              AppPill(label: '$activeTasks active work', backgroundColor: Colors.white.withValues(alpha: 0.12), foregroundColor: Colors.white),
             ],
           ),
         ],
@@ -279,29 +278,6 @@ class _DarkNextAction extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _DarkPill extends StatelessWidget {
-  const _DarkPill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(
-          context,
-        ).textTheme.labelMedium?.copyWith(color: Colors.white),
       ),
     );
   }
@@ -527,31 +503,35 @@ class _ControlActionPanel extends StatelessWidget {
             label: 'Manage leads',
             route: AppRoutes.providerLeads,
           ),
-          _ControlLinkRow(
-            icon: Icons.trending_up_rounded,
-            label: 'Boosts & promotions',
-            route: AppRoutes.providerBoosts,
-          ),
-          _ControlLinkRow(
-            icon: Icons.card_membership_outlined,
-            label: 'Subscriptions',
-            route: AppRoutes.providerSubscriptions,
-          ),
-          _ControlLinkRow(
-            icon: Icons.receipt_long_rounded,
-            label: 'Invoices',
-            route: AppRoutes.invoices,
-          ),
+          if (kPromotionsEnabled)
+            _ControlLinkRow(
+              icon: Icons.trending_up_rounded,
+              label: 'Boosts & promotions',
+              route: AppRoutes.providerBoosts,
+            ),
+          if (kSubscriptionsEnabled)
+            _ControlLinkRow(
+              icon: Icons.card_membership_outlined,
+              label: 'Subscriptions',
+              route: AppRoutes.providerSubscriptions,
+            ),
+          if (kInvoicesEnabled)
+            _ControlLinkRow(
+              icon: Icons.receipt_long_rounded,
+              label: 'Invoices',
+              route: AppRoutes.invoices,
+            ),
           _ControlLinkRow(
             icon: Icons.people_outline_rounded,
             label: 'Connections',
             route: AppRoutes.connections,
           ),
-          _ControlLinkRow(
-            icon: Icons.shield_outlined,
-            label: 'Admin',
-            route: AppRoutes.admin,
-          ),
+          if (kAdminEnabled)
+            _ControlLinkRow(
+              icon: Icons.shield_outlined,
+              label: 'Admin',
+              route: AppRoutes.admin,
+            ),
         ],
       ),
     );

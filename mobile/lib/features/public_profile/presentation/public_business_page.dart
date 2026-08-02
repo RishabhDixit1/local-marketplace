@@ -5,13 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../features/profile/data/profile_repository.dart';
 import '../../../features/profile/domain/mobile_profile_snapshot.dart';
-import '../../../shared/components/app_buttons.dart';
 
 class PublicBusinessPage extends ConsumerStatefulWidget {
   const PublicBusinessPage({super.key});
@@ -65,9 +64,9 @@ class _PublicBusinessPageState extends ConsumerState<PublicBusinessPage> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileSnapshotProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Public Business Page'),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(
+        title: 'Public Business Page',
         leading: IconButton(
           icon: Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
@@ -98,11 +97,17 @@ class _PublicBusinessPageState extends ConsumerState<PublicBusinessPage> {
             ),
           ),
         ),
-        data: (snapshot) => _PublicBusinessContent(
-          snapshot: snapshot,
-          onShare: _shareProfile,
-          onOpenBrowser: _openInBrowser,
-        ),
+        data: (snapshot) {
+          final shareUrl = _publicUrl(snapshot.publicPath);
+          final shareText = 'Check out ${snapshot.displayName} on ServiQ — trusted local services nearby.';
+          return _PublicBusinessContent(
+            snapshot: snapshot,
+            shareText: shareText,
+            shareUrl: shareUrl,
+            onShare: _shareProfile,
+            onOpenBrowser: _openInBrowser,
+          );
+        },
       ),
     );
   }
@@ -111,11 +116,15 @@ class _PublicBusinessPageState extends ConsumerState<PublicBusinessPage> {
 class _PublicBusinessContent extends StatelessWidget {
   const _PublicBusinessContent({
     required this.snapshot,
+    required this.shareText,
+    required this.shareUrl,
     required this.onShare,
     required this.onOpenBrowser,
   });
 
   final MobileProfileSnapshot snapshot;
+  final String shareText;
+  final String shareUrl;
   final VoidCallback onShare;
   final VoidCallback onOpenBrowser;
 
@@ -164,6 +173,12 @@ class _PublicBusinessContent extends StatelessWidget {
           label: 'Share Profile',
           icon: Icon(Icons.ios_share_rounded),
           onPressed: onShare,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        WhatsAppShareButton(
+          shareText: shareText,
+          shareUrl: shareUrl,
+          size: WhatsAppShareButtonSize.md,
         ),
         const SizedBox(height: AppSpacing.sm),
         SecondaryButton(

@@ -8,10 +8,14 @@ import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../data/invoices_repository.dart';
 import '../domain/invoice_models.dart';
+
+final _invoiceStatusColorMap = <String, (Color, Color)>{
+  'paid': (AppColors.successSoft, AppColors.success),
+  'cancelled': (AppColors.dangerSoft, AppColors.danger),
+  'refunded': (AppColors.accentSoft, AppColors.accent),
+};
 
 class InvoicesPage extends ConsumerWidget {
   const InvoicesPage({super.key});
@@ -20,8 +24,8 @@ class InvoicesPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(invoiceListProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Invoices')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Invoices'),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(invoiceListProvider);
@@ -80,15 +84,15 @@ class _Summary extends StatelessWidget {
         .fold<int>(0, (sum, i) => sum + i.totalPaise);
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
       child: Row(
         children: [
           Icon(Icons.receipt_long_rounded, size: 20, color: AppColors.primary),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,7 +103,7 @@ class _Summary extends StatelessWidget {
                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xxxs),
                 Text(
                   '₹${(totalPaid / 100).toStringAsFixed(0)}',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -128,7 +132,7 @@ class _InvoiceTile extends StatelessWidget {
     final fmt = DateFormat('d MMM yyyy');
     return SectionCard(
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         onTap: () => context.push(AppRoutes.invoiceDetail(invoice.id)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,7 +147,7 @@ class _InvoiceTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                _StatusChip(status: invoice.status),
+                AppStatusChip(label: invoice.status, colorMap: _invoiceStatusColorMap),
               ],
             ),
             const SizedBox(height: 6),
@@ -177,37 +181,6 @@ class _InvoiceTile extends StatelessWidget {
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (Color bg, Color fg) = switch (status) {
-      'paid' => (AppColors.successSoft, AppColors.success),
-      'cancelled' => (AppColors.dangerSoft, AppColors.danger),
-      'refunded' => (AppColors.accentSoft, AppColors.accent),
-      _ => (AppColors.primarySoft, AppColors.primary),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        status.replaceAll('_', ' '),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: fg,
         ),
       ),
     );

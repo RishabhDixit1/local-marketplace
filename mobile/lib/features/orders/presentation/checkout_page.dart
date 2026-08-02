@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,14 +8,11 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
-import '../../../core/design_system/serviq_chrome.dart';
-import '../../../core/design_system/serviq_recovery_banner.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/app_buttons.dart';
-import '../../../shared/components/empty_state_view.dart';
 import '../../cart/application/cart_notifier.dart';
 import '../../tasks/data/task_repository.dart';
 import '../data/order_repository.dart';
@@ -398,13 +397,13 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
 
     final canGoNext = !empty && _canAdvance();
 
-    return Scaffold(
-      appBar: AppBar(
+    return ServiqScaffold(
+      appBar: ServiqTopBar(
+        title: _stepTitle(),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: _goBack,
         ),
-        title: Text(_stepTitle()),
       ),
       body: SafeArea(
         child: _step == _CheckoutStep.done
@@ -437,7 +436,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                           if (_step == _CheckoutStep.payment) _buildPaymentStep(lines),
                           if (_step == _CheckoutStep.confirm) _buildConfirmStep(lines),
                           if ((_checkoutRecoveryMessage ?? '').trim().isNotEmpty) ...[
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.md),
                             ServiqRecoveryBanner(
                               message: _checkoutRecoveryMessage!.trim(),
                               tone: ServiqRecoveryTone.danger,
@@ -447,7 +446,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                             ),
                           ],
                           if ((_promoError ?? '').trim().isNotEmpty) ...[
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.md),
                             ServiqRecoveryBanner(
                               message: _promoError!.trim(),
                               tone: ServiqRecoveryTone.warning,
@@ -499,57 +498,69 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   }
 
   Widget _buildBottomBar(bool canGoNext) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SafeArea(
       top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline)),
-        ),
-        child: Row(
-          children: [
-            if (_step != _CheckoutStep.review)
-              Expanded(
-                child: SecondaryButton(
-                  label: 'Back',
-                  onPressed: _goBack,
-                  expanded: true,
-                ),
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [AppColors.darkSurface.withValues(alpha: 0.9), AppColors.darkSurfaceAlt.withValues(alpha: 0.75)]
+                    : [Colors.white.withValues(alpha: 0.9), Colors.white.withValues(alpha: 0.75)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-            if (_step != _CheckoutStep.review) const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: PrimaryButton(
-                label: _step == _CheckoutStep.confirm
-                    ? (_placing ? 'Placing...' : 'Place order')
-                    : _step == _CheckoutStep.payment
-                        ? 'Continue'
-                        : _step == _CheckoutStep.address
-                            ? 'Continue to payment'
-                            : 'Continue',
-                icon: _step == _CheckoutStep.confirm && _placing
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : null,
-                onPressed: canGoNext && !_placing
-                    ? () {
-                        if (_step == _CheckoutStep.confirm) {
-                          _placeOrder();
-                        } else if (_validateStep()) {
-                          _goNext();
-                        }
-                      }
-                    : null,
-              ),
+              border: Border(top: BorderSide(color: isDark ? AppColors.glassStrokeDark : AppColors.glassStroke)),
             ),
-          ],
+            child: Row(
+              children: [
+                if (_step != _CheckoutStep.review)
+                  Expanded(
+                    child: SecondaryButton(
+                      label: 'Back',
+                      onPressed: _goBack,
+                      expanded: true,
+                    ),
+                  ),
+                if (_step != _CheckoutStep.review) const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  flex: 2,
+                  child: PrimaryButton(
+                    label: _step == _CheckoutStep.confirm
+                        ? (_placing ? 'Placing...' : 'Place order')
+                        : _step == _CheckoutStep.payment
+                            ? 'Continue'
+                            : _step == _CheckoutStep.address
+                                ? 'Continue to payment'
+                                : 'Continue',
+                    icon: _step == _CheckoutStep.confirm && _placing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : null,
+                    onPressed: canGoNext && !_placing
+                        ? () {
+                            if (_step == _CheckoutStep.confirm) {
+                              _placeOrder();
+                            } else if (_validateStep()) {
+                              _goNext();
+                            }
+                          }
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -572,7 +583,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
               Row(
                 children: [
                   Icon(Icons.shopping_bag_outlined, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Text(
                     'Order summary',
                     style: Theme.of(context).textTheme.titleLarge,
@@ -582,7 +593,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.primarySoft,
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
                     ),
                     child: Text(
                       '${lines.length} item${lines.length != 1 ? 's' : ''}',
@@ -595,7 +606,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               for (final entry in byProvider.entries) ...[
                 if (entry.key != byProvider.entries.first.key) const Divider(height: 24),
                 for (final line in entry.value) ...[
@@ -608,7 +619,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                         ? (qty) => ref.read(cartProvider.notifier).setQuantity(line.cartKey, qty)
                         : null,
                   ),
-                  if (line != entry.value.last) const SizedBox(height: 8),
+                  if (line != entry.value.last) const SizedBox(height: AppSpacing.xs),
                 ],
               ],
               const Divider(height: 24),
@@ -639,43 +650,37 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
           Row(
             children: [
               Icon(Icons.local_shipping_outlined, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               Text('Fulfillment', style: Theme.of(context).textTheme.titleLarge),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           _FulfillmentChips(
             selected: _fulfillmentMethod,
             onChanged: (m) => setState(() => _fulfillmentMethod = m),
           ),
-          const SizedBox(height: 16),
-          TextField(
+          const SizedBox(height: AppSpacing.md),
+          AppTextField(
             controller: _addressController,
             enabled: !_placing,
             minLines: 3,
             maxLines: 5,
-            decoration: InputDecoration(
-              labelText: _fulfillmentMethod == MobileOrderFulfillmentMethod.pickup
-                  ? 'Pickup or meeting point'
-                  : 'Delivery or service address',
-              hintText: _fulfillmentMethod == MobileOrderFulfillmentMethod.pickup
-                  ? 'Where should the provider meet you?'
-                  : 'Full address for delivery or service',
-              border: OutlineInputBorder(),
-            ),
+            label: _fulfillmentMethod == MobileOrderFulfillmentMethod.pickup
+                ? 'Pickup or meeting point'
+                : 'Delivery or service address',
+            hint: _fulfillmentMethod == MobileOrderFulfillmentMethod.pickup
+                ? 'Where should the provider meet you?'
+                : 'Full address for delivery or service',
             textCapitalization: TextCapitalization.sentences,
           ),
-          const SizedBox(height: 12),
-          TextField(
+          const SizedBox(height: AppSpacing.sm),
+          AppTextField(
             controller: _notesController,
             enabled: !_placing,
             minLines: 2,
             maxLines: 4,
-            decoration: InputDecoration(
-              labelText: 'Notes (optional)',
-              hintText: 'Landmark, gate code, timing preferences...',
-              border: OutlineInputBorder(),
-            ),
+            label: 'Notes (optional)',
+            hint: 'Landmark, gate code, timing preferences...',
             textCapitalization: TextCapitalization.sentences,
           ),
         ],
@@ -694,17 +699,17 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
               Row(
                 children: [
                   Icon(Icons.credit_card_outlined, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Text('Payment method', style: Theme.of(context).textTheme.titleLarge),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               _PaymentMethodCard(
                 method: MobileOrderPaymentMethod.cod,
                 selected: _paymentMethod == MobileOrderPaymentMethod.cod,
                 onTap: () => setState(() => _paymentMethod = MobileOrderPaymentMethod.cod),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
               _PaymentMethodCard(
                 method: MobileOrderPaymentMethod.razorpay,
                 selected: _paymentMethod == MobileOrderPaymentMethod.razorpay,
@@ -713,13 +718,13 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Price summary', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               _PriceRow(label: 'Items', value: 'INR ${grandTotal.round()}'),
               _PriceRow(label: 'Delivery', value: 'Free'),
               _PriceRow(
@@ -746,11 +751,11 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
               Row(
                 children: [
                   Icon(Icons.receipt_long_outlined, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Text('Order summary', style: Theme.of(context).textTheme.titleLarge),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               _DetailRow(label: 'Items', value: '${lines.length}'),
               _DetailRow(label: 'Fulfillment', value: _humanize(_fulfillmentMethod.apiValue)),
               _DetailRow(label: 'Payment', value: _paymentMethod == MobileOrderPaymentMethod.cod ? 'Cash on delivery' : 'Online (Razorpay)'),
@@ -789,27 +794,38 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     return Center(
       child: ListView(
         shrinkWrap: true,
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         children: [
           Column(
             children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.successSoft,
-                  shape: BoxShape.circle,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(40),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppColors.success.withValues(alpha: 0.3), AppColors.success.withValues(alpha: 0.1)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                    ),
+                    child: Icon(Icons.check_rounded, color: AppColors.success, size: 44),
+                  ),
                 ),
-                child: Icon(Icons.check_rounded, color: AppColors.success, size: 44),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.xl),
               Text(
                 'Order placed!',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 'Your order has been placed successfully.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -818,12 +834,13 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                 textAlign: TextAlign.center,
               ),
               if (orderId.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceAlt,
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.surfaceAlt.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    border: Border.all(color: AppColors.glassStroke),
                   ),
                   child: Text(
                     '#${orderId.length > 8 ? orderId.substring(0, 8).toUpperCase() : orderId}',
@@ -835,29 +852,23 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                   ),
                 ),
               ],
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () {
-                    if (orderId.isNotEmpty) {
-                      context.go(AppRoutes.orderDetail(orderId));
-                    } else {
-                      context.go(AppRoutes.orders);
-                    }
-                  },
-                  icon: const Icon(Icons.visibility_outlined),
-                  label: const Text('View order status'),
-                ),
+              const SizedBox(height: AppSpacing.xxl),
+              PrimaryButton(
+                label: 'View order status',
+                icon: const Icon(Icons.visibility_outlined),
+                onPressed: () {
+                  if (orderId.isNotEmpty) {
+                    context.go(AppRoutes.orderDetail(orderId));
+                  } else {
+                    context.go(AppRoutes.orders);
+                  }
+                },
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => context.go(AppRoutes.welcome),
-                  icon: Icon(Icons.home_outlined),
-                  label: const Text('Back to home'),
-                ),
+              const SizedBox(height: AppSpacing.sm),
+              SecondaryButton(
+                label: 'Back to home',
+                icon: const Icon(Icons.home_outlined),
+                onPressed: () => context.go(AppRoutes.welcome),
               ),
             ],
           ),
@@ -880,23 +891,35 @@ class _StepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outline)),
-      ),
-      child: Row(
-        children: [
-          for (var i = 0; i < steps.length; i++) ...[
-            if (i > 0) Expanded(child: Divider(height: 1, color: Theme.of(context).colorScheme.outline)),
-            _StepDot(
-              label: _stepLabel(steps[i]),
-              active: steps[i] == currentStep,
-              completed: steps.indexOf(currentStep) > i,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [AppColors.darkSurface.withValues(alpha: 0.85), AppColors.darkSurfaceAlt.withValues(alpha: 0.6)]
+                  : [Colors.white.withValues(alpha: 0.9), Colors.white.withValues(alpha: 0.6)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ],
-        ],
+            border: Border(bottom: BorderSide(color: isDark ? AppColors.glassStrokeDark : AppColors.glassStroke)),
+          ),
+          child: Row(
+            children: [
+              for (var i = 0; i < steps.length; i++) ...[
+                if (i > 0) Expanded(child: Divider(height: 1, color: Theme.of(context).colorScheme.outline)),
+                _StepDot(
+                  label: _stepLabel(steps[i]),
+                  active: steps[i] == currentStep,
+                  completed: steps.indexOf(currentStep) > i,
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -938,7 +961,7 @@ class _StepDot extends StatelessWidget {
             : cs.onSurface.withValues(alpha: 0.3);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -963,7 +986,7 @@ class _StepDot extends StatelessWidget {
                       )
                     : null,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xxs),
           Text(
             label,
             style: TextStyle(
@@ -998,16 +1021,24 @@ class _ItemRow extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: AppColors.surfaceAlt,
-            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primarySoft.withValues(alpha: 0.7),
+                AppColors.primarySoft.withValues(alpha: 0.3),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
           ),
           child: Icon(
             item.itemType == 'product' ? Icons.inventory_2_outlined : Icons.build_outlined,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            color: AppColors.primaryDeep,
             size: 22,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1018,7 +1049,7 @@ class _ItemRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: AppSpacing.xxxs),
               Text(
                 'INR ${item.price.round()} each',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
@@ -1055,13 +1086,13 @@ class _ItemRow extends StatelessWidget {
             '×${item.quantity}',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.xs),
         Text(
           'INR ${(item.price * item.quantity).round()}',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
         if (onRemove != null) ...[
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpacing.xxs),
           IconButton(
             onPressed: onRemove,
             icon: Icon(Icons.close_rounded, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
@@ -1128,13 +1159,13 @@ class _PaymentMethodCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppRadii.lg),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: selected ? AppColors.primarySoft : AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
           border: Border.all(
             color: selected ? AppColors.primary : Theme.of(context).colorScheme.outline,
             width: selected ? 2 : 1,
@@ -1149,7 +1180,7 @@ class _PaymentMethodCard extends StatelessWidget {
               color: selected ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               size: 24,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1257,7 +1288,7 @@ class _DetailRow extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: Text(
               value,

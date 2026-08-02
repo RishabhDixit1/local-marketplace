@@ -9,8 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/api/mobile_api_provider.dart';
-import '../../../core/design_system/serviq_async_state.dart';
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../l10n/l10n.dart';
@@ -85,7 +84,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           children: [
             const Text('This permanently deletes your account and data. Type DELETE to confirm.'),
             const SizedBox(height: AppSpacing.sm),
-            TextField(controller: controller, decoration: const InputDecoration(labelText: 'Type DELETE')),
+            AppTextField(label: 'Type DELETE', controller: controller),
           ],
         ),
         actions: [
@@ -115,8 +114,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final themeMode = ref.watch(themeModeProvider);
     final notifAsync = ref.watch(notificationSettingsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Settings'),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 28),

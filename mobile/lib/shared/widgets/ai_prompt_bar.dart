@@ -152,10 +152,17 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
         l10n: l10n,
         onNavigate: (redirect) {
           Navigator.pop(ctx);
-          if (redirect.startsWith('/')) {
+          final params = result.redirectParams;
+          if (params != null && params.isNotEmpty) {
+            final searchQuery = params['q'] ?? params['query'] ?? query;
+            final searchParams = <String, String>{};
+            if (searchQuery.isNotEmpty) searchParams['q'] = searchQuery;
+            if (params.containsKey('category')) searchParams['category'] = params['category']!;
+            context.push(Uri(path: AppRoutes.search, queryParameters: searchParams).toString());
+          } else if (redirect.startsWith('/app/')) {
             context.push(redirect);
           } else {
-            context.push('/search?q=${Uri.encodeComponent(query)}');
+            context.push('${AppRoutes.search}?q=${Uri.encodeComponent(query)}');
           }
         },
         onPostRequirement: () {
@@ -245,6 +252,108 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
           ),
         ],
       ],
+    );
+  }
+}
+
+class AiFloatingAssistant extends ConsumerWidget {
+  const AiFloatingAssistant({super.key});
+
+  static Future<void> openSheet(BuildContext context) {
+    return showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AiPromptSheet(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return FloatingActionButton.small(
+      heroTag: 'ai-assistant-fab',
+      onPressed: () => openSheet(context),
+      backgroundColor: AppColors.primary,
+      foregroundColor: Colors.white,
+      tooltip: 'Ask AI',
+      child: const Icon(Icons.auto_awesome_rounded),
+    );
+  }
+}
+
+class _AiPromptSheet extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_AiPromptSheet> createState() => _AiPromptSheetState();
+}
+
+class _AiPromptSheetState extends ConsumerState<_AiPromptSheet> {
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return DraggableScrollableSheet(
+      initialChildSize: 0.45,
+      minChildSize: 0.3,
+      maxChildSize: 0.85,
+      expand: false,
+      builder: (ctx, scrollController) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadii.xl)),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      gradient: AppGradients.premiumAccent,
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                    ),
+                    child: const Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.white),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Ask ServiQ AI',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: scrollController,
+                padding: EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, bottomInset + AppSpacing.lg),
+                child: AiPromptBar(
+                  onResult: (result) {
+                    Navigator.pop(ctx);
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

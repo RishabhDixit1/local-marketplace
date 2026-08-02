@@ -2,12 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../data/invoices_repository.dart';
 import '../domain/invoice_models.dart';
+
+const _statusColorMap = <String, (Color, Color)>{
+  'paid': (AppColors.successSoft, AppColors.success),
+  'cancelled': (AppColors.dangerSoft, AppColors.danger),
+  'refunded': (AppColors.accentSoft, AppColors.accent),
+};
 
 class InvoiceDetailPage extends ConsumerWidget {
   const InvoiceDetailPage({super.key, required this.invoiceId});
@@ -23,8 +29,8 @@ class InvoiceDetailPage extends ConsumerWidget {
       }),
     );
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Invoice')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Invoice'),
       body: SafeArea(
         child: async.when(
           loading: () => const Padding(
@@ -83,10 +89,10 @@ class _InvoiceDetail extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _StatusChip(status: invoice.status),
+                  AppStatusChip(label: invoice.status, colorMap: _statusColorMap),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 fmt.format(invoice.invoiceDate),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -183,37 +189,6 @@ class _LineItem extends StatelessWidget {
           Expanded(child: Text(label, style: style)),
           Text(value, style: style),
         ],
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (Color bg, Color fg) = switch (status) {
-      'paid' => (AppColors.successSoft, AppColors.success),
-      'cancelled' => (AppColors.dangerSoft, AppColors.danger),
-      'refunded' => (AppColors.accentSoft, AppColors.accent),
-      _ => (AppColors.primarySoft, AppColors.primary),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        status.replaceAll('_', ' '),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: fg,
-        ),
       ),
     );
   }

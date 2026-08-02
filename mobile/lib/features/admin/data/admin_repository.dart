@@ -234,7 +234,7 @@ class AdminRepository {
     await _apiClient.patchJson('/api/admin/verifications', body: {
       'id': id,
       'action': 'reject',
-      if (reason != null) 'reason': reason,
+      'reason': ?reason,
     });
   }
 }

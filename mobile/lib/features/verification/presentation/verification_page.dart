@@ -3,10 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
 import '../data/verification_repository.dart';
 import '../domain/verification_models.dart';
 
@@ -111,17 +110,17 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
   Widget build(BuildContext context) {
     final bundleAsync = ref.watch(verificationBundleProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Verification')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Verification'),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 28),
             children: [
               Text('Get verified to build trust with customers.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               ServiqAsyncBody<VerificationBundle>(
                 value: bundleAsync,
                 errorTitle: 'Unable to load verification data',
@@ -140,9 +139,9 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildStatusBanner(bundle.status),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         _buildUploadSection(bundle),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         _buildDocumentHistory(bundle.documents),
       ],
     );
@@ -181,19 +180,19 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
       child: Row(
         children: [
           Icon(icon, color: fg, size: 28),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Status: $label',
                     style: TextStyle(fontWeight: FontWeight.bold, color: fg, fontSize: 15)),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xxxs),
                 Text('Level: ${status.level[0].toUpperCase()}${status.level.substring(1)}',
                     style: TextStyle(fontSize: 12, color: fg.withValues(alpha: 0.8))),
               ],
@@ -217,14 +216,14 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
               style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
           const SizedBox(height: 14),
           ...List.generate(_uploadFields.length, (i) => _buildUploadRow(i, hasPending)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           if (_uploadFields.length < 3)
             TextButton.icon(
               onPressed: _uploading ? null : _addField,
               icon: Icon(Icons.add, size: 16),
               label: const Text('Add another document'),
             ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -247,7 +246,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: AppColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppRadii.md),
               ),
               child: Text(_message!, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
             ),
@@ -264,7 +263,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(10),
@@ -276,7 +275,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
             children: [
               Expanded(
                   child: DropdownButtonFormField<String>(
-                  value: field.documentType,
+                  initialValue: field.documentType,
                   decoration: const InputDecoration(
                     labelText: 'Document type',
                     contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -302,7 +301,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Row(
             children: [
               Expanded(
@@ -316,7 +315,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               FilledButton(
                 onPressed: (!hasFile || busy) ? null : () => _upload(index),
                 child: busy
@@ -339,7 +338,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
           const SizedBox(height: 10),
           if (documents.isEmpty)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
               child: EmptyStateView(
                 title: 'No documents uploaded yet',
                 message: 'Upload identity, address, or business documents above.',
@@ -355,7 +354,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
   Widget _documentRow(VerificationDocument doc) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(10),
@@ -371,7 +370,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
                   children: [
                     Text(doc.documentTypeLabel,
                         style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                    const SizedBox(height: 2),
+const SizedBox(height: AppSpacing.xxxs),
                     Text('${doc.submittedAt.day}/${doc.submittedAt.month}/${doc.submittedAt.year}',
                         style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                   ],
@@ -386,7 +385,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: AppColors.dangerSoft,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(AppRadii.sm),
               ),
               child: Text(
                 doc.reviewerNotes!,
@@ -413,7 +412,7 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadii.lg)),
       child: Text(status[0].toUpperCase() + status.substring(1),
           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: fg)),
     );

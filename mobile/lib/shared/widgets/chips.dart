@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/design_tokens.dart';
 
+enum AppPillSize { regular, mini }
+
 class AppPill extends StatelessWidget {
   const AppPill({
     super.key,
@@ -9,35 +11,51 @@ class AppPill extends StatelessWidget {
     required this.backgroundColor,
     required this.foregroundColor,
     this.icon,
+    this.size = AppPillSize.regular,
+    this.border,
+    this.maxWidth,
   });
 
   final String label;
   final Color backgroundColor;
   final Color foregroundColor;
   final IconData? icon;
+  final AppPillSize size;
+  final BorderSide? border;
+  final double? maxWidth;
 
   @override
   Widget build(BuildContext context) {
+    final isMini = size == AppPillSize.mini;
+    final hPad = isMini ? 6.0 : 10.0;
+    final vPad = isMini ? 2.0 : 8.0;
+    final iconSize = isMini ? 10.0 : 14.0;
+    final gap = isMini ? 3.0 : 6.0;
+    final fontSize = isMini ? 10.0 : null;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      constraints: maxWidth != null ? BoxConstraints(maxWidth: maxWidth!) : null,
+      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
+        borderRadius: BorderRadius.circular(isMini ? AppRadii.xs : AppRadii.pill),
+        border: border != null ? Border.fromBorderSide(border!) : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: foregroundColor),
-            const SizedBox(width: 6),
+            Icon(icon, size: iconSize, color: foregroundColor),
+            SizedBox(width: gap),
           ],
           Flexible(
             child: Text(
               label,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.labelMedium?.copyWith(color: foregroundColor),
+              style: (isMini
+                      ? Theme.of(context).textTheme.labelSmall
+                      : Theme.of(context).textTheme.labelMedium)
+                  ?.copyWith(color: foregroundColor, fontSize: fontSize),
             ),
           ),
         ],
@@ -84,6 +102,30 @@ class AppFilterChip extends StatelessWidget {
       ),
       showCheckmark: false,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+    );
+  }
+}
+
+class AppStatusChip extends StatelessWidget {
+  const AppStatusChip({
+    super.key,
+    required this.label,
+    required this.colorMap,
+    this.size = AppPillSize.mini,
+  });
+
+  final String label;
+  final Map<String, (Color bg, Color fg)> colorMap;
+  final AppPillSize size;
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg) = colorMap[label] ?? (Theme.of(context).colorScheme.surfaceContainerHighest, Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7));
+    return AppPill(
+      label: label.replaceAll('_', ' '),
+      backgroundColor: bg,
+      foregroundColor: fg,
+      size: size,
     );
   }
 }

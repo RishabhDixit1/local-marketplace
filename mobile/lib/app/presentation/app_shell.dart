@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_routes.dart';
+import '../../core/theme/design_tokens.dart';
 import '../../core/firebase/mobile_push_notifications.dart';
 import '../../core/network/offline_banner.dart';
 import '../../core/network/offline_sync_manager.dart';
@@ -12,11 +13,12 @@ import '../../core/services/analytics_service.dart';
 import '../../features/chat/data/chat_repository.dart';
 import '../../features/tasks/data/task_repository.dart';
 import '../../l10n/l10n.dart';
+import '../../shared/widgets/ai_prompt_bar.dart';
 import 'main_bottom_nav.dart';
 
 @visibleForTesting
 bool shouldShowPostActionForBranch(int index) =>
-    index == 0 || index == 1;
+    index == 0 || index == 1 || index == 2;
 
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -68,7 +70,7 @@ class AppShell extends ConsumerWidget {
         }
 
         return Scaffold(
-          extendBody: !useRail,
+          extendBody: true,
           body: Column(
             children: [
               const OfflineBanner(),
@@ -77,13 +79,17 @@ class AppShell extends ConsumerWidget {
                   bottom: false,
                   child: Align(
                     alignment: Alignment.centerRight,
-                    child: IconButton(
-                      onPressed: () => context.push(AppRoutes.profile),
-                      icon: const CircleAvatar(
-                        radius: 16,
-                        child: Icon(Icons.person_rounded, size: 18),
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.xs, top: AppSpacing.xxs),
+                      child: IconButton(
+                        onPressed: () => context.push(AppRoutes.profile),
+                        icon: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                          child: Icon(Icons.person_rounded, size: 18, color: Theme.of(context).colorScheme.onPrimaryContainer),
+                        ),
+                        tooltip: AppLocalizations.of(context).profile,
                       ),
-                      tooltip: AppLocalizations.of(context).profile,
                     ),
                   ),
                 ),
@@ -104,40 +110,47 @@ class AppShell extends ConsumerWidget {
               ),
             ],
           ),
-          floatingActionButton: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            child: showPostAction
-                ? Padding(
-                    key: const ValueKey('post-need-fab'),
-                    padding: EdgeInsets.only(bottom: useRail ? 16 : 66),
-                    child: FloatingActionButton.extended(
-                      heroTag: 'post-need-fab',
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        context.push(AppRoutes.createNeed);
-                      },
-                      icon: const Icon(Icons.add_rounded),
-                      label: Text(AppLocalizations.of(context).postNeed),
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      elevation: 3,
-                      extendedPadding: const EdgeInsetsDirectional.symmetric(
-                        horizontal: 18,
-                      ),
+          floatingActionButton: Padding(
+            padding: EdgeInsets.only(bottom: useRail ? 16 : 66),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const AiFloatingAssistant(),
+                if (showPostAction) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  FloatingActionButton.extended(
+                    heroTag: 'post-need-fab',
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      context.push(AppRoutes.createNeed);
+                    },
+                    icon: const Icon(Icons.add_rounded),
+                    label: Text(AppLocalizations.of(context).postNeed),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    elevation: 3,
+                    extendedPadding: const EdgeInsetsDirectional.symmetric(
+                      horizontal: 18,
                     ),
-                  )
-                : const SizedBox.shrink(key: ValueKey('no-post-need-fab')),
+                  ),
+                ],
+              ],
+            ),
           ),
           floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           bottomNavigationBar: useRail
               ? null
-              : MainBottomNav(
-                  currentIndex: navigationShell.currentIndex,
-                  onTap: destinationSelected,
-                  chatCount: unreadChatCount,
-                  taskCount: activeTaskCount,
+              : Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).padding.bottom > 0 ? 0 : 8,
+                  ),
+                  child: MainBottomNav(
+                    currentIndex: navigationShell.currentIndex,
+                    onTap: destinationSelected,
+                    chatCount: unreadChatCount,
+                    taskCount: activeTaskCount,
+                  ),
                 ),
         );
       },

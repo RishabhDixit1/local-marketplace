@@ -14,11 +14,7 @@ import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/app_buttons.dart';
-import '../../../shared/components/app_text_field.dart';
-import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/premium_primitives.dart';
 import '../data/launchpad_repository.dart';
@@ -533,10 +529,9 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
           _back();
         }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Business AI setup'),
-          automaticallyImplyLeading: false,
+      child: ServiqScaffold(
+        appBar: ServiqTopBar(
+          title: 'Business AI setup',
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
             onPressed: _back,
@@ -1559,7 +1554,8 @@ class _DropdownField extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasValidValue = value.isNotEmpty && values.contains(value);
     return DropdownButtonFormField<String>(
-      initialValue: hasValidValue ? value : null,
+      // ignore: deprecated_member_use – reactive value needed; initialValue is read-once
+      value: hasValidValue ? value : null,
       isExpanded: true,
       decoration: InputDecoration(labelText: label),
       items: [

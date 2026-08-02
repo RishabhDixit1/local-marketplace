@@ -8,11 +8,11 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../tasks/data/task_repository.dart';
 import '../../tasks/domain/task_snapshot.dart';
+import '../../../l10n/l10n.dart';
+import '../../../shared/widgets/ai_prompt_bar.dart';
 
 class ProviderOrdersPage extends ConsumerStatefulWidget {
   const ProviderOrdersPage({super.key});
@@ -59,14 +59,20 @@ class _ProviderOrdersPageState extends ConsumerState<ProviderOrdersPage> {
   Widget build(BuildContext context) {
     final snapshot = ref.watch(taskSnapshotProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Provider Orders')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Provider Orders'),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
+              AiPromptBar(
+                placeholder: AppLocalizations.of(context).aiPlaceholder,
+                enableDebounce: true,
+                onResult: (result) {},
+              ),
+              const SizedBox(height: 12),
               ServiqAsyncBody<MobileTaskSnapshot>(
                 value: snapshot,
                 errorTitle: 'Unable to load orders',

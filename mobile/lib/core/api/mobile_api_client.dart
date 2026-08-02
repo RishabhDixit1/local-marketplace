@@ -38,6 +38,7 @@ class MobileApiClient {
   final http.Client _httpClient;
   final RateLimiter _rateLimiter;
   static Completer<void>? _refreshCompleter;
+  static const Duration _refreshWaitTimeout = Duration(seconds: 12);
 
   Future<Map<String, dynamic>> getJson(
     String path, {
@@ -546,7 +547,14 @@ class MobileApiClient {
     final client = _supabaseClient;
     if (client == null) return false;
     if (_refreshCompleter != null) {
-      await _refreshCompleter!.future;
+      try {
+        await _refreshCompleter!.future.timeout(_refreshWaitTimeout);
+      } on TimeoutException {
+        debugPrint(
+          'ServiQ MobileApiClient: timed out waiting for concurrent refresh',
+        );
+        _refreshCompleter = null;
+      }
       return client.auth.currentSession != null;
     }
     _refreshCompleter = Completer<void>();

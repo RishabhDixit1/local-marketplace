@@ -12,7 +12,7 @@ import '../../../core/constants/categories.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/marketplace_guidance.dart';
 import '../../../shared/components/metric_tile.dart';
@@ -438,7 +438,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       builder: (context) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.lg),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,7 +447,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                   'Add media',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   'Photos and short videos help nearby providers trust the request faster.',
                   style: Theme.of(context).textTheme.bodyMedium,
@@ -775,15 +775,6 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
               'notified_providers': result.notifiedProviders,
             },
           );
-      context.go(
-        Uri(
-          path: AppRoutes.tasks,
-          queryParameters: {
-            if (result.helpRequestId.isNotEmpty) 'focus': result.helpRequestId,
-            'source': 'post_success',
-          },
-        ).toString(),
-      );
     } on ApiException catch (error) {
       if (!mounted) {
         return;
@@ -880,8 +871,8 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
   Widget build(BuildContext context) {
     final publishedDraft = _lastPublishedDraft;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Post Need')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Post Need'),
       bottomNavigationBar: _result == null ? _buildStickyCta() : null,
       body: SafeArea(
         child: ListView(
@@ -901,7 +892,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                 onDiscard: _resetComposer,
               ),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
               switchInCurve: Curves.easeOutCubic,
@@ -1060,7 +1051,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             _CategoryPicker(
               selectedCategory: _category,
               enabled: !_submitting,
@@ -1073,19 +1064,16 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                 _cacheDraft();
               },
             ),
-            const SizedBox(height: 16),
-            TextFormField(
+            const SizedBox(height: AppSpacing.md),
+            AppTextField(
+              label: 'Need',
+              hint: 'Need electrician for switch repair today',
               controller: _titleController,
               enabled: !_submitting,
               minLines: 3,
               maxLines: 5,
               maxLength: 160,
               textInputAction: TextInputAction.newline,
-              decoration: InputDecoration(
-                labelText: 'Need',
-                hintText: 'Need electrician for switch repair today',
-                alignLabelWithHint: true,
-              ),
               validator: _validateTitle,
             ),
           ],
@@ -1122,18 +1110,16 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                   )
                   .toList(),
             ),
-            const SizedBox(height: 16),
-            TextFormField(
+            const SizedBox(height: AppSpacing.md),
+            AppTextField(
+              label: 'Location',
+              hint: 'Koramangala, Bengaluru',
               controller: _locationController,
               enabled: !_submitting,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Location',
-                hintText: 'Koramangala, Bengaluru',
-              ),
               validator: _validateLocation,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             SegmentedButton<_ServiceDelivery>(
               segments: const [
                 ButtonSegment(
@@ -1152,7 +1138,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                   ? null
                   : (values) => _selectDelivery(values.first),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             ExpansionTile(
               tilePadding: EdgeInsets.zero,
               childrenPadding: EdgeInsets.zero,
@@ -1210,38 +1196,31 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                   )
                   .toList(),
             ),
-            const SizedBox(height: 12),
-            TextFormField(
+            const SizedBox(height: AppSpacing.sm),
+            AppTextField(
+              label: 'Custom budget',
+              hint: 'Optional INR amount',
               controller: _budgetController,
               enabled: !_submitting,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
               ],
-              decoration: const InputDecoration(
-                labelText: 'Custom budget',
-                hintText: 'Optional INR amount',
-              ),
               validator: _validateBudget,
             ),
-            const SizedBox(height: 16),
-            TextFormField(
+            const SizedBox(height: AppSpacing.md),
+            AppTextField(
+              label: 'Extra details',
+              hint: 'Access notes, photos needed, exact issue...',
               controller: _detailsController,
               enabled: !_submitting,
               minLines: 3,
               maxLines: 5,
               maxLength: 1200,
               textInputAction: TextInputAction.newline,
-              decoration: InputDecoration(
-                labelText: 'Extra details',
-                hintText: 'Access notes, photos needed, exact issue...',
-                alignLabelWithHint: true,
-              ),
               validator: _validateDetails,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             _CreateNeedMediaSection(
               items: _media,
               maxItems: _maxComposerMedia,
@@ -1249,7 +1228,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
               onRemove: _removeMediaItem,
               onRetry: _retryMediaUpload,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               'Visible only after you post.',
               style: Theme.of(context).textTheme.bodySmall,
@@ -1401,9 +1380,8 @@ class _CreateNeedHero extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
+              const SizedBox(height: AppSpacing.sm),
+              ClipRRect(
             child: LinearProgressIndicator(
               minHeight: 5,
               value: progress,
@@ -1413,7 +1391,7 @@ class _CreateNeedHero extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               Expanded(
@@ -1433,7 +1411,7 @@ class _CreateNeedHero extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -1509,7 +1487,7 @@ class _CategoryPicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Category', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.xs),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -1527,7 +1505,7 @@ class _CategoryPicker extends StatelessWidget {
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
           key: ValueKey('category-more-$selectedCategory'),
-          value: categories.contains(selectedCategory)
+          initialValue: categories.contains(selectedCategory)
               ? selectedCategory
               : categories.first,
           isExpanded: true,
@@ -1610,7 +1588,7 @@ class _DraftRecoveredBanner extends StatelessWidget {
             ),
             child: Icon(Icons.save_outlined, color: AppColors.primary),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1654,7 +1632,7 @@ class _PreviewRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1665,7 +1643,7 @@ class _PreviewRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: Theme.of(context).textTheme.bodySmall),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                   value,
                   style: Theme.of(
@@ -1725,7 +1703,7 @@ class _PublishedState extends StatelessWidget {
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1813,7 +1791,7 @@ class _PublishedState extends StatelessWidget {
                 'Track accepted work, in-progress updates, completion, and follow-up from one place.',
           ),
           if (draft.media.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               'Attached photos and videos are already part of the live request, which helps providers judge scope much faster on mobile.',
               style: Theme.of(context).textTheme.bodySmall,
@@ -2085,7 +2063,7 @@ class _CreateNeedMediaSection extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.sm),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -2112,13 +2090,13 @@ class _CreateNeedMediaSection extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.sm),
         if (items.isEmpty)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.surfaceRaised,
+              color: AppColors.surfaceAlt,
               borderRadius: BorderRadius.circular(AppRadii.md),
               border: Border.all(color: Theme.of(context).colorScheme.outline),
             ),
@@ -2140,7 +2118,7 @@ class _CreateNeedMediaSection extends StatelessWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
               itemBuilder: (context, index) {
                 final item = items[index];
                 return _ComposerMediaCard(
@@ -2249,7 +2227,7 @@ class _ComposerMediaCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: background,
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
                     ),
                     child: Text(
                       item.statusLabel,
@@ -2258,23 +2236,23 @@ class _ComposerMediaCard extends StatelessWidget {
                       ).textTheme.labelMedium?.copyWith(color: foreground),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    item.fileName,
+        const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      item.fileName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.isVideo ? 'Video clip' : 'Image',
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  item.isVideo ? 'Video clip' : 'Image',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   if (item.status == _ComposerMediaStatus.failed &&
                       item.errorMessage != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       item.errorMessage!,
                       maxLines: 2,
@@ -2283,7 +2261,7 @@ class _ComposerMediaCard extends StatelessWidget {
                         context,
                       ).textTheme.bodySmall?.copyWith(color: AppColors.danger),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                     TextButton(
                       onPressed: onRetry,
                       style: TextButton.styleFrom(
@@ -2341,12 +2319,12 @@ class _FallbackMediaSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: AppColors.surfaceMuted,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             label,
             textAlign: TextAlign.center,
@@ -2378,7 +2356,7 @@ class _MediaPreviewSummary extends StatelessWidget {
               'Media preview',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.xs),
             Text(
               '$uploadedCount/${items.length} ready',
               style: Theme.of(context).textTheme.bodySmall,
@@ -2413,7 +2391,7 @@ class _MediaPreviewSummary extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.52),
-                            borderRadius: BorderRadius.circular(999),
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
                           ),
                           child: Text(
                             item.statusLabel,
@@ -2453,7 +2431,7 @@ class _MediaActionTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: AppColors.surfaceRaised,
+        color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
           onTap: onTap,
@@ -2471,7 +2449,7 @@ class _MediaActionTile extends StatelessWidget {
                   ),
                   child: Icon(icon, color: AppColors.primary),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2480,7 +2458,7 @@ class _MediaActionTile extends StatelessWidget {
                         title,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(
                         subtitle,
                         style: Theme.of(context).textTheme.bodySmall,

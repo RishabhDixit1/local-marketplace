@@ -1,7 +1,10 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/design_system/design_system.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../notifiers/auth_notifier.dart';
 import '../widgets/auth_header.dart';
@@ -55,88 +58,89 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
     final notifier = ref.watch(authNotifierProvider.notifier);
     final state = ref.watch(authNotifierProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: Theme.of(context)
-              .extension<ServiqThemeTokens>()!
-              .authGradient,
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const AuthHeader(
-                        title: 'Create account',
-                        subtitle: 'Join ServiQ and start connecting with your community',
-                      ),
-                      const SizedBox(height: 32),
-
-                      if (state.errorMessage != null)
-                        _MessageBanner(
-                          message: state.errorMessage!,
-                          isError: true,
+    return ServiqScaffold(
+      gradient: Theme.of(context)
+          .extension<ServiqThemeTokens>()!
+          .authGradient,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    onPressed: () => context.pop(),
+                  ),
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const AuthHeader(
+                          title: 'Create account',
+                          subtitle: 'Join ServiQ and start connecting with your community',
                         ),
-                      if (state.successMessage != null)
-                        _MessageBanner(
-                          message: state.successMessage!,
-                          isError: false,
-                        ),
+                        const SizedBox(height: 32),
 
-                      _buildSignUpForm(notifier, state),
-                      const SizedBox(height: 20),
-
-                      const AuthDivider(),
-                      const SizedBox(height: 20),
-
-                      _buildSocialSection(notifier, state),
-                      const SizedBox(height: 32),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Already have an account? ',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
+                        if (state.errorMessage != null)
+                          _MessageBanner(
+                            message: state.errorMessage!,
+                            isError: true,
                           ),
-                          GestureDetector(
-                            onTap: () => context.pop(),
-                            child: Text(
-                              'Sign in',
+                        if (state.successMessage != null)
+                          _MessageBanner(
+                            message: state.successMessage!,
+                            isError: false,
+                          ),
+
+                        _GlassFormSection(
+                          child: Column(
+                            children: [
+                              _buildSignUpForm(notifier, state),
+                              const SizedBox(height: 20),
+                              const AuthDivider(),
+                              const SizedBox(height: 20),
+                              _buildSocialSection(notifier, state),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Already have an account? ',
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium
-                                  ?.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                                  ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            GestureDetector(
+                              onTap: () => context.pop(),
+                              child: Text(
+                                'Sign in',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -197,16 +201,10 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
                   : () => notifier.signUp(context),
               child: state.isSubmitting
                   ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                      ),
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
-                    : const Text(
-                      'Create account',
-                    ),
+                  : const Text('Create account'),
             ),
           ),
         ],
@@ -233,12 +231,42 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
   }
 }
 
-class _MessageBanner extends StatelessWidget {
-  const _MessageBanner({
-    required this.message,
-    required this.isError,
-  });
+class _GlassFormSection extends StatelessWidget {
+  const _GlassFormSection({required this.child});
 
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.xl),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.surface.withValues(alpha: 0.7),
+                Theme.of(context).colorScheme.surface.withValues(alpha: 0.4),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.08),
+            ),
+          ),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _MessageBanner extends StatelessWidget {
+  const _MessageBanner({required this.message, required this.isError});
   final String message;
   final bool isError;
 
@@ -246,9 +274,7 @@ class _MessageBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = isError ? AppColors.danger : AppColors.success;
     final bgColor = isError ? AppColors.dangerSoft : AppColors.successSoft;
-    final icon = isError
-        ? Icons.error_outline_rounded
-        : Icons.check_circle_rounded;
+    final icon = isError ? Icons.error_outline_rounded : Icons.check_circle_rounded;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -268,9 +294,9 @@ class _MessageBanner extends StatelessWidget {
               child: Text(
                 message,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],

@@ -1,7 +1,10 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/design_system/design_system.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../notifiers/auth_notifier.dart';
@@ -55,83 +58,84 @@ class _LoginPageState extends ConsumerState<LoginPage>
     final notifier = ref.watch(authNotifierProvider.notifier);
     final state = ref.watch(authNotifierProvider);
 
-    return Scaffold(
-      body: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: Theme.of(context)
-              .extension<ServiqThemeTokens>()!
-              .authGradient,
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const AuthHeader(
-                        title: 'Welcome back',
-                        subtitle: 'Sign in to your ServiQ account',
-                      ),
-                      const SizedBox(height: 28),
+    return ServiqScaffold(
+      gradient: Theme.of(context)
+          .extension<ServiqThemeTokens>()!
+          .authGradient,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const AuthHeader(
+                      title: 'Welcome back',
+                      subtitle: 'Sign in to your ServiQ account',
+                    ),
+                    const SizedBox(height: 28),
 
-                      if (state.errorMessage != null)
-                        _MessageBanner(message: state.errorMessage!, isError: true),
-                      if (state.successMessage != null)
-                        _MessageBanner(message: state.successMessage!, isError: false),
+                    if (state.errorMessage != null)
+                      _MessageBanner(message: state.errorMessage!, isError: true),
+                    if (state.successMessage != null)
+                      _MessageBanner(message: state.successMessage!, isError: false),
 
-                      _buildSocialSection(notifier, state),
-                      const SizedBox(height: 20),
-                      const AuthDivider(),
-                      const SizedBox(height: 20),
-
-                      _buildTabBar(state),
-                      const SizedBox(height: 20),
-                      _buildTabContent(notifier, state),
-
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                    _GlassFormSection(
+                      child: Column(
                         children: [
-                          Text(
-                            "Don't have an account? ",
+                          _buildSocialSection(notifier, state),
+                          const SizedBox(height: 20),
+                          const AuthDivider(),
+                          const SizedBox(height: 20),
+                          _buildTabBar(state),
+                          const SizedBox(height: 20),
+                          _buildTabContent(notifier, state),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Don't have an account? ",
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
+                        ),
+                        GestureDetector(
+                          onTap: () => context.push(AppRoutes.signUp),
+                          child: Text(
+                            'Create one',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
-                                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
+                                ?.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
                           ),
-                          GestureDetector(
-                            onTap: () => context.push(AppRoutes.signUp),
-                            child: Text(
-                              'Create one',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'ServiQ mobile uses the same account as the web app.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'ServiQ mobile uses the same account as the web app.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -221,7 +225,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
       return Form(
         child: Column(
           children: [
-
             AuthTextField(
               controller: notifier.otpCodeController,
               label: 'Enter code',
@@ -283,7 +286,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
             child: FilledButton(
               onPressed: (state.isSubmitting || notifier.otpCooldownRemaining > 0)
                   ? null
-                    : () => notifier.sendEmailOtp(context),
+                  : () => notifier.sendEmailOtp(context),
               child: state.isSubmitting
                   ? SizedBox(
                       width: 20, height: 20,
@@ -363,7 +366,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
             child: FilledButton(
               onPressed: (state.isSubmitting || notifier.otpCooldownRemaining > 0)
                   ? null
-                    : () => notifier.sendPhoneOtp(context),
+                  : () => notifier.sendPhoneOtp(context),
               child: state.isSubmitting
                   ? SizedBox(
                       width: 20, height: 20,
@@ -420,6 +423,40 @@ class _LoginPageState extends ConsumerState<LoginPage>
             child: const Text('Forgot password?'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GlassFormSection extends StatelessWidget {
+  const _GlassFormSection({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.xl),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.surface.withValues(alpha: 0.7),
+                Theme.of(context).colorScheme.surface.withValues(alpha: 0.4),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.08),
+            ),
+          ),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: child,
+        ),
       ),
     );
   }

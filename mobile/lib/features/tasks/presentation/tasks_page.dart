@@ -5,18 +5,17 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
-import '../../../core/design_system/serviq_async_state.dart';
-import '../../../core/design_system/serviq_chrome.dart';
-import '../../../core/design_system/serviq_recovery_banner.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/trust_badge.dart';
 import '../data/task_repository.dart';
 import '../domain/task_snapshot.dart';
 import 'task_board_components.dart';
+import '../../../l10n/l10n.dart';
+import '../../../shared/widgets/ai_prompt_bar.dart';
 
 enum _TaskRoleFilter {
   all,
@@ -161,12 +160,9 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                       onChanged: (v) => setSheetState(() => isConfirmed = v),
                     ),
                     const SizedBox(height: 8),
-                    TextField(
-                      decoration: const InputDecoration(
-                        labelText: 'Notes (optional)',
-                        hintText: 'Add any completion notes...',
-                        border: OutlineInputBorder(),
-                      ),
+                    AppTextField(
+                      label: 'Notes (optional)',
+                      hint: 'Add any completion notes...',
                       maxLines: 3,
                       onChanged: (v) => notes = v,
                     ),
@@ -272,12 +268,9 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                       }),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
-                      decoration: const InputDecoration(
-                        labelText: 'Review (optional)',
-                        hintText: 'Share your experience...',
-                        border: OutlineInputBorder(),
-                      ),
+                    AppTextField(
+                      label: 'Review (optional)',
+                      hint: 'Share your experience...',
                       maxLines: 3,
                       onChanged: (v) => comment = v,
                     ),
@@ -495,14 +488,20 @@ class _TasksPageState extends ConsumerState<TasksPage> {
       _applyFocusIfNeeded(data);
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Work')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Work'),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             children: [
+              AiPromptBar(
+                placeholder: AppLocalizations.of(context).aiPlaceholder,
+                enableDebounce: true,
+                onResult: (result) {},
+              ),
+              const SizedBox(height: 12),
               _TasksHero(
                 snapshot: data,
                 selectedRole: _selectedRole,
@@ -797,43 +796,22 @@ class _TasksHero extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
-              _HeroBadge(
+              AppPill(
                 icon: Icons.flash_on_rounded,
                 label: '$activeCount active',
+                backgroundColor: AppColors.surfaceMuted,
+                foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                border: BorderSide(color: Theme.of(context).colorScheme.outline),
               ),
-              _HeroBadge(
+              AppPill(
                 icon: Icons.route_rounded,
                 label: '$inProgressCount in progress',
+                backgroundColor: AppColors.surfaceMuted,
+                foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                border: BorderSide(color: Theme.of(context).colorScheme.outline),
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroBadge extends StatelessWidget {
-  const _HeroBadge({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), size: 16),
-          const SizedBox(width: 8),
-          Text(label, style: Theme.of(context).textTheme.labelLarge),
         ],
       ),
     );

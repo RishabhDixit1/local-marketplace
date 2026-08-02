@@ -1,7 +1,10 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/design_system/design_system.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../notifiers/auth_notifier.dart';
 import '../widgets/auth_header.dart';
@@ -53,115 +56,84 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
     final notifier = ref.watch(authNotifierProvider.notifier);
     final state = ref.watch(authNotifierProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: Theme.of(context)
-              .extension<ServiqThemeTokens>()!
-              .authGradient,
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              physics: const BouncingScrollPhysics(),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const AuthHeader(
-                        title: 'Reset password',
-                        subtitle:
-                            "Enter your email and we'll send you a reset link",
-                      ),
-                      const SizedBox(height: 36),
-
-                      if (state.errorMessage != null)
-                        _MessageBanner(
-                          message: state.errorMessage!,
-                          isError: true,
-                        ),
-                      if (state.successMessage != null) ...[
-                        _MessageBanner(
-                          message: state.successMessage!,
-                          isError: false,
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: () => context.pop(),
-                            style: OutlinedButton.styleFrom(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(AppRadii.md),
-                              ),
-                            ),
-                            child: const Text('Back to sign in'),
-                          ),
-                        ),
-                      ],
-                      if (state.successMessage == null) ...[
-                        AuthTextField(
-                          controller: notifier.forgotEmailController,
-                          label: 'Email address',
-                          hintText: 'you@example.com',
-                          prefixIcon: Icons.email_outlined,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.done,
-                          autofillHints: const [AutofillHints.email],
-                          onFieldSubmitted: (_) =>
-                              notifier.sendForgotPasswordEmail(context),
-                        ),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: state.isSubmitting
-                                ? null
-                                : () =>
-                                    notifier.sendForgotPasswordEmail(context),
-                            style: FilledButton.styleFrom(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(AppRadii.md),
-                              ),
-                            ),
-                            child: state.isSubmitting
-                                ? SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Theme.of(context).colorScheme.onPrimary,
-                                    ),
-                                  )
-                                : const Text(
-                                    'Send reset link',
-                                  ),
-                          ),
-                        ),
-                      ],
-                    ],
+    return ServiqScaffold(
+      gradient: Theme.of(context)
+          .extension<ServiqThemeTokens>()!
+          .authGradient,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    onPressed: () => context.pop(),
                   ),
-                ),
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const AuthHeader(
+                          title: 'Reset password',
+                          subtitle: "Enter your email and we'll send you a reset link",
+                        ),
+                        const SizedBox(height: 36),
+
+                        if (state.errorMessage != null)
+                          _MessageBanner(message: state.errorMessage!, isError: true),
+                        if (state.successMessage != null) ...[
+                          _MessageBanner(message: state.successMessage!, isError: false),
+                          const SizedBox(height: 16),
+                          SecondaryButton(
+                            label: 'Back to sign in',
+                            onPressed: () => context.pop(),
+                            expanded: true,
+                          ),
+                        ],
+                        if (state.successMessage == null)
+                          _GlassFormSection(
+                            child: Column(
+                              children: [
+                                AuthTextField(
+                                  controller: notifier.forgotEmailController,
+                                  label: 'Email address',
+                                  hintText: 'you@example.com',
+                                  prefixIcon: Icons.email_outlined,
+                                  keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.done,
+                                  autofillHints: const [AutofillHints.email],
+                                  onFieldSubmitted: (_) =>
+                                      notifier.sendForgotPasswordEmail(context),
+                                ),
+                                const SizedBox(height: 20),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: FilledButton(
+                                    onPressed: state.isSubmitting
+                                        ? null
+                                        : () => notifier.sendForgotPasswordEmail(context),
+                                    child: state.isSubmitting
+                                        ? SizedBox(
+                                            width: 20, height: 20,
+                                            child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
+                                          )
+                                        : const Text('Send reset link'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -171,12 +143,42 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
   }
 }
 
-class _MessageBanner extends StatelessWidget {
-  const _MessageBanner({
-    required this.message,
-    required this.isError,
-  });
+class _GlassFormSection extends StatelessWidget {
+  const _GlassFormSection({required this.child});
 
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.xl),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.surface.withValues(alpha: 0.7),
+                Theme.of(context).colorScheme.surface.withValues(alpha: 0.4),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.08),
+            ),
+          ),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _MessageBanner extends StatelessWidget {
+  const _MessageBanner({required this.message, required this.isError});
   final String message;
   final bool isError;
 
@@ -184,9 +186,7 @@ class _MessageBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = isError ? AppColors.danger : AppColors.success;
     final bgColor = isError ? AppColors.dangerSoft : AppColors.successSoft;
-    final icon = isError
-        ? Icons.error_outline_rounded
-        : Icons.check_circle_rounded;
+    final icon = isError ? Icons.error_outline_rounded : Icons.check_circle_rounded;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -206,9 +206,9 @@ class _MessageBanner extends StatelessWidget {
               child: Text(
                 message,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],

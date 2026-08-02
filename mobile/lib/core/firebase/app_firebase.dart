@@ -41,21 +41,28 @@ class AppFirebase {
 
   static Future<AppFirebaseState> initialize({AppConfig? config}) async {
     try {
-      FirebaseOptions? options = config?.buildFirebaseOptions();
+      // Guard against duplicate initialization when a default app already exists
+      try {
+        Firebase.app();
+        debugPrint('ServiQ mobile: Firebase already initialized, skipping.');
+      } catch (_) {
+        // No default app exists (or different exception type), proceed with initialization
+        FirebaseOptions? options = config?.buildFirebaseOptions();
 
-      options ??= FirebaseRuntimeOptions.currentPlatform;
+        options ??= FirebaseRuntimeOptions.currentPlatform;
 
-      if (options == null) {
-        debugPrint(
-          'ServiQ mobile: Firebase runtime options not configured. '
-          'Set dart-define flags or add Firebase keys to local.json.',
-        );
-        return const AppFirebaseState.disabled(
-          error: 'Firebase runtime options are not configured.',
-        );
+        if (options == null) {
+          debugPrint(
+            'ServiQ mobile: Firebase runtime options not configured. '
+            'Set dart-define flags or add Firebase keys to local.json.',
+          );
+          return const AppFirebaseState.disabled(
+            error: 'Firebase runtime options are not configured.',
+          );
+        }
+
+        await Firebase.initializeApp(options: options);
       }
-
-      await Firebase.initializeApp(options: options);
 
       if (kDebugMode) {
         await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(

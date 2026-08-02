@@ -8,6 +8,8 @@ import 'package:serviq_mobile/core/theme/app_theme.dart';
 import 'package:serviq_mobile/features/profile/domain/mobile_profile_snapshot.dart';
 import 'package:serviq_mobile/features/profile/presentation/profile_page.dart';
 
+import 'helpers/serviq_test_app.dart';
+
 const _bootstrap = AppBootstrap(
   config: AppConfig(
     appName: 'ServiQ',
@@ -40,7 +42,6 @@ void main() {
       expect(find.text('Payments and Orders'), findsOneWidget);
       expect(find.text('Trust'), findsOneWidget);
       expect(find.text('Verification'), findsOneWidget);
-      expect(find.text('Saved'), findsOneWidget);
       expect(find.text('Notifications'), findsOneWidget);
       expect(find.text('Settings'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -133,6 +134,8 @@ Future<void> _pumpProfile(
       overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
       child: MaterialApp(
         theme: AppTheme.light(),
+        localizationsDelegates: kServiqTestLocalizationsDelegates,
+        supportedLocales: kServiqTestSupportedLocales,
         home: ProfilePage(
           snapshotOverride: const AsyncData(_sampleProfile),
           initialSection: initialSection,

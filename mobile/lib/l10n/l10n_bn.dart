@@ -44,6 +44,8 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get market => 'মার্কেট';
   @override
+  String get discovery => 'আবিষ্কার';
+  @override
   String get work => 'কাজ';
   @override
   String get inbox => 'ইনবক্স';

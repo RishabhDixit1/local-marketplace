@@ -7,8 +7,6 @@ import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../data/subscriptions_repository.dart';
 import '../domain/subscription_models.dart';
 
@@ -45,8 +43,8 @@ class _ProviderSubscriptionsPageState
     final plansAsync = ref.watch(subscriptionPlansProvider);
     final currentAsync = ref.watch(currentSubscriptionProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Subscriptions')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Subscriptions'),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(subscriptionPlansProvider);
@@ -72,7 +70,7 @@ class _ProviderSubscriptionsPageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (current != null) _CurrentSubscriptionBanner(subscription: current),
-                      if (current != null) const SizedBox(height: 16),
+                      if (current != null) const SizedBox(height: AppSpacing.md),
                       const EmptyStateView(
                         icon: Icons.subscriptions_outlined,
                         title: 'No plans available',
@@ -85,12 +83,12 @@ class _ProviderSubscriptionsPageState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (current != null) _CurrentSubscriptionBanner(subscription: current),
-                    if (current != null) const SizedBox(height: 16),
+                    if (current != null) const SizedBox(height: AppSpacing.md),
                     Text(
                       'Choose a plan',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       current == null
                           ? 'You are not subscribed yet. Pick a plan to get started.'
@@ -99,7 +97,7 @@ class _ProviderSubscriptionsPageState
                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     ...plans.map(
                       (plan) => Padding(
                         padding: const EdgeInsets.only(bottom: 14),
@@ -194,14 +192,14 @@ class _CurrentSubscriptionBanner extends StatelessWidget {
         : '—';
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [statusColor.withValues(alpha: 0.12), AppColors.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(color: statusColor.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -231,7 +229,7 @@ class _CurrentSubscriptionBanner extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xxxs),
                 Text(
                   'Renews on $fmt',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -270,7 +268,7 @@ class _PlanCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: AppColors.primary,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadii.lg),
               ),
               child: const Text(
                 'Most popular',
@@ -317,7 +315,7 @@ class _PlanCard extends StatelessWidget {
             plan.description,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           ...plan.features.map(
             (f) => Padding(
               padding: const EdgeInsets.only(bottom: 6),
@@ -325,7 +323,7 @@ class _PlanCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(Icons.check_circle, size: 16, color: AppColors.verified),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Expanded(
                     child: Text(f, style: Theme.of(context).textTheme.bodySmall),
                   ),
@@ -371,9 +369,9 @@ class _Loading extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 LoadingShimmer(height: 20, width: 140),
-                SizedBox(height: 12),
+                SizedBox(height: AppSpacing.sm),
                 LoadingShimmer(height: 14),
-                SizedBox(height: 8),
+                SizedBox(height: AppSpacing.xs),
                 LoadingShimmer(height: 60),
               ],
             ),

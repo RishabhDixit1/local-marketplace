@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:serviq_mobile/core/config/app_config.dart';
+import 'package:serviq_mobile/core/api/mobile_api_client.dart';
+import 'package:serviq_mobile/core/api/mobile_api_provider.dart';
 import 'package:serviq_mobile/core/supabase/app_bootstrap.dart';
 import 'package:serviq_mobile/core/theme/app_theme.dart';
 import 'package:serviq_mobile/core/widgets/section_card.dart';
@@ -22,13 +24,15 @@ import 'package:serviq_mobile/features/provider/presentation/provider_profile_pa
 import 'package:serviq_mobile/features/profile/data/profile_repository.dart';
 import 'package:serviq_mobile/features/profile/domain/mobile_profile_snapshot.dart';
 import 'package:serviq_mobile/features/profile/presentation/profile_page.dart';
+import 'package:serviq_mobile/features/reviews/data/review_repository.dart';
 import 'package:serviq_mobile/features/search/data/search_repository.dart';
 import 'package:serviq_mobile/features/search/domain/search_models.dart';
 import 'package:serviq_mobile/features/search/presentation/search_page.dart';
 import 'package:serviq_mobile/features/welcome/presentation/welcome_page.dart';
-import 'package:serviq_mobile/l10n/l10n.dart';
 import 'package:serviq_mobile/shared/components/feed_card.dart';
 import 'package:serviq_mobile/shared/components/provider_card.dart';
+
+import 'helpers/serviq_test_app.dart';
 
 class _MockPeopleListNotifier extends PeopleListNotifier {
   _MockPeopleListNotifier(this.mockState);
@@ -83,6 +87,14 @@ void main() {
     expect(find.text('Search services, requests, or areas'), findsOneWidget);
     expect(find.text('Find local help nearby.'), findsOneWidget);
     expect(find.text('Post Need'), findsOneWidget);
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Urgent'),
+      220,
+      scrollable: scrollable,
+    );
+    await tester.pumpAndSettle();
 
     expect(find.text('Urgent'), findsAtLeastNWidgets(1));
     expect(find.text('Verified'), findsAtLeastNWidgets(1));
@@ -140,6 +152,8 @@ void main() {
         overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
         child: MaterialApp(
           theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
           home: const WelcomePage(
             snapshotOverride: AsyncData(_sampleSnapshot),
             trustedSnapshotOverride: AsyncData(_sampleSnapshot),
@@ -151,7 +165,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ServiQ'), findsOneWidget);
-    expect(find.text('Trusted help nearby'), findsOneWidget);
+    expect(find.text('For you'), findsOneWidget);
+    expect(find.text('Find People'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('profile page renders synced storefront data', (
@@ -279,11 +294,12 @@ void main() {
             (ref) async => _samplePeopleSnapshot,
           ),
           searchRepositoryProvider.overrideWithValue(_MockSearchRepository()),
+          mobileApiClientProvider.overrideWithValue(_MockApiClient()),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
-          localizationsDelegates: const [AppLocalizations.delegate],
-          supportedLocales: const [Locale('en', 'US')],
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
           home: const SearchPage(initialQuery: 'electric'),
         ),
       ),
@@ -587,9 +603,12 @@ void main() {
           feedSnapshotProvider(
             MobileFeedScope.all,
           ).overrideWith((ref) async => _sampleSnapshot),
+          providerReviewsProvider('provider-1').overrideWith((ref) async => []),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
           home: const ProviderProfilePage(providerId: 'provider-1'),
         ),
       ),
@@ -626,6 +645,8 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
           home: const ChatPage(initialConversationId: 'conv-1'),
         ),
       ),
@@ -667,7 +688,12 @@ void main() {
           profileSnapshotProvider.overrideWith((ref) async => _sampleProfile),
           chatConversationsProvider.overrideWith((ref) async => const []),
         ],
-        child: MaterialApp(theme: AppTheme.light(), home: const ControlPage()),
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
+          home: const ControlPage(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -725,6 +751,8 @@ Future<void> _pumpFeedPage(
       overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
       child: MaterialApp(
         theme: AppTheme.light(),
+        localizationsDelegates: kServiqTestLocalizationsDelegates,
+        supportedLocales: kServiqTestSupportedLocales,
         home: const FeedPage(
           snapshotOverride: AsyncData(_sampleSnapshot),
           peopleOverride: AsyncData(_samplePeopleSnapshot),
@@ -948,3 +976,19 @@ final _sampleMessages = [
     createdAt: DateTime(2026, 4, 18, 10, 30),
   ),
 ];
+
+class _MockApiClient extends MobileApiClient {
+  _MockApiClient()
+      : super(
+          config: _bootstrap.config,
+          supabaseClient: null,
+          rateLimiter: null,
+        );
+
+  @override
+  Future<List<Map<String, dynamic>>> getServiceCategories({
+    String? localityId,
+  }) async {
+    return [];
+  }
+}

@@ -3,10 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
 
 class SavedFeedPage extends ConsumerStatefulWidget {
   const SavedFeedPage({super.key});
@@ -150,9 +149,9 @@ class _SavedFeedPageState extends ConsumerState<SavedFeedPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Saved'),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(
+        title: 'Saved',
         actions: [
           IconButton(
             onPressed: _loading ? null : _load,

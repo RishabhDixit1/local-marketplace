@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,8 +10,6 @@ import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/profile_avatar_tile.dart';
 import '../../../shared/components/trust_badge.dart';
 import '../../feed/data/feed_repository.dart';
@@ -34,9 +34,9 @@ class ListingDetailPage extends ConsumerWidget {
         ref.watch(feedSnapshotProvider(MobileFeedScope.all));
     final resolvedItem = _listingFromSnapshot(snapshot.asData?.value);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Listing detail'),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(
+        title: 'Listing detail',
         actions: [
           if (resolvedItem != null)
             IconButton(
@@ -143,92 +143,102 @@ class _ListingHeroGallery extends StatelessWidget {
   Widget build(BuildContext context) {
     final tint = _listingTint(item.type);
 
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: tint.background,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
-      ),
-      child: AspectRatio(
-        aspectRatio: 1.35,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (item.hasPreviewImage)
-              CachedNetworkImage(
-                imageUrl: item.thumbnailUrl,
-                fit: BoxFit.cover,
-                errorWidget: (context, url, error) =>
-                    _ListingMediaFallback(item: item),
-                placeholder: (context, url) =>
-                    _ListingMediaFallback(item: item),
-              )
-            else
-              _ListingMediaFallback(item: item),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.transparent, AppColors.heroOverlayDeep],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.xl),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [tint.background.withValues(alpha: 0.9), tint.background],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            border: Border.all(color: tint.foreground.withValues(alpha: 0.15)),
+          ),
+          child: AspectRatio(
+            aspectRatio: 1.35,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (item.hasPreviewImage)
+                  CachedNetworkImage(
+                    imageUrl: item.thumbnailUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: (context, url, error) =>
+                        _ListingMediaFallback(item: item),
+                    placeholder: (context, url) =>
+                        _ListingMediaFallback(item: item),
+                  )
+                else
+                  _ListingMediaFallback(item: item),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.transparent, AppColors.heroOverlayDeep],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
                 ),
-              ),
+                Positioned(
+                  left: AppSpacing.md,
+                  right: AppSpacing.md,
+                  top: AppSpacing.md,
+                  child: Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      _GlassPill(
+                        icon: _listingIcon(item.type),
+                        label: item.type.label,
+                      ),
+                      _GlassPill(
+                        icon: Icons.category_outlined,
+                        label: item.category,
+                      ),
+                      if (item.mediaCount > 1)
+                        _GlassPill(
+                          icon: Icons.photo_library_outlined,
+                          label: '${item.mediaCount} photos',
+                        ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  left: AppSpacing.md,
+                  right: AppSpacing.md,
+                  bottom: AppSpacing.md,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        item.priceLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        item.distanceLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.86),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            Positioned(
-              left: AppSpacing.md,
-              right: AppSpacing.md,
-              top: AppSpacing.md,
-              child: Wrap(
-                spacing: AppSpacing.xs,
-                runSpacing: AppSpacing.xs,
-                children: [
-                  _HeroPill(
-                    icon: _listingIcon(item.type),
-                    label: item.type.label,
-                  ),
-                  _HeroPill(
-                    icon: Icons.category_outlined,
-                    label: item.category,
-                  ),
-                  if (item.mediaCount > 1)
-                    _HeroPill(
-                      icon: Icons.photo_library_outlined,
-                      label: '${item.mediaCount} photos',
-                    ),
-                ],
-              ),
-            ),
-            Positioned(
-              left: AppSpacing.md,
-              right: AppSpacing.md,
-              bottom: AppSpacing.md,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    item.priceLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xxs),
-                  Text(
-                    item.distanceLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.86),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -274,42 +284,6 @@ class _ListingMediaFallback extends StatelessWidget {
   }
 }
 
-class _HeroPill extends StatelessWidget {
-  const _HeroPill({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: Theme.of(context).colorScheme.onSurface),
-          const SizedBox(width: AppSpacing.xs),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ListingSummaryCard extends StatelessWidget {
   const _ListingSummaryCard({required this.item});
 
@@ -321,24 +295,39 @@ class _ListingSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xs,
+          Row(
             children: [
-              ServiqStatusPill(
-                label: item.urgent ? 'Urgent' : item.statusLabel,
-                urgent: item.urgent,
-                maxWidth: 160,
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                child: const Icon(Icons.description_rounded, size: 14, color: Colors.white),
               ),
-              TrustBadge(
-                label: item.sourceTypeLabel,
-                icon: Icons.explore_outlined,
-                backgroundColor: AppColors.surfaceMuted,
-                foregroundColor: Theme.of(context).colorScheme.onSurface,
+              const SizedBox(width: AppSpacing.sm),
+              Text('Details', style: Theme.of(context).textTheme.titleLarge),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: item.urgent ? AppColors.danger.withValues(alpha: 0.1) : AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  border: Border.all(
+                    color: item.urgent ? AppColors.danger.withValues(alpha: 0.3) : AppColors.primary.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Text(
+                  item.urgent ? 'Urgent' : item.statusLabel,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: item.urgent ? AppColors.danger : AppColors.primaryDeep,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           Text(item.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -347,34 +336,44 @@ class _ListingSummaryCard extends StatelessWidget {
           Text(item.description,
               maxLines: 6,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyLarge),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              )),
           const SizedBox(height: AppSpacing.md),
-          TrustSnapshot(
-            dense: true,
-            items: [
-              TrustSnapshotItem(
-                icon: Icons.payments_outlined,
-                label: 'Price',
-                value: item.priceLabel,
-                tone: TrustSnapshotTone.success,
-              ),
-              TrustSnapshotItem(
-                icon: Icons.place_outlined,
-                label: 'Distance',
-                value: item.distanceLabel,
-              ),
-              TrustSnapshotItem(
-                icon: Icons.schedule_rounded,
-                label: 'Response',
-                value: item.responseLabel,
-                tone: TrustSnapshotTone.trust,
-              ),
-              TrustSnapshotItem(
-                icon: Icons.inventory_2_outlined,
-                label: 'Category',
-                value: item.category,
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
+            ),
+            child: TrustSnapshot(
+              dense: true,
+              items: [
+                TrustSnapshotItem(
+                  icon: Icons.payments_outlined,
+                  label: 'Price',
+                  value: item.priceLabel,
+                  tone: TrustSnapshotTone.success,
+                ),
+                TrustSnapshotItem(
+                  icon: Icons.place_outlined,
+                  label: 'Distance',
+                  value: item.distanceLabel,
+                ),
+                TrustSnapshotItem(
+                  icon: Icons.schedule_rounded,
+                  label: 'Response',
+                  value: item.responseLabel,
+                  tone: TrustSnapshotTone.trust,
+                ),
+                TrustSnapshotItem(
+                  icon: Icons.inventory_2_outlined,
+                  label: 'Category',
+                  value: item.category,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -393,6 +392,21 @@ class _SellerTrustCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                child: const Icon(Icons.store_rounded, size: 14, color: Colors.white),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text('Seller', style: Theme.of(context).textTheme.titleLarge),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
           ProfileAvatarTile(
             name: item.creatorName,
             subtitle: '${item.locationLabel} - ${item.trustLabel}',
@@ -437,40 +451,48 @@ class _SellerTrustCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          TrustSnapshot(
-            items: [
-              TrustSnapshotItem(
-                icon: Icons.done_all_rounded,
-                label: 'Completed work',
-                value: item.completedJobs > 0
-                    ? '${item.completedJobs} jobs'
-                    : 'Building history',
-                tone: item.completedJobs > 0
-                    ? TrustSnapshotTone.success
-                    : TrustSnapshotTone.neutral,
-              ),
-              TrustSnapshotItem(
-                icon: Icons.timer_outlined,
-                label: 'Reply pace',
-                value: item.responseLabel,
-                tone: TrustSnapshotTone.trust,
-              ),
-              TrustSnapshotItem(
-                icon: Icons.assignment_ind_outlined,
-                label: 'Profile',
-                value: '${item.profileCompletion}% complete',
-                tone: item.profileCompletion >= 80
-                    ? TrustSnapshotTone.success
-                    : TrustSnapshotTone.warning,
-              ),
-              TrustSnapshotItem(
-                icon: Icons.storefront_outlined,
-                label: 'Live listings',
-                value: item.listingCount > 0
-                    ? '${item.listingCount} listings'
-                    : 'Listing started',
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
+            ),
+            child: TrustSnapshot(
+              items: [
+                TrustSnapshotItem(
+                  icon: Icons.done_all_rounded,
+                  label: 'Completed work',
+                  value: item.completedJobs > 0
+                      ? '${item.completedJobs} jobs'
+                      : 'Building history',
+                  tone: item.completedJobs > 0
+                      ? TrustSnapshotTone.success
+                      : TrustSnapshotTone.neutral,
+                ),
+                TrustSnapshotItem(
+                  icon: Icons.timer_outlined,
+                  label: 'Reply pace',
+                  value: item.responseLabel,
+                  tone: TrustSnapshotTone.trust,
+                ),
+                TrustSnapshotItem(
+                  icon: Icons.assignment_ind_outlined,
+                  label: 'Profile',
+                  value: '${item.profileCompletion}% complete',
+                  tone: item.profileCompletion >= 80
+                      ? TrustSnapshotTone.success
+                      : TrustSnapshotTone.warning,
+                ),
+                TrustSnapshotItem(
+                  icon: Icons.storefront_outlined,
+                  label: 'Live listings',
+                  value: item.listingCount > 0
+                      ? '${item.listingCount} listings'
+                      : 'Listing started',
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -490,9 +512,25 @@ class _FulfillmentCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Pickup and delivery',
-            style: Theme.of(context).textTheme.titleLarge,
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                child: Icon(
+                  isProduct ? Icons.local_shipping_rounded : Icons.home_repair_service_rounded,
+                  size: 14, color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                isProduct ? 'Pickup & delivery' : 'Service details',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
@@ -541,7 +579,20 @@ class _BuyerConfidenceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Before you pay', style: Theme.of(context).textTheme.titleLarge),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                child: const Icon(Icons.verified_user_rounded, size: 14, color: Colors.white),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text('Before you pay', style: Theme.of(context).textTheme.titleLarge),
+            ],
+          ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Keep availability, timing, price changes, and delivery notes inside ServiQ before confirming the order.',
@@ -643,19 +694,29 @@ class _ListingStickyActions extends StatelessWidget {
         ? 'Order'
         : 'Reserve';
 
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.sm,
-        AppSpacing.md,
-        AppSpacing.sm + MediaQuery.paddingOf(context).bottom,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline)),
-        boxShadow: AppShadows.floating,
-      ),
-      child: Row(
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.sm,
+            AppSpacing.md,
+            AppSpacing.sm + MediaQuery.paddingOf(context).bottom,
+          ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+                Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            border: Border(top: BorderSide(color: AppColors.glassStroke)),
+            boxShadow: AppShadows.floating,
+          ),
+          child: Row(
         children: [
           Expanded(
             flex: 9,
@@ -712,6 +773,8 @@ class _ListingStickyActions extends StatelessWidget {
             ),
           ),
         ],
+      ),
+        ),
       ),
     );
   }
@@ -774,6 +837,46 @@ class _ListingStickyActions extends StatelessWidget {
       tone: ServiqToastTone.warning,
     );
     return true;
+  }
+}
+
+class _GlassPill extends StatelessWidget {
+  const _GlassPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.pill),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.25),
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 13, color: Colors.white),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -1,11 +1,14 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/section_card.dart';
+import '../../../core/theme/design_tokens.dart';
 
 class SetupPage extends ConsumerWidget {
   const SetupPage({super.key});
@@ -31,23 +34,23 @@ Windows
 .\\scripts\\run-mobile-android.ps1
 ''';
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Mobile Setup')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Mobile Setup'),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 28),
           children: [
             Text(
               'Finish the app bootstrap',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               'The mobile project is in place. This screen shows what is configured and what still needs one-time setup on your machine.',
               style: Theme.of(context).textTheme.bodyLarge,
             ),
-            const SizedBox(height: 20),
-            SectionCard(
+            const SizedBox(height: AppSpacing.lg),
+            _GlassCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -85,8 +88,8 @@ Windows
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            SectionCard(
+            const SizedBox(height: AppSpacing.md),
+            _GlassCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -113,8 +116,8 @@ Windows
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            SectionCard(
+            const SizedBox(height: AppSpacing.md),
+            _GlassCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -127,9 +130,9 @@ Windows
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.onSurface,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(AppRadii.xl),
                     ),
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpacing.md),
                     child: SelectableText(
                       command,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -138,7 +141,7 @@ Windows
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Mobile auth uses the Supabase Flutter client directly. Android and iOS now register the default `serviq://auth-callback` return path, so keep your Supabase redirect URL and dart defines aligned with that callback while testing. '
                     'Google sign-in returns through this same callback. Supabase email sign-in sends whatever its email template is configured to show; for one-time codes, make sure the template includes `{{ .Token }}` and does not rely on `{{ .ConfirmationURL }}`. '
@@ -149,15 +152,49 @@ Windows
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
+            const SizedBox(height: AppSpacing.md),
+            PrimaryButton(
+              label: 'Continue to sign in',
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
               onPressed: canContinue
                   ? () => context.go(AppRoutes.signIn)
                   : null,
-              icon: const Icon(Icons.arrow_forward_rounded),
-              label: const Text('Continue to sign in'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassCard extends StatelessWidget {
+  const _GlassCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.xl),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.surface.withValues(alpha: 0.7),
+                Theme.of(context).colorScheme.surface.withValues(alpha: 0.4),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.12),
+            ),
+          ),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: child,
         ),
       ),
     );
@@ -186,25 +223,25 @@ class _StatusRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          margin: const EdgeInsets.only(top: 2),
-          width: 32,
-          height: 32,
+          margin: const EdgeInsets.only(top: AppSpacing.xxxs),
+          width: AppSpacing.xxl,
+          height: AppSpacing.xxl,
           decoration: BoxDecoration(
             color: background,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(AppRadii.pill),
           ),
           child: Icon(
             ready ? Icons.check_rounded : Icons.schedule_rounded,
             color: color,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xxs),
               Text(detail, style: Theme.of(context).textTheme.bodyMedium),
             ],
           ),
@@ -237,7 +274,7 @@ class _ChecklistItem extends StatelessWidget {
               ).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
           ),

@@ -8,7 +8,7 @@ class SectionCard extends StatelessWidget {
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(16),
-    this.variant = ServiqSurfaceVariant.flat,
+    this.variant = ServiqSurfaceVariant.glass,
   });
 
   final Widget child;

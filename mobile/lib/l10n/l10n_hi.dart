@@ -46,6 +46,8 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get market => 'मार्केट';
   @override
+  String get discovery => 'खोजें';
+  @override
   String get work => 'कार्य';
   @override
   String get inbox => 'इनबॉक्स';

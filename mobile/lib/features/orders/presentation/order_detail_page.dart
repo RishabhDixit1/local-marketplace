@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,16 +11,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
-import '../../../core/design_system/serviq_async_state.dart';
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../disputes/presentation/dispute_sheet.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/app_buttons.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../quotes/domain/quote_models.dart';
 import '../../tasks/data/task_repository.dart';
@@ -177,40 +175,28 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
           children: [
             Text('Assign Delivery',
                 style: Theme.of(ctx).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            TextField(
+            const SizedBox(height: AppSpacing.sm),
+            AppTextField(
               controller: driverNameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Driver name',
-                border: OutlineInputBorder(),
-              ),
+              label: 'Driver name',
             ),
-            const SizedBox(height: 8),
-            TextField(
+            const SizedBox(height: AppSpacing.xs),
+            AppTextField(
               controller: driverPhoneCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Driver phone',
-                border: OutlineInputBorder(),
-              ),
+              label: 'Driver phone',
               keyboardType: TextInputType.phone,
             ),
-            const SizedBox(height: 8),
-            TextField(
+            const SizedBox(height: AppSpacing.xs),
+            AppTextField(
               controller: trackingCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Tracking number',
-                border: OutlineInputBorder(),
-              ),
+              label: 'Tracking number',
             ),
-            const SizedBox(height: 8),
-            TextField(
+            const SizedBox(height: AppSpacing.xs),
+            AppTextField(
               controller: carrierCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Carrier (e.g. Delhivery)',
-                border: OutlineInputBorder(),
-              ),
+              label: 'Carrier (e.g. Delhivery)',
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.sm),
             FilledButton(
               onPressed: _busy
                   ? null
@@ -294,7 +280,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                         'How was your experience?',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
 
                       // Overall rating
                       Row(
@@ -316,15 +302,15 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                           );
                         }),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.sm),
 
                       // Rating breakdown
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(AppSpacing.sm),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceAlt,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(AppRadii.xl),
                           border: Border.all(color: Theme.of(context).colorScheme.outline),
                         ),
                         child: Column(
@@ -340,7 +326,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                                     letterSpacing: 1.2,
                                   ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: AppSpacing.xs),
                             _breakdownRow(context, 'Quality', quality,
                                 (v) => setSheetState(() => quality = v)),
                             _breakdownRow(
@@ -354,15 +340,15 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.sm),
 
                       // Would recommend toggle
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
+                            horizontal: AppSpacing.sm, vertical: AppSpacing.xxs),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(AppRadii.xl),
                           border: Border.all(color: Theme.of(context).colorScheme.outline),
                         ),
                         child: Row(
@@ -376,7 +362,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                                   : AppColors.danger,
                               size: 20,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.xs),
                             Expanded(
                               child: Text(
                                 wouldRecommend
@@ -397,7 +383,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.sm),
 
                       // Photos
                       SizedBox(
@@ -411,7 +397,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                               return Stack(
                                 children: [
                                   ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(AppRadii.lg),
                                     child:                                       Image.file(
                                       File(path),
                                       width: 72,
@@ -452,12 +438,12 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                                         () => photoPaths.add(file.path));
                                   }
                                 },
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(AppRadii.lg),
                                 child: Container(
                                   width: 72,
                                   height: 72,
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(AppRadii.lg),
                                     border: Border.all(
                                       color: Theme.of(context).colorScheme.outline,
                                       width: 2,
@@ -483,19 +469,16 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                                 ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                           ),
                         ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.sm),
 
                       // Comment
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: 'Review (optional)',
-                          hintText: 'Share your experience...',
-                          border: OutlineInputBorder(),
-                        ),
+                      AppTextField(
+                        label: 'Review (optional)',
+                        hint: 'Share your experience...',
                         maxLines: 3,
                         onChanged: (v) => comment = v,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.sm),
 
                       if (submitting)
                         Padding(
@@ -576,7 +559,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                               : const Text('Submit'),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.xs),
                     ],
                   ),
                 ),
@@ -595,7 +578,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
     void Function(int) onChanged,
   ) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
       child: Row(
         children: [
           SizedBox(
@@ -608,7 +591,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                   ?.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.xs),
           ...List.generate(5, (index) {
             final star = index + 1;
             return GestureDetector(
@@ -633,8 +616,8 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
     final viewerId =
         Supabase.instance.client.auth.currentUser?.id ?? '';
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Order detail')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Order detail'),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
@@ -651,14 +634,14 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _OrderTimelineStepper(order: order),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     _OrderSummary(order: order),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     _PaymentCard(order: order),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     _FulfillmentCard(order: order),
                     if (order.needsDeliveryTracking) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
                       _DeliveryCard(
                         order: order,
                         viewerId: viewerId,
@@ -667,7 +650,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                       if (order.deliveryInfo != null &&
                           viewerId == order.providerId &&
                           !order.deliveryInfo!.isFinal) ...[
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.md),
                         _ProviderDeliveryUpdateCard(
                           order: order,
                           busy: _busy,
@@ -676,14 +659,14 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                       ],
                       if (order.deliveryInfo == null &&
                           viewerId == order.providerId) ...[
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.md),
                         _AssignDeliveryCard(
                           busy: _busy,
                           onAssign: _showAssignDeliverySheet,
                         ),
                       ],
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     _OrderActions(
                       order: order,
                       busy: _busy,
@@ -715,8 +698,21 @@ class _OrderTimelineStepper extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Progress', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                child: const Icon(Icons.route_rounded, size: 14, color: Colors.white),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text('Progress', style: Theme.of(context).textTheme.titleLarge),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
           ...List.generate(steps.length, (i) {
             final isLast = i == steps.length - 1;
             return _OrderTrackerStep(
@@ -868,7 +864,7 @@ class _OrderTrackerStep extends StatelessWidget {
                   Expanded(
                     child: Container(
                       width: 2,
-                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      margin: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
                       color: step.state == _StepState.done
                           ? AppColors.success
                           : Theme.of(context).colorScheme.outline,
@@ -876,7 +872,7 @@ class _OrderTrackerStep extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(top: 3, bottom: 12),
@@ -890,7 +886,7 @@ class _OrderTrackerStep extends StatelessWidget {
                         color: isActive ? Theme.of(context).colorScheme.onSurface : null,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxxs),
                     Text(
                       step.subtitle,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -919,31 +915,80 @@ class _OrderSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(order.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(order.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.headlineSmall),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  boxShadow: AppShadows.glow,
+                ),
+                child: Text(
+                  '₹${order.price.round()}',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             order.notes.isEmpty
                 ? 'Order details, payment, and fulfillment notes stay attached here.'
                 : order.notes,
             maxLines: 4,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              Chip(label: Text(_humanize(order.status))),
-              Chip(label: Text(_humanize(order.listingType))),
-              Chip(label: Text('INR ${order.price.round()}')),
-              Chip(label: Text('Qty ${order.quantity}')),
+              _StatusPill(label: _humanize(order.status)),
+              _StatusPill(label: _humanize(order.listingType)),
+              _StatusPill(label: 'Qty ${order.quantity}'),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: AppColors.primaryDeep,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -956,19 +1001,55 @@ class _PaymentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isPaid = order.paymentStatus == 'completed' || order.paymentStatus == 'captured';
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Payment', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: isPaid ? AppGradients.premiumAccent : const LinearGradient(
+                    colors: [AppColors.warning, AppColors.warning],
+                  ),
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                child: Icon(
+                  isPaid ? Icons.payment_rounded : Icons.pending_outlined,
+                  size: 14, color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text('Payment', style: Theme.of(context).textTheme.titleLarge),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isPaid ? AppColors.success.withValues(alpha: 0.1) : AppColors.warning.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  border: Border.all(
+                    color: isPaid ? AppColors.success.withValues(alpha: 0.3) : AppColors.warning.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  _humanize(order.paymentStatus),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: isPaid ? AppColors.success : AppColors.warning,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
           _InfoRow(
             label: 'Method',
             value: order.paymentMethod.isEmpty
                 ? 'Not recorded'
                 : _humanize(order.paymentMethod),
           ),
-          _InfoRow(label: 'Status', value: _humanize(order.paymentStatus)),
           if ((order.metadata['razorpay_order_id'] as String?)?.isNotEmpty ==
               true)
             _InfoRow(
@@ -998,8 +1079,21 @@ class _FulfillmentCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Fulfillment', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                child: const Icon(Icons.inventory_2_rounded, size: 14, color: Colors.white),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text('Fulfillment', style: Theme.of(context).textTheme.titleLarge),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
           _InfoRow(
             label: 'Mode',
             value: order.fulfillmentMethod.isEmpty
@@ -1105,56 +1199,77 @@ class _DeliveryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                child: const Icon(Icons.local_shipping_rounded, size: 14, color: Colors.white),
+              ),
+              const SizedBox(width: AppSpacing.sm),
               Text('Delivery Tracking',
                   style: Theme.of(context).textTheme.titleLarge),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  color: _deliveryStatusColor(delivery.status).withValues(alpha: 0.1),
-                  border: Border.all(
-                    color: _deliveryStatusColor(delivery.status).withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Text(
-                  _deliveryStatusLabel(delivery.status),
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: _deliveryStatusColor(delivery.status),
-                        fontWeight: FontWeight.w600,
+              const Spacer(),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _deliveryStatusColor(delivery.status).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                      border: Border.all(
+                        color: _deliveryStatusColor(delivery.status).withValues(alpha: 0.3),
                       ),
+                    ),
+                    child: Text(
+                      _deliveryStatusLabel(delivery.status),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: _deliveryStatusColor(delivery.status),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
 
           if (delivery.trackingNumber.isNotEmpty)
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadii.lg),
                 color: AppColors.surfaceAlt,
-                border: Border.all(color: Theme.of(context).colorScheme.outline),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.local_shipping_outlined,
-                      size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                    ),
+                    child: const Icon(Icons.local_shipping_outlined,
+                        size: 16, color: AppColors.primaryDeep),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Tracking #${delivery.trackingNumber}',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                               )),
                       if (delivery.carrier.isNotEmpty)
                         Text('via ${delivery.carrier}',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                                 )),
                     ],
                   ),
@@ -1162,7 +1277,7 @@ class _DeliveryCard extends StatelessWidget {
               ),
             ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
 
           // Delivery photos
           if (delivery.photoUrls.isNotEmpty)
@@ -1173,7 +1288,7 @@ class _DeliveryCard extends StatelessWidget {
                 runSpacing: 8,
                 children: delivery.photoUrls.map((url) {
                   return ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
                     child: Image.network(
                       url,
                       width: 80,
@@ -1183,7 +1298,7 @@ class _DeliveryCard extends StatelessWidget {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppRadii.lg),
                           color: AppColors.surfaceAlt,
                         ),
                         child: Icon(Icons.broken_image_outlined,
@@ -1195,7 +1310,6 @@ class _DeliveryCard extends StatelessWidget {
               ),
             ),
 
-          // Timeline
           ...List.generate(_deliveryTimelineSteps.length, (i) {
             final step = _deliveryTimelineSteps[i];
             final currentIdx = _deliveryTimelineSteps
@@ -1215,28 +1329,35 @@ class _DeliveryCard extends StatelessWidget {
                     child: Column(
                       children: [
                         Container(
-                          width: 22,
-                          height: 22,
+                          width: 24,
+                          height: 24,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: done ? AppColors.primary : Theme.of(context).colorScheme.surface,
+                            gradient: done
+                                ? AppGradients.premiumAccent
+                                : null,
+                            color: done ? null : Theme.of(context).colorScheme.surface,
                             border: Border.all(
                               color: done
-                                  ? AppColors.primary
-                                   : Theme.of(context).colorScheme.outline,
+                                  ? Colors.transparent
+                                  : active
+                                      ? AppColors.primary.withValues(alpha: 0.6)
+                                      : Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
                               width: 2,
                             ),
+                            boxShadow: done ? AppShadows.glow : null,
                           ),
                           child: done
-                              ? const Icon(Icons.check,
+                              ? const Icon(Icons.check_rounded,
                                   size: 14, color: Colors.white)
                               : active
                                   ? Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: const BoxDecoration(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: AppColors.primary,
+                                        gradient: AppGradients.premiumAccent,
+                                        boxShadow: AppShadows.glow,
                                       ),
                                     )
                                   : null,
@@ -1245,15 +1366,18 @@ class _DeliveryCard extends StatelessWidget {
                           Expanded(
                             child: Container(
                               width: 2,
-                              color: done
-                                  ? AppColors.primary
-                                  : Theme.of(context).colorScheme.outline,
+                              decoration: BoxDecoration(
+                                gradient: done
+                                    ? AppGradients.premiumAccent
+                                    : null,
+                                color: done ? null : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                              ),
                             ),
                           ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 20),
@@ -1267,19 +1391,19 @@ class _DeliveryCard extends StatelessWidget {
                                 .bodyMedium
                                 ?.copyWith(
                                   fontWeight:
-                                      done ? FontWeight.w600 : FontWeight.normal,
+                                      done ? FontWeight.w700 : FontWeight.w500,
                                    color: done
                                        ? Theme.of(context).colorScheme.onSurface
-                                       : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                       : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                                 ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AppSpacing.xxxs),
                           Text(
                             _deliveryStatusDescription(step),
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall
-                                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
                           ),
                           if (update.isNotEmpty)
                             Padding(
@@ -1289,7 +1413,7 @@ class _DeliveryCard extends StatelessWidget {
                                 style: Theme.of(context)
                                     .textTheme
                                     .labelSmall
-                                ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                                ?.copyWith(color: AppColors.primary.withValues(alpha: 0.8)),
                               ),
                             ),
                         ],
@@ -1301,16 +1425,15 @@ class _DeliveryCard extends StatelessWidget {
             );
           }),
 
-          // Photo upload button (provider only)
           if (viewerId == order.providerId && !delivery.isFinal)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: AppSpacing.sm),
               child: SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: onUploadPhoto,
+                child: SecondaryButton(
+                  label: 'Add Photo',
                   icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                  label: const Text('Add Photo'),
+                  onPressed: onUploadPhoto,
                 ),
               ),
             ),
@@ -1351,37 +1474,54 @@ class _ProviderDeliveryUpdateCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Update Delivery',
-              style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                child: const Icon(Icons.delivery_dining_rounded, size: 14, color: Colors.white),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text('Update Delivery',
+                  style: Theme.of(context).textTheme.titleLarge),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
           ...allowedTransitions.map((status) {
             IconData icon;
+            Color color;
             switch (status) {
               case 'delivered':
                 icon = Icons.check_circle_outline;
+                color = AppColors.success;
                 break;
               case 'picked_up':
                 icon = Icons.inventory_2_outlined;
+                color = AppColors.primary;
                 break;
               case 'in_transit':
                 icon = Icons.navigation_outlined;
+                color = AppColors.accent;
                 break;
               case 'failed':
                 icon = Icons.cancel_outlined;
+                color = AppColors.danger;
                 break;
               default:
                 icon = Icons.schedule_outlined;
+                color = AppColors.warning;
             }
             return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
               child: SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: busy
-                      ? null
-                      : () => onUpdateDelivery(status),
-                  icon: Icon(icon, size: 18),
-                  label: Text('Mark ${_deliveryStatusLabel(status)}'),
+                child: SecondaryButton(
+                  label: 'Mark ${_deliveryStatusLabel(status)}',
+                  icon: Icon(icon, size: 18, color: color),
+                  onPressed: busy ? null : () => onUpdateDelivery(status),
                 ),
               ),
             );
@@ -1424,9 +1564,22 @@ class _AssignDeliveryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Assign Delivery',
-              style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                child: const Icon(Icons.local_shipping_rounded, size: 14, color: Colors.white),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text('Assign Delivery',
+                  style: Theme.of(context).textTheme.titleLarge),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             'Assign a delivery partner to start tracking this order.',
             style: Theme.of(context)
@@ -1434,11 +1587,11 @@ class _AssignDeliveryCard extends StatelessWidget {
                 .bodySmall
                 ?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           SizedBox(
             width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: busy ? null : onAssign,
+            child: PrimaryButton(
+              label: busy ? 'Saving...' : 'Assign Delivery Partner',
               icon: busy
                   ? SizedBox(
                       height: 18,
@@ -1447,7 +1600,7 @@ class _AssignDeliveryCard extends StatelessWidget {
                           strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
                   : const Icon(Icons.local_shipping_outlined, size: 18),
-              label: Text(busy ? 'Saving...' : 'Assign Delivery Partner'),
+              onPressed: busy ? null : onAssign,
             ),
           ),
         ],
@@ -1478,8 +1631,21 @@ class _OrderActions extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Next actions', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                child: const Icon(Icons.touch_app_rounded, size: 14, color: Colors.white),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text('Next actions', style: Theme.of(context).textTheme.titleLarge),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
           PrimaryButton(
             label: 'Open quote',
             icon: const Icon(Icons.request_quote_outlined),
@@ -1491,7 +1657,7 @@ class _OrderActions extends StatelessWidget {
             ),
           ),
           if (!isFinal) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm),
             if (order.status == 'new_lead' || order.status == 'quoted')
               SecondaryButton(
                 label: busy ? 'Updating...' : 'Mark accepted',
@@ -1506,7 +1672,7 @@ class _OrderActions extends StatelessWidget {
               ),
             ],
             if (order.status == 'accepted' || order.status == 'in_progress') ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.sm),
               SecondaryButton(
                 label: busy ? 'Updating...' : 'Mark completed',
                 icon: const Icon(Icons.task_alt_rounded),
@@ -1515,16 +1681,16 @@ class _OrderActions extends StatelessWidget {
             ],
           ],
           if (isFinal && onRaiseDispute != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             const Divider(),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               'Need help?',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             SecondaryButton(
               label: busy ? 'Submitting...' : 'Raise Dispute',
               icon: const Icon(Icons.gavel_outlined),
@@ -1546,18 +1712,27 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(value, style: Theme.of(context).textTheme.bodyLarge),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              value,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
         ],
       ),
     );

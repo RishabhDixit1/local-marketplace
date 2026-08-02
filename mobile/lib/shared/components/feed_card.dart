@@ -1,10 +1,11 @@
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/design_system/design_system.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/section_card.dart';
 import '../../features/feed/domain/feed_snapshot.dart';
 
 class FeedCard extends StatelessWidget {
@@ -53,16 +54,18 @@ class FeedCard extends StatelessWidget {
     final statusLabel = item.urgent ? 'Urgent' : item.statusLabel;
     final meta = _compactMetaFor(item);
     final isDirectBooking = item.loopType == 'direct_booking';
-    final borderColor =
-        isDirectBooking ? AppColors.primary : AppColors.warm;
 
     return Container(
       decoration: BoxDecoration(
-        border: Border(left: BorderSide(color: borderColor, width: 3)),
-        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border(
+          left: BorderSide(
+            color: isDirectBooking ? AppColors.accent : AppColors.warm,
+            width: 3,
+          ),
+        ),
       ),
-      child: SectionCard(
-        variant: ServiqSurfaceVariant.raised,
+      child: ServiqSurface(
+        variant: ServiqSurfaceVariant.glass,
         padding: const EdgeInsets.all(AppSpacing.sm),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,11 +130,32 @@ class FeedCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: AppSpacing.sm),
-            Text(
-              item.creatorName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 12,
+                  backgroundColor: AppColors.surfaceAlt,
+                  child: Text(
+                    item.creatorName.isNotEmpty
+                        ? item.creatorName[0].toUpperCase()
+                        : '?',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    item.creatorName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
             if (meta.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.xs),
@@ -242,8 +266,7 @@ class _FeedPreviewState extends State<_FeedPreview> {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: _typeTint(item.type).background,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
       child: Stack(
         fit: StackFit.expand,
@@ -285,18 +308,23 @@ class _FeedPreviewState extends State<_FeedPreview> {
             Positioned(
               right: AppSpacing.sm,
               bottom: AppSpacing.sm,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(AppRadii.xs),
-                ),
-                child: Text(
-                  '${_currentPage + 1}/${urls.length}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadii.xs),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.4),
+                    ),
+                    child: Text(
+                      '${_currentPage + 1}/${urls.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -362,10 +390,10 @@ class _TypePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final tint = _typeTint(type);
     return Container(
-      constraints: const BoxConstraints(minHeight: 36),
+      constraints: const BoxConstraints(minHeight: 32),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
+        vertical: AppSpacing.xxs,
       ),
       decoration: BoxDecoration(
         color: tint.background,
@@ -374,8 +402,8 @@ class _TypePill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_iconForType(type), size: 16, color: tint.foreground),
-          const SizedBox(width: AppSpacing.xs),
+          Icon(_iconForType(type), size: 14, color: tint.foreground),
+          const SizedBox(width: AppSpacing.xxs),
           Text(
             type.label,
             style: Theme.of(
@@ -399,10 +427,10 @@ class _InlinePill extends StatelessWidget {
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: 210),
       child: Container(
-        constraints: BoxConstraints(minHeight: 36),
+        constraints: BoxConstraints(minHeight: 32),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
+          vertical: AppSpacing.xxs,
         ),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -411,8 +439,8 @@ class _InlinePill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 15, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-            const SizedBox(width: AppSpacing.xs),
+            Icon(icon, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+            const SizedBox(width: AppSpacing.xxs),
             Flexible(
               child: Text(
                 label,
@@ -435,20 +463,25 @@ class _OverlayPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(AppRadii.md),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.labelMedium,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xxs,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+        ),
       ),
     );
   }
@@ -495,6 +528,11 @@ class _CardActions extends StatelessWidget {
                         ? Icons.bookmark_rounded
                         : Icons.bookmark_border_rounded,
                   ),
+                  style: IconButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -510,6 +548,11 @@ class _CardActions extends StatelessWidget {
                 child: IconButton.outlined(
                   onPressed: onMoreTap,
                   icon: const Icon(Icons.more_horiz_rounded),
+                  style: IconButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -525,6 +568,11 @@ class _CardActions extends StatelessWidget {
                 child: IconButton.outlined(
                   onPressed: onReport,
                   icon: const Icon(Icons.outlined_flag_rounded),
+                  style: IconButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                    ),
+                  ),
                 ),
               ),
             ),

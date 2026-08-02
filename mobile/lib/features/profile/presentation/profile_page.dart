@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,9 +12,9 @@ import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/auth/mobile_auth_service.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
+import '../../../core/feature_flags.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/premium_primitives.dart';
 import '../../../shared/components/trust_badge.dart';
@@ -248,8 +250,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final AsyncValue<MobileProfileSnapshot> snapshot =
         widget.snapshotOverride ?? ref.watch(profileSnapshotProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: widget.title),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
@@ -276,7 +278,26 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       snapshot: data,
                       user: user,
                       onSignOut: () async {
-                        await auth.signOut();
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Sign out?'),
+                            content: const Text('You will need to sign in again to access your account.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text('Sign out'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true) {
+                          await auth.signOut();
+                        }
                       },
                     );
                   }
@@ -291,7 +312,26 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         snapshot: data,
                         user: user,
                         onSignOut: () async {
-                          await auth.signOut();
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Sign out?'),
+                              content: const Text('You will need to sign in again to access your account.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: const Text('Sign out'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed == true) {
+                            await auth.signOut();
+                          }
                         },
                       ),
                     ],
@@ -431,20 +471,22 @@ class _ProfileCommandHub extends StatelessWidget {
                 subtitle: 'Upcoming and past appointments',
                 route: AppRoutes.bookings,
               ),
-              _HubTileData(
-                key: 'profile-tile-analytics',
-                icon: Icons.analytics_outlined,
-                title: 'Analytics',
-                subtitle: 'Performance, earnings, and trends',
-                route: AppRoutes.analytics,
-              ),
-              _HubTileData(
-                key: 'profile-tile-workspaces',
-                icon: Icons.business_outlined,
-                title: 'Workspaces',
-                subtitle: 'Manage team workspaces and branches',
-                route: AppRoutes.workspaces,
-              ),
+              if (kAnalyticsEnabled)
+                _HubTileData(
+                  key: 'profile-tile-analytics',
+                  icon: Icons.analytics_outlined,
+                  title: 'Analytics',
+                  subtitle: 'Performance, earnings, and trends',
+                  route: AppRoutes.analytics,
+                ),
+              if (kWorkspacesEnabled)
+                _HubTileData(
+                  key: 'profile-tile-workspaces',
+                  icon: Icons.business_outlined,
+                  title: 'Workspaces',
+                  subtitle: 'Manage team workspaces and branches',
+                  route: AppRoutes.workspaces,
+                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -463,13 +505,14 @@ class _ProfileCommandHub extends StatelessWidget {
               subtitle: 'Checkout history and fulfillment status',
               route: AppRoutes.orders,
             ),
-            _HubTileData(
-              key: 'profile-tile-payouts',
-              icon: Icons.account_balance_wallet_outlined,
-              title: 'Payouts',
-              subtitle: 'Earnings, withdrawals, and payout accounts',
-              route: AppRoutes.payouts,
-            ),
+            if (kPayoutsEnabled)
+              _HubTileData(
+                key: 'profile-tile-payouts',
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'Payouts',
+                subtitle: 'Earnings, withdrawals, and payout accounts',
+                route: AppRoutes.payouts,
+              ),
             _HubTileData(
               key: 'profile-tile-transactions',
               icon: Icons.receipt_long_outlined,
@@ -494,13 +537,14 @@ class _ProfileCommandHub extends StatelessWidget {
               subtitle: 'Replies, quote follow-up, active threads',
               route: AppRoutes.chat,
             ),
-            _HubTileData(
-              key: 'profile-tile-referrals',
-              icon: Icons.card_giftcard_outlined,
-              title: 'Referrals',
-              subtitle: 'Invite providers and earn rewards',
-              route: AppRoutes.referrals,
-            ),
+            if (kReferralsEnabled)
+              _HubTileData(
+                key: 'profile-tile-referrals',
+                icon: Icons.card_giftcard_outlined,
+                title: 'Referrals',
+                subtitle: 'Invite providers and earn rewards',
+                route: AppRoutes.referrals,
+              ),
             _HubTileData(
               key: 'profile-tile-verification',
               icon: Icons.verified_user_outlined,
@@ -508,13 +552,14 @@ class _ProfileCommandHub extends StatelessWidget {
               subtitle: 'Get verified to build trust with customers',
               route: AppRoutes.verification,
             ),
-            _HubTileData(
-              key: 'profile-tile-saved',
-              icon: Icons.bookmark_border_rounded,
-              title: 'Saved',
-              subtitle: 'Saved providers, listings, and feed cards',
-              route: AppRoutes.saved,
-            ),
+            if (kSavedEnabled)
+              _HubTileData(
+                key: 'profile-tile-saved',
+                icon: Icons.bookmark_border_rounded,
+                title: 'Saved',
+                subtitle: 'Saved providers, listings, and feed cards',
+                route: AppRoutes.saved,
+              ),
           ],
         ),
         const SizedBox(height: 16),
@@ -546,13 +591,14 @@ class _ProfileCommandHub extends StatelessWidget {
               subtitle: 'Notifications, appearance, and account',
               route: AppRoutes.profileSettings,
             ),
-            _HubTileData(
-              key: 'profile-tile-blocked',
-              icon: Icons.shield_outlined,
-              title: 'Blocked Users',
-              subtitle: 'Manage blocked accounts',
-              route: AppRoutes.blockedUsers,
-            ),
+            if (kBlockingEnabled)
+              _HubTileData(
+                key: 'profile-tile-blocked',
+                icon: Icons.shield_outlined,
+                title: 'Blocked Users',
+                subtitle: 'Manage blocked accounts',
+                route: AppRoutes.blockedUsers,
+              ),
           ],
         ),
         const SizedBox(height: 16),
@@ -720,6 +766,7 @@ class _HubSummaryGrid extends StatelessWidget {
                   value: tile.$2,
                   caption: tile.$3,
                   icon: tile.$4,
+                  gradient: true,
                 ),
               ),
           ],
@@ -792,65 +839,91 @@ class _HubTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final background = data.emphasized
-        ? AppColors.primarySoft
-        : AppColors.surface;
-    final iconColor = data.emphasized ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = data.emphasized ? AppColors.primary : AppColors.accent;
+    final iconBg = data.emphasized
+        ? AppGradients.premiumAccent
+        : isDark
+            ? LinearGradient(
+                colors: [AppColors.darkSurfaceAlt, AppColors.darkSurfaceTint],
+              )
+            : LinearGradient(
+                colors: [AppColors.primarySoft, AppColors.surfaceAlt],
+              );
 
-    return Material(
-      key: ValueKey(data.key),
-      color: background,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: () => context.push(data.route),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.lg),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
-          constraints: BoxConstraints(minHeight: 82),
-          padding: const EdgeInsets.all(14),
+          constraints: const BoxConstraints(minHeight: 82),
           decoration: BoxDecoration(
+            color: isDark
+                ? (data.emphasized
+                    ? AppColors.darkSurface.withValues(alpha: 0.85)
+                    : AppColors.darkSurfaceAlt.withValues(alpha: 0.6))
+                : (data.emphasized
+                    ? AppColors.primarySoft.withValues(alpha: 0.9)
+                    : Colors.white.withValues(alpha: 0.85)),
             border: Border.all(
-              color: data.emphasized ? AppColors.primary : Theme.of(context).colorScheme.outline,
+              color: data.emphasized
+                  ? AppColors.primary.withValues(alpha: 0.4)
+                  : (isDark ? AppColors.glassStrokeDark : AppColors.glassStroke),
             ),
-            borderRadius: BorderRadius.circular(AppRadii.md),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppRadii.sm),
-                ),
-                child: Icon(data.icon, color: iconColor),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              onTap: () => context.push(data.route),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                child: Row(
                   children: [
-                    Text(
-                      data.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        gradient: iconBg,
+                        borderRadius: BorderRadius.circular(AppRadii.sm),
+                      ),
+                      child: Icon(data.icon, color: iconColor, size: 20),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      data.subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            data.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            data.subtitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1057,53 +1130,54 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 12),
-                _ProfileTextField(
+                AppTextField(
                   controller: _fullNameController,
                   label: 'Public name',
-                  icon: Icons.person_outline_rounded,
+                  prefixIcon: Icons.person_outline_rounded,
                   validator: _validateName,
                 ),
                 const SizedBox(height: 12),
-                _ProfileTextField(
+                AppTextField(
                   controller: _locationController,
                   label: 'Area or service location',
-                  icon: Icons.location_on_outlined,
+                  prefixIcon: Icons.location_on_outlined,
                   validator: _validateLocation,
                 ),
                 const SizedBox(height: 12),
-                _ProfileTextField(
+                AppTextField(
                   controller: _bioController,
                   label: 'Bio',
-                  icon: Icons.notes_outlined,
+                  prefixIcon: Icons.notes_outlined,
                   maxLines: 4,
                 ),
                 const SizedBox(height: 12),
-                _ProfileTextField(
+                AppTextField(
                   controller: _phoneController,
                   label: 'Phone',
-                  icon: Icons.phone_outlined,
+                  prefixIcon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
                   validator: _validatePhone,
                 ),
                 const SizedBox(height: 12),
-                _ProfileTextField(
+                AppTextField(
                   controller: _websiteController,
                   label: 'Website',
-                  icon: Icons.language_rounded,
+                  prefixIcon: Icons.language_rounded,
                   keyboardType: TextInputType.url,
                   validator: _validateUrl,
                 ),
                 const SizedBox(height: 12),
-                _ProfileTextField(
+                AppTextField(
                   controller: _avatarUrlController,
                   label: 'Avatar image URL',
-                  icon: Icons.image_outlined,
+                  prefixIcon: Icons.image_outlined,
                   keyboardType: TextInputType.url,
                   validator: _validateUrl,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _availability,
+                  // ignore: deprecated_member_use – reactive value needed; initialValue is read-once
+                  value: _availability,
                   decoration: const InputDecoration(
                     labelText: 'Availability',
                     prefixIcon: Icon(Icons.event_available_outlined),
@@ -1152,35 +1226,6 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
         const SizedBox(height: 14),
         _EditableProfileCard(snapshot: widget.snapshot),
       ],
-    );
-  }
-}
-
-class _ProfileTextField extends StatelessWidget {
-  const _ProfileTextField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.maxLines = 1,
-    this.keyboardType,
-    this.validator,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final int maxLines;
-  final TextInputType? keyboardType;
-  final FormFieldValidator<String>? validator;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      validator: validator,
-      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
     );
   }
 }
@@ -1295,123 +1340,157 @@ class _PublicProfilePreviewCard extends StatelessWidget {
         ? null
         : snapshot.products.first.title;
     final previewOffer = firstService ?? firstProduct ?? 'Listings pending';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return PremiumSurface(
-      key: const ValueKey('profile-public-preview'),
-      padding: EdgeInsets.all(prominent ? 18 : 16),
-      backgroundColor: AppColors.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              PremiumPill(
-                label: 'Public profile preview',
-                icon: Icons.visibility_outlined,
-                backgroundColor: AppColors.primarySoft,
-                foregroundColor: AppColors.primary,
-              ),
-              PremiumPill(
-                label: 'Mobile-ready',
-                icon: Icons.phone_iphone_rounded,
-                backgroundColor: AppColors.accentSoft,
-                foregroundColor: AppColors.accent,
-              ),
-            ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.xl),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppColors.darkSurface.withValues(alpha: 0.85)
+                : Colors.white.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            border: Border.all(
+              color: isDark ? AppColors.glassStrokeDark : AppColors.glassStroke,
+            ),
           ),
-          const SizedBox(height: 16),
-          Row(
+          padding: EdgeInsets.all(prominent ? AppSpacing.lg : AppSpacing.md),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: prominent ? 34 : 28,
-                backgroundColor: AppColors.primarySoft,
-                backgroundImage: profile.avatarUrl.isEmpty
-                    ? null
-                    : CachedNetworkImageProvider(profile.avatarUrl),
-                onBackgroundImageError: profile.avatarUrl.isEmpty
-                    ? null
-                    : (_, _) {},
-                child: Text(
-                  _avatarFallback(displayName),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w900,
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  PremiumPill(
+                    label: 'Public profile preview',
+                    icon: Icons.visibility_outlined,
+                    backgroundColor: AppColors.primarySoft,
+                    foregroundColor: AppColors.primary,
                   ),
-                ),
+                  PremiumPill(
+                    label: 'Mobile-ready',
+                    icon: Icons.phone_iphone_rounded,
+                    backgroundColor: AppColors.accentSoft,
+                    foregroundColor: AppColors.accent,
+                  ),
+                ],
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge,
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      gradient: AppGradients.premiumAccent,
+                      shape: BoxShape.circle,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x300F766E),
+                          blurRadius: 10,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 5),
-                    Text(
-                      headline,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    child: CircleAvatar(
+                      radius: prominent ? 33 : 27,
+                      backgroundColor: AppColors.surface,
+                      backgroundImage: profile.avatarUrl.isEmpty
+                          ? null
+                          : CachedNetworkImageProvider(profile.avatarUrl),
+                      onBackgroundImageError: profile.avatarUrl.isEmpty
+                          ? null
+                          : (_, _) {},
+                      child: Text(
+                        _avatarFallback(displayName),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShaderMask(
+                          shaderCallback: (bounds) => AppGradients.premiumAccent.createShader(bounds),
+                          blendMode: BlendMode.srcIn,
+                          child: Text(
+                            displayName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          headline,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                profile.bio.isEmpty
+                    ? 'Profile copy is pending. Launchpad can draft a clearer public summary next.'
+                    : profile.bio,
+                maxLines: 6,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  TrustBadge(
+                    label: _humanize(profile.verificationLevel),
+                    icon: Icons.verified_user_outlined,
+                    backgroundColor: AppColors.successSoft,
+                    foregroundColor: AppColors.success,
+                  ),
+                  TrustBadge(
+                    label: profile.location.isEmpty
+                        ? 'Location private'
+                        : profile.location,
+                    icon: Icons.location_on_outlined,
+                    backgroundColor: AppColors.surfaceMuted,
+                    foregroundColor: Theme.of(context).colorScheme.onSurface,
+                  ),
+                  TrustBadge(
+                    label: previewOffer,
+                    icon: Icons.storefront_outlined,
+                    backgroundColor: AppColors.warningSoft,
+                    foregroundColor: AppColors.warning,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _InfoRow(
+                label: 'Public path',
+                value: snapshot.publicPath.isEmpty
+                    ? 'Created when profile is published'
+                    : snapshot.publicPath,
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Text(
-            profile.bio.isEmpty
-                ? 'Profile copy is pending. Launchpad can draft a clearer public summary next.'
-                : profile.bio,
-            maxLines: 6,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              TrustBadge(
-                label: _humanize(profile.verificationLevel),
-                icon: Icons.verified_user_outlined,
-                backgroundColor: AppColors.successSoft,
-                foregroundColor: AppColors.success,
-              ),
-              TrustBadge(
-                label: profile.location.isEmpty
-                    ? 'Location private'
-                    : profile.location,
-                icon: Icons.location_on_outlined,
-                backgroundColor: AppColors.surfaceMuted,
-                foregroundColor: Theme.of(context).colorScheme.onSurface,
-              ),
-              TrustBadge(
-                label: previewOffer,
-                icon: Icons.storefront_outlined,
-                backgroundColor: AppColors.warningSoft,
-                foregroundColor: AppColors.warning,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _InfoRow(
-            label: 'Public path',
-            value: snapshot.publicPath.isEmpty
-                ? 'Created when profile is published'
-                : snapshot.publicPath,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -1647,11 +1726,12 @@ class _ListingsSummaryCard extends StatelessWidget {
           children: [
             SizedBox(
               width: tileWidth,
-              child: MetricTile(
+              child:               MetricTile(
                 label: 'Live services',
                 value: snapshot.serviceCount.toString(),
                 caption: 'Visible from profile and discovery',
                 icon: Icons.design_services_outlined,
+                gradient: true,
               ),
             ),
             SizedBox(
@@ -1661,6 +1741,7 @@ class _ListingsSummaryCard extends StatelessWidget {
                 value: snapshot.productCount.toString(),
                 caption: 'Catalog items ready for buyers',
                 icon: Icons.inventory_2_outlined,
+                gradient: true,
               ),
             ),
           ],
@@ -1903,48 +1984,73 @@ class _ProfileHero extends StatelessWidget {
         : profile.fullName;
     final initials = _avatarFallback(displayName);
 
-    return PremiumSurface(
-      padding: const EdgeInsets.all(18),
-      backgroundColor: AppColors.surface,
+    return ServiqSurface(
+      variant: ServiqSurfaceVariant.glass,
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           PremiumPill(
             label: 'Profile Hub',
             icon: Icons.dashboard_customize_outlined,
-            backgroundColor: AppColors.surfaceAlt,
+            backgroundColor: AppColors.primarySoft,
+            foregroundColor: AppColors.primary,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.md),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundColor: AppColors.primarySoft,
-                foregroundImage: profile.avatarUrl.isEmpty
-                    ? null
-                    : NetworkImage(profile.avatarUrl),
-                onForegroundImageError: profile.avatarUrl.isEmpty
-                    ? null
-                    : (_, _) {},
-                child: Text(
-                  initials,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w900,
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.accent.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: 29,
+                  backgroundColor: AppColors.surface,
+                  foregroundImage: profile.avatarUrl.isEmpty
+                      ? null
+                      : NetworkImage(profile.avatarUrl),
+                  onForegroundImageError: profile.avatarUrl.isEmpty
+                      ? null
+                      : (_, _) {},
+                  child: Text(
+                    initials,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      displayName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.headlineSmall,
+                    ShaderMask(
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: [AppColors.primary, AppColors.accent],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ).createShader(bounds),
+                      blendMode: BlendMode.srcIn,
+                      child: Text(
+                        displayName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -1962,22 +2068,64 @@ class _ProfileHero extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpacing.md),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _HeroChip(label: snapshot.roleLabel),
-              _HeroChip(label: '${snapshot.completionPercent}% complete'),
-              _HeroChip(label: '${snapshot.trustScore} trust score'),
-              _HeroChip(
+              _GlassPill(
+                label: snapshot.roleLabel,
+                color: AppColors.primary,
+              ),
+              _GlassPill(
+                label: '${snapshot.completionPercent}% complete',
+                color: AppColors.accent,
+              ),
+              _GlassPill(
+                label: '${snapshot.trustScore} trust score',
+                color: AppColors.verified,
+              ),
+              _GlassPill(
                 label: profile.location.isEmpty
                     ? 'Location pending'
                     : profile.location,
+                color: AppColors.warm,
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GlassPill extends StatelessWidget {
+  const _GlassPill({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.pill),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            border: Border.all(color: color.withValues(alpha: 0.25)),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -2066,7 +2214,9 @@ class _LaunchReadinessCard extends StatelessWidget {
     final completed = rows.where((row) => row.$2).length;
     final progress = completed / rows.length;
 
-    return SectionCard(
+    return ServiqSurface(
+      variant: ServiqSurfaceVariant.glass,
+      padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2076,14 +2226,15 @@ class _LaunchReadinessCard extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
+                  gradient: AppGradients.premiumAccent,
                   borderRadius: BorderRadius.circular(AppRadii.md),
                 ),
                 child: Icon(
                   isProvider
                       ? Icons.storefront_rounded
                       : Icons.flag_circle_outlined,
-                  color: AppColors.primary,
+                  color: Colors.white,
+                  size: 20,
                 ),
               ),
               const SizedBox(width: 12),
@@ -2095,28 +2246,42 @@ class _LaunchReadinessCard extends StatelessWidget {
                       isProvider
                           ? 'Provider launch readiness'
                           : 'Account readiness',
-                      style: Theme.of(context).textTheme.titleLarge,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '$completed of ${rows.length} essentials complete',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          LinearProgressIndicator(
-            value: progress,
-            minHeight: 10,
+          const SizedBox(height: AppSpacing.md),
+          ClipRRect(
             borderRadius: BorderRadius.circular(AppRadii.pill),
+            child: LinearProgressIndicator(
+              value: progress.clamp(0.0, 1.0),
+              minHeight: 10,
+              backgroundColor: AppColors.surfaceAlt,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                progress >= 1.0
+                    ? AppColors.success
+                    : progress >= 0.5
+                        ? AppColors.accent
+                        : AppColors.warm,
+              ),
+            ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.md),
           for (final row in rows)
             _ReadinessRow(label: row.$1, detail: row.$3, done: row.$2),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           if (isProvider) ...[
             _ActionRow(
               icon: Icons.rocket_launch_outlined,
@@ -2141,33 +2306,6 @@ class _LaunchReadinessCard extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _HeroChip extends StatelessWidget {
-  const _HeroChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: Theme.of(context).colorScheme.onSurface,
-          fontWeight: FontWeight.w800,
-        ),
       ),
     );
   }
@@ -2224,6 +2362,7 @@ class _MetricsGrid extends StatelessWidget {
                     value: item.$2,
                     caption: item.$3,
                     icon: item.$4,
+                    gradient: true,
                   ),
                 ),
               )
@@ -2260,7 +2399,7 @@ class _CompletionCard extends StatelessWidget {
           LinearProgressIndicator(
             value: completionValue,
             minHeight: 10,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(AppRadii.pill),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -2751,39 +2890,35 @@ class _PasswordCard extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 14),
-            TextFormField(
+            AppTextField(
+              label: 'New password',
               controller: passwordController,
               obscureText: obscurePassword,
               textInputAction: TextInputAction.next,
               autofillHints: const [AutofillHints.newPassword],
-              decoration: InputDecoration(
-                labelText: 'New password',
-                suffixIcon: IconButton(
-                  onPressed: onTogglePassword,
-                  icon: Icon(
-                    obscurePassword
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_rounded,
-                  ),
+              suffixIcon: IconButton(
+                onPressed: onTogglePassword,
+                icon: Icon(
+                  obscurePassword
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
                 ),
               ),
               validator: validatePassword,
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            AppTextField(
+              label: 'Confirm password',
               controller: confirmPasswordController,
               obscureText: obscureConfirmPassword,
               textInputAction: TextInputAction.done,
               autofillHints: const [AutofillHints.newPassword],
-              decoration: InputDecoration(
-                labelText: 'Confirm password',
-                suffixIcon: IconButton(
-                  onPressed: onToggleConfirmPassword,
-                  icon: Icon(
-                    obscureConfirmPassword
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_rounded,
-                  ),
+              suffixIcon: IconButton(
+                onPressed: onToggleConfirmPassword,
+                icon: Icon(
+                  obscureConfirmPassword
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
                 ),
               ),
               validator: validateConfirmation,

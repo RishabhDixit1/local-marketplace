@@ -3,11 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/design_system/serviq_async_state.dart';
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/empty_state_view.dart';
 import '../data/quote_repository.dart';
 import '../domain/quote_models.dart';
 
@@ -53,8 +51,8 @@ class _QuoteComparisonPageState extends ConsumerState<QuoteComparisonPage> {
   Widget build(BuildContext context) {
     final resultAsync = ref.watch(_comparisonProvider(widget.helpRequestId));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Compare Quotes')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Compare Quotes'),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
@@ -368,7 +366,7 @@ class _QuoteComparisonPageState extends ConsumerState<QuoteComparisonPage> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadii.md)),
       child: Text(
         status[0].toUpperCase() + status.substring(1),
         style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: fg),

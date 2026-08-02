@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -5,8 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/design_tokens.dart';
-import '../../../shared/components/empty_state_view.dart';
+import '../../../shared/components/section_header.dart';
 import '../data/search_repository.dart';
 import '../domain/search_models.dart';
 
@@ -24,9 +27,9 @@ class MapDiscoveryPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(_mapProvidersProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Discover nearby'),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(
+        title: 'Discover nearby',
         actions: [
           IconButton(
             icon: Icon(Icons.search),
@@ -75,68 +78,96 @@ class _MapWithList extends StatelessWidget {
 
     return Column(
       children: [
-        SizedBox(
-          height: 280,
-          child: withLocation.isEmpty
-              ? const Center(child: Text('No location data available'))
-              : FlutterMap(
-                  options: MapOptions(
-                    initialCenter: LatLng(
-                      withLocation.first.lat!,
-                      withLocation.first.lng!,
-                    ),
-                    initialZoom: 11,
-                    minZoom: 8,
-                    maxZoom: 16,
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(AppRadii.xxl),
+          ),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primarySoft.withValues(alpha: 0.4),
+                    AppColors.surface.withValues(alpha: 0.3),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.08),
                   ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.serviq.app',
-                    ),
-                    MarkerLayer(
-                      markers: withLocation.map((p) {
-                        return Marker(
-                          point: LatLng(p.lat!, p.lng!),
-                          width: 36,
-                          height: 36,
-                          child: GestureDetector(
-                            onTap: () =>
-                                context.push(AppRoutes.provider(p.id)),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                    color: Colors.white, width: 2),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.2),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  p.name.isNotEmpty
-                                      ? p.name[0].toUpperCase()
-                                      : '?',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                ),
+              ),
+              child: SizedBox(
+                height: 280,
+                child: withLocation.isEmpty
+                    ? Center(
+                        child: Text('No location data available',
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5))),
+                      )
+                    : FlutterMap(
+                        options: MapOptions(
+                          initialCenter: LatLng(
+                            withLocation.first.lat!,
+                            withLocation.first.lng!,
+                          ),
+                          initialZoom: 11,
+                          minZoom: 8,
+                          maxZoom: 16,
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate:
+                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.serviq.app',
+                          ),
+                          MarkerLayer(
+                            markers: withLocation.map((p) {
+                              return Marker(
+                                point: LatLng(p.lat!, p.lng!),
+                                width: 36,
+                                height: 36,
+                                child: GestureDetector(
+                                  onTap: () =>
+                                      context.push(AppRoutes.provider(p.id)),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: AppGradients.premiumAccent,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: Colors.white, width: 2),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.25),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        p.name.isNotEmpty
+                                            ? p.name[0].toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
+                              );
+                            }).toList(),
                           ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
         ),
         Expanded(
           child: _MapContent(providers: providers),
@@ -170,53 +201,62 @@ class _MapContent extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceAlt,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.explore, size: 20, color: AppColors.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  '${providers.length} providers · ${withLocation.length} on map',
-                  style:
-                      TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadii.xl),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.accentSoft.withValues(alpha: 0.5),
+                    AppColors.surface.withValues(alpha: 0.3),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(AppRadii.xl),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
               ),
-            ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _StatsMini(icon: Icons.people_rounded, value: '${providers.length}', label: 'providers'),
+                  _StatsMini(icon: Icons.map_rounded, value: '${withLocation.length}', label: 'on map'),
+                  _StatsMini(icon: Icons.explore_rounded, value: '${withoutLocation.length}', label: 'unmapped'),
+                ],
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         if (withLocation.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text('Nearby',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+            child: SectionHeader(
+              title: 'Nearby',
+              subtitle: '${withLocation.length} providers with location',
+            ),
           ),
-          ...withLocation.take(20).map((p) => _MapProviderTile(provider: p)),
+          const SizedBox(height: AppSpacing.xs),
+          ...withLocation.take(20).map((p) => _GlassMapTile(provider: p)),
         ],
         if (withoutLocation.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text('Other providers',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+            child: SectionHeader(
+              title: 'Other providers',
+              subtitle: '${withoutLocation.length} providers nearby',
+            ),
           ),
-          ...withoutLocation.take(20).map((p) => _MapProviderTile(provider: p)),
+          const SizedBox(height: AppSpacing.xs),
+          ...withoutLocation.take(20).map((p) => _GlassMapTile(provider: p)),
         ],
         if (providers.length > 40)
           Padding(
-            padding: const EdgeInsets.only(top: 12),
+            padding: const EdgeInsets.only(top: AppSpacing.md),
             child: Center(
               child: FilledButton.tonal(
                 onPressed: () => context.push(AppRoutes.search),
@@ -229,87 +269,140 @@ class _MapContent extends StatelessWidget {
   }
 }
 
-class _MapProviderTile extends StatelessWidget {
-  final SearchResult provider;
+class _StatsMini extends StatelessWidget {
+  const _StatsMini({required this.icon, required this.value, required this.label});
 
-  const _MapProviderTile({required this.provider});
+  final IconData icon;
+  final String value;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 6),
-      child: InkWell(
-        onTap: () => context.push(AppRoutes.provider(provider.id)),
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundImage: provider.avatarUrl.isNotEmpty
-                    ? NetworkImage(provider.avatarUrl)
-                    : null,
-                child: provider.avatarUrl.isEmpty
-                    ? Text(
-                        provider.name.isNotEmpty
-                            ? provider.name[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 12))
-                    : null,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: AppColors.primaryDeep),
+        const SizedBox(height: 2),
+        Text(value, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+        Text(label, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5))),
+      ],
+    );
+  }
+}
+
+class _GlassMapTile extends StatelessWidget {
+  final SearchResult provider;
+
+  const _GlassMapTile({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textSecondary = theme.colorScheme.onSurface.withValues(alpha: 0.55);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primarySoft.withValues(alpha: 0.2),
+                  AppColors.surface.withValues(alpha: 0.4),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(provider.name,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 13)),
+              borderRadius: BorderRadius.circular(AppRadii.xl),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => context.push(AppRoutes.provider(provider.id)),
+                borderRadius: BorderRadius.circular(AppRadii.xl),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundImage: provider.avatarUrl.isNotEmpty
+                            ? NetworkImage(provider.avatarUrl)
+                            : null,
+                        backgroundColor: AppColors.primarySoft,
+                        child: provider.avatarUrl.isEmpty
+                            ? Text(
+                                provider.name.isNotEmpty
+                                    ? provider.name[0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primaryDeep))
+                            : null,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(provider.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13,
+                                          color: Theme.of(context).colorScheme.onSurface)),
+                                ),
+                                if (provider.verified)
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 4),
+                                    child: Icon(Icons.verified_rounded,
+                                        size: 13, color: AppColors.verified),
+                                  ),
+                              ],
+                            ),
+                            if (provider.location.isNotEmpty)
+                              Text(provider.location,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 11, color: textSecondary)),
+                            if (provider.listings.isNotEmpty)
+                              Text(provider.listings.first.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 10,
+                                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))),
+                          ],
                         ),
-                        if (provider.verified)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 4),
-                            child: Icon(Icons.verified,
-                                size: 12, color: AppColors.primary),
+                      ),
+                      if (provider.distanceKm != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.primarySoft.withValues(alpha: 0.6),
+                                AppColors.accentSoft.withValues(alpha: 0.3),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
                           ),
-                      ],
-                    ),
-                    if (provider.location.isNotEmpty)
-                      Text(provider.location,
-                          style: TextStyle(
-                              fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                    if (provider.listings.isNotEmpty)
-                      Text(provider.listings.first.title,
-                          style: TextStyle(
-                              fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                  ],
+                          child: Text('${provider.distanceKm!.toStringAsFixed(1)} km',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primaryDeep)),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-              if (provider.distanceKm != null)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                      '${provider.distanceKm!.toStringAsFixed(1)} km',
-                      style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary)),
-                ),
-            ],
+            ),
           ),
         ),
       ),

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
@@ -56,17 +55,6 @@ class AppBootstrap {
       debugPrint(
         'ServiQ mobile: starting Supabase bootstrap for ${config.supabaseHost}',
       );
-
-      // Pre-warm the FlutterSecureStorage platform channel so the 3
-      // sequential reads inside Supabase.initialize() are not cold-starts.
-      // Each cold read takes 100-500ms on Android; a single warm-up read
-      // brings subsequent reads down to <10ms each.
-      try {
-        const warmupStorage = FlutterSecureStorage();
-        await warmupStorage.containsKey(key: 'warmup');
-      } catch (_) {
-        // Pre-warm failed — Supabase will still work, just slower.
-      }
 
       final instance = await Supabase.initialize(
         url: config.supabaseUrl,

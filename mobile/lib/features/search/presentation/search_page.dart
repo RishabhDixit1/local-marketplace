@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,9 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../l10n/l10n.dart';
-import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/widgets/ai_prompt_bar.dart';
 import '../data/search_repository.dart';
 import '../domain/search_models.dart';
@@ -189,8 +191,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Search nearby')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Search nearby'),
       body: SafeArea(
         child: Column(
           children: [
@@ -207,135 +209,95 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   Widget _buildSearchBar() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outline, width: 0.5)),
-      ),
-      child: Column(
-        children: [
-          AiPromptBar(
-            initialQuery: widget.initialQuery,
-            enableDebounce: true,
-            onResult: (result) {
-              setState(() => _query = result.response);
-              if (result.redirect != null) {
-                context.push(result.redirect!);
-              } else if (_query.isNotEmpty) {
-                _doSearch();
-              }
-            },
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 28,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (final cat in _categories)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: FilterChip(
-                      label: Text(
-                        '${cat['name'] ?? ''}',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                      selected: _selectedCategory == cat['name'],
-                      onSelected: (v) {
-                        setState(() => _selectedCategory = v ? cat['name'] as String? : null);
-                        _doSearch();
-                      },
-                      visualDensity: VisualDensity.compact,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-              ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [AppColors.darkSurface.withValues(alpha: 0.85), AppColors.darkSurfaceAlt.withValues(alpha: 0.65)]
+                  : [Colors.white.withValues(alpha: 0.9), Colors.white.withValues(alpha: 0.65)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
+            border: Border(bottom: BorderSide(color: isDark ? AppColors.glassStrokeDark : AppColors.glassStroke)),
           ),
-          const SizedBox(height: 6),
-          Row(
+          child: Column(
             children: [
-              Expanded(
-                child: Container(
-                  height: 32,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Theme.of(context).colorScheme.outline),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<_SortBy>(
+              AiPromptBar(
+                initialQuery: widget.initialQuery,
+                enableDebounce: true,
+                onResult: (result) {
+                  setState(() => _query = result.response);
+                  if (result.redirect != null) {
+                    context.push(result.redirect!);
+                  } else if (_query.isNotEmpty) {
+                    _doSearch();
+                  }
+                },
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 28,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    for (final cat in _categories)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: _GlassCategoryChip(
+                          label: '${cat['name'] ?? ''}',
+                          selected: _selectedCategory == cat['name'],
+                          onSelected: (v) {
+                            setState(() => _selectedCategory = v ? cat['name'] as String? : null);
+                            _doSearch();
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: _GlassDropdown(
                       value: _sortBy,
-                      isExpanded: true,
-                      isDense: true,
-                      style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface),
                       items: _SortBy.values.map((s) => DropdownMenuItem(
                         value: s,
-                        child: Text(s.label, style: TextStyle(fontSize: 11)),
+                        child: Text(s.label, style: const TextStyle(fontSize: 11)),
                       )).toList(),
                       onChanged: (v) {
                         if (v != null) { setState(() => _sortBy = v); _doSearch(); }
                       },
                     ),
                   ),
-                ),
+                  const SizedBox(width: 6),
+                  _GlassFilterChip(
+                    label: 'Online',
+                    icon: Icons.circle,
+                    selected: _onlineOnly,
+                    iconSize: 6,
+                    onTap: () => setState(() { _onlineOnly = !_onlineOnly; _doSearch(); }),
+                  ),
+                  const SizedBox(width: 6),
+                  _GlassFilterChip(
+                    label: _minRating != null ? '${_minRating!.toStringAsFixed(0)}+' : 'Rating',
+                    icon: Icons.star,
+                    selected: _minRating != null,
+                    iconSize: 12,
+                    iconColor: AppColors.warning,
+                    onTap: _showRatingFilter,
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              InkWell(
-                onTap: () => setState(() { _onlineOnly = !_onlineOnly; _doSearch(); }),
-                child: Container(
-                  height: 32,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _onlineOnly ? AppColors.primary : Theme.of(context).colorScheme.outline,
-                    ),
-                    color: _onlineOnly ? AppColors.primarySoft : null,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.circle, size: 6, color: _onlineOnly ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-                      const SizedBox(width: 4),
-                      Text('Online', style: TextStyle(fontSize: 11, color: _onlineOnly ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              InkWell(
-                onTap: () {
-                  _showRatingFilter();
-                },
-                child: Container(
-                  height: 32,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _minRating != null ? AppColors.primary : Theme.of(context).colorScheme.outline,
-                    ),
-                    color: _minRating != null ? AppColors.primarySoft : null,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.star, size: 12, color: AppColors.warning),
-                      const SizedBox(width: 3),
-                      Text(
-                        _minRating != null ? '${_minRating!.toStringAsFixed(0)}+' : 'Rating',
-                        style: TextStyle(fontSize: 11, color: _minRating != null ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              const SizedBox(height: AppSpacing.xxs),
             ],
           ),
-          const SizedBox(height: 4),
-        ],
+        ),
       ),
     );
   }
@@ -343,28 +305,47 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void _showRatingFilter() {
     showModalBottomSheet(
       context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(width: 32, height: 3, decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45), borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 16),
-            const Text('Minimum Rating', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            ...['Any', '3+', '4+', '4.5+'].map((label) {
-              final val = label == 'Any' ? null : double.tryParse(label.replaceAll('+', ''));
-              return ListTile(
-                title: Text(label),
-                trailing: _minRating == val ? Icon(Icons.check) : null,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  setState(() => _minRating = val);
-                  _doSearch();
-                },
-              );
-            }),
-          ],
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadii.xl)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: SafeArea(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
+                    Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: AppSpacing.xs),
+                  Container(width: 32, height: 3, decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45), borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(height: AppSpacing.md),
+                  const Text('Minimum Rating', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: AppSpacing.sm),
+                  ...['Any', '3+', '4+', '4.5+'].map((label) {
+                    final val = label == 'Any' ? null : double.tryParse(label.replaceAll('+', ''));
+                    return ListTile(
+                      title: Text(label),
+                      trailing: _minRating == val ? const Icon(Icons.check, color: AppColors.primary) : null,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        setState(() => _minRating = val);
+                        _doSearch();
+                      },
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -376,7 +357,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       children: [
         if (_recent.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
             child: Row(
               children: [
                 Icon(Icons.history_rounded, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
@@ -386,40 +367,49 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               ],
             ),
           ),
-          ..._recent.map((s) => ListTile(
-            dense: true,
-            leading: Icon(Icons.history_rounded, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-            title: Text(s, style: TextStyle(fontSize: 14)),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.north_west_rounded, size: 16, color: AppColors.primary),
-                  onPressed: () {
-                    _query = s;
-                    _doSearch();
-                  },
-                  visualDensity: VisualDensity.compact,
+          ServiqSurface(
+            variant: ServiqSurfaceVariant.glass,
+            padding: const EdgeInsets.all(AppSpacing.xs),
+            child: Column(
+              children: _recent.map((s) => InkWell(
+                onTap: () {
+                  _query = s;
+                  _doSearch();
+                },
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.history_rounded, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(child: Text(s, style: const TextStyle(fontSize: 14))),
+                      IconButton(
+                        icon: Icon(Icons.north_west_rounded, size: 16, color: AppColors.primary),
+                        onPressed: () {
+                          _query = s;
+                          _doSearch();
+                        },
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
+                        onPressed: () async {
+                          setState(() => _recent.remove(s));
+                          await _deleteRecent(s);
+                        },
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
+                  ),
                 ),
-                IconButton(
-                  icon: Icon(Icons.close, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-                  onPressed: () async {
-                    setState(() => _recent.remove(s));
-                    await _deleteRecent(s);
-                  },
-                  visualDensity: VisualDensity.compact,
-                ),
-              ],
+              )).toList(),
             ),
-            onTap: () {
-              _query = s;
-              _doSearch();
-            },
-          )),
-          const Divider(height: 24),
+          ),
+          const SizedBox(height: AppSpacing.md),
         ],
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
           child: Row(
             children: [
               Icon(Icons.trending_up_rounded, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
@@ -432,14 +422,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: _suggestions.map((s) => ActionChip(
-            label: Text(s, style: const TextStyle(fontSize: 12)),
-            onPressed: () {
+          children: _suggestions.map((s) => _GlassSuggestionChip(
+            label: s,
+            onTap: () {
               _query = s;
               _doSearch();
             },
-            visualDensity: VisualDensity.compact,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           )).toList(),
         ),
       ],
@@ -454,16 +442,24 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     if (_error != null && (_results == null || _results!.providers.isEmpty)) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, size: 40, color: AppColors.danger),
-              const SizedBox(height: 12),
-              Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
-              const SizedBox(height: 12),
-              FilledButton.tonal(onPressed: _doSearch, child: const Text('Retry')),
-            ],
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          child: ServiqSurface(
+            variant: ServiqSurfaceVariant.glass,
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error_outline, size: 40, color: AppColors.danger),
+                const SizedBox(height: AppSpacing.sm),
+                Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
+                const SizedBox(height: AppSpacing.sm),
+                PrimaryButton(
+                  label: 'Retry',
+                  onPressed: _doSearch,
+                  expanded: false,
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -475,25 +471,36 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
         if (_loading)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8),
-            child: LinearProgressIndicator(),
-          ),
-        if (results.providers.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              '${results.total} provider${results.total == 1 ? '' : 's'} found',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+              ),
             ),
           ),
+        if (results.providers.isNotEmpty) ...[
+          ServiqSurface(
+            variant: ServiqSurfaceVariant.glass,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 6),
+            child: Row(
+              children: [
+                Text(
+                  '${results.total} provider${results.total == 1 ? '' : 's'} found',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
           ...results.providers.map((p) => _ProviderResultCard(
             provider: p,
             onTap: () => _openProvider(p),
           )),
           if (results.hasMore)
             Padding(
-              padding: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.only(top: AppSpacing.sm),
               child: Center(
                 child: _loadingMore
                     ? const SizedBox(
@@ -501,16 +508,17 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                         height: 24,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : FilledButton.tonal(
+                    : PrimaryButton(
+                        label: 'Load more',
                         onPressed: _loadMore,
-                        child: const Text('Load more'),
+                        expanded: false,
                       ),
               ),
             ),
         ] else if (!_loading) ...[
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpacing.xxl),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             child: EmptyStateView(
               title: AppLocalizations.of(context).aiNoProvidersFound,
               message: 'Post a requirement and let providers come to you.',
@@ -528,6 +536,199 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 }
 
+class _GlassCategoryChip extends StatelessWidget {
+  const _GlassCategoryChip({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String label;
+  final bool selected;
+  final ValueChanged<bool> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onSelected(!selected),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: selected
+                    ? [AppColors.primary.withValues(alpha: 0.25), AppColors.primary.withValues(alpha: 0.1)]
+                    : [Colors.transparent, Colors.transparent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(AppRadii.pill),
+              border: Border.all(
+                color: selected
+                    ? AppColors.primary.withValues(alpha: 0.5)
+                    : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassDropdown extends StatelessWidget {
+  const _GlassDropdown({
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  final _SortBy value;
+  final List<DropdownMenuItem<_SortBy>> items;
+  final ValueChanged<_SortBy?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+        child: Container(
+          height: 32,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<_SortBy>(
+              value: value,
+              isExpanded: true,
+              isDense: true,
+              style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface),
+              items: items,
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassFilterChip extends StatelessWidget {
+  const _GlassFilterChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+    this.iconSize = 6,
+    this.iconColor,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+  final double iconSize;
+  final Color? iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+          child: Container(
+            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(
+                color: selected ? AppColors.primary.withValues(alpha: 0.5) : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+              ),
+              gradient: selected
+                  ? LinearGradient(
+                      colors: [AppColors.primary.withValues(alpha: 0.2), AppColors.primary.withValues(alpha: 0.08)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: iconSize, color: iconColor ?? (selected ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))),
+                const SizedBox(width: AppSpacing.xxs),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: selected ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassSuggestionChip extends StatelessWidget {
+  const _GlassSuggestionChip({
+    required this.label,
+    required this.onTap,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadii.pill),
+              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withValues(alpha: 0.5),
+                  Colors.white.withValues(alpha: 0.2),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Text(label, style: const TextStyle(fontSize: 12)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ProviderResultCard extends StatelessWidget {
   final SearchResult provider;
   final VoidCallback onTap;
@@ -539,138 +740,146 @@ class _ProviderResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundImage: provider.avatarUrl.isNotEmpty
-                    ? NetworkImage(provider.avatarUrl)
-                    : null,
-                child: provider.avatarUrl.isEmpty
-                    ? Text(provider.name.isNotEmpty ? provider.name[0].toUpperCase() : '?',
-                        style: const TextStyle(fontWeight: FontWeight.bold))
-                    : null,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [AppColors.darkSurface.withValues(alpha: 0.85), AppColors.darkSurfaceAlt.withValues(alpha: 0.65)]
+                    : [Colors.white.withValues(alpha: 0.9), Colors.white.withValues(alpha: 0.65)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(provider.name,
-                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+              borderRadius: BorderRadius.circular(AppRadii.xl),
+              border: Border.all(color: isDark ? AppColors.glassStrokeDark : AppColors.glassStroke),
+              boxShadow: AppShadows.glass,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(AppRadii.xl),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundImage: provider.avatarUrl.isNotEmpty
+                            ? NetworkImage(provider.avatarUrl)
+                            : null,
+                        child: provider.avatarUrl.isEmpty
+                            ? Text(provider.name.isNotEmpty ? provider.name[0].toUpperCase() : '?',
+                                style: const TextStyle(fontWeight: FontWeight.bold))
+                            : null,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(provider.name,
+                                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                ),
+                                if (provider.verified)
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 4),
+                                    child: Icon(Icons.verified, size: 14, color: AppColors.primary),
+                                  ),
+                                if (provider.featured)
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 2),
+                                    child: Icon(Icons.auto_awesome, size: 12, color: AppColors.warning),
+                                  ),
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 6),
+                                  child: AppPill(
+                                    label: 'Service',
+                                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                                    foregroundColor: AppColors.primary,
+                                    border: BorderSide(color: AppColors.primary.withValues(alpha: 0.25)),
+                                    size: AppPillSize.mini,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.xxxs),
+                            if (provider.location.isNotEmpty)
+                              Text(provider.location,
+                                  style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                            const SizedBox(height: AppSpacing.xxs),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                if (provider.avgRating != null)
+                                  AppPill(
+                                    label: provider.ratingLabel,
+                                    icon: Icons.star,
+                                    backgroundColor: AppColors.warning.withValues(alpha: 0.1),
+                                    foregroundColor: AppColors.warning,
+                                    size: AppPillSize.mini,
+                                  ),
+                                if (provider.distanceKm != null)
+                                  AppPill(
+                                    label: '${provider.distanceKm!.toStringAsFixed(1)} km',
+                                    icon: Icons.location_on,
+                                    backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.045),
+                                    foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                    size: AppPillSize.mini,
+                                  ),
+                                if (provider.isOnline)
+                                  AppPill(
+                                    label: 'Online',
+                                    icon: Icons.circle,
+                                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                                    foregroundColor: AppColors.primary,
+                                    size: AppPillSize.mini,
+                                  ),
+                                if (provider.completedJobs > 0)
+                                  AppPill(
+                                    label: '${provider.completedJobs} jobs',
+                                    backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.045),
+                                    foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                    size: AppPillSize.mini,
+                                  ),
+                              ],
+                            ),
+                            if (provider.priceLabel.isNotEmpty) ...[
+                              const SizedBox(height: AppSpacing.xxs),
+                              Text(provider.priceLabel,
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
+                            ],
+                          ],
                         ),
-                        if (provider.verified)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 4),
-                            child: Icon(Icons.verified, size: 14, color: AppColors.primary),
-                          ),
-                        if (provider.featured)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 2),
-                            child: Icon(Icons.auto_awesome, size: 12, color: AppColors.warning),
-                          ),
-                        const Padding(
-                          padding: EdgeInsets.only(left: 6),
-                          child: _LoopChip(label: 'Service', color: AppColors.primary),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    if (provider.location.isNotEmpty)
-                      Text(provider.location,
-                          style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        if (provider.avgRating != null)
-                          _Tag(label: provider.ratingLabel, icon: Icons.star, color: AppColors.warning),
-                        if (provider.distanceKm != null)
-                          _Tag(label: '${provider.distanceKm!.toStringAsFixed(1)} km', icon: Icons.location_on),
-                        if (provider.isOnline)
-                          const _Tag(label: 'Online', icon: Icons.circle, color: AppColors.primary),
-                        if (provider.completedJobs > 0)
-                          _Tag(label: '${provider.completedJobs} jobs'),
-                      ],
-                    ),
-                    if (provider.priceLabel.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(provider.priceLabel,
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
+                        child: Icon(Icons.chevron_right, size: 14, color: AppColors.primary),
+                      ),
                     ],
-                  ],
+                  ),
                 ),
               ),
-              Icon(Icons.chevron_right, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-            ],
+            ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  final String label;
-  final IconData? icon;
-  final Color? color;
-
-  const _Tag({required this.label, this.icon, this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: (color ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 10, color: color ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-            const SizedBox(width: 2),
-          ],
-          Text(label, style: TextStyle(fontSize: 10, color: color ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-        ],
-      ),
-    );
-  }
-}
-
-class _LoopChip extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _LoopChip({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }

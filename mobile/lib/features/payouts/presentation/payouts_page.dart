@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/design_system/serviq_async_state.dart';
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../data/payouts_repository.dart';
@@ -173,8 +172,8 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
     final bundleAsync = ref.watch(payoutsBundleProvider);
     final accountsAsync = ref.watch(payoutAccountsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Payouts')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Payouts'),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
@@ -201,11 +200,11 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSummaryGrid(summary),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.lg),
         _buildWithdrawSection(summary.availablePaise),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.lg),
         _buildAccountsSection(accountsAsync),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.lg),
         _buildHistorySection(bundle.payouts),
       ],
     );
@@ -242,21 +241,18 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Request withdrawal', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          TextField(
+          const SizedBox(height: AppSpacing.sm),
+          AppTextField(
+            label: 'Amount (₹)',
             controller: _amountController,
             keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'Amount (₹)',
-              hintText: 'e.g. 500',
-              border: const OutlineInputBorder(),
-              suffixText: 'Available: ${_inr(availablePaise)}',
-              suffixStyle: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-            ),
+            hint: 'e.g. 500',
+            suffixText: 'Available: ${_inr(availablePaise)}',
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            initialValue: _selectedMethod,
+            // ignore: deprecated_member_use – reactive value needed; initialValue is read-once
+            value: _selectedMethod,
             items: const [
               DropdownMenuItem(value: 'bank', child: Text('Bank transfer')),
               DropdownMenuItem(value: 'upi', child: Text('UPI')),
@@ -333,8 +329,8 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
 
   Widget _accountTile(PayoutAccount a) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(10),
@@ -360,7 +356,7 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                         decoration: BoxDecoration(
                           color: AppColors.primarySoft,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(AppRadii.md),
                         ),
                         child: const Text('Default', style: TextStyle(fontSize: 9, color: AppColors.primary, fontWeight: FontWeight.w600)),
                       ),
@@ -397,23 +393,23 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
           Row(
             children: [
               _typeToggle('Bank', 'bank'),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               _typeToggle('UPI', 'upi'),
             ],
           ),
           const SizedBox(height: 10),
           if (_newAccountType == 'bank') ...[
-            TextField(controller: _holderController, decoration: const InputDecoration(labelText: 'Account holder name', border: OutlineInputBorder()),),
-            const SizedBox(height: 8),
-            TextField(controller: _bankNameController, decoration: const InputDecoration(labelText: 'Bank name', border: OutlineInputBorder()),),
-            const SizedBox(height: 8),
-            TextField(controller: _accountNumController, decoration: InputDecoration(labelText: 'Account number', border: OutlineInputBorder()), keyboardType: TextInputType.number,),
-            const SizedBox(height: 8),
-            TextField(controller: _ifscController, decoration: InputDecoration(labelText: 'IFSC code', border: OutlineInputBorder()),),
+            AppTextField(controller: _holderController, label: 'Account holder name'),
+            const SizedBox(height: AppSpacing.xs),
+            AppTextField(controller: _bankNameController, label: 'Bank name'),
+            const SizedBox(height: AppSpacing.xs),
+            AppTextField(controller: _accountNumController, label: 'Account number', keyboardType: TextInputType.number),
+            const SizedBox(height: AppSpacing.xs),
+            AppTextField(controller: _ifscController, label: 'IFSC code'),
           ] else ...[
-            TextField(controller: _upiController, decoration: InputDecoration(labelText: 'UPI handle (e.g. name@upi)', border: OutlineInputBorder()),),
+            AppTextField(controller: _upiController, label: 'UPI handle (e.g. name@upi)'),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
@@ -463,8 +459,8 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
 
   Widget _historyRow(PayoutTransaction p) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(10),
@@ -476,7 +472,7 @@ class _PayoutsPageState extends ConsumerState<PayoutsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_inr(p.amountPaise), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xxxs),
                 Text(
                   '${_methodLabel(p.payoutMethod)} · ${_formatDate(p.createdAt)}',
                   style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),

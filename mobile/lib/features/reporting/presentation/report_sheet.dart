@@ -150,12 +150,10 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
                   ),
                   if (reason == ReportReason.other) ...[
                     const SizedBox(height: AppSpacing.xs),
-                    TextField(
+                    AppTextField(
+                      label: 'Description',
+                      hint: 'Describe the issue...',
                       controller: _descriptionController,
-                      decoration: InputDecoration(
-                        hintText: 'Describe the issue...',
-                        border: OutlineInputBorder(),
-                      ),
                       maxLines: 3,
                       minLines: 2,
                     ),

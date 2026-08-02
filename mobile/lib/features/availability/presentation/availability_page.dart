@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../data/availability_repository.dart';
@@ -148,9 +149,10 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
         final controller = TextEditingController();
         return AlertDialog(
           title: const Text('Reason (optional)'),
-          content: TextField(
+          content: AppTextField(
+            label: 'Reason',
             controller: controller,
-            decoration: const InputDecoration(hintText: 'e.g. Holiday, Personal day'),
+            hint: 'e.g. Holiday, Personal day',
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
@@ -189,8 +191,8 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
   Widget build(BuildContext context) {
     final asyncSlots = ref.watch(availabilitySlotsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Availability')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Availability'),
       body: SafeArea(
         child: asyncSlots.isLoading && _slots.isEmpty
             ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
@@ -238,7 +240,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
                 ),
                 child: Text(_message!, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               ),
@@ -291,12 +293,12 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
               const Spacer(),
               InkWell(
                 onTap: _addException,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(AppRadii.sm),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: AppSpacing.xxs),
                   decoration: BoxDecoration(
                     color: AppColors.dangerSoft,
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -320,7 +322,8 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
                 color: AppColors.dangerSoft,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                // exception list item
               ),
               child: Row(
                 children: [
@@ -396,12 +399,12 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Theme.of(context).colorScheme.outline),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.schedule, size: 14, color: AppColors.primary),
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                border: Border.all(color: Theme.of(context).colorScheme.outline),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.schedule, size: 14, color: AppColors.primary),
                     const SizedBox(width: 6),
                     Text(slot.startTime, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                   ],
@@ -420,7 +423,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
                   border: Border.all(color: Theme.of(context).colorScheme.outline),
                 ),
                 child: Row(

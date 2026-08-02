@@ -1,9 +1,12 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/app_theme.dart';
 
 const _onboardingCompleteKey = 'serviq_onboarding_complete';
@@ -102,7 +105,15 @@ class _OnboardingWalkthroughPageState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return ServiqScaffold(
+      gradient: LinearGradient(
+        colors: [
+          Theme.of(context).colorScheme.surface,
+          AppColors.primarySoft.withValues(alpha: 0.3),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -139,15 +150,9 @@ class _OnboardingWalkthroughPageState
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           if (_currentPage < _pages.length - 1)
-            TextButton(
+            GhostButton(
+              label: 'Skip',
               onPressed: _onSkip,
-              child: Text(
-                'Skip',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
             )
           else
             const SizedBox(width: 64),
@@ -169,20 +174,14 @@ class _OnboardingWalkthroughPageState
         children: [
           _buildPageIndicator(),
           const SizedBox(height: AppSpacing.xxl),
-          SizedBox(
-            width: double.infinity,
-            height: AppTouchTargets.buttonHeight,
-            child: FilledButton(
-              onPressed:
-                  _currentPage == _pages.length - 1
-                      ? _onGetStarted
-                      : _onNext,
-              child: Text(
+          PrimaryButton(
+            label: _currentPage == _pages.length - 1
+                ? 'Get Started'
+                : 'Next',
+            onPressed:
                 _currentPage == _pages.length - 1
-                    ? 'Get Started'
-                    : 'Next',
-              ),
-            ),
+                    ? _onGetStarted
+                    : _onNext,
           ),
         ],
       ),
@@ -201,7 +200,7 @@ class _OnboardingWalkthroughPageState
           height: 8,
           decoration: BoxDecoration(
             color: isActive ? AppColors.primary : Theme.of(context).colorScheme.outline,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppRadii.xs),
           ),
         );
       }),
@@ -266,22 +265,29 @@ class _WalkthroughPageContent extends StatelessWidget {
   }
 
   Widget _buildIllustration() {
-    return Container(
-      width: 200,
-      height: 200,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: data.gradientColors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(40),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          width: 200,
+          height: 200,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: data.gradientColors.map((c) => c.withValues(alpha: 0.6)).toList(),
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(40),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+            boxShadow: AppShadows.glass,
+          ),
+          child: Icon(
+            data.icon,
+            size: 80,
+            color: Colors.white.withValues(alpha: 0.9),
+          ),
         ),
-        borderRadius: BorderRadius.circular(40),
-        boxShadow: AppShadows.floating,
-      ),
-      child: Icon(
-        data.icon,
-        size: 80,
-        color: Colors.white.withValues(alpha: 0.9),
       ),
     );
   }

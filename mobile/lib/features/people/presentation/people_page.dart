@@ -7,16 +7,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
-import '../../../core/design_system/serviq_recovery_banner.dart';
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
-import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/filter_chip_group.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/provider_card.dart';
 import '../../../shared/components/section_header.dart';
 import '../../../shared/components/trust_badge.dart';
@@ -369,9 +366,9 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
         ? const ['All']
         : _topCategories(state.people);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Find'),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(
+        title: 'Find',
         actions: [
           IconButton(
             onPressed: () => context.push(AppRoutes.notifications),

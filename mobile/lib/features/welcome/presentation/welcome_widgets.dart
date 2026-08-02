@@ -5,15 +5,27 @@ class _WelcomeAppBarTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
+    return Row(
       children: [
-        Text('ServiQ', style: Theme.of(context).textTheme.titleLarge),
-        Text(
-          'Trusted help nearby',
-          style: Theme.of(context).textTheme.bodySmall,
+        Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            gradient: AppGradients.premiumDark,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+          child: const Text(
+            'S',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+            ),
+          ),
         ),
+        const SizedBox(width: AppSpacing.sm),
+        Text('ServiQ', style: Theme.of(context).textTheme.titleLarge),
       ],
     );
   }
@@ -33,15 +45,18 @@ class _AppBarAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(right: 4),
-      child: IconButton(
-        tooltip: tooltip,
-        onPressed: onPressed,
-        icon: Icon(icon),
-        style: IconButton.styleFrom(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          foregroundColor: Theme.of(context).colorScheme.onSurface,
-          side: BorderSide(color: Theme.of(context).colorScheme.outline),
+      padding: const EdgeInsets.only(right: AppSpacing.xxs),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5)),
+        ),
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: onPressed,
+          icon: Icon(icon, size: 20),
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
         ),
       ),
     );
@@ -70,62 +85,60 @@ class _HeroSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nextAction = unreadChatCount > 0
-        ? (
-            label: 'Open Inbox',
-            icon: Icons.chat_bubble_outline_rounded,
-            tap: onInboxTap,
-          )
+        ? (label: 'Open Inbox', icon: Icons.chat_bubble_rounded, tap: onInboxTap)
         : activeTaskCount > 0
-        ? (
-            label: 'Open Work',
-            icon: Icons.assignment_turned_in_outlined,
-            tap: onTasksTap,
-          )
+        ? (label: 'Open Work', icon: Icons.assignment_turned_in_rounded, tap: onTasksTap)
         : (label: 'Post Need', icon: Icons.add_rounded, tap: onPrimaryTap);
     final compactActions = <({String label, IconData icon, VoidCallback tap})>[
       if (nextAction.label != 'Post Need')
         (label: 'Post Need', icon: Icons.add_rounded, tap: onPrimaryTap),
-      (
-        label: 'Find People',
-        icon: Icons.person_search_outlined,
-        tap: onFindPeopleTap,
-      ),
+      (label: 'Find People', icon: Icons.person_search_rounded, tap: onFindPeopleTap),
       if (nextAction.label != 'Open Work')
-        (
-          label: 'Work',
-          icon: Icons.assignment_turned_in_outlined,
-          tap: onTasksTap,
-        ),
+        (label: 'Work', icon: Icons.assignment_turned_in_rounded, tap: onTasksTap),
       if (nextAction.label != 'Open Inbox')
-        (
-          label: 'Inbox',
-          icon: Icons.chat_bubble_outline_rounded,
-          tap: onInboxTap,
-        ),
+        (label: 'Inbox', icon: Icons.chat_bubble_rounded, tap: onInboxTap),
     ].take(3).toList();
-    return SectionCard(
+
+    return ServiqSurface(
       variant: ServiqSurfaceVariant.raised,
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(greeting, style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  greeting,
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: nextAction.tap,
               icon: Icon(nextAction.icon),
               label: Text(nextAction.label),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.accent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: compactActions
                 .map(
                   (action) => Expanded(
                     child: Padding(
                       padding: EdgeInsets.only(
-                        right: action != compactActions.last ? 8 : 0,
+                        right: action != compactActions.last ? AppSpacing.xs : 0,
                       ),
                       child: _CompactActionButton(
                         icon: action.icon,
@@ -165,7 +178,10 @@ class _CompactActionButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.md),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+          ),
+          side: BorderSide(
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.6),
           ),
         ),
       ),
@@ -187,7 +203,7 @@ class _QuickCategoryRow extends StatelessWidget {
         children: categories
             .map(
               (category) => Padding(
-                padding: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.only(right: AppSpacing.xs),
                 child: ActionChip(
                   avatar: Icon(
                     _categoryIcon(category),
@@ -196,6 +212,12 @@ class _QuickCategoryRow extends StatelessWidget {
                   ),
                   label: Text(category),
                   onPressed: () => onPressed(category),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                  ),
+                  side: BorderSide(
+                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
+                  ),
                 ),
               ),
             )
@@ -222,13 +244,14 @@ class _TrustedRail extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = math.min(320.0, constraints.maxWidth * 0.88);
+        final width = math.min(300.0, constraints.maxWidth * 0.82);
         return SizedBox(
-          height: 264,
+          height: 280,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
+            separatorBuilder: (context, index) => const SizedBox(width: AppSpacing.sm),
+            padding: const EdgeInsets.only(right: AppSpacing.md),
             itemBuilder: (context, index) {
               final item = items[index];
               return SizedBox(
@@ -263,13 +286,9 @@ class _TrustedConnectionRailCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
-      ),
-      padding: const EdgeInsets.all(12),
+    return ServiqSurface(
+      variant: ServiqSurfaceVariant.glass,
+      padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -280,23 +299,23 @@ class _TrustedConnectionRailCard extends StatelessWidget {
               title: item.category,
               height: 56,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.xs),
           ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
-                        vertical: 8,
+                        vertical: AppSpacing.xxs,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.primarySoft,
+                        color: AppColors.accentSoft,
                         borderRadius: BorderRadius.circular(AppRadii.md),
                       ),
                       child: Text(
@@ -304,21 +323,21 @@ class _TrustedConnectionRailCard extends StatelessWidget {
                         style: Theme.of(context)
                             .textTheme
                             .labelMedium
-                            ?.copyWith(color: AppColors.primary),
+                            ?.copyWith(color: AppColors.accent),
                       ),
                     ),
                     if (item.mutualConnectionsCount > 0)
-                      _Badge(
+                      AppPill(
                         label:
                             '${item.mutualConnectionsCount} mutual${item.mutualConnectionsCount == 1 ? '' : 's'}',
-                        backgroundColor: AppColors.surfaceMuted,
+                        backgroundColor: AppColors.surfaceAlt,
                         foregroundColor: Theme.of(context).colorScheme.onSurface,
                       ),
                     if (item.urgent)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
-                          vertical: 8,
+                          vertical: AppSpacing.xxs,
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.dangerSoft,
@@ -335,39 +354,44 @@ class _TrustedConnectionRailCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
               IconButton(
                 onPressed: onMore,
-                icon: Icon(Icons.more_horiz_rounded),
+                icon: const Icon(Icons.more_horiz_rounded),
+                visualDensity: VisualDensity.compact,
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const Spacer(),
           Text(
             item.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.xxs),
           Text(
             '${item.creatorName} • ${item.distanceLabel} • ${item.timeLabel}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          const Spacer(),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               Expanded(
                 child: PrimaryButton(label: 'Open', onPressed: onOpen),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               Tooltip(
                 message: 'Message',
                 child: IconButton.outlined(
                   onPressed: onMessage,
-                  icon: Icon(Icons.chat_bubble_outline_rounded),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded),
+                  style: IconButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -389,20 +413,37 @@ class _NetworkPromptCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
+    return ServiqSurface(
+      variant: ServiqSurfaceVariant.glass,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Build a trusted local feed',
-            style: Theme.of(context).textTheme.titleLarge,
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
+                child: const Icon(Icons.people_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Build your network',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Text(
-            'Accepted connections should shape the first stories you see. Add people first, then let nearby discovery widen from there.',
+            'Connect with trusted people to see their posts first. Your network shapes your feed.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Expanded(
@@ -411,10 +452,10 @@ class _NetworkPromptCard extends StatelessWidget {
                   onPressed: onPeopleTap,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: SecondaryButton(
-                  label: 'Explore nearby',
+                  label: 'Explore',
                   onPressed: onExploreTap,
                 ),
               ),
@@ -440,11 +481,29 @@ class _SurfaceTabsRow extends StatelessWidget {
         children: _WelcomeSurface.values
             .map(
               (surface) => Padding(
-                padding: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.only(right: AppSpacing.xs),
                 child: ChoiceChip(
-                  label: Text(surface.title),
+                  label: Text(
+                    surface.title,
+                    style: TextStyle(
+                      fontWeight: value == surface ? FontWeight.w700 : FontWeight.w600,
+                    ),
+                  ),
                   selected: value == surface,
                   onSelected: (selected) => onChanged(surface),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                  ),
+                  selectedColor: AppColors.accent,
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                  labelStyle: TextStyle(
+                    color: value == surface ? Colors.white : null,
+                  ),
+                  side: BorderSide(
+                    color: value == surface
+                        ? AppColors.accent
+                        : Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
+                  ),
                 ),
               ),
             )
@@ -586,9 +645,8 @@ class _CardPreviewMedia extends StatelessWidget {
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
       child: Stack(
         fit: StackFit.expand,
@@ -603,43 +661,55 @@ class _CardPreviewMedia extends StatelessWidget {
           else
             _PreviewFallback(title: title),
           Positioned(
-            left: 12,
-            right: 12,
-            bottom: 12,
+            left: AppSpacing.sm,
+            right: AppSpacing.sm,
+            bottom: AppSpacing.sm,
             child: Row(
               children: [
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      borderRadius: BorderRadius.circular(AppRadii.md),
-                    ),
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelLarge,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: AppSpacing.xs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(AppRadii.md),
+                        ),
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
+                      ),
                     ),
                   ),
                 ),
                 if (count > 1) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      borderRadius: BorderRadius.circular(AppRadii.md),
-                    ),
-                    child: Text(
-                      '$count photos',
-                      style: Theme.of(context).textTheme.labelMedium,
+                  const SizedBox(width: AppSpacing.xs),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: AppSpacing.xs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(AppRadii.md),
+                        ),
+                        child: Text(
+                          '$count photos',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -660,15 +730,18 @@ class _PreviewFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.surfaceMuted,
+      color: AppColors.surfaceAlt,
       alignment: Alignment.center,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.photo_library_outlined, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-          const SizedBox(height: 8),
+          Icon(
+            Icons.photo_library_outlined,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+          const SizedBox(height: AppSpacing.xs),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
             child: Text(
               title,
               maxLines: 2,
@@ -702,14 +775,31 @@ class _WelcomeCtaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
+    return ServiqSurface(
+      variant: ServiqSurfaceVariant.glass,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: AppGradients.premiumAccent,
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
+                child: const Icon(Icons.lightbulb_outline_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Text(message, style: Theme.of(context).textTheme.bodyMedium),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Expanded(
@@ -718,7 +808,7 @@ class _WelcomeCtaCard extends StatelessWidget {
                   onPressed: onPrimaryTap,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: SecondaryButton(
                   label: secondaryLabel,
@@ -728,38 +818,6 @@ class _WelcomeCtaCard extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({
-    required this.label,
-    required this.backgroundColor,
-    required this.foregroundColor,
-  });
-
-  final String label;
-  final Color backgroundColor;
-  final Color foregroundColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context)
-            .textTheme
-            .labelMedium
-            ?.copyWith(color: foregroundColor),
       ),
     );
   }
@@ -793,20 +851,22 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
     final debugMessage = devHint?.trim();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('ServiQ')),
+      appBar: AppBar(
+        title: const _WelcomeAppBarTitle(),
+      ),
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
           onRefresh: onRetry,
-          color: AppColors.primary,
+          color: AppColors.accent,
           backgroundColor: AppColors.surface,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
             ),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 120),
             children: [
-              SectionCard(
+              ServiqSurface(
                 padding: EdgeInsets.zero,
                 variant: ServiqSurfaceVariant.raised,
                 child: Container(
@@ -814,7 +874,7 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
                     gradient: Theme.of(context).extension<ServiqThemeTokens>()?.exploreGradient ?? ServiqThemeTokens.light.exploreGradient,
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -823,11 +883,12 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
                           height: 52,
                           decoration: BoxDecoration(
                             color: AppColors.dangerSoft,
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(AppRadii.xl),
                           ),
                           child: Icon(
                             Icons.wifi_tethering_error_rounded,
                             color: AppColors.danger,
+                            size: 24,
                           ),
                         ),
                         const SizedBox(height: 18),
@@ -835,7 +896,7 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
                           'ServiQ is reconnecting',
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.xs),
                         Text(
                           'We could not refresh Home just now. You can retry, or keep moving with the main marketplace actions below.',
                           style: Theme.of(context).textTheme.bodyMedium,
@@ -848,16 +909,15 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
                           actionLabel: actionLabel,
                           onAction: () => onRetry(),
                         ),
-                        if (debugMessage != null &&
-                            debugMessage.isNotEmpty) ...[
+                        if (debugMessage != null && debugMessage.isNotEmpty) ...[
                           const SizedBox(height: 10),
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(AppSpacing.sm),
                             decoration: BoxDecoration(
                               color: AppColors.surface.withValues(alpha: 0.72),
-                              borderRadius: BorderRadius.circular(AppRadii.md),
-                              border: Border.all(color: Theme.of(context).colorScheme.outline),
+                              borderRadius: BorderRadius.circular(AppRadii.lg),
+                              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
                             ),
                             child: Text(
                               'Debug hint: $debugMessage',
@@ -871,7 +931,7 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
-              SectionCard(
+              ServiqSurface(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -879,19 +939,19 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
                       bodyTitle ?? 'While we reconnect',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       bodyMessage ??
                           'These actions are available as soon as live ServiQ data responds again.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     PrimaryButton(
                       label: 'Post a Need',
                       icon: const Icon(Icons.add_rounded),
                       onPressed: onPostNeed,
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: [
                         Expanded(
@@ -929,16 +989,16 @@ class _RecoveryFallbackSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
+    return ServiqSurface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
           LoadingShimmer(height: 16, width: 140),
           SizedBox(height: 14),
           LoadingShimmer(height: 118),
-          SizedBox(height: 12),
+          SizedBox(height: AppSpacing.sm),
           LoadingShimmer(height: 16, width: 240),
-          SizedBox(height: 8),
+          SizedBox(height: AppSpacing.xs),
           LoadingShimmer(height: 14),
         ],
       ),
@@ -953,41 +1013,41 @@ class _WelcomeLoadingState extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 120),
       children: [
-        SectionCard(
+        ServiqSurface(
           padding: EdgeInsets.zero,
           variant: ServiqSurfaceVariant.raised,
           child: Container(
             decoration: BoxDecoration(
               gradient: Theme.of(context).extension<ServiqThemeTokens>()?.heroGradient ?? ServiqThemeTokens.light.heroGradient,
             ),
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 LoadingShimmer(height: 18, width: 104),
-                SizedBox(height: 16),
+                SizedBox(height: AppSpacing.md),
                 LoadingShimmer(height: 28, width: 260),
-                SizedBox(height: 8),
+                SizedBox(height: AppSpacing.xs),
                 LoadingShimmer(height: 14),
                 SizedBox(height: 6),
                 LoadingShimmer(height: 14, width: 220),
                 SizedBox(height: 18),
                 LoadingShimmer(height: 48),
-                SizedBox(height: 12),
+                SizedBox(height: AppSpacing.sm),
                 Row(
                   children: [
                     Expanded(child: LoadingShimmer(height: 78)),
-                    SizedBox(width: 8),
+                    SizedBox(width: AppSpacing.xs),
                     Expanded(child: LoadingShimmer(height: 78)),
                   ],
                 ),
-                SizedBox(height: 8),
+                SizedBox(height: AppSpacing.xs),
                 Row(
                   children: [
                     Expanded(child: LoadingShimmer(height: 78)),
-                    SizedBox(width: 8),
+                    SizedBox(width: AppSpacing.xs),
                     Expanded(child: LoadingShimmer(height: 78)),
                   ],
                 ),
@@ -997,8 +1057,8 @@ class _WelcomeLoadingState extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         Wrap(
-          spacing: 12,
-          runSpacing: 12,
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
           children: List.generate(
             4,
             (index) => SizedBox(
@@ -1007,16 +1067,16 @@ class _WelcomeLoadingState extends StatelessWidget {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  border: Border.all(color: Theme.of(context).colorScheme.outline),
+                  borderRadius: BorderRadius.circular(AppRadii.xl),
+                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4)),
                 ),
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     LoadingShimmer(height: 34, width: 34),
-                    SizedBox(height: 12),
+                    SizedBox(height: AppSpacing.sm),
                     LoadingShimmer(height: 18, width: 80),
-                    SizedBox(height: 8),
+                    SizedBox(height: AppSpacing.xs),
                     LoadingShimmer(height: 12),
                   ],
                 ),
@@ -1024,23 +1084,23 @@ class _WelcomeLoadingState extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.lg),
         ...List.generate(
           3,
           (index) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SectionCard(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: ServiqSurface(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
                   LoadingShimmer(height: 18, width: 180),
-                  SizedBox(height: 12),
+                  SizedBox(height: AppSpacing.sm),
                   LoadingShimmer(height: 22, width: 260),
-                  SizedBox(height: 8),
+                  SizedBox(height: AppSpacing.xs),
                   LoadingShimmer(height: 14),
                   SizedBox(height: 6),
                   LoadingShimmer(height: 14, width: 220),
-                  SizedBox(height: 16),
+                  SizedBox(height: AppSpacing.md),
                   LoadingShimmer(height: 42),
                 ],
               ),

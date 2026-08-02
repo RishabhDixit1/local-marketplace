@@ -4,12 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/design_system/serviq_async_state.dart';
-import '../../../core/design_system/serviq_chrome.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/app_buttons.dart';
 import '../data/launchpad_repository.dart';
 import '../data/provider_listing_repository.dart';
 import '../domain/launchpad_models.dart';
@@ -69,8 +67,8 @@ class _ProviderLaunchpadReviewPageState
   Widget build(BuildContext context) {
     final workspace = ref.watch(launchpadWorkspaceProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Publish readiness')),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(title: 'Publish readiness'),
       body: SafeArea(
         child: ServiqAsyncBody<MobileLaunchpadWorkspace>(
           value: workspace,

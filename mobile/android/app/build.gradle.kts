@@ -27,7 +27,7 @@ fun releaseSigningError(): String {
 
 android {
     namespace = "com.serviq.serviq_mobile"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
