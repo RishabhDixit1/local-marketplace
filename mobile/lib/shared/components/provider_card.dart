@@ -311,7 +311,7 @@ class ProviderDirectoryCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(44),
+                            minimumSize: const Size(0, 44),
                           ),
                         ),
                       ),

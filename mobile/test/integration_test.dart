@@ -172,7 +172,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Profile Hub'), findsOneWidget);
-    expect(find.text('Business Control'), findsOneWidget);
+    expect(find.text('Business Setup'), findsOneWidget);
     expect(find.text('Public Profile'), findsAtLeastNWidgets(1));
     expect(find.text('Edit Profile'), findsAtLeastNWidgets(1));
     expect(find.text('Listings'), findsOneWidget);

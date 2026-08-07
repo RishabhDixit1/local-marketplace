@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_state_controller.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/supabase/app_bootstrap.dart';
-import '../../features/admin/presentation/admin_page.dart';
 import '../../features/auth/data/onboarding_handoff.dart';
 import '../../features/auth/presentation/setup_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
@@ -15,6 +14,7 @@ import '../../features/auth/presentation/pages/sign_up_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
 import '../../features/connections/presentation/connections_page.dart';
+import '../../features/control/presentation/control_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
 import '../../features/discovery/presentation/discovery_page.dart';
 import '../../features/listings/presentation/listing_detail_page.dart';
@@ -26,28 +26,16 @@ import '../../features/orders/presentation/order_detail_page.dart';
 import '../../features/orders/presentation/orders_page.dart';
 import '../../features/orders/presentation/provider_leads_page.dart';
 import '../../features/orders/presentation/provider_orders_page.dart';
-import '../../features/promotions/presentation/provider_boosts_page.dart';
-import '../../features/subscriptions/presentation/provider_subscriptions_page.dart';
-import '../../features/invoices/presentation/invoices_page.dart';
-import '../../features/invoices/presentation/invoice_detail_page.dart';
-import '../../features/payouts/presentation/payouts_page.dart';
 import '../../features/payments/presentation/transactions_page.dart';
-import '../../features/referrals/presentation/referrals_page.dart';
 import '../../features/verification/presentation/verification_page.dart';
-import '../../features/analytics/presentation/analytics_page.dart';
-import '../../features/blocking/presentation/blocked_users_page.dart';
 import '../../features/public_profile/presentation/public_business_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/availability/presentation/availability_page.dart';
 import '../../features/bookings/presentation/bookings_page.dart';
-import '../../features/workspaces/presentation/workspaces_page.dart';
-import '../../features/workspaces/presentation/workspace_detail_page.dart';
 import '../../features/profile/data/profile_repository.dart';
 import '../../features/provider/presentation/provider_launchpad_review_page.dart';
-import '../../features/saved/presentation/saved_feed_page.dart';
 import '../../features/marketplace/presentation/marketplace_landing_page.dart';
 import '../../features/people/presentation/people_page.dart';
-import '../../screens/market_zones_screen.dart';
 import '../../features/post_create/presentation/create_need_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/provider/presentation/provider_onboarding_page.dart';
@@ -232,11 +220,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.blockedUsers,
-        pageBuilder: (context, state) => _smoothPage(const BlockedUsersPage(), state),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.control,
-        redirect: (context, state) => AppRoutes.profile,
+        pageBuilder: (context, state) => _smoothPage(const ControlPage(), state),
       ),
       GoRoute(
         path: AppRoutes.seekerOnboarding,
@@ -256,7 +244,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.payouts,
-        pageBuilder: (context, state) => _smoothPage(const PayoutsPage(), state),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.transactions,
@@ -264,7 +252,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.referrals,
-        pageBuilder: (context, state) => _smoothPage(const ReferralsPage(), state),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.verification,
@@ -272,7 +260,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.analytics,
-        pageBuilder: (context, state) => _smoothPage(const AnalyticsPage(), state),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.availability,
@@ -284,15 +272,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.workspaces,
-        pageBuilder: (context, state) => _smoothPage(const WorkspacesPage(), state),
-        routes: [
-          GoRoute(
-            path: ':workspaceId',
-            pageBuilder: (context, state) => _smoothPage(WorkspaceDetailPage(
-              workspaceId: state.pathParameters['workspaceId']?.trim() ?? '',
-            ), state),
-          ),
-        ],
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.orders,
@@ -332,21 +312,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.providerBoosts,
-        pageBuilder: (context, state) => _smoothPage(const ProviderBoostsPage(), state),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.providerSubscriptions,
-        pageBuilder: (context, state) => _smoothPage(const ProviderSubscriptionsPage(), state),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.invoices,
-        pageBuilder: (context, state) => _smoothPage(const InvoicesPage(), state),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: '${AppRoutes.invoices}/:invoiceId',
-        pageBuilder: (context, state) => _smoothPage(InvoiceDetailPage(
-          invoiceId: state.pathParameters['invoiceId']!,
-        ), state),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.connections,
@@ -354,7 +332,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.admin,
-        pageBuilder: (context, state) => _smoothPage(const AdminPage(), state),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.checkout,
@@ -365,7 +343,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.saved,
-        pageBuilder: (context, state) => _smoothPage(const SavedFeedPage(), state),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: '${AppRoutes.listings}/:itemId',
@@ -458,14 +436,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: AppRoutes.discovery,
                 pageBuilder: (context, state) =>
                     _smoothPage(const DiscoveryPage(), state),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.marketZones,
-                pageBuilder: (context, state) => _smoothPage(const MarketZonesScreen(), state),
               ),
             ],
           ),

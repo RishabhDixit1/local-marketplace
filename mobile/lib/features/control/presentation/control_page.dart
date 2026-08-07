@@ -44,7 +44,7 @@ class ControlPage extends ConsumerWidget {
 
     return ServiqScaffold(
       appBar: ServiqTopBar(
-        title: 'Business Control',
+        title: 'Business Setup',
         actions: [
           IconButton(
             tooltip: 'Refresh control data',
@@ -61,7 +61,7 @@ class ControlPage extends ConsumerWidget {
             children: [
               ServiqAsyncBody<MobileProfileSnapshot>(
                 value: profile,
-                errorTitle: 'Unable to load Business Control',
+                errorTitle: 'Unable to load Business Setup',
                 errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
                 onRetry: () => _refresh(ref),
                 loadingBuilder: () => const _ControlLoadingState(),
@@ -193,7 +193,7 @@ class _ControlHero extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Business Control',
+            'Business Setup',
             style: Theme.of(
               context,
             ).textTheme.headlineSmall?.copyWith(color: Colors.white),
@@ -324,7 +324,7 @@ class _ControlMetricGrid extends StatelessWidget {
             Icons.chat_bubble_outline_rounded,
           ),
           (
-            'Work',
+            'Activity',
             activeTasks.toString(),
             'Active provider tasks',
             Icons.assignment_turned_in_outlined,
@@ -703,9 +703,9 @@ class _ProviderConversionPanel extends StatelessWidget {
           variant: ServiqSurfaceVariant.highlight,
           child: EmptyStateView(
             icon: Icons.storefront_outlined,
-            title: 'Business Control is for providers',
+            title: 'Business Setup is for providers',
             message:
-                '${snapshot.displayName}, set up a provider profile to manage listings, leads, quotes, and orders from this control room.',
+                '${snapshot.displayName}, set up a provider profile to manage listings, leads, quotes, and orders from this setup room.',
             actionLabel: 'Start Business AI setup',
             onAction: () => context.push(AppRoutes.providerOnboarding),
           ),

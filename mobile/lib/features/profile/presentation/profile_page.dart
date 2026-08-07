@@ -438,7 +438,7 @@ class _ProfileCommandHub extends StatelessWidget {
               _HubTileData(
                 key: 'profile-tile-business-control',
                 icon: Icons.auto_awesome_rounded,
-                title: 'Business Control',
+                title: 'Business Setup',
                 subtitle: 'Setup, leads, listings, quote readiness',
                 route: AppRoutes.control,
                 emphasized: true,
@@ -533,7 +533,7 @@ class _ProfileCommandHub extends StatelessWidget {
             _HubTileData(
               key: 'profile-tile-inbox',
               icon: Icons.chat_bubble_outline_rounded,
-              title: 'Leads and Inbox',
+              title: 'Messages',
               subtitle: 'Replies, quote follow-up, active threads',
               route: AppRoutes.chat,
             ),

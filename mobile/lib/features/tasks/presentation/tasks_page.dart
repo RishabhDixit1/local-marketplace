@@ -489,7 +489,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     }
 
     return ServiqScaffold(
-      appBar: ServiqTopBar(title: 'Work'),
+      appBar: ServiqTopBar(title: 'Activity'),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,

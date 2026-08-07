@@ -308,7 +308,7 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(AppTouchTargets.buttonHeight),
+          minimumSize: const Size(0, AppTouchTargets.buttonHeight),
           foregroundColor: Colors.white,
           backgroundColor: AppColors.accent,
           disabledBackgroundColor: AppColors.surfacePressed,
@@ -325,7 +325,7 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(AppTouchTargets.buttonHeight),
+          minimumSize: const Size(0, AppTouchTargets.buttonHeight),
           foregroundColor: _ink,
           side: const BorderSide(color: _borderStrong),
           padding: const EdgeInsets.symmetric(
@@ -671,7 +671,7 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(AppTouchTargets.buttonHeight),
+          minimumSize: const Size(0, AppTouchTargets.buttonHeight),
           foregroundColor: Colors.white,
           backgroundColor: AppColors.accent,
           disabledBackgroundColor: AppColors.darkSurfacePressed,
@@ -688,7 +688,7 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(AppTouchTargets.buttonHeight),
+          minimumSize: const Size(0, AppTouchTargets.buttonHeight),
           foregroundColor: AppColors.darkInk,
           side: const BorderSide(color: AppColors.darkBorderStrong),
           padding: const EdgeInsets.symmetric(

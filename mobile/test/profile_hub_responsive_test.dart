@@ -34,11 +34,11 @@ void main() {
       await _pumpProfile(tester, Size(width, 844));
 
       expect(find.text('Profile Hub'), findsOneWidget);
-      expect(find.text('Business Control'), findsOneWidget);
+      expect(find.text('Business Setup'), findsOneWidget);
       expect(find.text('Public Profile'), findsAtLeastNWidgets(1));
       expect(find.text('Edit Profile'), findsAtLeastNWidgets(1));
       expect(find.text('Listings'), findsOneWidget);
-      expect(find.text('Leads and Inbox'), findsOneWidget);
+      expect(find.text('Messages'), findsOneWidget);
       expect(find.text('Payments and Orders'), findsOneWidget);
       expect(find.text('Trust'), findsOneWidget);
       expect(find.text('Verification'), findsOneWidget);
