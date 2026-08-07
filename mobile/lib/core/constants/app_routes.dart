@@ -5,6 +5,12 @@ class AppRoutes {
   static const signUp = '/sign-up';
   static const forgotPassword = '/forgot-password';
   static const onboarding = '/onboarding';
+  static const publicBrowse = '/browse';
+
+  /// Public search entry that opens the search page in its fresh-search
+  /// state (suggestions, not auto-loaded browse-all), safe for anonymous
+  /// users since it lives outside the auth-gated /app group.
+  static String get publicSearch => '$publicBrowse?browse=0';
 
   static const home = welcome;
   static const welcome = '/app/welcome';

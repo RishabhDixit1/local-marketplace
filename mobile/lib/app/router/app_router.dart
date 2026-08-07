@@ -174,6 +174,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _smoothPage(const OnboardingWalkthroughPage(), state),
       ),
       GoRoute(
+        path: AppRoutes.publicBrowse,
+        pageBuilder: (context, state) => _smoothPage(SearchPage(
+          initialQuery: state.uri.queryParameters['q'],
+          browseAll: state.uri.queryParameters['browse'] != '0',
+        ), state),
+      ),
+      GoRoute(
         path: AppRoutes.createNeed,
         pageBuilder: (context, state) => _smoothPage(CreateNeedPage(
           initialTitle: state.uri.queryParameters['title'],
@@ -188,11 +195,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.search,
         pageBuilder: (context, state) => _smoothPage(
-            SearchPage(initialQuery: state.uri.queryParameters['q']), state),
+            SearchPage(
+              initialQuery: state.uri.queryParameters['q'],
+              browseAll: state.uri.queryParameters['browse'] == '1',
+            ),
+            state),
       ),
       GoRoute(
         path: AppRoutes.mapDiscovery,
         pageBuilder: (context, state) => _smoothPage(const MapDiscoveryPage(), state),
+      ),
+      GoRoute(
+        path: AppRoutes.marketZones,
+        redirect: (context, state) => AppRoutes.discovery,
       ),
       GoRoute(
         path: AppRoutes.notifications,

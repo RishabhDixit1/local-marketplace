@@ -9,6 +9,7 @@ import 'package:serviq_mobile/core/api/mobile_api_provider.dart';
 import 'package:serviq_mobile/core/supabase/app_bootstrap.dart';
 import 'package:serviq_mobile/core/theme/app_theme.dart';
 import 'package:serviq_mobile/core/widgets/section_card.dart';
+import 'package:serviq_mobile/core/services/user_location.dart';
 import 'package:serviq_mobile/features/chat/data/chat_repository.dart';
 import 'package:serviq_mobile/features/chat/domain/chat_models.dart';
 import 'package:serviq_mobile/features/chat/presentation/chat_page.dart';
@@ -295,6 +296,7 @@ void main() {
           ),
           searchRepositoryProvider.overrideWithValue(_MockSearchRepository()),
           mobileApiClientProvider.overrideWithValue(_MockApiClient()),
+          userLocationProvider.overrideWith((ref) async => null),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),

@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
+import '../../../core/services/user_location.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/widgets/ai_prompt_bar.dart';
@@ -75,9 +76,10 @@ enum _SortBy {
 }
 
 class SearchPage extends ConsumerStatefulWidget {
-  const SearchPage({super.key, this.initialQuery});
+  const SearchPage({super.key, this.initialQuery, this.browseAll = false});
 
   final String? initialQuery;
+  final bool browseAll;
 
   @override
   ConsumerState<SearchPage> createState() => _SearchPageState();
@@ -100,6 +102,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void initState() {
     super.initState();
     _query = widget.initialQuery?.trim() ?? '';
+    _sortBy = widget.browseAll && _query.isEmpty ? _SortBy.featured : _SortBy.distance;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       _recent = await _loadRecent();
@@ -118,10 +121,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     } catch (e) {
       debugPrint('ServiQ search_page._initialize categories failed: $e');
     }
-    if (mounted && _query.isNotEmpty) _doSearch();
+    if (mounted && (_query.isNotEmpty || widget.browseAll)) _doSearch();
   }
   Future<void> _doSearch() async {
-    if (_query.isEmpty && _selectedCategory == null) {
+    if (_query.isEmpty && _selectedCategory == null && !widget.browseAll) {
       setState(() { _results = null; _loading = false; _error = null; });
       return;
     }
@@ -135,9 +138,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
     try {
       final repo = ref.read(searchRepositoryProvider);
+      final location = await ref.read(userLocationProvider.future);
       final results = await repo.search(
         category: _selectedCategory,
         query: _query.isNotEmpty ? _query : null,
+        lat: location?.latitude,
+        lng: location?.longitude,
         limit: 50,
         offset: 0,
         minRating: _minRating,
@@ -158,9 +164,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
     try {
       final repo = ref.read(searchRepositoryProvider);
+      final location = await ref.read(userLocationProvider.future);
       final nextResults = await repo.search(
         category: _selectedCategory,
         query: _query.isNotEmpty ? _query : null,
+        lat: location?.latitude,
+        lng: location?.longitude,
         limit: 50,
         offset: current.offset + current.limit,
         minRating: _minRating,

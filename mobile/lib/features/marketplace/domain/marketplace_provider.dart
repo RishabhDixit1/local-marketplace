@@ -40,6 +40,7 @@ class MarketplaceProvider {
   final int? priceMax;
   final double? distanceKm;
   final bool verified;
+  final bool featured;
   final List<MarketplaceProviderListing> listings;
 
   const MarketplaceProvider({
@@ -62,6 +63,7 @@ class MarketplaceProvider {
     this.priceMax,
     this.distanceKm,
     this.verified = false,
+    this.featured = false,
     this.listings = const [],
   });
 
@@ -104,6 +106,7 @@ class MarketplaceProvider {
           ? (json['distanceKm'] as num).toDouble()
           : null,
       verified: json['verified'] is bool ? json['verified'] as bool : false,
+      featured: json['featured'] is bool ? json['featured'] as bool : false,
       listings: ((json['listings'] as List?) ?? [])
           .whereType<Map>()
           .map((row) => MarketplaceProviderListing.fromJson(Map<String, dynamic>.from(row)))

@@ -17,6 +17,7 @@ class MarketplaceProviderCard extends StatelessWidget {
     this.completedJobs = 0,
     this.responseMinutes,
     this.verified = false,
+    this.featured = false,
     this.priceMin,
     this.priceMax,
     this.onTap,
@@ -33,6 +34,7 @@ class MarketplaceProviderCard extends StatelessWidget {
   final int completedJobs;
   final int? responseMinutes;
   final bool verified;
+  final bool featured;
   final num? priceMin;
   final num? priceMax;
   final VoidCallback? onTap;
@@ -78,6 +80,41 @@ class MarketplaceProviderCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (featured) ...[
+                          const SizedBox(width: AppSpacing.xxs),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.marigold.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(AppRadii.pill),
+                              border: Border.all(
+                                color: AppColors.marigold.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.auto_awesome_rounded,
+                                  size: 9,
+                                  color: AppColors.marigold,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  'Featured',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.marigold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         if (verified) ...[
                           const SizedBox(width: AppSpacing.xxs),
                           Container(

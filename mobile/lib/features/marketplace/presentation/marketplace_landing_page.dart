@@ -60,6 +60,12 @@ class MarketplaceLandingPage extends ConsumerStatefulWidget {
 }
 
 class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
+  // Inline preview caps matching the other home sections: the full-width card
+  // lists ("Live Now" zones, "Featured providers") cap at 3; the 2-column
+  // "Browse by category" grid caps at 8.
+  static const int _listPreviewCount = 3;
+  static const int _gridPreviewCount = 8;
+
   final _searchController = TextEditingController();
   String? _selectedCategory;
 
@@ -103,12 +109,11 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
         child: CustomScrollView(
           slivers: [
             _buildHeader(),
-            _buildStatsBar(),
             _buildHero(showHeroActions, categories),
             _buildCategoryGrid(categories),
             if (liveZones.isNotEmpty) _buildZoneSection('Live Now', liveZones, Icons.auto_awesome_rounded),
             if (comingZones.isNotEmpty) _buildZoneSection('Coming Soon', comingZones, Icons.schedule_rounded),
-            _buildProviderSection(filteredProviders, providersAsync, hasActiveFilter, showEmptyState),
+            _buildProviderSection(filteredProviders, providersAsync, hasActiveFilter, showEmptyState, searchQuery.isNotEmpty),
             _buildBusinessCta(),
             _buildFooter(),
           ],
@@ -149,7 +154,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                 Semantics(
                   label: 'Search providers',
                   child: IconButton(
-                    onPressed: () => context.push(AppRoutes.search),
+                    onPressed: () => context.push(AppRoutes.publicSearch),
                     icon: Icon(Icons.search_rounded, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                   ),
                 ),
@@ -169,43 +174,6 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
     );
   }
 
-  Widget _buildStatsBar() {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pageInset, vertical: AppSpacing.xs),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadii.xl),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primarySoft.withValues(alpha: 0.6),
-                    AppColors.surface.withValues(alpha: 0.4),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(AppRadii.xl),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _StatItem(icon: Icons.location_city_rounded, value: '12', label: 'Societies'),
-                  _StatItem(icon: Icons.store_rounded, value: '48', label: 'Markets'),
-                  _StatItem(icon: Icons.people_rounded, value: '156', label: 'Providers'),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildHero(bool showActions, List<Map<String, dynamic>> categories) {
     return SliverToBoxAdapter(
       child: Padding(
@@ -213,7 +181,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Explore Markets',
+            Text('Find Help Nearby',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: AppSpacing.xxs),
             Text('Find trusted providers and services in your local area.',
@@ -250,9 +218,9 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                 children: [
                   Expanded(
                     child: PrimaryButton(
-                      label: 'View Market',
+                      label: 'Explore',
                       icon: const Icon(Icons.explore_rounded, size: 18),
-                      onPressed: () => context.go(AppRoutes.marketZones),
+                      onPressed: () => context.go(AppRoutes.discovery),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -260,7 +228,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                     child: SecondaryButton(
                       label: 'Browse All',
                       icon: const Icon(Icons.store_rounded, size: 18),
-                      onPressed: () => context.go(AppRoutes.marketZones),
+                      onPressed: () => context.push(AppRoutes.publicBrowse),
                     ),
                   ),
                 ],
@@ -287,7 +255,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
               child: SectionHeader(
                 title: 'Browse by category',
                 actionLabel: 'View all',
-                onAction: () => context.go(AppRoutes.marketZones),
+                onAction: () => context.go(AppRoutes.discovery),
               ),
             ),
             GridView.builder(
@@ -299,7 +267,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                 crossAxisSpacing: AppSpacing.sm,
                 mainAxisSpacing: AppSpacing.sm,
               ),
-              itemCount: items.length > 8 ? 8 : items.length,
+              itemCount: items.length > _gridPreviewCount ? _gridPreviewCount : items.length,
               itemBuilder: (context, index) {
                 final cat = items[index];
                 final name = (cat['name'] as String? ?? '');
@@ -337,10 +305,10 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
               child: SectionHeader(
                 title: title,
                 actionLabel: 'View all',
-                onAction: () => context.go(AppRoutes.marketZones),
+                onAction: () => context.go(AppRoutes.discovery),
               ),
             ),
-            ...zones.take(3).map((zone) => Padding(
+            ...zones.take(_listPreviewCount).map((zone) => Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: _ZoneCard(
                 name: zone['name'] as String? ?? '',
@@ -348,7 +316,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                 status: zone['status'] as String? ?? 'live',
                 societyCount: zone['societyCount'] as int? ?? 0,
                 marketCount: zone['marketCount'] as int? ?? 0,
-                onTap: () => context.go(AppRoutes.marketZones),
+                onTap: () => context.go(AppRoutes.discovery),
               ),
             )),
           ],
@@ -362,6 +330,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
     AsyncValue<List<MarketplaceProvider>> asyncValue,
     bool hasActiveFilter,
     bool showEmptyState,
+    bool hasSearch,
   ) {
     return SliverToBoxAdapter(
       child: Padding(
@@ -393,28 +362,50 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
 
             if (filtered.isEmpty && !hasActiveFilter) return const SizedBox.shrink();
 
+            // Unfiltered landing renders a small "Featured providers" preview;
+            // "Browse all" opens the full provider listing. Filtered views
+            // (category or search) are results lists and show every match.
+            final isPreview = !hasActiveFilter;
+            final previewProviders =
+                isPreview ? filtered.take(_listPreviewCount).toList() : filtered;
+
+            final sectionTitle = _selectedCategory != null
+                ? '$_selectedCategory providers'
+                : hasSearch
+                    ? 'Results'
+                    : 'Featured providers';
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: AppSpacing.sm),
-                  child: SectionHeader(
-                    title: _selectedCategory != null ? '$_selectedCategory providers' : 'Featured providers',
-                    actionLabel: 'Browse all',
-                    onAction: () => context.go(AppRoutes.marketZones),
+                if (isPreview)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: AppSpacing.sm),
+                    child: SectionHeader(
+                      title: sectionTitle,
+                      actionLabel: 'Browse all',
+                      onAction: _openBrowseAll,
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: AppSpacing.sm),
+                    child: Text(sectionTitle, style: Theme.of(context).textTheme.titleLarge),
                   ),
-                ),
-                for (final provider in filtered) ...[
+                for (final provider in previewProviders) ...[
                   MarketplaceProviderCard(
                     name: provider.name,
                     location: provider.location.isNotEmpty ? provider.location : null,
+                    avatarUrl: provider.avatarUrl.isNotEmpty ? provider.avatarUrl : null,
                     bio: provider.bio,
                     avgRating: provider.avgRating,
+                    reviewCount: provider.reviewCount,
                     completedJobs: provider.completedJobs,
                     responseMinutes: provider.responseMinutes,
                     priceMin: provider.priceMin,
                     priceMax: provider.priceMax,
                     verified: provider.verified,
+                    featured: provider.featured,
                     onTap: () => _showProviderDetail(context, provider),
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -505,6 +496,10 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
       {'name': 'Mobile Repair', 'icon': '📱', 'priceRange': '₹200-1500'},
       {'name': 'Bike Repair', 'icon': '🏍️', 'priceRange': '₹100-800'},
     ];
+  }
+
+  void _openBrowseAll() {
+    context.push(AppRoutes.publicBrowse);
   }
 
   void _showProviderDetail(BuildContext context, MarketplaceProvider provider) {
@@ -880,27 +875,6 @@ class _ProviderDetailSheet extends StatelessWidget {
             onPressed: onContact,
           ),
         ),
-      ],
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  const _StatItem({required this.icon, required this.value, required this.label});
-
-  final IconData icon;
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16, color: AppColors.primaryDeep),
-        const SizedBox(height: 2),
-        Text(value, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
-        Text(label, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5))),
       ],
     );
   }

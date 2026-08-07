@@ -137,14 +137,7 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
       return { data: results, error: null };
     };
 
-    const now = new Date().toISOString();
-    const [{ data: featuredRows }, servicesResult, reviewsResult, presenceResult, orderStatsResult] = await Promise.all([
-      admin
-        .from("featured_placements")
-        .select("provider_id")
-        .eq("active", true)
-        .lte("starts_at", now)
-        .gte("ends_at", now),
+    const [servicesResult, reviewsResult, presenceResult, orderStatsResult] = await Promise.all([
       batchInQuery<{ provider_id: string; id: string; title: string; category: string; price: number | null; metadata: unknown }>(
         admin.from("service_listings"),
         "provider_id, id, title, category, price, metadata",
@@ -165,8 +158,6 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
       ),
       admin.rpc("get_provider_order_stats", { provider_ids: profileIds }),
     ]);
-
-    const featuredProviderIds = new Set((featuredRows ?? []).map((r) => r.provider_id));
 
     const servicesData = (servicesResult.data || []) as Array<{ provider_id: string; id: string; title: string; category: string; price: number | null; metadata: unknown }>;
     const reviewsData = (reviewsResult.data || []) as Array<{ provider_id: string; rating: number }>;
@@ -253,7 +244,7 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
         priceMax: maxPrice,
         distanceKm: dist != null ? Math.round(dist * 10) / 10 : null,
         verified: pVerificationStatus === "verified",
-        featured: featuredProviderIds.has(p.id),
+        featured: pVerificationStatus === "verified",
         listings: serviceMap[p.id] || [],
         sortScore: 0,
       };
@@ -269,9 +260,11 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
       filteredProviders = filteredProviders.filter((p) => p.isOnline);
     }
 
-    // Featured providers always float to top within each sort
+    // "Featured" ordering = verified providers first, then by average
+    // rating descending. Verified status is the same signal that drives the
+    // Verified badge, so a provider only earns the Featured slot if it is
+    // genuinely verified.
     filteredProviders.sort((a, b) => {
-      if (a.featured !== b.featured) return a.featured ? -1 : 1;
       switch (sortBy) {
         case "rating":
           return (b.avgRating || 0) - (a.avgRating || 0);
@@ -280,6 +273,7 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
         case "response":
           return (a.responseMinutes || 60) - (b.responseMinutes || 60);
         case "featured":
+          if (a.verified !== b.verified) return a.verified ? -1 : 1;
           return (b.avgRating || 0) - (a.avgRating || 0);
         case "distance":
         default:

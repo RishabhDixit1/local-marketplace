@@ -11,9 +11,10 @@ final marketplaceRepositoryProvider = Provider<MarketplaceRepository>((ref) {
 final marketplaceProvidersProvider =
     FutureProvider.family<List<MarketplaceProvider>, String?>(
         (ref, category) {
-  return ref
-      .watch(marketplaceRepositoryProvider)
-      .fetchProviders(category: category);
+  return ref.watch(marketplaceRepositoryProvider).fetchProviders(
+        category: category,
+        sortBy: category == null ? 'featured' : null,
+      );
 });
 
 class MarketplaceRepository {
@@ -25,13 +26,16 @@ class MarketplaceRepository {
     return _apiClient.getServiceCategories();
   }
 
-  Future<List<MarketplaceProvider>> fetchProviders({String? category, int limit = 50, int offset = 0}) async {
+  Future<List<MarketplaceProvider>> fetchProviders({String? category, int limit = 50, int offset = 0, String? sortBy}) async {
     final body = <String, dynamic>{
       'limit': limit,
       'offset': offset,
     };
     if (category != null && category.isNotEmpty) {
       body['category'] = category;
+    }
+    if (sortBy != null && sortBy.isNotEmpty) {
+      body['sortBy'] = sortBy;
     }
 
     final payload = await _apiClient.postJson(

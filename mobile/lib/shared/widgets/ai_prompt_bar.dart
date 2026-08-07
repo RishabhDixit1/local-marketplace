@@ -159,11 +159,11 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
             final searchParams = <String, String>{};
             if (searchQuery.isNotEmpty) searchParams['q'] = searchQuery;
             if (params.containsKey('category')) searchParams['category'] = params['category']!;
-            context.push(Uri(path: AppRoutes.search, queryParameters: searchParams).toString());
+            context.push(Uri(path: AppRoutes.publicBrowse, queryParameters: searchParams).toString());
           } else if (redirect.startsWith('/app/')) {
             context.push(redirect);
           } else {
-            context.push('${AppRoutes.search}?q=${Uri.encodeComponent(query)}');
+            context.push('${AppRoutes.publicBrowse}?q=${Uri.encodeComponent(query)}');
           }
         },
         onPostRequirement: () {
