@@ -214,6 +214,7 @@ These are not removals — they are merges into canonical concepts:
 - Fraud-detection AI
 - Embedding-based semantic search
 - Predictive recommendations (self-learning recommendation engine)
+- Structured ETA on provider quick-response (Aug 5, 2026 audit): Phase 1 item 5 ("Provider quick-response: Available / Price / ETA / Pickup-Delivery") is implemented on Available (order/lead accept), Price (quote line items + listing price), and Pickup-Delivery (consumer checkout choice + provider listing deliveryMethod) — but ETA is absent from both mobile and web. Adding it requires a quotes-schema column (or metadata key), the quotes send/draft APIs, and mobile quote UI. Logged here rather than built to keep the pilot scope Flutter-mobile-only and avoid new backend surface.
 
 Rule: nothing on the Roadmap list gets built until it is explicitly pulled into Phase 1+ scope. It stays documented here only — never as an active todo list.
 

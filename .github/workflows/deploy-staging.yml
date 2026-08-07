@@ -47,7 +47,7 @@ jobs:
             NEXT_PUBLIC_SITE_URL=${{ secrets.STAGING_NEXT_PUBLIC_SITE_URL }}
             SENTRY_DSN=${{ secrets.SENTRY_DSN }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=min
 
       - name: Package deploy artifact
         run: docker save serviq:staging | gzip > /tmp/serviq-staging-docker.tar.gz

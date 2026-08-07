@@ -44,9 +44,11 @@
 	<key>FirebaseMessagingAutoInitEnabled</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>ServiQ uses your camera during live video calls with other users.</string>
+	<string>ServiQ uses your camera to take photos of requests, services, and verification documents.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>ServiQ uses your microphone for voice input and during live voice and video calls with other users.</string>
+	<string>ServiQ uses your microphone for voice input when asking the assistant and posting needs.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>ServiQ uses your location to show providers near you.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
