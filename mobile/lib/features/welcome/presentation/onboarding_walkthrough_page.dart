@@ -43,33 +43,33 @@ class _OnboardingWalkthroughPageState
     _OnboardingPageData(
       icon: Icons.electric_bolt_rounded,
       title: 'Welcome to ServiQ',
-      headline: 'Your Local Marketplace',
+      headline: 'Just say what you need',
       subtitle:
-          'Find trusted providers, post needs, and get work done in your neighborhood.',
+          'Describe it in your own words - like "AC not cooling" or "plumber near me" - and ServiQ finds the right help nearby.',
       gradientColors: [Color(0xFF10262B), Color(0xFF115E57), Color(0xFF14B8A6)],
     ),
     _OnboardingPageData(
-      icon: Icons.search_rounded,
-      title: 'Find Help Nearby',
-      headline: 'Find Help Nearby',
+      icon: Icons.auto_awesome_rounded,
+      title: 'AI understands intent',
+      headline: 'AI understands intent',
       subtitle:
-          'Browse verified providers, compare prices, and read real reviews from your community.',
+          'ServiQ reads your request, matches the right providers, and shows trusted options with live quotes. No category hunting.',
       gradientColors: [Color(0xFF1E3A5F), Color(0xFF3557D5), Color(0xFF5B7DEF)],
     ),
     _OnboardingPageData(
-      icon: Icons.edit_note_rounded,
-      title: 'Post What You Need',
-      headline: 'Post What You Need',
+      icon: Icons.handshake_outlined,
+      title: 'Get matched and fulfilled',
+      headline: 'Get matched and fulfilled',
       subtitle:
-          'Describe your task, set your budget, and let nearby providers respond with quotes.',
+          'Providers reply with quotes and availability. Compare, book, pay securely, and track the job to done.',
       gradientColors: [Color(0xFF7A4313), Color(0xFFB66B1E), Color(0xFFF59E0B)],
     ),
     _OnboardingPageData(
       icon: Icons.verified_user_rounded,
-      title: 'Trust & Safety',
-      headline: 'Trust & Safety',
+      title: 'Trust built on real jobs',
+      headline: 'Trust built on real jobs',
       subtitle:
-          'Every provider is verified. Payments are protected. Your data stays private.',
+          'Providers are verified. Ratings and trust scores come from completed jobs, and payments are protected.',
       gradientColors: [Color(0xFF1E3B5C), Color(0xFF2563EB), Color(0xFF60A5FA)],
     ),
   ];

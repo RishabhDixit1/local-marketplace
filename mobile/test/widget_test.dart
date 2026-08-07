@@ -166,7 +166,7 @@ void main() {
 
     expect(find.text('ServiQ'), findsOneWidget);
     expect(find.text('For you'), findsOneWidget);
-    expect(find.text('Find People'), findsAtLeastNWidgets(1));
+    expect(find.text('What do you need today?'), findsOneWidget);
   });
 
   testWidgets('profile page renders synced storefront data', (

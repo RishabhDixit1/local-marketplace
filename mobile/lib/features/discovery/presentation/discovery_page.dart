@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
+import '../../../core/services/user_location.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/locality.dart';
@@ -19,10 +20,14 @@ import '../../search/data/search_repository.dart';
 import '../../search/domain/search_models.dart';
 
 final _discoveryProvidersProvider =
-    FutureProvider.autoDispose<SearchResponse>((ref) {
-  return ref
-      .watch(searchRepositoryProvider)
-      .search(limit: 50, sortBy: 'distance');
+    FutureProvider.autoDispose<SearchResponse>((ref) async {
+  final location = await ref.watch(userLocationProvider.future);
+  return ref.read(searchRepositoryProvider).search(
+    limit: 50,
+    lat: location?.latitude,
+    lng: location?.longitude,
+    sortBy: 'distance',
+  );
 });
 
 final _discoveryLocalitiesProvider =
@@ -46,6 +51,7 @@ class DiscoveryPage extends ConsumerWidget {
     final providersAsync = ref.watch(_discoveryProvidersProvider);
     final localitiesAsync = ref.watch(_discoveryLocalitiesProvider);
     final categoriesAsync = ref.watch(_discoveryCategoriesProvider);
+    final l10n = AppLocalizations.of(context);
 
     return ServiqScaffold(
       body: SafeArea(
@@ -90,32 +96,33 @@ class DiscoveryPage extends ConsumerWidget {
               _buildCategories(context, categoriesAsync),
               const SizedBox(height: AppSpacing.lg),
               SectionHeader(
-                title: 'Nearby providers',
-                subtitle: 'Tap a marker or a provider to see their work',
-                actionLabel: 'Open map',
+                title: l10n.discoveryNearbyProviders,
+                subtitle: l10n.discoveryNearbySubtitle,
+                actionLabel: l10n.discoveryOpenMap,
                 onAction: () => context.push(AppRoutes.mapDiscovery),
               ),
               const SizedBox(height: AppSpacing.sm),
               providersAsync.when(
                 loading: () => const _NearbyLoading(),
                 error: (err, _) => _NearbyError(
-                  message: '$err',
+                  message: l10n.discoveryLoadError,
                   onRetry: () => ref.invalidate(_discoveryProvidersProvider),
                 ),
-                data: (response) => _NearbySection(providers: response.providers),
+                data: (response) => _NearbySection(
+                  providers: response.providers,
+                  total: response.total,
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
               SectionHeader(
-                title: 'Explore zones',
-                subtitle: 'Societies, markets and supply areas near you',
-                actionLabel: 'All zones',
-                onAction: () => context.push(AppRoutes.marketZones),
+                title: l10n.discoveryExploreZones,
+                subtitle: l10n.discoveryZonesSubtitle,
               ),
               const SizedBox(height: AppSpacing.sm),
               localitiesAsync.when(
                 loading: () => const _ZonesLoading(),
                 error: (err, _) => _NearbyError(
-                  message: '$err',
+                  message: l10n.discoveryLoadError,
                   onRetry: () => ref.invalidate(_discoveryLocalitiesProvider),
                 ),
                 data: (localities) => _ZonesSection(localities: localities),
@@ -145,7 +152,7 @@ class DiscoveryPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.xxs),
                 Text(
-                  'Find local services, shops and providers near you',
+                  AppLocalizations.of(context).discoveryFindLocalServices,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context)
                         .colorScheme
@@ -166,13 +173,14 @@ class DiscoveryPage extends ConsumerWidget {
     AsyncValue<List<Map<String, dynamic>>> categoriesAsync,
   ) {
     final categories = categoriesAsync.asData?.value ?? [];
+    final l10n = AppLocalizations.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionHeader(
-          title: 'Popular Services',
-          subtitle: 'Jump straight to a service',
+          title: l10n.discoveryPopularServices,
+          subtitle: l10n.discoveryServicesSubtitle,
         ),
         const SizedBox(height: AppSpacing.sm),
         SizedBox(
@@ -276,7 +284,7 @@ class _SearchEntry extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  'Search providers by name or service',
+                  AppLocalizations.of(context).discoverySearchHint,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context)
                         .colorScheme
@@ -408,7 +416,7 @@ class _NearbyError extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           FilledButton.tonal(
             onPressed: onRetry,
-            child: const Text('Retry'),
+            child: Text(AppLocalizations.of(context).retry),
           ),
         ],
       ),
@@ -417,22 +425,25 @@ class _NearbyError extends StatelessWidget {
 }
 
 class _NearbySection extends StatelessWidget {
-  const _NearbySection({required this.providers});
+  const _NearbySection({required this.providers, required this.total});
 
   final List<SearchResult> providers;
+  final int total;
 
   @override
   Widget build(BuildContext context) {
     if (providers.isEmpty) {
-      return const EmptyStateView(
+      final l10n = AppLocalizations.of(context);
+      return EmptyStateView(
         icon: Icons.explore_rounded,
-        title: 'No providers nearby',
-        message: 'Check back later as more local providers join.',
+        title: l10n.discoveryNoProvidersTitle,
+        message: l10n.discoveryNoProvidersMessage,
       );
     }
 
     final withLocation =
         providers.where((p) => p.lat != null && p.lng != null).toList();
+    final shown = providers.take(10).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,7 +457,7 @@ class _NearbySection extends StatelessWidget {
                     color: AppColors.surface,
                     alignment: Alignment.center,
                     child: Text(
-                      'No location data available',
+                      AppLocalizations.of(context).discoveryNoLocation,
                       style: TextStyle(
                         color: Theme.of(context)
                             .colorScheme
@@ -521,19 +532,22 @@ class _NearbySection extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.xs),
           child: Column(
             children: [
-              for (final provider in providers.take(4))
+              for (final provider in shown)
                 _NearbyProviderTile(provider: provider),
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        Center(
-          child: PrimaryButton(
-            label: 'View all ${providers.length} providers',
-            onPressed: () => context.push(AppRoutes.search),
-            expanded: false,
+        if (total > shown.length) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Center(
+            child: PrimaryButton(
+              label: AppLocalizations.of(context)
+                  .discoveryViewAllProviders(total),
+              onPressed: () => context.push(AppRoutes.search),
+              expanded: false,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -650,10 +664,11 @@ class _ZonesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (localities.isEmpty) {
-      return const EmptyStateView(
+      final l10n = AppLocalizations.of(context);
+      return EmptyStateView(
         icon: Icons.map_outlined,
-        title: 'No zones available',
-        message: 'New zones are being added regularly. Check back soon.',
+        title: l10n.discoveryNoZonesTitle,
+        message: l10n.discoveryNoZonesMessage,
       );
     }
 
@@ -704,6 +719,7 @@ class _DiscoveryZoneCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isExpansion = locality.zoneTypeEnum == ZoneType.expansion;
     final zoneColor = _zoneColor();
+    final l10n = AppLocalizations.of(context);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadii.xl),
@@ -785,7 +801,7 @@ class _DiscoveryZoneCard extends StatelessWidget {
                           ),
                           const SizedBox(height: AppSpacing.xxs),
                           Text(
-                            _zoneSubtitle(),
+                            _zoneSubtitle(context),
                             style: TextStyle(
                               fontSize: 11,
                               color: Theme.of(context)
@@ -799,7 +815,7 @@ class _DiscoveryZoneCard extends StatelessWidget {
                     ),
                     if (isExpansion)
                       AppPill(
-                        label: 'Upcoming',
+                        label: l10n.discoveryUpcoming,
                         backgroundColor:
                             zoneColor.withValues(alpha: 0.12),
                         foregroundColor: zoneColor,
@@ -821,16 +837,17 @@ class _DiscoveryZoneCard extends StatelessWidget {
     );
   }
 
-  String _zoneSubtitle() {
+  String _zoneSubtitle(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final zoneLabel = switch (locality.zoneTypeEnum) {
-      ZoneType.society => 'Society',
-      ZoneType.market => 'Market',
-      ZoneType.supplyArea => 'Supply area',
-      ZoneType.expansion => 'Coming soon',
+      ZoneType.society => l10n.zoneSociety,
+      ZoneType.market => l10n.zoneMarket,
+      ZoneType.supplyArea => l10n.zoneSupplyArea,
+      ZoneType.expansion => l10n.zoneComingSoon,
     };
     final count = locality.providerCount;
     if (count != null && count > 0) {
-      return '$zoneLabel · $count providers';
+      return '$zoneLabel · ${l10n.discoveryZoneProviderCount(count)}';
     }
     return zoneLabel;
   }

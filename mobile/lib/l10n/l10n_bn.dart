@@ -48,6 +48,8 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get work => 'কাজ';
   @override
+  String get activity => 'কার্যকলাপ';
+  @override
   String get inbox => 'ইনবক্স';
   @override
   String get youTab => 'আপনি';
@@ -149,4 +151,50 @@ class AppLocalizationsBn extends AppLocalizations {
   String get aiFoundProviders => 'প্রদাতা পাওয়া গেছে';
   @override
   String get aiSearchMarket => 'বাজার খুঁজুন';
+  @override
+  String get discoveryNearbyProviders => 'কাছের প্রদাতা';
+  @override
+  String get discoveryFindLocalServices => 'আপনার কাছের স্থানীয় সেবা, দোকান এবং প্রদাতা খুঁজুন';
+  @override
+  String get discoveryNearbySubtitle => 'তাদের কাজ দেখতে মার্কার বা প্রদাতায় ট্যাপ করুন';
+  @override
+  String get discoveryOpenMap => 'মানচিত্র খুলুন';
+  @override
+  String get discoveryExploreZones => 'এলাকা অন্বেষণ করুন';
+  @override
+  String get discoveryZonesSubtitle => 'আপনার কাছের সোসাইটি, বাজার এবং সাপ্লাই এলাকা';
+  @override
+  String get discoveryAllZones => 'সব এলাকা';
+  @override
+  String get discoveryPopularServices => 'জনপ্রিয় সেবা';
+  @override
+  String get discoveryServicesSubtitle => 'সরাসরি একটি সেবায় যান';
+  @override
+  String get discoverySearchHint => 'নাম বা সেবা দিয়ে প্রদাতা খুঁজুন';
+  @override
+  String get discoveryNoProvidersTitle => 'কাছে কোনো প্রদাতা নেই';
+  @override
+  String get discoveryNoProvidersMessage => 'আরও স্থানীয় প্রদাতা যোগ দিলে পরে আবার দেখুন।';
+  @override
+  String get discoveryNoLocation => 'অবস্থান ডেটা উপলব্ধ নেই';
+  @override
+  String discoveryViewAllProviders(int count) => 'সব $count প্রদাতা দেখুন';
+  @override
+  String get discoveryNoZonesTitle => 'কোনো এলাকা উপলব্ধ নেই';
+  @override
+  String get discoveryNoZonesMessage => 'নতুন এলাকা নিয়মিত যোগ হচ্ছে। শীঘ্রই আবার দেখুন।';
+  @override
+  String get discoveryUpcoming => 'শীঘ্রই আসছে';
+  @override
+  String get discoveryLoadError => 'এখন লোড করা যায়নি। আপনার সংযোগ পরীক্ষা করুন এবং আবার চেষ্টা করুন।';
+  @override
+  String get zoneSociety => 'সোসাইটি';
+  @override
+  String get zoneMarket => 'বাজার';
+  @override
+  String get zoneSupplyArea => 'সাপ্লাই এলাকা';
+  @override
+  String get zoneComingSoon => 'শীঘ্রই আসছে';
+  @override
+  String discoveryZoneProviderCount(int count) => '$count প্রদাতা';
 }

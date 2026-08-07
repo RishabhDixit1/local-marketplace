@@ -233,8 +233,8 @@ class _SeekerOnboardingPageState
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Your local marketplace for trusted help nearby. '
-            'Post what you need, get replies from vetted providers in your area.',
+            'ServiQ matches you with trusted help from your own words. '
+            'Just say what you need and nearby providers reply with quotes.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
@@ -243,21 +243,21 @@ class _SeekerOnboardingPageState
           ),
           const SizedBox(height: AppSpacing.xxl),
           _InfoCard(
-            icon: Icons.search_rounded,
-            title: 'Find help nearby',
-            description: 'Browse providers or post a task and let them come to you.',
+            icon: Icons.auto_awesome_rounded,
+            title: 'Say it your way',
+            description: 'Describe your need in plain words - AI understands intent and finds the right help.',
           ),
           const SizedBox(height: AppSpacing.sm),
           _InfoCard(
-            icon: Icons.chat_rounded,
-            title: 'Chat & compare',
-            description: 'Message providers, compare quotes, and choose the best fit.',
+            icon: Icons.compare_rounded,
+            title: 'Compare & choose',
+            description: 'Message providers, compare quotes, and pick the best fit for you.',
           ),
           const SizedBox(height: AppSpacing.sm),
           _InfoCard(
             icon: Icons.shield_rounded,
-            title: 'Trust & safety',
-            description: 'Reviews, verified profiles, and secure payments built in.',
+            title: 'Trust built in',
+            description: 'Verified providers, real-job trust scores, and secure payments.',
           ),
         ],
       ),

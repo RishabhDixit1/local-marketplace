@@ -19,7 +19,6 @@ import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../features/chat/data/chat_repository.dart';
 import '../../../features/feed/data/feed_interactions_repository.dart';
 import '../../../features/reporting/domain/report_models.dart';
 import '../../../features/reporting/presentation/report_sheet.dart';
@@ -27,7 +26,6 @@ import '../../../features/feed/data/feed_repository.dart';
 import '../../../features/feed/domain/feed_snapshot.dart';
 import '../../../features/people/data/people_repository.dart';
 import '../../../features/people/domain/people_snapshot.dart';
-import '../../../features/tasks/data/task_repository.dart';
 import '../../../shared/components/feed_card.dart';
 import '../../../shared/components/provider_card.dart';
 import '../../../shared/components/section_header.dart';
@@ -52,9 +50,7 @@ class WelcomePage extends ConsumerStatefulWidget {
 }
 
 class _WelcomePageState extends ConsumerState<WelcomePage> {
-  _WelcomeSurface _surface = _WelcomeSurface.forYou;
   _WelcomeSurface _resolvedSurface = _WelcomeSurface.forYou;
-  bool _surfaceManuallyChanged = false;
   final DateTime _openedAt = DateTime.now();
   bool _trackedFirstEngagement = false;
   final Set<String> _savedAddedIds = <String>{};
@@ -148,25 +144,6 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
       ref.read(feedSnapshotProvider(MobileFeedScope.connected).future),
       ref.read(peopleSnapshotProvider.future),
     ]);
-  }
-
-  void _setSurface(_WelcomeSurface nextSurface) {
-    if (_resolvedSurface == nextSurface) {
-      return;
-    }
-
-    setState(() {
-      _surface = nextSurface;
-      _resolvedSurface = nextSurface;
-      _surfaceManuallyChanged = true;
-    });
-    _trackFirstEngagement('surface_switch');
-    ref
-        .read(analyticsServiceProvider)
-        .trackEvent(
-          'home_surface_changed',
-          extras: {'surface': nextSurface.analyticsValue},
-        );
   }
 
   void _showSnack(String message) {
@@ -604,33 +581,6 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
         ref.watch(feedSnapshotProvider(MobileFeedScope.connected));
     final AsyncValue<MobilePeopleSnapshot> peopleAsync =
         widget.peopleOverride ?? ref.watch(peopleSnapshotProvider);
-    final shouldLoadShellCounts =
-        widget.snapshotOverride == null &&
-        widget.trustedSnapshotOverride == null &&
-        widget.peopleOverride == null;
-    final unreadChatCount = shouldLoadShellCounts
-        ? ref
-              .watch(chatConversationsProvider)
-              .maybeWhen(
-                data: (conversations) => conversations.fold<int>(
-                  0,
-                  (count, conversation) => count + conversation.unreadCount,
-                ),
-                orElse: () => 0,
-              )
-        : 0;
-    final activeTaskCount = shouldLoadShellCounts
-        ? ref
-              .watch(taskSnapshotProvider)
-              .maybeWhen(
-                data: (snapshot) => snapshot.items.where((item) {
-                  return item.status.name == 'active' ||
-                      item.status.name == 'inProgress';
-                }).length,
-                orElse: () => 0,
-              )
-        : 0;
-
     final allFeed = allFeedAsync.asData?.value;
     final trustedFeed = trustedFeedAsync.asData?.value;
     final people = peopleAsync.asData?.value;
@@ -681,14 +631,9 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
 
     final userName = _resolveViewerName();
     final greeting = '${_greetingPrefix()}, $userName';
-    final preferredSurface = _surfaceManuallyChanged
-        ? _surface
-        : model.defaultSurface;
-    _resolvedSurface = model.resolveSurface(preferredSurface);
+    _resolvedSurface = model.resolveSurface(model.defaultSurface);
     final welcomeChildren = _welcomeSliverChildren(
       greeting: greeting,
-      activeTaskCount: activeTaskCount,
-      unreadChatCount: unreadChatCount,
       model: model,
     );
 
@@ -761,63 +706,36 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
 
   List<Widget> _welcomeSliverChildren({
     required String greeting,
-    required int activeTaskCount,
-    required int unreadChatCount,
     required _WelcomeViewModel model,
   }) {
     return [
       Padding(
         padding: const EdgeInsets.only(
           top: 8,
-          bottom: 16,
+          bottom: 4,
         ),
         child: AiPromptBar(
           placeholder: 'What do you need today?',
           enableDebounce: true,
         ),
       ),
-      _HeroSection(
-        greeting: greeting,
-        activeTaskCount: activeTaskCount,
-        unreadChatCount: unreadChatCount,
-        onInboxTap: () => context.push(AppRoutes.chat),
-        onTasksTap: () => context.go(AppRoutes.tasks),
-        onFindPeopleTap: () => context.go(AppRoutes.people),
-        onPrimaryTap: () {
-          _trackFirstEngagement('post_need');
-          ref
-              .read(analyticsServiceProvider)
-              .trackEvent(
-                'home_post_need_tapped',
-                extras: {
-                  'surface': _resolvedSurface.analyticsValue,
-                },
-              );
-          context.push(AppRoutes.createRequest);
-        },
+      Padding(
+        padding: const EdgeInsets.only(
+          top: 4,
+          bottom: 14,
+        ),
+        child: Text(
+          greeting,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
       ),
-      const SizedBox(height: 18),
       SectionHeader(
-        title: _resolvedSurface == _WelcomeSurface.nearby
-            ? 'Explore all'
-            : 'Switch view',
-        actionLabel: _resolvedSurface == _WelcomeSurface.nearby
-            ? 'Explore all'
-            : 'Switch view',
-        onAction: () {
-          if (_resolvedSurface == _WelcomeSurface.nearby) {
-            context.go(AppRoutes.explore);
-            return;
-          }
-          _setSurface(_WelcomeSurface.nearby);
-        },
+        title: _resolvedSurface.title,
+        subtitle: model.liveStatusLabel,
       ),
       const SizedBox(height: 10),
-      _SurfaceTabsRow(
-        value: _resolvedSurface,
-        onChanged: _setSurface,
-      ),
-      const SizedBox(height: AppSpacing.sm),
       for (final entry in model.entriesFor(_resolvedSurface))
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -861,7 +779,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
             children: [
               Icon(Icons.map_outlined, size: 18, color: AppColors.primary),
               const SizedBox(width: 10),
-              Text('Discover on Map',
+              Text('Explore on map',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
               const Spacer(),
               Icon(Icons.chevron_right, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
@@ -1233,7 +1151,6 @@ class _WelcomeFeedEntry {
 
 class _WelcomeViewModel {
   const _WelcomeViewModel({
-    required this.heroSignals,
     required this.quickCategories,
     required this.hotCategoryKeys,
     required this.trustedRailItems,
@@ -1241,7 +1158,6 @@ class _WelcomeViewModel {
     required this.trustedEntries,
     required this.nearbyEntries,
     required this.earnEntries,
-    required this.trustedCountLabel,
     required this.liveStatusLabel,
     required this.hasTrustedNetwork,
     required this.isFirstRun,
@@ -1312,17 +1228,8 @@ class _WelcomeViewModel {
       hotCategories: hotCategoryKeys.toSet(),
     );
 
-    final signals = <String>[
-      if (rankedTrusted.isNotEmpty)
-        '${_formatCompactCount(rankedTrusted.length)} trusted live',
-      if (allFeed.stats.urgent > 0)
-        '${_formatCompactCount(allFeed.stats.urgent)} urgent nearby',
-      _fastestResponseLabel(allItems),
-    ];
-
     final trustedRailItems = rankedTrusted.take(3).toList();
     return _WelcomeViewModel(
-      heroSignals: signals,
       quickCategories: quickCategories,
       hotCategoryKeys: hotCategoryKeys.toSet(),
       trustedRailItems: trustedRailItems,
@@ -1347,9 +1254,6 @@ class _WelcomeViewModel {
         providers: rankedProviders,
         hotCategoryKeys: hotCategoryKeys.toSet(),
       ),
-      trustedCountLabel: rankedTrusted.isEmpty
-          ? 'Build your trusted feed'
-          : '${_formatCompactCount(rankedTrusted.length)} trusted posts live',
       liveStatusLabel: _composeLiveStatus(allItems, providers),
       hasTrustedNetwork: rankedTrusted.isNotEmpty,
       isFirstRun:
@@ -1365,7 +1269,6 @@ class _WelcomeViewModel {
     );
   }
 
-  final List<String> heroSignals;
   final List<String> quickCategories;
   final Set<String> hotCategoryKeys;
   final List<MobileFeedItem> trustedRailItems;
@@ -1373,7 +1276,6 @@ class _WelcomeViewModel {
   final List<_WelcomeFeedEntry> trustedEntries;
   final List<_WelcomeFeedEntry> nearbyEntries;
   final List<_WelcomeFeedEntry> earnEntries;
-  final String trustedCountLabel;
   final String liveStatusLabel;
   final bool hasTrustedNetwork;
   final bool isFirstRun;
@@ -1949,28 +1851,6 @@ int _extractRelativeMinutes(String value) {
   }
 
   return 180;
-}
-
-String _fastestResponseLabel(List<MobileFeedItem> items) {
-  final valid = items.where((item) => item.responseMinutes > 0).toList();
-  if (valid.isEmpty) {
-    return 'Response timing is warming up';
-  }
-
-  final minResponse = valid
-      .map((item) => item.responseMinutes)
-      .reduce(math.min);
-  return '$minResponse min fastest response';
-}
-
-String _formatCompactCount(int value) {
-  if (value >= 1000) {
-    final compact = value >= 10000
-        ? (value / 1000).round().toString()
-        : (value / 1000).toStringAsFixed(1);
-    return '${compact.replaceAll('.0', '')}k';
-  }
-  return value.toString();
 }
 
 IconData _categoryIcon(String category) {

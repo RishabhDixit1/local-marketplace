@@ -57,8 +57,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Post Need'), findsAtLeastNWidgets(1));
-    expect(find.text('Find People'), findsOneWidget);
+    expect(find.text('What do you need today?'), findsOneWidget);
+    expect(find.text('For you'), findsOneWidget);
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(

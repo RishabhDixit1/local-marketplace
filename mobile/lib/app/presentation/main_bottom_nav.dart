@@ -185,12 +185,7 @@ List<_NavDestination> _mainDestinations({
       selectedIcon: Icons.explore_rounded,
     ),
     _NavDestination(
-      label: l10n.market,
-      icon: Icons.store_outlined,
-      selectedIcon: Icons.store_rounded,
-    ),
-    _NavDestination(
-      label: l10n.work,
+      label: l10n.activity,
       icon: Icons.assignment_outlined,
       selectedIcon: Icons.assignment_rounded,
       badgeCount: taskCount,

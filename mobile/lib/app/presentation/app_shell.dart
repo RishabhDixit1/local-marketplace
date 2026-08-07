@@ -13,12 +13,10 @@ import '../../core/services/analytics_service.dart';
 import '../../features/chat/data/chat_repository.dart';
 import '../../features/tasks/data/task_repository.dart';
 import '../../l10n/l10n.dart';
-import '../../shared/widgets/ai_prompt_bar.dart';
 import 'main_bottom_nav.dart';
 
 @visibleForTesting
-bool shouldShowPostActionForBranch(int index) =>
-    index == 0 || index == 1 || index == 2;
+bool shouldShowPostActionForBranch(int index) => index == 0 || index == 1;
 
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -116,7 +114,6 @@ class AppShell extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                const AiFloatingAssistant(),
                 if (showPostAction) ...[
                   const SizedBox(height: AppSpacing.sm),
                   FloatingActionButton.extended(

@@ -58,6 +58,7 @@ abstract class AppLocalizations {
   String get market;
   String get discovery;
   String get work;
+  String get activity;
   String get inbox;
   String get youTab;
   String get tasks;
@@ -105,6 +106,31 @@ abstract class AppLocalizations {
   String get trustScore;
   String get reviews;
   String get listings;
+
+  // Discovery
+  String get discoveryNearbyProviders;
+  String get discoveryFindLocalServices;
+  String get discoveryNearbySubtitle;
+  String get discoveryOpenMap;
+  String get discoveryExploreZones;
+  String get discoveryZonesSubtitle;
+  String get discoveryAllZones;
+  String get discoveryPopularServices;
+  String get discoveryServicesSubtitle;
+  String get discoverySearchHint;
+  String get discoveryNoProvidersTitle;
+  String get discoveryNoProvidersMessage;
+  String get discoveryNoLocation;
+  String discoveryViewAllProviders(int count);
+  String get discoveryNoZonesTitle;
+  String get discoveryNoZonesMessage;
+  String get discoveryUpcoming;
+  String get discoveryLoadError;
+  String get zoneSociety;
+  String get zoneMarket;
+  String get zoneSupplyArea;
+  String get zoneComingSoon;
+  String discoveryZoneProviderCount(int count);
 
   // AI
   String get aiPlaceholder;

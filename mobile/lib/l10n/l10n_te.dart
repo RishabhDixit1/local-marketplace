@@ -48,6 +48,8 @@ class AppLocalizationsTe extends AppLocalizations {
   @override
   String get work => 'పని';
   @override
+  String get activity => 'కార్యకలాపాలు';
+  @override
   String get inbox => 'ఇన్బాక్స్';
   @override
   String get youTab => 'మీరు';
@@ -149,4 +151,50 @@ class AppLocalizationsTe extends AppLocalizations {
   String get aiFoundProviders => 'ప్రొవైడర్లు కనుగొనబడ్డాయి';
   @override
   String get aiSearchMarket => 'మార్కెట్ వెతకండి';
+  @override
+  String get discoveryNearbyProviders => 'సమీపంలోని ప్రొవైడర్లు';
+  @override
+  String get discoveryFindLocalServices => 'మీ సమీపంలోని స్థానిక సేవలు, దుకాణాలు మరియు ప్రొవైడర్లను కనుగొనండి';
+  @override
+  String get discoveryNearbySubtitle => 'వారి పనిని చూడడానికి మార్కర్ లేదా ప్రొవైడర్ పై నొక్కండి';
+  @override
+  String get discoveryOpenMap => 'మ్యాప్ తెరవండి';
+  @override
+  String get discoveryExploreZones => 'జోన్లను అన్వేషించండి';
+  @override
+  String get discoveryZonesSubtitle => 'మీ సమీపంలోని సొసైటీలు, మార్కెట్లు మరియు సరఫరా ప్రాంతాలు';
+  @override
+  String get discoveryAllZones => 'అన్ని జోన్లు';
+  @override
+  String get discoveryPopularServices => 'ప్రజాదరణ పొందిన సేవలు';
+  @override
+  String get discoveryServicesSubtitle => 'నేరుగా ఒక సేవకు వెళ్లండి';
+  @override
+  String get discoverySearchHint => 'పేరు లేదా సేవ ద్వారా ప్రొవైడర్లను వెతకండి';
+  @override
+  String get discoveryNoProvidersTitle => 'సమీపంలో ప్రొవైడర్లు లేరు';
+  @override
+  String get discoveryNoProvidersMessage => 'మరిన్ని స్థానిక ప్రొవైడర్లు చేరిన తర్వాత మళ్లీ చూడండి.';
+  @override
+  String get discoveryNoLocation => 'లొకేషన్ డేటా అందుబాటులో లేదు';
+  @override
+  String discoveryViewAllProviders(int count) => 'మొత్తం $count ప్రొవైడర్లను చూడండి';
+  @override
+  String get discoveryNoZonesTitle => 'జోన్లు అందుబాటులో లేవు';
+  @override
+  String get discoveryNoZonesMessage => 'కొత్త జోన్లు క్రమం తప్పకుండా జోడించబడుతున్నాయి. త్వరలో మళ్లీ చూడండి.';
+  @override
+  String get discoveryUpcoming => 'త్వరలో';
+  @override
+  String get discoveryLoadError => 'ఇప్పుడు లోడ్ చేయలేకపోయాం. మీ కనెక్షన్ తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.';
+  @override
+  String get zoneSociety => 'సొసైటీ';
+  @override
+  String get zoneMarket => 'మార్కెట్';
+  @override
+  String get zoneSupplyArea => 'సరఫరా ప్రాంతం';
+  @override
+  String get zoneComingSoon => 'త్వరలో';
+  @override
+  String discoveryZoneProviderCount(int count) => '$count ప్రొవైడర్లు';
 }

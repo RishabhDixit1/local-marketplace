@@ -13,6 +13,7 @@ import '../../../core/constants/categories.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
+import '../../../core/feature_flags.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
@@ -637,13 +638,14 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               icon: const Icon(Icons.search_rounded),
             ),
           ),
-          Semantics(
-            label: 'Saved items',
-            child: IconButton(
-              onPressed: () => context.push(AppRoutes.saved),
-              icon: const Icon(Icons.bookmarks_outlined),
+          if (kSavedEnabled)
+            Semantics(
+              label: 'Saved items',
+              child: IconButton(
+                onPressed: () => context.push(AppRoutes.saved),
+                icon: const Icon(Icons.bookmarks_outlined),
+              ),
             ),
-          ),
           Semantics(
             label: 'Cart',
             child: IconButton(
@@ -801,7 +803,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           padding: const EdgeInsets.all(AppSpacing.sm),
           child: InkWell(
             borderRadius: BorderRadius.circular(AppRadii.xl),
-            onTap: () => context.push(AppRoutes.marketZones),
+            onTap: () => context.go(AppRoutes.discovery),
             child: Row(
               children: [
                 Container(

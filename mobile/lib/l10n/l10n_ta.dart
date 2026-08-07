@@ -48,6 +48,8 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get work => 'வேலை';
   @override
+  String get activity => 'செயல்பாடு';
+  @override
   String get inbox => 'இன்பாக்ஸ்';
   @override
   String get youTab => 'நீங்கள்';
@@ -149,4 +151,50 @@ class AppLocalizationsTa extends AppLocalizations {
   String get aiFoundProviders => 'வழங்குநர்கள் கிடைத்தன';
   @override
   String get aiSearchMarket => 'சந்தையைத் தேடு';
+  @override
+  String get discoveryNearbyProviders => 'அருகிலுள்ள வழங்குநர்கள்';
+  @override
+  String get discoveryFindLocalServices => 'உங்கள் அருகிலுள்ள உள்ளூர் சேவைகள், கடைகள் மற்றும் வழங்குநர்களைக் கண்டறியவும்';
+  @override
+  String get discoveryNearbySubtitle => 'அவர்களின் பணியைப் பார்க்க மார்க்கர் அல்லது வழங்குநரைத் தட்டவும்';
+  @override
+  String get discoveryOpenMap => 'வரைபடத்தைத் திறக்கவும்';
+  @override
+  String get discoveryExploreZones => 'மண்டலங்களை ஆராயுங்கள்';
+  @override
+  String get discoveryZonesSubtitle => 'உங்கள் அருகிலுள்ள சொசைட்டிகள், சந்தைகள் மற்றும் விநியோக பகுதிகள்';
+  @override
+  String get discoveryAllZones => 'அனைத்து மண்டலங்கள்';
+  @override
+  String get discoveryPopularServices => 'பிரபலமான சேவைகள்';
+  @override
+  String get discoveryServicesSubtitle => 'நேரடியாக ஒரு சேவைக்குச் செல்லவும்';
+  @override
+  String get discoverySearchHint => 'பெயர் அல்லது சேவையால் வழங்குநர்களைத் தேடுங்கள்';
+  @override
+  String get discoveryNoProvidersTitle => 'அருகில் வழங்குநர் இல்லை';
+  @override
+  String get discoveryNoProvidersMessage => 'மேலும் உள்ளூர் வழங்குநர்கள் சேரும் போது பின்னர் பார்க்கவும்.';
+  @override
+  String get discoveryNoLocation => 'இருப்பிடத் தரவு கிடைக்கவில்லை';
+  @override
+  String discoveryViewAllProviders(int count) => 'அனைத்து $count வழங்குநர்களையும் பார்க்கவும்';
+  @override
+  String get discoveryNoZonesTitle => 'மண்டலங்கள் எதுவும் கிடைக்கவில்லை';
+  @override
+  String get discoveryNoZonesMessage => 'புதிய மண்டலங்கள் தொடர்ந்து சேர்க்கப்படுகின்றன. விரைவில் மீண்டும் பார்க்கவும்.';
+  @override
+  String get discoveryUpcoming => 'விரைவில்';
+  @override
+  String get discoveryLoadError => 'இப்போது ஏற்ற முடியவில்லை. உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.';
+  @override
+  String get zoneSociety => 'சொசைட்டி';
+  @override
+  String get zoneMarket => 'சந்தை';
+  @override
+  String get zoneSupplyArea => 'விநியோக பகுதி';
+  @override
+  String get zoneComingSoon => 'விரைவில்';
+  @override
+  String discoveryZoneProviderCount(int count) => '$count வழங்குநர்கள்';
 }

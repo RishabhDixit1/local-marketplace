@@ -48,6 +48,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get work => 'Work';
   @override
+  String get activity => 'Activity';
+  @override
   String get inbox => 'Inbox';
   @override
   String get youTab => 'You';
@@ -149,4 +151,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiFoundProviders => 'Found providers';
   @override
   String get aiSearchMarket => 'Search market';
+  @override
+  String get discoveryNearbyProviders => 'Nearby providers';
+  @override
+  String get discoveryFindLocalServices => 'Find local services, shops and providers near you';
+  @override
+  String get discoveryNearbySubtitle => 'Tap a marker or a provider to see their work';
+  @override
+  String get discoveryOpenMap => 'Open map';
+  @override
+  String get discoveryExploreZones => 'Explore zones';
+  @override
+  String get discoveryZonesSubtitle => 'Societies, markets and supply areas near you';
+  @override
+  String get discoveryAllZones => 'All zones';
+  @override
+  String get discoveryPopularServices => 'Popular Services';
+  @override
+  String get discoveryServicesSubtitle => 'Jump straight to a service';
+  @override
+  String get discoverySearchHint => 'Search providers by name or service';
+  @override
+  String get discoveryNoProvidersTitle => 'No providers nearby';
+  @override
+  String get discoveryNoProvidersMessage => 'Check back later as more local providers join.';
+  @override
+  String get discoveryNoLocation => 'No location data available';
+  @override
+  String discoveryViewAllProviders(int count) => 'View all $count providers';
+  @override
+  String get discoveryNoZonesTitle => 'No zones available';
+  @override
+  String get discoveryNoZonesMessage => 'New zones are being added regularly. Check back soon.';
+  @override
+  String get discoveryUpcoming => 'Upcoming';
+  @override
+  String get discoveryLoadError => "Couldn't load right now. Check your connection and try again.";
+  @override
+  String get zoneSociety => 'Society';
+  @override
+  String get zoneMarket => 'Market';
+  @override
+  String get zoneSupplyArea => 'Supply area';
+  @override
+  String get zoneComingSoon => 'Coming soon';
+  @override
+  String discoveryZoneProviderCount(int count) => '$count providers';
 }
