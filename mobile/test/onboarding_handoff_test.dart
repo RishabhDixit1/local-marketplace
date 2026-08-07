@@ -151,6 +151,24 @@ void main() {
     );
   });
 
+  test('rememberRoute is idempotent for the same route', () async {
+    final store = MemoryOnboardingHandoffStore();
+    final controller = OnboardingHandoffController(store);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    const route = '/app/tasks?focus=task-1&source=push';
+    await controller.rememberRoute(route);
+    expect(notifications, 1);
+
+    await controller.rememberRoute(route);
+    await controller.rememberRoute(' $route ');
+    expect(notifications, 1, reason: 'repeat rememberRoute must not notify');
+
+    await controller.rememberRoute('/app/create-need');
+    expect(notifications, 2, reason: 'a different route should still notify');
+  });
+
   test('captured protected routes beat default onboarding destinations', () {
     const focusedTaskRoute = '/app/tasks?focus=task-1&source=push';
 

@@ -327,6 +327,10 @@ class OnboardingHandoffController extends ChangeNotifier {
       return;
     }
 
+    if (_lastRoute == sanitizedRoute) {
+      return;
+    }
+
     _lastRoute = sanitizedRoute;
     notifyListeners();
     await _store.writeLastRoute(sanitizedRoute);
