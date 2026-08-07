@@ -5,10 +5,28 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/app_config.dart';
+import '../supabase/app_bootstrap.dart';
 import 'firebase_runtime_options.dart';
 
-final appFirebaseProvider = Provider<AppFirebaseState>((ref) {
-  return const AppFirebaseState.disabled();
+/// When true, a manual Crashlytics test-crash button is surfaced. Debug
+/// builds always show it; release/tester builds only when compiled with
+/// --dart-define=ENABLE_TEST_CRASH=true, so production builds never ship it.
+const bool enableTestCrashButton =
+    kDebugMode || bool.fromEnvironment('ENABLE_TEST_CRASH');
+
+Future<AppFirebaseState>? _firebaseInitFuture;
+
+Future<AppFirebaseState> _initializeFirebase(AppConfig? config) {
+  return _firebaseInitFuture ??= AppFirebase.initialize(config: config);
+}
+
+/// Exposes the Firebase initialization result. The underlying future is
+/// shared and memoized, so every consumer (analytics, push, crash handling)
+/// observes the real initialized state instead of a hardcoded disabled
+/// default.
+final appFirebaseProvider = FutureProvider<AppFirebaseState>((ref) {
+  final bootstrap = ref.watch(appBootstrapProvider);
+  return _initializeFirebase(bootstrap.config);
 });
 
 class AppFirebaseState {
@@ -107,6 +125,20 @@ class AppFirebase {
       );
     } catch (_) {
       debugPrint('ServiQ mobile: Crashlytics unavailable (Firebase not initialized).');
+    }
+  }
+
+  /// Manual test-crash entry point for the debug/tester button. Re-enables
+  /// Crashlytics collection (debug builds disable it) and crashes the app so
+  /// the report is uploaded on next launch. Falls back to a deliberate Dart
+  /// throw so the path is still observable if the plugin is unavailable.
+  static Future<void> triggerTestCrash() async {
+    try {
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+      FirebaseCrashlytics.instance.crash();
+    } catch (e) {
+      debugPrint('ServiQ mobile: test crash unavailable ($e); forcing Dart throw.');
+      throw StateError('ServiQ manual Crashlytics test crash');
     }
   }
 }

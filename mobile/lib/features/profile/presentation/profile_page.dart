@@ -13,6 +13,7 @@ import '../../../core/auth/mobile_auth_service.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/feature_flags.dart';
+import '../../../core/firebase/app_firebase.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/metric_tile.dart';
@@ -603,6 +604,10 @@ class _ProfileCommandHub extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         _LaunchReadinessCard(snapshot: snapshot),
+        if (enableTestCrashButton) ...[
+          const SizedBox(height: 16),
+          const _TestCrashCard(),
+        ],
         const SizedBox(height: 16),
         SectionCard(
           child: Column(
@@ -2305,6 +2310,61 @@ class _LaunchReadinessCard extends StatelessWidget {
               onTap: () => context.push(AppRoutes.people),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TestCrashCard extends StatelessWidget {
+  const _TestCrashCard();
+
+  Future<void> _confirmAndCrash(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Trigger test crash?'),
+        content: const Text(
+          'This deliberately crashes the app to verify Crashlytics '
+          'uploads the report on next launch. You will need to reopen the app.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Crash now'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+    await AppFirebase.triggerTestCrash();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Debug', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          const Text(
+            'Only visible in debug builds (or release builds compiled with '
+            '--dart-define=ENABLE_TEST_CRASH=true). Never ships in production.',
+            style: TextStyle(fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => _confirmAndCrash(context),
+            icon: const Icon(Icons.bug_report_outlined),
+            label: const Text('Test Crashlytics'),
+          ),
         ],
       ),
     );

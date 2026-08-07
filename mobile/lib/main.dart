@@ -14,7 +14,7 @@ import 'core/theme/app_theme.dart';
 
 Future<void> main() async {
   FlutterError.onError = (details) {
-    debugPrint('ServiQ mobile: FlutterError: ${details.exception}');
+    debugPrint('ServiQ mobile: FlutterError: $details');
     unawaited(AppFirebase.recordError(
       details.exception,
       details.stack ?? StackTrace.current,
@@ -45,7 +45,11 @@ Future<void> main() async {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         initializeLocalNotifications();
         MobilePushNotificationService.registerBackgroundHandler();
-        AppFirebase.initialize(config: appConfig);
+        // Firebase is initialized lazily via appFirebaseProvider, which reads
+        // the merged bootstrap config (dart-defines + local.json overlay) so
+        // every consumer observes the real initialized state. Kicking it off
+        // here with the raw compile-time config would cache a disabled state
+        // when dart-defines are incomplete.
       });
     },
     (error, stackTrace) {
@@ -125,11 +129,13 @@ class _BootstrapHostState extends State<_BootstrapHost> {
       final bootstrap = await AppBootstrap.initialize(config: config);
 
       if (!mounted) return;
+      _timeoutTimer?.cancel();
       if (bootstrap.initializationError != null) {
         _bootstrapError = bootstrap.initializationError;
       } else {
         _bootstrap = bootstrap;
       }
+      _timedOut = false;
       setState(() {});
     } catch (e) {
       if (!mounted) return;

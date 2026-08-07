@@ -38,23 +38,36 @@ class _ServiQAppState extends ConsumerState<ServiQApp> {
         return;
       }
       _trackedAppOpen = true;
-      try {
-        final bootstrap = ref.read(appBootstrapProvider);
-        final firebase = ref.read(appFirebaseProvider);
-        ref
-            .read(analyticsServiceProvider)
-            .trackEvent(
-              'app_open_mobile',
-              extras: {
-                'environment': bootstrap.config.environment,
-                'supabase_ready': bootstrap.supabaseReady,
-                'firebase_ready': firebase.initialized,
-              },
-            );
-      } catch (e) {
-        debugPrint('ServiQ app._ServiQAppState analytics tracking failed: $e');
-      }
+      unawaited(_trackAppOpen());
     });
+  }
+
+  Future<void> _trackAppOpen() async {
+    try {
+      final bootstrap = ref.read(appBootstrapProvider);
+      // Await the real Firebase initialization. appFirebaseProvider is a
+      // FutureProvider backed by a memoized initialize() call that uses the
+      // merged bootstrap config, so this reflects actual readiness rather
+      // than a hardcoded disabled default.
+      final firebase = await ref
+          .read(appFirebaseProvider.future)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => const AppFirebaseState.disabled(),
+          );
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'app_open_mobile',
+            extras: {
+              'environment': bootstrap.config.environment,
+              'supabase_ready': bootstrap.supabaseReady,
+              'firebase_ready': firebase.initialized,
+            },
+          );
+    } catch (e) {
+      debugPrint('ServiQ app._ServiQAppState analytics tracking failed: $e');
+    }
   }
 
   @override

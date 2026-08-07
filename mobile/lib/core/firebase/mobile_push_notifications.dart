@@ -27,8 +27,10 @@ final notificationTapRouteStreamProvider = StreamProvider<String>((ref) {
 
 final mobilePushNotificationServiceProvider =
     Provider<MobilePushNotificationService>((ref) {
+      final firebaseState = ref.watch(appFirebaseProvider).asData?.value ??
+          const AppFirebaseState.disabled();
       final service = MobilePushNotificationService(
-        firebaseState: ref.watch(appFirebaseProvider),
+        firebaseState: firebaseState,
         apiClient: ref.watch(mobileApiClientProvider),
         bootstrap: ref.watch(appBootstrapProvider),
         tapRouteController: ref.watch(notificationTapRouteControllerProvider),
