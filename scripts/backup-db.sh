@@ -65,6 +65,7 @@ if [[ -n "$BACKUP_S3_BUCKET" ]] && command -v aws &>/dev/null; then
     --query "Contents[?LastModified<=\`$(date -u -d "${BACKUP_RETENTION_DAYS} days ago" +%Y-%m-%dT00:00:00Z)\`].Key" \
     --output text \
     --region "$AWS_DEFAULT_REGION" \
+  | tr '\t' '\n' \
   | while read -r key; do
     if [[ -n "$key" && "$key" != "None" ]]; then
       aws s3 rm "s3://${BACKUP_S3_BUCKET}/${key}" --region "$AWS_DEFAULT_REGION"
