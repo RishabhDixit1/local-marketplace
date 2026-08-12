@@ -38,7 +38,7 @@ jobs:
             SCRIPT="/home/ec2-user/serviq/scripts/backup-db.sh"
             echo "Fetching latest backup script from repo..."
             mkdir -p /home/ec2-user/serviq/scripts
-            curl -sfL \
+            curl -sfL -H "Authorization: Bearer ${{ github.token }}" \
               "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/scripts/backup-db.sh" \
               -o "$SCRIPT"
             chmod +x "$SCRIPT"
