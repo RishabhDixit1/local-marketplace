@@ -36,14 +36,12 @@ jobs:
           script: |
             set -e
             SCRIPT="/home/ec2-user/serviq/scripts/backup-db.sh"
-            if [ ! -f "$SCRIPT" ]; then
-              echo "Script not found — fetching from repo..."
-              mkdir -p /home/ec2-user/serviq/scripts
-              curl -sfL \
-                "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/scripts/backup-db.sh" \
-                -o "$SCRIPT"
-              chmod +x "$SCRIPT"
-            fi
+            echo "Fetching latest backup script from repo..."
+            mkdir -p /home/ec2-user/serviq/scripts
+            curl -sfL \
+              "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/scripts/backup-db.sh" \
+              -o "$SCRIPT"
+            chmod +x "$SCRIPT"
             AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}" \
             AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}" \
             AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-southeast-2}" \

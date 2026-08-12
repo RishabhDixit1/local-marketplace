@@ -67,7 +67,7 @@ if [[ -n "$BACKUP_S3_BUCKET" ]] && command -v aws &>/dev/null; then
     --region "$AWS_DEFAULT_REGION" \
   | while read -r key; do
     if [[ -n "$key" && "$key" != "None" ]]; then
-      aws s3 rm "s3://${BACKUP_S3_BUCKET}/${key}" --region "$AWS_DEFAULT_REGION" --no-progress
+      aws s3 rm "s3://${BACKUP_S3_BUCKET}/${key}" --region "$AWS_DEFAULT_REGION"
       echo "Deleted old backup: ${key}"
     fi
   done
