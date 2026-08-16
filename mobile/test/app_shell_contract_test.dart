@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:serviq_mobile/app/presentation/app_shell.dart';
 import 'package:serviq_mobile/app/presentation/main_bottom_nav.dart';
 import 'package:serviq_mobile/core/constants/app_routes.dart';
 import 'package:serviq_mobile/core/theme/app_theme.dart';
@@ -47,15 +46,6 @@ void main() {
     );
   });
 
-  test('post action stays contextual and off dense workflow branches', () {
-    expect(shouldShowPostActionForBranch(0), isTrue);
-    expect(shouldShowPostActionForBranch(1), isTrue);
-    expect(shouldShowPostActionForBranch(2), isFalse);
-    expect(shouldShowPostActionForBranch(3), isFalse);
-    expect(shouldShowPostActionForBranch(4), isFalse);
-    expect(shouldShowPostActionForBranch(5), isFalse);
-  });
-
   test('navigation adapts at tablet width', () {
     expect(shouldUseRailNavigation(430), isFalse);
     expect(shouldUseRailNavigation(699), isFalse);
@@ -78,10 +68,9 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Discover'), findsOneWidget);
-    expect(find.text('Activity'), findsOneWidget);
-    expect(find.text('Inbox'), findsOneWidget);
+    expect(find.text('Need Something'), findsOneWidget);
+    expect(find.text('Explore'), findsOneWidget);
+    expect(find.text('You'), findsOneWidget);
   });
 
   testWidgets('main rail keeps the same IA for wider layouts', (
@@ -95,8 +84,6 @@ void main() {
         home: Scaffold(
           body: MainNavigationRail(
             currentIndex: 2,
-            chatCount: 3,
-            taskCount: 2,
             onTap: (_) {},
           ),
         ),
@@ -104,9 +91,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Discover'), findsOneWidget);
-    expect(find.text('Activity'), findsOneWidget);
-    expect(find.text('Inbox'), findsOneWidget);
+    expect(find.text('Need Something'), findsOneWidget);
+    expect(find.text('Explore'), findsOneWidget);
+    expect(find.text('You'), findsOneWidget);
   });
 }

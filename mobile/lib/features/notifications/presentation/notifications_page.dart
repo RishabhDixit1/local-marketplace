@@ -343,8 +343,8 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                 spacing: AppSpacing.xs,
                 runSpacing: AppSpacing.xs,
                 children: _NotificationFilter.values.map((filter) {
-                  return ChoiceChip(
-                    label: Text(filter.label),
+                  return AppFilterChip(
+                    label: filter.label,
                     selected: _filter == filter,
                     onSelected: (_) => setState(() => _filter = filter),
                   );

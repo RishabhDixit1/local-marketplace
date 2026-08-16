@@ -1,3 +1,5 @@
+import '../../../core/utils/app_formatters.dart';
+
 class MobilePeopleSnapshot {
   const MobilePeopleSnapshot({
     required this.currentUserId,
@@ -269,11 +271,11 @@ class MobilePeopleSnapshot {
 
               return MobilePersonCard(
                 id: id,
-                name: _firstNonEmpty([
+                name: AppFormatters.cleanPersonName(_firstNonEmpty([
                   _readString(profile['name']),
                   _readString(profile['email']),
                   'Local provider',
-                ]),
+                ])),
                 avatarUrl: _readString(
                   profile['avatar_url'] ?? profile['avatarUrl'],
                 ),
@@ -465,16 +467,16 @@ class MobilePersonCard {
 
   String get workLabel {
     if (completedJobs > 0) {
-      return '$completedJobs jobs completed';
+      return '$completedJobs ${completedJobs == 1 ? 'job' : 'jobs'} completed';
     }
     if (openLeads > 0) {
-      return '$openLeads live leads';
+      return '$openLeads ${openLeads == 1 ? 'live lead' : 'live leads'}';
     }
     if (postCount > 0) {
-      return '$postCount local posts';
+      return '$postCount ${postCount == 1 ? 'local post' : 'local posts'}';
     }
     if (openNeedsCount > 0) {
-      return '$openNeedsCount nearby needs';
+      return '$openNeedsCount ${openNeedsCount == 1 ? 'nearby need' : 'nearby needs'}';
     }
     return 'Building local presence';
   }

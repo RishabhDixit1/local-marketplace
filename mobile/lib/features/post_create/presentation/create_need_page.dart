@@ -118,6 +118,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
   List<_ComposerMediaItem> _media = <_ComposerMediaItem>[];
   bool _submitting = false;
   bool _draftRestored = false;
+  bool _restoringDraft = false;
   String? _error;
   CreateNeedResult? _result;
   CreateNeedDraft? _lastPublishedDraft;
@@ -141,6 +142,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
   }
 
   void _applyInitialParams() {
+    _restoringDraft = true;
     if (widget.initialTitle != null && widget.initialTitle!.isNotEmpty) {
       _titleController.text = widget.initialTitle!;
     }
@@ -153,6 +155,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       _category = widget.initialCategory!;
     }
     _draftRestored = false;
+    _restoringDraft = false;
   }
 
   @override
@@ -179,6 +182,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       return;
     }
 
+    _restoringDraft = true;
     _titleController.text = cached.title;
     _detailsController.text = cached.details;
     _budgetController.text = cached.budgetText;
@@ -193,9 +197,17 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
         .map((item) => _ComposerMediaItem.fromSnapshot(item))
         .toList();
     _draftRestored = cached.hasContent;
+    _restoringDraft = false;
+
+    if (cached.hasContent) {
+      _cacheDraft();
+    }
   }
 
   void _handleDraftChanged() {
+    if (_restoringDraft) {
+      return;
+    }
     _cacheDraft();
     if (mounted) {
       setState(() {});
@@ -905,8 +917,8 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                       draft: publishedDraft,
                       onCreateAnother: _resetComposer,
                       onViewFeed: () => context.go(AppRoutes.home),
-                      onOpenChat: () => context.go(AppRoutes.chat),
-                      onViewTask: () => context.go(
+                      onOpenChat: () => context.push(AppRoutes.chat),
+                      onViewTask: () => context.push(
                         Uri(
                           path: AppRoutes.tasks,
                           queryParameters: {
@@ -1046,6 +1058,8 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                 return ActionChip(
                   avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
                   label: Text(preset.label),
+                  visualDensity: VisualDensity.standard,
+                  materialTapTargetSize: MaterialTapTargetSize.padded,
                   onPressed: _submitting
                       ? null
                       : () => _applyRequestPreset(preset),

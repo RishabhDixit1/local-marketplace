@@ -499,7 +499,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
               AiPromptBar(
                 placeholder: AppLocalizations.of(context).aiPlaceholder,
                 enableDebounce: true,
-                onResult: (result) {},
+                onResult: (result, query) {},
               ),
               const SizedBox(height: 12),
               _TasksHero(
@@ -1027,7 +1027,7 @@ String _nextStepShortLabel(MobileTaskItem task) {
 
   return switch (task.status) {
     MobileTaskStatus.active =>
-      task.isProviderTask ? 'Confirm handoff' : 'Watch Chat',
+      task.isProviderTask ? 'Confirm handoff' : 'Open Chat',
     MobileTaskStatus.inProgress => 'Track progress',
     MobileTaskStatus.completed => 'Review history',
     MobileTaskStatus.cancelled => 'No action needed',

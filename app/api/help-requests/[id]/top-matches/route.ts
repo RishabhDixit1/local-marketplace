@@ -39,7 +39,8 @@ async function getHandler(request: Request, { params }: { params: Promise<{ id: 
   const { data: profiles } = await db
     .from("profiles")
     .select("id,full_name,name,avatar_url,location,category,verification_status,trust_score")
-    .in("id", providerIds);
+    .in("id", providerIds)
+    .eq("is_test", false);
 
   const profileMap = new Map(
     (profiles as Array<{

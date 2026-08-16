@@ -1,0 +1,72 @@
+name: Backup Freshness Check
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  schedule:
+    - cron: "30 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install aws-cli
+        run: |
+          curl -sL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+          unzip -q /tmp/awscliv2.zip -d /tmp
+          sudo /tmp/aws/install --update
+          rm -rf /tmp/aws /tmp/awscliv2.zip
+
+      - name: Verify latest backup exists and is fresh
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_BACKUP_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_BACKUP_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_BACKUP_REGION }}
+          AWS_BACKUP_S3_BUCKET: ${{ secrets.AWS_BACKUP_S3_BUCKET }}
+        run: |
+          if [ -z "${AWS_BACKUP_S3_BUCKET}" ]; then
+            echo "AWS_BACKUP_S3_BUCKET not set - skipping."
+            exit 0
+          fi
+          LATEST=$(aws s3api list-objects-v2 \
+            --bucket "$AWS_BACKUP_S3_BUCKET" \
+            --prefix "serviq/db/" \
+            --query "Contents[].{Key:Key,LastModified:LastModified}" \
+            --output json)
+          COUNT=$(echo "$LATEST" | jq 'length')
+          if [ "$COUNT" = "0" ]; then
+            echo "ERROR: No backups found under serviq/db/ in s3://${AWS_BACKUP_S3_BUCKET}"
+            exit 1
+          fi
+          NEWEST_KEY=$(echo "$LATEST" | jq -r 'max_by(.LastModified) | .Key')
+          NEWEST_TS=$(echo "$LATEST" | jq -r 'max_by(.LastModified) | .LastModified')
+          SIZE=$(aws s3api head-object --bucket "$AWS_BACKUP_S3_BUCKET" --key "$NEWEST_KEY" --query ContentLength --output text)
+          echo "Newest backup: ${NEWEST_KEY} (${NEWEST_TS}) size=${SIZE} bytes"
+          AGE_H=$(python3 -c "from datetime import datetime, timezone; ts = datetime.fromisoformat('${NEWEST_TS}'.replace('Z','+00:00')); age = (datetime.now(timezone.utc) - ts).total_seconds() / 3600; print(f'{age:.1f}')")
+          echo "Backup age: ${AGE_H} hours"
+          if awk "BEGIN { exit !(${AGE_H} > 27) }"; then
+            echo "ERROR: Latest backup is ${AGE_H} hours old (older than 27h). Backup job may be failing."
+            exit 1
+          fi
+          if [ "$SIZE" -lt 1000000 ]; then
+            echo "ERROR: Latest backup is suspiciously small (${SIZE} bytes)."
+            exit 1
+          fi
+          echo "Backup freshness check PASSED."
+
+      - name: Notify on failure
+        if: failure()
+        shell: bash
+        run: |
+          WEBHOOK="${{ secrets.SLACK_BACKUP_WEBHOOK }}"
+          if [ -n "$WEBHOOK" ]; then
+            curl -sf -X POST "$WEBHOOK" \
+              -H "Content-Type: application/json" \
+              -d '{"text":"⚠️ Backup freshness check failed for ${{ github.repository }}. Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+          else
+            echo "SLACK_BACKUP_WEBHOOK not set - skipping notification."
+          fi

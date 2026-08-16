@@ -98,6 +98,7 @@ class _GlassCategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
@@ -109,15 +110,19 @@ class _GlassCategoryCard extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.primarySoft.withValues(alpha: 0.3),
-                  AppColors.surface.withValues(alpha: 0.4),
+                  isDark
+                      ? AppColors.darkSurface.withValues(alpha: 0.6)
+                      : Colors.white.withValues(alpha: 0.7),
+                  isDark
+                      ? AppColors.darkSurfaceAlt.withValues(alpha: 0.4)
+                      : Colors.white.withValues(alpha: 0.4),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(AppRadii.xl),
               border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15),
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
               ),
             ),
             child: Column(

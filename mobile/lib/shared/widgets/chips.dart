@@ -4,6 +4,39 @@ import '../../core/theme/design_tokens.dart';
 
 enum AppPillSize { regular, mini }
 
+/// Semantic pill variants. The single source of pill color truth: trust,
+/// status, verified, featured, premium pills all render through [AppPill].
+/// This collapses the former three competing systems (AppPill, TrustBadge,
+/// PremiumPill) and standardizes the verified color (audit H-3).
+enum AppPillVariant {
+  /// Neutral surface (default).
+  neutral,
+
+  /// Brand accent (teal).
+  accent,
+
+  /// Success / trust (green).
+  success,
+
+  /// Warning / urgent (amber).
+  warning,
+
+  /// Danger / error (red).
+  danger,
+
+  /// Verified / info (blue). THE verified token.
+  verified,
+
+  /// Premium (violet).
+  premium,
+
+  /// Featured / boosts (marigold).
+  featured,
+
+  /// Dark glass pill for hero overlays.
+  dark,
+}
+
 class AppPill extends StatelessWidget {
   const AppPill({
     super.key,
@@ -14,7 +47,116 @@ class AppPill extends StatelessWidget {
     this.size = AppPillSize.regular,
     this.border,
     this.maxWidth,
+    this.onPressed,
   });
+
+  /// Neutral pill (surfaceMuted / onSurface).
+  const AppPill.neutral(
+    this.label, {
+    super.key,
+    this.icon,
+    this.size = AppPillSize.regular,
+    this.maxWidth,
+    this.onPressed,
+  })  : backgroundColor = AppColors.surfaceMuted,
+        foregroundColor = _onSurface,
+        border = null;
+
+  /// Brand accent pill (accentSoft / accentDeep).
+  const AppPill.accent(
+    this.label, {
+    super.key,
+    this.icon,
+    this.size = AppPillSize.regular,
+    this.maxWidth,
+    this.onPressed,
+  })  : backgroundColor = AppColors.accentSoft,
+        foregroundColor = AppColors.accentDeep,
+        border = null;
+
+  /// Success / trust pill (successSoft / success).
+  const AppPill.success(
+    this.label, {
+    super.key,
+    this.icon = Icons.verified_rounded,
+    this.size = AppPillSize.regular,
+    this.maxWidth,
+    this.onPressed,
+  })  : backgroundColor = AppColors.successSoft,
+        foregroundColor = AppColors.success,
+        border = null;
+
+  /// Warning / urgent pill (warningSoft / warmDeep).
+  const AppPill.warning(
+    this.label, {
+    super.key,
+    this.icon,
+    this.size = AppPillSize.regular,
+    this.maxWidth,
+    this.onPressed,
+  })  : backgroundColor = AppColors.warningSoft,
+        foregroundColor = AppColors.warmDeep,
+        border = null;
+
+  /// Danger pill (dangerSoft / danger).
+  const AppPill.danger(
+    this.label, {
+    super.key,
+    this.icon,
+    this.size = AppPillSize.regular,
+    this.maxWidth,
+    this.onPressed,
+  })  : backgroundColor = AppColors.dangerSoft,
+        foregroundColor = AppColors.danger,
+        border = null;
+
+  /// Verified pill (verifiedSoft / verified). Use for identity/verification.
+  const AppPill.verified(
+    this.label, {
+    super.key,
+    this.icon = Icons.verified_user_rounded,
+    this.size = AppPillSize.regular,
+    this.maxWidth,
+    this.onPressed,
+  })  : backgroundColor = AppColors.verifiedSoft,
+        foregroundColor = AppColors.verified,
+        border = null;
+
+  /// Premium pill (premiumSoft / premium).
+  const AppPill.premium(
+    this.label, {
+    super.key,
+    this.icon,
+    this.size = AppPillSize.regular,
+    this.maxWidth,
+    this.onPressed,
+  })  : backgroundColor = AppColors.premiumSoft,
+        foregroundColor = AppColors.premium,
+        border = null;
+
+  /// Featured pill (marigoldSoft / marigoldDeep) for boosts and placements.
+  const AppPill.featured(
+    this.label, {
+    super.key,
+    this.icon = Icons.star_rounded,
+    this.size = AppPillSize.regular,
+    this.maxWidth,
+    this.onPressed,
+  })  : backgroundColor = AppColors.marigoldSoft,
+        foregroundColor = AppColors.marigoldDeep,
+        border = null;
+
+  /// Dark glass pill for hero overlays (readable on imagery).
+  const AppPill.dark(
+    this.label, {
+    super.key,
+    this.icon,
+    this.size = AppPillSize.regular,
+    this.maxWidth,
+    this.onPressed,
+  })  : backgroundColor = _darkPillBg,
+        foregroundColor = Colors.white,
+        border = null;
 
   final String label;
   final Color backgroundColor;
@@ -23,6 +165,11 @@ class AppPill extends StatelessWidget {
   final AppPillSize size;
   final BorderSide? border;
   final double? maxWidth;
+  final VoidCallback? onPressed;
+  final bool bordered = false;
+
+  static const _onSurface = Color(0xFF0D2137);
+  static const _darkPillBg = Color(0xCC0A0E17);
 
   @override
   Widget build(BuildContext context) {
@@ -32,14 +179,18 @@ class AppPill extends StatelessWidget {
     final iconSize = isMini ? 10.0 : 14.0;
     final gap = isMini ? 3.0 : 6.0;
     final fontSize = isMini ? 10.0 : null;
+    final effectiveBorder = border ??
+        (bordered
+            ? BorderSide(color: foregroundColor.withValues(alpha: 0.14))
+            : null);
 
-    return Container(
+    final pill = Container(
       constraints: maxWidth != null ? BoxConstraints(maxWidth: maxWidth!) : null,
       padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(isMini ? AppRadii.xs : AppRadii.pill),
-        border: border != null ? Border.fromBorderSide(border!) : null,
+        border: effectiveBorder != null ? Border.fromBorderSide(effectiveBorder) : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -59,6 +210,21 @@ class AppPill extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+
+    if (onPressed == null) {
+      return pill;
+    }
+    return Semantics(
+      button: true,
+      label: label,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(
+          isMini ? AppRadii.xs : AppRadii.pill,
+        ),
+        child: pill,
       ),
     );
   }

@@ -9,7 +9,7 @@ import '../data/availability_repository.dart';
 import '../domain/availability_models.dart';
 
 const _commonTimezones = [
-  'Asia/Kolkata',
+  kDefaultTimezone,
   'Asia/Dubai',
   'Asia/Singapore',
   'Asia/Hong_Kong',
@@ -36,7 +36,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
   bool _saving = false;
   bool _loaded = false;
   String? _message;
-  String _timezone = 'Asia/Kolkata';
+  String _timezone = kDefaultTimezone;
   List<AvailabilityException> _exceptions = [];
 
   @override

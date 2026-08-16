@@ -336,7 +336,7 @@ class _TrustSnapshotTile extends StatelessWidget {
               children: [
                 Text(
                   item.value,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(
                     context,

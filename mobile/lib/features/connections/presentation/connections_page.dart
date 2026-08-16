@@ -5,6 +5,7 @@ import '../../../core/api/mobile_api_client.dart';
 import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/design_tokens.dart';
+import '../../../shared/components/app_avatar.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../people/data/people_repository.dart';
 import '../../people/domain/people_snapshot.dart';
@@ -205,15 +206,10 @@ class _ConnectionsList extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            CircleAvatar(
+            AppAvatar(
+              name: name,
+              avatarUrl: person?.avatarUrl ?? '',
               radius: 22,
-              backgroundImage: (person?.avatarUrl.isNotEmpty ?? false)
-                  ? NetworkImage(person!.avatarUrl)
-                  : null,
-              child: (person?.avatarUrl.isNotEmpty ?? false)
-                  ? null
-                  : Text(name[0].toUpperCase(),
-                      style: TextStyle(fontWeight: FontWeight.bold)),
             ),
             const SizedBox(width: 12),
             Expanded(

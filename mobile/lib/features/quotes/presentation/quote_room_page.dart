@@ -395,12 +395,10 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
             padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 28),
             children: [
               if (_isOrderMode && dealRoomAsync != null)
-                dealRoomAsync.when(
-                  loading: () => const SizedBox.shrink(),
-                  error: (e, _) => const SizedBox.shrink(),
-                  data: (ctx) => ctx != null
-                      ? _OrderProgressSection(context: ctx)
-                      : const SizedBox.shrink(),
+                _DealRoomSection(
+                  dealRoomAsync: dealRoomAsync,
+                  onRetry: _refresh,
+                  builder: (ctx) => _OrderProgressSection(context: ctx),
                 ),
               ServiqAsyncBody<MobileQuoteWorkspace>(
                 value: workspaceAsync,
@@ -436,11 +434,10 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
                         ),
                       if (draft != null) const SizedBox(height: AppSpacing.md),
                       if (_isOrderMode && dealRoomAsync != null)
-                        dealRoomAsync.when(
-                          loading: () => const SizedBox.shrink(),
-                          error: (e, _) => const SizedBox.shrink(),
-                          data: (ctx) => ctx != null &&
-                                  ctx.versions.isNotEmpty
+                        _DealRoomSection(
+                          dealRoomAsync: dealRoomAsync,
+                          onRetry: _refresh,
+                          builder: (ctx) => ctx.versions.isNotEmpty
                               ? Column(
                                   children: [
                                     _VersionHistoryCard(versions: ctx.versions),
@@ -476,11 +473,10 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
                             _generateDraft(workspace.context),
                       ),
                       if (_isOrderMode && dealRoomAsync != null)
-                        dealRoomAsync.when(
-                          loading: () => const SizedBox.shrink(),
-                          error: (e, _) => const SizedBox.shrink(),
-                          data: (ctx) => ctx != null &&
-                                  ctx.timelineEvents.isNotEmpty
+                        _DealRoomSection(
+                          dealRoomAsync: dealRoomAsync,
+                          onRetry: _refresh,
+                          builder: (ctx) => ctx.timelineEvents.isNotEmpty
                               ? Column(
                                   children: [
                                     const SizedBox(height: AppSpacing.md),
@@ -499,6 +495,40 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DealRoomSection extends StatelessWidget {
+  const _DealRoomSection({
+    required this.dealRoomAsync,
+    required this.builder,
+    required this.onRetry,
+  });
+
+  final AsyncValue<DealRoomContext?> dealRoomAsync;
+  final Widget Function(DealRoomContext ctx) builder;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return dealRoomAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        child: LoadingShimmer(height: 56),
+      ),
+      error: (e, _) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        child: ErrorStateView(
+          title: 'Could not load order progress',
+          message: AppErrorMapper.toMessage(e),
+          onRetry: onRetry,
+        ),
+      ),
+      data: (ctx) {
+        if (ctx == null) return const SizedBox.shrink();
+        return builder(ctx);
+      },
     );
   }
 }

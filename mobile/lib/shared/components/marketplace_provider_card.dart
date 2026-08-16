@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../core/design_system/design_system.dart';
 import '../../core/theme/design_tokens.dart';
 import 'nameplate_card.dart';
 
@@ -62,7 +62,7 @@ class MarketplaceProviderCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildAvatar(theme),
+              AppAvatar(name: name, avatarUrl: avatarUrl ?? '', radius: 22),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
@@ -123,10 +123,10 @@ class MarketplaceProviderCard extends StatelessWidget {
                               vertical: 1,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.successSoft,
+                              color: AppColors.verifiedSoft,
                               borderRadius: BorderRadius.circular(AppRadii.pill),
                               border: Border.all(
-                                color: AppColors.success.withValues(alpha: 0.2),
+                                color: AppColors.verified.withValues(alpha: 0.25),
                               ),
                             ),
                             child: Text(
@@ -134,7 +134,7 @@ class MarketplaceProviderCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.success,
+                                color: AppColors.verified,
                               ),
                             ),
                           ),
@@ -218,42 +218,6 @@ class MarketplaceProviderCard extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatar(ThemeData theme) {
-    if (avatarUrl != null && avatarUrl!.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        child: CachedNetworkImage(
-          imageUrl: avatarUrl!,
-          width: 44,
-          height: 44,
-          fit: BoxFit.cover,
-          errorWidget: (context, url, error) => _avatarFallback(theme),
-        ),
-      );
-    }
-    return _avatarFallback(theme);
-  }
-
-  Widget _avatarFallback(ThemeData theme) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-      ),
-      child: Center(
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 16,
-            color: AppColors.primaryDeep,
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _SignalChip extends StatelessWidget {

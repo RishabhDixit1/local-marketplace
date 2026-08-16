@@ -49,6 +49,8 @@
 	<string>ServiQ uses your microphone for voice input when asking the assistant and posting needs.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>ServiQ uses your location to show providers near you.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ServiQ uses your photo library to attach photos to requests, services, and chat messages.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

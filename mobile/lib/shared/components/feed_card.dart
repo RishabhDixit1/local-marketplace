@@ -8,6 +8,21 @@ import '../../core/design_system/design_system.dart';
 import '../../core/theme/app_theme.dart';
 import '../../features/feed/domain/feed_snapshot.dart';
 
+/// Single source of truth for the status-driven primary CTA on post cards.
+/// - open / urgent        -> "Open request"
+/// - matched / accepted   -> "View chat"
+/// - cancelled / completed (closed) -> null, so the card renders no primary
+///   CTA and keeps only the muted status pill plus its secondary action.
+String? statusDrivenPrimaryLabel(MobileFeedItem item) {
+  if (item.isClosed) {
+    return null;
+  }
+  if (item.isAccepted || item.statusKey == 'matched') {
+    return 'View chat';
+  }
+  return 'Open request';
+}
+
 class FeedCard extends StatelessWidget {
   const FeedCard({
     super.key,
@@ -36,17 +51,16 @@ class FeedCard extends StatelessWidget {
   final VoidCallback? onMoreTap;
   final VoidCallback? onReport;
 
-  String get _effectivePrimaryLabel {
-    if (primaryLabel != null) return primaryLabel!;
-    if (item.loopType == 'requirement_post') {
-      if (item.viewerHasExpressedInterest) return 'View Responses';
-      return 'Respond';
+  /// Status-driven default; callers may still override with [primaryLabel]
+  /// when their surface owns a different label (e.g. "Express interest").
+  /// Returns null for closed items (cancelled/completed) so no primary CTA
+  /// renders.
+  String? get _effectivePrimaryLabel {
+    final explicit = primaryLabel?.trim();
+    if (explicit != null && explicit.isNotEmpty) {
+      return explicit;
     }
-    if (item.statusKey == 'booked' || item.statusKey == 'in_progress') {
-      return 'Track';
-    }
-    if (item.statusKey == 'completed') return 'View Order';
-    return 'Book Now';
+    return statusDrivenPrimaryLabel(item);
   }
 
   @override
@@ -121,7 +135,7 @@ class FeedCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.xxs),
               Text(
                 item.description,
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
@@ -132,18 +146,7 @@ class FeedCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
-                CircleAvatar(
-                  radius: 12,
-                  backgroundColor: AppColors.surfaceAlt,
-                  child: Text(
-                    item.creatorName.isNotEmpty
-                        ? item.creatorName[0].toUpperCase()
-                        : '?',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
+                AppAvatar(name: item.creatorName, radius: 12),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
@@ -171,36 +174,7 @@ class FeedCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: AppSpacing.sm),
-            TrustSnapshot(
-              dense: true,
-              items: [
-                TrustSnapshotItem(
-                  icon: Icons.verified_outlined,
-                  value: item.trustLabel,
-                  tone: item.isVerified
-                      ? TrustSnapshotTone.trust
-                      : TrustSnapshotTone.neutral,
-                ),
-                TrustSnapshotItem(
-                  icon: Icons.star_outline_rounded,
-                  value: item.ratingLabel,
-                  tone: item.averageRating != null && item.averageRating! >= 4
-                      ? TrustSnapshotTone.success
-                      : TrustSnapshotTone.neutral,
-                ),
-                TrustSnapshotItem(
-                  icon: Icons.schedule_rounded,
-                  value: item.responseLabel,
-                ),
-                TrustSnapshotItem(
-                  icon: Icons.work_outline_rounded,
-                  value: item.socialProofLabel,
-                  tone: item.completedJobs > 10
-                      ? TrustSnapshotTone.trust
-                      : TrustSnapshotTone.neutral,
-                ),
-              ],
-            ),
+            _TrustStrip(item: item),
             if (onPrimaryTap != null || onSecondaryTap != null) ...[
               const SizedBox(height: AppSpacing.sm),
               ServiqActionBar(
@@ -242,11 +216,16 @@ bool _hasRealMoneySignal(MobileFeedItem item) {
   return label.startsWith('inr ') || label.startsWith('₹');
 }
 
+int _previewCacheWidth(BuildContext context) {
+  final width = MediaQuery.sizeOf(context).width;
+  final dpr = MediaQuery.devicePixelRatioOf(context);
+  return (width * dpr).round();
+}
+
 class _FeedPreview extends StatefulWidget {
   const _FeedPreview({required this.item});
 
   final MobileFeedItem item;
-
   @override
   State<_FeedPreview> createState() => _FeedPreviewState();
 }
@@ -280,6 +259,7 @@ class _FeedPreviewState extends State<_FeedPreview> {
                 child: CachedNetworkImage(
                   imageUrl: urls[index],
                   fit: BoxFit.cover,
+                  memCacheWidth: _previewCacheWidth(context),
                   errorWidget: (context, url, error) => _PreviewFallback(item: item),
                   placeholder: (context, url) => _PreviewFallback(item: item),
                 ),
@@ -291,6 +271,7 @@ class _FeedPreviewState extends State<_FeedPreview> {
               child: CachedNetworkImage(
                 imageUrl: item.thumbnailUrl,
                 fit: BoxFit.cover,
+                memCacheWidth: _previewCacheWidth(context),
                 errorWidget: (context, url, error) => _PreviewFallback(item: item),
                 placeholder: (context, url) => _PreviewFallback(item: item),
               ),
@@ -360,23 +341,7 @@ class _PreviewFallback extends StatelessWidget {
     return Container(
       color: tint.background,
       alignment: Alignment.center,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(_iconForType(item.type), color: tint.foreground),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            item.category,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(color: tint.foreground),
-          ),
-        ],
-      ),
+      child: Icon(_iconForType(item.type), size: 28, color: tint.foreground),
     );
   }
 }
@@ -389,29 +354,12 @@ class _TypePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tint = _typeTint(type);
-    return Container(
-      constraints: const BoxConstraints(minHeight: 32),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xxs,
-      ),
-      decoration: BoxDecoration(
-        color: tint.background,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(_iconForType(type), size: 14, color: tint.foreground),
-          const SizedBox(width: AppSpacing.xxs),
-          Text(
-            type.label,
-            style: Theme.of(
-              context,
-            ).textTheme.labelMedium?.copyWith(color: tint.foreground),
-          ),
-        ],
-      ),
+    return AppPill(
+      label: type.label,
+      icon: _iconForType(type),
+      size: AppPillSize.mini,
+      backgroundColor: tint.background,
+      foregroundColor: tint.foreground,
     );
   }
 }
@@ -425,32 +373,87 @@ class _InlinePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: 210),
-      child: Container(
-        constraints: BoxConstraints(minHeight: 32),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xxs,
+      constraints: const BoxConstraints(maxWidth: 210),
+      child: AppPill(
+        label: label,
+        icon: icon,
+        size: AppPillSize.mini,
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+      ),
+    );
+  }
+}
+
+class _TrustStrip extends StatelessWidget {
+  const _TrustStrip({required this.item});
+
+  final MobileFeedItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hasRating = item.averageRating != null && item.reviewCount > 0;
+    final neutral = scheme.onSurface.withValues(alpha: 0.6);
+    final muted = scheme.onSurface.withValues(alpha: 0.45);
+
+    return Wrap(
+      spacing: AppSpacing.md,
+      runSpacing: AppSpacing.xxs,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _TrustChip(
+          icon: Icons.verified_outlined,
+          value: item.trustLabel,
+          color: item.isVerified ? AppColors.verified : neutral,
         ),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(AppRadii.pill),
+        _TrustChip(
+          icon: Icons.star_outline_rounded,
+          value: item.ratingLabel,
+          color: hasRating && item.averageRating! >= 4
+              ? AppColors.success
+              : muted,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-            const SizedBox(width: AppSpacing.xxs),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
+        _TrustChip(
+          icon: Icons.schedule_rounded,
+          value: item.responseLabel,
+          color: neutral,
+        ),
+      ],
+    );
+  }
+}
+
+class _TrustChip extends StatelessWidget {
+  const _TrustChip({required this.icon, required this.value, this.color});
+
+  final IconData icon;
+  final String value;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground =
+        color ??
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 150),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: foreground),
+          const SizedBox(width: AppSpacing.xxs),
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: foreground,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

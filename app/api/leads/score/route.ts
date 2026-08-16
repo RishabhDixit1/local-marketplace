@@ -68,6 +68,7 @@ export async function POST(request: Request) {
       )
     `)
     .eq("role", "provider")
+    .eq("is_test", false)
     .not("latitude", "is", null)
     .not("longitude", "is", null);
 

@@ -38,6 +38,8 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get home => 'হোম';
   @override
+  String get needSomething => 'কিছু দরকার';
+  @override
   String get explore => 'এক্সপ্লোর';
   @override
   String get people => 'পিপল';
@@ -92,6 +94,27 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get later => 'পরে';
   @override
+  String get viewAll => 'সব দেখুন';
+  @override
+  String get myNeeds => 'আমার চাহিদা';
+  @override
+  String get myWork => 'আমার কাজ';
+  @override
+  String get homeQuickActions => 'দ্রুত কাজ';
+  @override
+  String get browseNearby => 'কাছাকাছি ব্রাউজ করুন';
+  @override
+  String get nothingInMotion => 'এখনো কিছু চলছে না';
+  @override
+  String get nothingInMotionSubtitle =>
+      'একটি চাহিদা পোস্ট করুন এবং বিশ্বস্ত লোকালদের অফার এখানে দেখাবে';
+  @override
+  String get postYourFirstNeed => 'আপনার প্রথম চাহিদা পোস্ট করুন';
+  @override
+  String get browseMyTasks => 'আমার কাজগুলো ব্রাউজ করুন';
+  @override
+  String newMessages(int count) => '$count নতুন বার্তা';
+  @override
   String get loading => 'লোড হচ্ছে...';
   @override
   String get errorOccurred => 'কিছু ভুল হয়েছে।';
@@ -117,6 +140,13 @@ class AppLocalizationsBn extends AppLocalizations {
   String newVersionAvailable(String version) => 'সংস্করণ $version এখন উপলব্ধ।';
   @override
   String get whatsNew => 'নতুন কী:';
+  @override
+  String get routeErrorTitle => 'পেজ পাওয়া যায়নি';
+  @override
+  String get routeErrorMessage =>
+      'আমরা সেই পেজটি খুঁজে পাইনি। এটি সরিয়ে দেওয়া হতে পারে বা আর বিদ্যমান নেই।';
+  @override
+  String get goHome => 'হোমে ফিরে যান';
   @override
   String get postNeed => 'প্রয়োজন পোস্ট করুন';
   @override
@@ -162,6 +192,17 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get discoveryExploreZones => 'এলাকা অন্বেষণ করুন';
   @override
+  String get discoveryExploreMarkets => 'বাজার অন্বেষণ করুন';
+  @override
+  String get discoveryLiveNow => 'এখনই লাইভ';
+  @override
+  String get discoveryLive => 'লাইভ';
+  @override
+  String get discoveryBrowseLocalZones => 'স্থানীয় এলাকা দেখুন';
+  @override
+  String discoveryMarketsSummary(int societies, int markets) =>
+      '$societies সোসাইটি · $markets বাজার';
+  @override
   String get discoveryZonesSubtitle => 'আপনার কাছের সোসাইটি, বাজার এবং সাপ্লাই এলাকা';
   @override
   String get discoveryAllZones => 'সব এলাকা';
@@ -197,4 +238,55 @@ class AppLocalizationsBn extends AppLocalizations {
   String get zoneComingSoon => 'শীঘ্রই আসছে';
   @override
   String discoveryZoneProviderCount(int count) => '$count প্রদাতা';
+  @override
+  String get discoveryHowItWorks => 'কিভাবে ServiQ কাজ করে';
+  @override
+  String get discoveryDismiss => 'বাতিল করুন';
+  @override
+  String get discoveryStep1 => 'কাছের providers ব্রাউজ করুন';
+  @override
+  String get discoveryStep1Desc => 'আপনার এলাকার সেবাগুলো ব্রাউজ করুন';
+  @override
+  String get discoveryStep2 => 'যোগাযোগ করুন এবং তুলনা করুন';
+  @override
+  String get discoveryStep2Desc => 'সরাসরি providers-দের সাথে যোগাযোগ করুন এবং তুলনা করুন';
+  @override
+  String get discoveryStep3 => 'কাজ করান';
+  @override
+  String get discoveryStep3Desc => 'আত্মবিশ্বাসের সাথে ভালো কাজ করান';
+  @override
+  String discoveryProvidersNearYou(int count) =>
+      count == 1 ? 'আপনার কাছে 1 জন provider' : 'আপনার কাছে $count জন provider';
+  @override
+  String get discoveryLookingForServices => 'সেবা খুঁজছেন?';
+  @override
+  String get discoveryLookingForServicesSubtitle =>
+      'আপনার এলাকায় যেকোনো সেবার জন্য বিশ্বস্ত provider খুঁজুন';
+  @override
+  String get discoveryAreYouProvider => 'আপনি কি সেবা provider?';
+  @override
+  String get discoveryAreYouProviderSubtitle =>
+      'ServiQ-তে আপনার ব্যবসা তালিকাভুক্ত করুন এবং এলাকা থেকে আরও গ্রাহক পান';
+  @override
+  String get discoveryListYourBusiness => 'আপনার ব্যবসা তালিকাভুক্ত করুন';
+  @override
+  String get discoveryBrowseMarketplace => 'মার্কেটপ্লেস ব্রাউজ করুন';
+  @override
+  String get whoAreYouTitle => 'ServiQ-এ কেন এসেছেন?';
+  @override
+  String get whoAreYouSubtitle => 'একটি পথ বেছে নিন, আমরা আপনার জন্য হোম সাজিয়ে দেব।';
+  @override
+  String get intentFindHelp => 'সাহায্য খুঁজুন';
+  @override
+  String get intentFindHelpSubtitle => 'প্রয়োজন পোস্ট করুন এবং কাছের পেশাদারদের নিয়োগ করুন';
+  @override
+  String get intentEarnNearby => 'কাছাকাছি আয় করুন';
+  @override
+  String get intentEarnNearbySubtitle => 'স্থানীয় কাজ করুন এবং আয় বাড়ান';
+  @override
+  String get intentBusinessSetup => 'আমার ব্যবসা শুরু করুন';
+  @override
+  String get intentBusinessSetupSubtitle => 'আপনার পরিষেবা, দল এবং প্রাপ্যতা তালিকাভুক্ত করুন';
+  @override
+  String get notNow => 'এখন নয়';
 }

@@ -606,7 +606,7 @@ String _nextStepShortLabel(MobileTaskItem task) {
 
   return switch (task.status) {
     MobileTaskStatus.active =>
-      task.isProviderTask ? 'Confirm handoff' : 'Watch Chat',
+      task.isProviderTask ? 'Confirm handoff' : 'Open Chat',
     MobileTaskStatus.inProgress => 'Track progress',
     MobileTaskStatus.completed => 'Review history',
     MobileTaskStatus.cancelled => 'No action needed',
@@ -630,7 +630,7 @@ String _nextStepMessage(MobileTaskItem task) {
   }
 
   return switch (task.status) {
-    MobileTaskStatus.active => 'Watch Chat for provider questions.',
+    MobileTaskStatus.active => 'Open Chat for provider questions.',
     MobileTaskStatus.inProgress =>
       'Use Chat for details and timeline for status.',
     MobileTaskStatus.completed => 'Review history, receipts, or follow-up.',

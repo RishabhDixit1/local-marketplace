@@ -1,0 +1,85 @@
+name: Uptime Health Checks
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check endpoints
+        id: health
+        run: |
+          fails=0
+          results=""
+          check() {
+            name="$1"
+            url="$2"
+            expect="$3"
+            code=$(curl -s -o /tmp/body.txt -w '%{http_code}' --max-time 15 "$url" || echo 000)
+            if [ "$code" = "$expect" ]; then
+              printf '%-16s OK   (%s)\n' "$name" "$code"
+              results="${results}- ${name}: OK\n"
+              return 0
+            fi
+            printf '%-16s FAIL (%s)\n' "$name" "$code"
+            results="${results}- ${name}: FAIL (${code})\n"
+            return 1
+          }
+
+          check "web" "https://www.serviqapp.com" "200" || fails=$((fails + 1))
+          check "api-health" "https://www.serviqapp.com/api/health" "200" || fails=$((fails + 1))
+          # Supabase Kong over HTTPS: 401 = service alive, auth required
+          check "supabase-kong" "https://www.serviqapp.com/rest/v1/" "401" || fails=$((fails + 1))
+
+          echo "fails=$fails" >> "$GITHUB_OUTPUT"
+          {
+            echo "results<<EOF"
+            printf "%b" "$results"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Report failure as GitHub issue
+        if: steps.health.outputs.fails != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          RESULTS_ENC=$(printf "%b" '${{ steps.health.outputs.results }}' | sed 's/^/  /')
+          BODY="Uptime check failed at ${TS} (run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          $RESULTS_ENC"
+          OPEN=$(gh issue list --repo "${{ github.repository }}" --label "uptime" --state open --json number --jq 'length')
+          if [ "$OPEN" = "0" ]; then
+            gh issue create --repo "${{ github.repository }}" \
+              --title "[Uptime] One or more endpoints down" \
+              --label "uptime" \
+              --body "$BODY"
+            echo "Opened new uptime issue."
+          else
+            gh issue list --repo "${{ github.repository }}" --label "uptime" --state open --json number --jq '.[0].number' \
+              | xargs -I{} gh issue comment "${{ github.repository }}/{}" --body "$BODY"
+            echo "Updated existing uptime issue."
+          fi
+
+      - name: Close issue when recovered
+        if: steps.health.outputs.fails == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUES=$(gh issue list --repo "${{ github.repository }}" --label "uptime" --state open --json number --jq '.[].number')
+          if [ -n "$ISSUES" ]; then
+            for n in $ISSUES; do
+              gh issue close "${{ github.repository }}/$n" --repo "${{ github.repository }}" --comment "All endpoints recovered as of $(date -u +"%Y-%m-%dT%H:%M:%SZ")."
+              echo "Closed uptime issue #$n."
+            done
+          else
+            echo "No open uptime issues."
+          fi

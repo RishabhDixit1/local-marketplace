@@ -4,7 +4,6 @@ import '../../core/design_system/design_system.dart';
 import '../../core/theme/app_theme.dart';
 import '../../features/people/domain/people_snapshot.dart';
 import 'profile_avatar_tile.dart';
-import 'trust_badge.dart';
 
 class ProviderCard extends StatelessWidget {
   const ProviderCard({
@@ -66,16 +65,16 @@ class ProviderCard extends StatelessWidget {
               Wrap(
                 spacing: AppSpacing.xs,
                 runSpacing: AppSpacing.xs,
-                children: signals
-                    .map(
-                      (signal) => TrustBadge(
-                        label: signal.label,
-                        icon: signal.icon,
-                        backgroundColor: signal.background,
-                        foregroundColor: signal.foreground,
-                      ),
-                    )
-                    .toList(),
+                children: [
+                  for (final signal in signals)
+                    AppPill(
+                      label: signal.label,
+                      icon: signal.icon,
+                      backgroundColor: signal.background,
+                      foregroundColor: signal.foreground,
+                      size: AppPillSize.mini,
+                    ),
+                ],
               ),
             if (onOpenProfile != null || onMessage != null) ...[
               const SizedBox(height: AppSpacing.sm),
@@ -186,22 +185,7 @@ class ProviderDirectoryCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: Theme.of(context).brightness == Brightness.dark
-                    ? AppColors.darkAvatarFallback
-                    : AppColors.avatarFallback,
-                foregroundImage: person.avatarUrl.trim().isEmpty
-                    ? null
-                    : NetworkImage(person.avatarUrl),
-                onForegroundImageError: person.avatarUrl.trim().isEmpty
-                    ? null
-                    : (_, _) {},
-                child: Text(
-                  _initials(person.name),
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-              ),
+              AppAvatar(name: person.name, avatarUrl: person.avatarUrl, radius: 22),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
@@ -213,7 +197,7 @@ class ProviderDirectoryCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: AppSpacing.xxs),
                     Text(
                       headline,
                       maxLines: 2,
@@ -256,30 +240,33 @@ class ProviderDirectoryCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
             children: [
               if (showPrice)
-                TrustBadge(
+                AppPill(
                   label: person.priceLabel,
                   icon: Icons.payments_outlined,
+                  size: AppPillSize.mini,
                   backgroundColor: AppColors.surfaceMuted,
                   foregroundColor: Theme.of(context).colorScheme.onSurface,
                 ),
               if (showRating)
-                TrustBadge(
+                AppPill(
                   label: person.ratingLabel,
                   icon: Icons.star_rounded,
+                  size: AppPillSize.mini,
                   backgroundColor: AppColors.warningSoft,
                   foregroundColor: AppColors.warning,
                 ),
-              TrustBadge(
+              AppPill(
                 label: _availabilitySignal(person),
                 icon: person.isOnline
                     ? Icons.event_available_outlined
                     : Icons.schedule_rounded,
+                size: AppPillSize.mini,
                 backgroundColor: person.isOnline
                     ? AppColors.primarySoft
                     : AppColors.surfaceMuted,
@@ -338,7 +325,7 @@ class ProviderDirectoryCard extends StatelessWidget {
             ),
           ],
           if (onConnect != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -367,17 +354,15 @@ class _AvailabilityPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: BoxConstraints(minHeight: AppTouchTargets.minimum),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: online ? AppColors.primarySoft : AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Text(
-        online ? 'Active' : 'Later',
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: online ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppTouchTargets.minimum),
+      child: Center(
+        child: AppPill(
+          label: online ? 'Active' : 'Later',
+          backgroundColor: online ? AppColors.primarySoft : AppColors.surfaceMuted,
+          foregroundColor: online
+              ? AppColors.primary
+              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
         ),
       ),
     );
@@ -484,32 +469,14 @@ class _DirectoryMetaPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = emphasized ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
-
-    return Container(
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
-      decoration: BoxDecoration(
-        color: emphasized ? AppColors.primarySoft : AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: foreground),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: foreground),
-            ),
-          ),
-        ],
-      ),
+    return AppPill(
+      label: label,
+      icon: icon,
+      size: AppPillSize.mini,
+      backgroundColor: emphasized ? AppColors.primarySoft : AppColors.surfaceMuted,
+      foregroundColor: emphasized
+          ? AppColors.primary
+          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
     );
   }
 }
@@ -602,14 +569,3 @@ String _tagSummary(List<String> tags) {
   return visibleTags.join(', ');
 }
 
-String _initials(String name) {
-  final parts = name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
-      .toList();
-  if (parts.isEmpty) {
-    return 'S';
-  }
-  return parts.take(2).map((part) => part[0].toUpperCase()).join();
-}

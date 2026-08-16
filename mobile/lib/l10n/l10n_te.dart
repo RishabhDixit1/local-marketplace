@@ -38,6 +38,8 @@ class AppLocalizationsTe extends AppLocalizations {
   @override
   String get home => 'హోమ్';
   @override
+  String get needSomething => 'ఏదైనా కావాలి';
+  @override
   String get explore => 'ఎక్స్\u200Cప్లోర్';
   @override
   String get people => 'పీపుల్';
@@ -92,6 +94,27 @@ class AppLocalizationsTe extends AppLocalizations {
   @override
   String get later => 'తర్వాత';
   @override
+  String get viewAll => 'అన్నీ చూడండి';
+  @override
+  String get myNeeds => 'నా అవసరాలు';
+  @override
+  String get myWork => 'నా పని';
+  @override
+  String get homeQuickActions => 'త్వరిత చర్యలు';
+  @override
+  String get browseNearby => 'సమీపంలో బ్రౌజ్ చేయండి';
+  @override
+  String get nothingInMotion => 'ఇప్పుడు ఏమీ కదలికలో లేదు';
+  @override
+  String get nothingInMotionSubtitle =>
+      'ఒక అవసరాన్ని పోస్ట్ చేయండి, నమ్మకమైన స్థానికుల ఆఫర్లు ఇక్కడ కనిపిస్తాయి';
+  @override
+  String get postYourFirstNeed => 'మీ మొదటి అవసరాన్ని పోస్ట్ చేయండి';
+  @override
+  String get browseMyTasks => 'నా టాస్క్‌లను బ్రౌజ్ చేయండి';
+  @override
+  String newMessages(int count) => '$count కొత్త సందేశాలు';
+  @override
   String get loading => 'లోడ్ అవుతోంది...';
   @override
   String get errorOccurred => 'ఏదో తప్పు జరిగింది.';
@@ -117,6 +140,13 @@ class AppLocalizationsTe extends AppLocalizations {
   String newVersionAvailable(String version) => 'వెర్షన్ $version ఇప్పుడు అందుబాటులో ఉంది.';
   @override
   String get whatsNew => 'కొత్తగా ఏముంది:';
+  @override
+  String get routeErrorTitle => 'పేజీ కనుగొనబడలేదు';
+  @override
+  String get routeErrorMessage =>
+      'మేము ఆ పేజీని కనుగొనలేకపోయాము. అది తరలించబడి ఉండవచ్చు లేదా ఇక లేకపోవచ్చు.';
+  @override
+  String get goHome => 'హోమ్‌కు తిరిగి వెళ్ళు';
   @override
   String get postNeed => 'అవసరాన్ని పోస్ట్ చేయండి';
   @override
@@ -162,6 +192,17 @@ class AppLocalizationsTe extends AppLocalizations {
   @override
   String get discoveryExploreZones => 'జోన్లను అన్వేషించండి';
   @override
+  String get discoveryExploreMarkets => 'మార్కెట్లను అన్వేషించండి';
+  @override
+  String get discoveryLiveNow => 'ఇప్పుడే లైవ్';
+  @override
+  String get discoveryLive => 'లైవ్';
+  @override
+  String get discoveryBrowseLocalZones => 'స్థానిక జోన్లను బ్రౌజ్ చేయండి';
+  @override
+  String discoveryMarketsSummary(int societies, int markets) =>
+      '$societies సొసైటీలు · $markets మార్కెట్లు';
+  @override
   String get discoveryZonesSubtitle => 'మీ సమీపంలోని సొసైటీలు, మార్కెట్లు మరియు సరఫరా ప్రాంతాలు';
   @override
   String get discoveryAllZones => 'అన్ని జోన్లు';
@@ -197,4 +238,55 @@ class AppLocalizationsTe extends AppLocalizations {
   String get zoneComingSoon => 'త్వరలో';
   @override
   String discoveryZoneProviderCount(int count) => '$count ప్రొవైడర్లు';
+  @override
+  String get discoveryHowItWorks => 'ServiQ ఎలా పనిచేస్తుంది';
+  @override
+  String get discoveryDismiss => 'తోసివేయి';
+  @override
+  String get discoveryStep1 => 'సమీప ప్రొవైడర్లను బ్రౌజ్ చేయండి';
+  @override
+  String get discoveryStep1Desc => 'మీ ప్రాంతంలోని సేవలను బ్రౌజ్ చేయండి';
+  @override
+  String get discoveryStep2 => 'సంప్రదించండి మరియు పోల్చండి';
+  @override
+  String get discoveryStep2Desc => 'ప్రొవైడర్లను నేరుగా సంప్రదించి పోల్చండి';
+  @override
+  String get discoveryStep3 => 'పని చేయించుకోండి';
+  @override
+  String get discoveryStep3Desc => 'విశ్వాసంతో నాణ్యమైన పని చేయించుకోండి';
+  @override
+  String discoveryProvidersNearYou(int count) =>
+      count == 1 ? 'మీ దగ్గర 1 ప్రొవైడర్' : 'మీ దగ్గర $count ప్రొవైడర్లు';
+  @override
+  String get discoveryLookingForServices => 'సేవల కోసం వెతుకుతున్నారా?';
+  @override
+  String get discoveryLookingForServicesSubtitle =>
+      'మీ పరిసరాల్లో ఏ సేవకైనా విశ్వసనీయ ప్రొవైడర్ను కనుగొనండి';
+  @override
+  String get discoveryAreYouProvider => 'మీరు సేవా ప్రొవైడర్‌నా?';
+  @override
+  String get discoveryAreYouProviderSubtitle =>
+      'ServiQలో మీ వ్యాపారాన్ని జాబితా చేసి మీ పరిసరాల నుండి మరిన్ని కస్టమర్లను పొందండి';
+  @override
+  String get discoveryListYourBusiness => 'మీ వ్యాపారాన్ని జాబితా చేయండి';
+  @override
+  String get discoveryBrowseMarketplace => 'మార్కెట్\u200cప్లేస్ బ్రౌజ్ చేయండి';
+  @override
+  String get whoAreYouTitle => 'మీరు ServiQ పై ఎందుకు వచ్చారు?';
+  @override
+  String get whoAreYouSubtitle => 'ఒక మార్గాన్ని ఎంచుకోండి, మీ కోసం హోమ్ను సిద్ధం చేస్తాము.';
+  @override
+  String get intentFindHelp => 'సహాయం వెతకండి';
+  @override
+  String get intentFindHelpSubtitle => 'అవసరాలను పోస్ట్ చేయండి, దగ్గరి నిపుణులను నియమించండి';
+  @override
+  String get intentEarnNearby => 'దగ్గరలో సంపాదించండి';
+  @override
+  String get intentEarnNearbySubtitle => 'స్థానిక పని చేసి ఆదాయాన్ని పెంచుకోండి';
+  @override
+  String get intentBusinessSetup => 'నా వ్యాపారాన్ని ప్రారంభించండి';
+  @override
+  String get intentBusinessSetupSubtitle => 'మీ సేవలు, బృందం మరియు లభ్యతను జాబితా చేయండి';
+  @override
+  String get notNow => 'ఇప్పుడు కాదు';
 }

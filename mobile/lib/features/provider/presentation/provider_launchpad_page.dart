@@ -14,7 +14,6 @@ import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/premium_primitives.dart';
 import '../data/launchpad_repository.dart';

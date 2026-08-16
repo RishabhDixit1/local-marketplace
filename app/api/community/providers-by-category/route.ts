@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { withCache, queryCacheKey } from "@/lib/cache/withCache";
+import { cleanPersonName } from "@/lib/profile/nameSanitize";
 
 export const runtime = "nodejs";
 
@@ -61,7 +62,8 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
       .from("profiles")
       .select("*", { count: "exact", head: true })
       .in("role", ["provider", "business"])
-      .not("full_name", "is", null);
+      .not("full_name", "is", null)
+      .eq("is_test", false);
 
     if (category) {
       countQuery = countQuery.contains("services", [category]);
@@ -84,6 +86,7 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
       .select("id, full_name, name, location, latitude, longitude, avatar_url, bio, role, services, created_at, verification_status")
       .in("role", ["provider", "business"])
       .not("full_name", "is", null)
+      .eq("is_test", false)
       .order("created_at", { ascending: false })
       .limit(fetchLimit);
 
@@ -226,7 +229,7 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
 
       return {
         id: p.id,
-        name: p.full_name || p.name || "",
+        name: cleanPersonName(p.full_name || p.name) || "",
         location: p.location || "",
         lat: p.latitude,
         lng: p.longitude,
@@ -338,8 +341,23 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
 }
 
 async function executeProvidersQuery(filter: ProvidersFilter): Promise<NextResponse> {
-  const { category, limit, offset, sortBy, search } = filter;
-  const cacheKey = queryCacheKey("providers-by-category", category, sortBy, search, String(limit), String(offset));
+  const { category, limit, offset, sortBy, search, lat, lng, minRating, onlineOnly } = filter;
+  const cacheKey = queryCacheKey(
+    "providers-by-category",
+    category,
+    sortBy,
+    search,
+    String(limit),
+    String(offset),
+    // Location and filters shape results, so they MUST be part of the cache
+    // key. Without them a response computed for one user's coordinates (or no
+    // coordinates at all) would be served to another user, blanking or
+    // mis-sorting the map/search results.
+    lat != null ? String(lat) : "-",
+    lng != null ? String(lng) : "-",
+    minRating != null ? String(minRating) : "-",
+    onlineOnly ? "online" : "all",
+  );
   const result = await withCache(
     () => loadProvidersData(filter),
     { key: cacheKey, ttlSeconds: 60 },

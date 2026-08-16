@@ -13,7 +13,6 @@ import '../../../core/constants/categories.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
-import '../../../core/feature_flags.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
@@ -23,7 +22,6 @@ import '../../orders/domain/order_models.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../reporting/domain/report_models.dart';
 import '../../reporting/presentation/report_sheet.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/feed_card.dart';
 import '../../../shared/components/filter_chip_group.dart';
 import '../../../shared/components/marketplace_guidance.dart';
@@ -202,13 +200,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         });
       }
     });
-  }
-
-  Future<void> _openPostTask() async {
-    final posted = await context.push<bool>(AppRoutes.createNeed);
-    if (posted == true && mounted) {
-      await _refresh();
-    }
   }
 
   MobileCheckoutItem _checkoutLineFromFeed(MobileFeedItem item) {
@@ -468,6 +459,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   }
 
   VoidCallback? _primaryActionFor(MobileFeedItem item) {
+    if (item.isClosed) {
+      return null;
+    }
     if (item.helpRequestId == null) {
       if (item.providerId.trim().isEmpty) {
         return null;
@@ -477,6 +471,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         return () => _openListingDetail(item);
       }
       return () => context.push(AppRoutes.provider(item.providerId));
+    }
+    if (item.isAccepted || item.statusKey == 'matched') {
+      return () => _openChat(item);
     }
 
     return () => _sendInterest(item);
@@ -582,7 +579,10 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     return () => _openChat(item);
   }
 
-  String _primaryLabelFor(MobileFeedItem item) {
+  String? _primaryLabelFor(MobileFeedItem item) {
+    if (item.isClosed) {
+      return null;
+    }
     if (item.helpRequestId == null) {
       if (item.type == MobileFeedItemType.product) {
         return 'View details';
@@ -638,14 +638,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               icon: const Icon(Icons.search_rounded),
             ),
           ),
-          if (kSavedEnabled)
-            Semantics(
-              label: 'Saved items',
-              child: IconButton(
-                onPressed: () => context.push(AppRoutes.saved),
-                icon: const Icon(Icons.bookmarks_outlined),
-              ),
-            ),
           Semantics(
             label: 'Cart',
             child: IconButton(
@@ -742,7 +734,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   FilledButton.tonal(
-                    onPressed: () => context.push(AppRoutes.profile),
+                    onPressed: () => context.go(AppRoutes.profile),
                     child: const Text('Go'),
                   ),
                 ],
@@ -757,19 +749,17 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         title: widget.mode.heroTitle,
         message: widget.mode.heroMessage,
         searchLabel: widget.mode.searchHint,
-        primaryLabel: 'Post Need',
         signalLabels: _exploreHeroSignals(
           snapshot: previewData,
           providerCount: peopleSnapshot.asData?.value.people.length ?? 0,
         ),
-        onPrimaryTap: _openPostTask,
         onSearchTap: () => context.push(AppRoutes.search),
       ),
       const SizedBox(height: AppSpacing.md),
       AiPromptBar(
         placeholder: AppLocalizations.of(context).aiPlaceholder,
         enableDebounce: true,
-        onResult: (result) {},
+        onResult: (result, query) {},
       ),
       const SizedBox(height: AppSpacing.md),
       _ExploreIntentPanel(

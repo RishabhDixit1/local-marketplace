@@ -10,22 +10,31 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
+import '../../../core/firebase/app_firebase.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../features/chat/data/chat_repository.dart';
+import '../../../features/chat/domain/chat_models.dart';
+import '../../../features/auth/data/onboarding_handoff.dart';
 import '../../../features/feed/data/feed_interactions_repository.dart';
 import '../../../features/reporting/domain/report_models.dart';
 import '../../../features/reporting/presentation/report_sheet.dart';
 import '../../../features/feed/data/feed_repository.dart';
 import '../../../features/feed/domain/feed_snapshot.dart';
+import '../../../features/notifications/data/notification_repository.dart';
 import '../../../features/people/data/people_repository.dart';
 import '../../../features/people/domain/people_snapshot.dart';
+import '../../../features/profile/data/profile_repository.dart';
+import '../../../features/profile/domain/mobile_profile_snapshot.dart';
+import '../../../features/tasks/data/task_repository.dart';
+import '../../../features/tasks/domain/task_snapshot.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/components/feed_card.dart';
 import '../../../shared/components/provider_card.dart';
 import '../../../shared/components/section_header.dart';
@@ -118,12 +127,19 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(analyticsServiceProvider)
-          .trackScreen(
-            'home_welcome',
-            extras: {'surface': _resolvedSurface.analyticsValue},
-          );
+      // Await the shared Firebase init future so the first screen event on a
+      // cold start is not dropped (analytics requires an initialized app).
+      ref.read(appFirebaseProvider.future).then((_) {
+        if (!mounted) {
+          return;
+        }
+        ref
+            .read(analyticsServiceProvider)
+            .trackScreen(
+              'home_welcome',
+              extras: {'surface': _resolvedSurface.analyticsValue},
+            );
+      });
     });
   }
 
@@ -152,6 +168,28 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     }
 
     ServiqToast.show(context, message: message);
+  }
+
+  Future<void> _selectIntent(MobileOnboardingIntent intent) async {
+    _trackFirstEngagement('choose_intent');
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent(
+          'home_intent_chosen',
+          extras: {
+            'intent': intent.analyticsValue,
+            'destination': intent.destinationRoute,
+          },
+        );
+    await ref.read(onboardingHandoffControllerProvider).selectIntent(intent);
+    if (!mounted) return;
+    context.push(intent.destinationRoute);
+  }
+
+  void _dismissIntentPrompt() {
+    ref
+        .read(onboardingHandoffControllerProvider)
+        .dismissIntentPrompt();
   }
 
   bool _isSavedCard(String cardId, Set<String> backendSavedIds) {
@@ -444,7 +482,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
         final canCall =
             entry.item?.canCall == true || entry.person?.canCall == true;
         return SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -534,30 +572,39 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     );
   }
 
-  String _resolveViewerName() {
-    final user = ref.read(currentSessionProvider).asData?.value?.user;
-    final metadata = user?.userMetadata;
-    final dynamic rawName =
-        metadata?['full_name'] ?? metadata?['name'] ?? metadata?['first_name'];
-
-    if (rawName is String && rawName.trim().isNotEmpty) {
-      return rawName.trim().split(' ').first;
+  /// Resolves the name used in the greeting. Prefers the verified profile's
+  /// full name, then the account display name. Falls back to no name when the
+  /// only available value is a raw handle (e.g. "dixit4119") so the greeting
+  /// never reads like a username.
+  String? _resolveGreetingName(MobileProfileSnapshot? snapshot) {
+    if (snapshot == null) {
+      return null;
     }
 
-    final email = user?.email?.trim() ?? '';
-    if (email.isNotEmpty && email.contains('@')) {
-      final base = email
-          .split('@')
-          .first
-          .replaceAll(RegExp(r'[^a-zA-Z0-9]+'), ' ')
-          .trim();
-      if (base.isNotEmpty) {
-        return base.split(' ').first[0].toUpperCase() +
-            base.split(' ').first.substring(1);
-      }
+    final fullName = snapshot.profile.fullName.trim();
+    if (fullName.isNotEmpty && !_looksLikeHandle(fullName)) {
+      return fullName.split(' ').first;
     }
 
-    return 'there';
+    final displayName = snapshot.displayName.trim();
+    if (displayName.isNotEmpty &&
+        displayName != 'ServiQ member' &&
+        !_looksLikeHandle(displayName)) {
+      return displayName.split(' ').first;
+    }
+
+    return null;
+  }
+
+  /// Handles are single tokens that mix letters and digits (with optional
+  /// separators). A real name never looks like this.
+  bool _looksLikeHandle(String value) {
+    if (!value.contains(' ')) {
+      final singleToken = RegExp(r'^[A-Za-z0-9._-]+$').hasMatch(value);
+      final hasDigit = RegExp(r'\d').hasMatch(value);
+      return singleToken && hasDigit;
+    }
+    return false;
   }
 
   String _greetingPrefix() {
@@ -629,12 +676,30 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
       peopleAsync: peopleAsync,
     );
 
-    final userName = _resolveViewerName();
-    final greeting = '${_greetingPrefix()}, $userName';
+    final profileSnapshot = ref.watch(profileSnapshotProvider).asData?.value;
+    final userName = _resolveGreetingName(profileSnapshot);
+    final greeting = userName == null
+        ? _greetingPrefix()
+        : '${_greetingPrefix()}, $userName';
     _resolvedSurface = model.resolveSurface(model.defaultSurface);
+    final conversations =
+        ref.watch(chatConversationsProvider).asData?.value ??
+        const <ChatConversation>[];
+    final chatUnread = conversations.fold<int>(
+      0,
+      (sum, conversation) => sum + conversation.unreadCount,
+    );
+    final notificationCount =
+        ref.watch(unreadNotificationCountProvider);
+    final taskSnapshot = ref.watch(taskSnapshotProvider).asData?.value;
+    final handoff = ref.watch(onboardingHandoffControllerProvider);
     final welcomeChildren = _welcomeSliverChildren(
       greeting: greeting,
       model: model,
+      taskSnapshot: taskSnapshot,
+      showIntentPrompt: handoff.storeReady &&
+          !handoff.hasChosenIntent &&
+          !handoff.intentPromptDismissed,
     );
 
     return Scaffold(
@@ -659,37 +724,32 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                 surfaceTintColor: Colors.transparent,
                 title: const _WelcomeAppBarTitle(),
                 actions: [
-                  _AppBarAction(
-                    icon: Icons.search_rounded,
-                    tooltip: 'Search',
-                    onPressed: () {
-                      _trackFirstEngagement('search');
-                      ref
-                          .read(analyticsServiceProvider)
-                          .trackEvent(
-                            'home_search_tapped',
-                            extras: {
-                              'surface': _resolvedSurface.analyticsValue,
-                            },
-                          );
-                      context.push(AppRoutes.search);
-                    },
+                  Padding(
+                    padding: const EdgeInsets.only(right: AppSpacing.xs),
+                    child: _AppBarActionCluster(
+                      notificationCount: notificationCount,
+                      chatCount: chatUnread,
+                      onSearch: () {
+                        _trackFirstEngagement('search');
+                        ref
+                            .read(analyticsServiceProvider)
+                            .trackEvent(
+                              'home_search_tapped',
+                              extras: {
+                                'surface': _resolvedSurface.analyticsValue,
+                              },
+                            );
+                        context.push(AppRoutes.search);
+                      },
+                      onNotifications: () =>
+                          context.push(AppRoutes.notifications),
+                      onChat: () => context.push(AppRoutes.chat),
+                    ),
                   ),
-                  _AppBarAction(
-                    icon: Icons.notifications_none_rounded,
-                    tooltip: 'Notifications',
-                    onPressed: () => context.push(AppRoutes.notifications),
-                  ),
-                  _AppBarAction(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    tooltip: 'Chat',
-                    onPressed: () => context.push(AppRoutes.chat),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
                 ],
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 300),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) => welcomeChildren[index],
@@ -707,8 +767,17 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
   List<Widget> _welcomeSliverChildren({
     required String greeting,
     required _WelcomeViewModel model,
+    required MobileTaskSnapshot? taskSnapshot,
+    required bool showIntentPrompt,
   }) {
     return [
+      if (showIntentPrompt) ...[
+        _WhoAreYouCard(
+          onSelect: _selectIntent,
+          onDismiss: _dismissIntentPrompt,
+        ),
+        const SizedBox(height: AppSpacing.md),
+      ],
       Padding(
         padding: const EdgeInsets.only(
           top: 8,
@@ -721,34 +790,73 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
       ),
       Padding(
         padding: const EdgeInsets.only(
-          top: 4,
-          bottom: 14,
+          top: AppSpacing.xs,
+          bottom: AppSpacing.xs,
         ),
-        child: Text(
-          greeting,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                greeting,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
+            ),
+          ],
         ),
       ),
+      _HomeQuickActions(
+        isLoaded: taskSnapshot != null,
+        needCount: taskSnapshot == null
+            ? 0
+            : taskSnapshot.items.where((item) {
+                return item.role == MobileTaskRole.posted &&
+                    (item.status == MobileTaskStatus.active ||
+                        item.status == MobileTaskStatus.inProgress);
+              }).length,
+        workCount: taskSnapshot == null
+            ? 0
+            : taskSnapshot.items.where((item) {
+                return item.role == MobileTaskRole.accepted &&
+                    (item.status == MobileTaskStatus.active ||
+                        item.status == MobileTaskStatus.inProgress);
+              }).length,
+        onOpen: () => context.push(AppRoutes.tasks),
+        onPostNeed: () => context.push(AppRoutes.createRequest),
+        onBrowse: () => context.push(
+          Uri(
+            path: AppRoutes.search,
+            queryParameters: const {'browse': '1'},
+          ).toString(),
+        ),
+      ),
+      const SizedBox(height: AppSpacing.lg),
       SectionHeader(
         title: _resolvedSurface.title,
         subtitle: model.liveStatusLabel,
+        actionLabel:
+            model.feedItemsFor(_resolvedSurface).length > 5 ? 'View all' : null,
+        onAction: model.feedItemsFor(_resolvedSurface).length > 5
+            ? () => _openAllPosts(model)
+            : null,
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpacing.sm),
       for (final entry in model.entriesFor(_resolvedSurface))
         Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: _buildEntryCard(entry, model),
         ),
       if (model.quickCategories.isNotEmpty) ...[
-        const SizedBox(height: 18),
+        const SizedBox(height: AppSpacing.lg),
         SectionHeader(
-          title: 'Nearby',
+          title: 'Live near you',
           actionLabel: 'Search',
           onAction: () => context.push(AppRoutes.search),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.sm),
         _QuickCategoryRow(
           categories: model.quickCategories,
           onPressed: (category) {
@@ -764,30 +872,9 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
           },
         ),
       ],
-      const SizedBox(height: AppSpacing.sm),
-      InkWell(
-        onTap: () => context.push(AppRoutes.mapDiscovery),
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Theme.of(context).colorScheme.outline),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.map_outlined, size: 18, color: AppColors.primary),
-              const SizedBox(width: 10),
-              Text('Explore on map',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-              const Spacer(),
-              Icon(Icons.chevron_right, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
-            ],
-          ),
-        ),
-      ),
-      const SizedBox(height: 18),
+      const SizedBox(height: AppSpacing.lg),
+      _ExploreMapCard(onTap: () => context.push(AppRoutes.mapDiscovery)),
+      const SizedBox(height: AppSpacing.lg),
       SectionHeader(
         title: 'Recommended',
         actionLabel: model.hasTrustedNetwork
@@ -795,7 +882,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
             : 'Grow network',
         onAction: () => context.go(AppRoutes.people),
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpacing.sm),
       if (model.hasTrustedNetwork)
         _TrustedRail(
           items: model.trustedRailItems,
@@ -806,7 +893,10 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                   'home_trusted_card_opened',
                   extras: {'item_id': item.id},
                 );
-            _openFeedItem(item);
+            _primaryActionFor(
+              item,
+              fallback: () => _openFeedItem(item),
+            )?.call();
           },
           onMessage: (item) => _messageFeedItem(item),
           onMore: (item) => _showItemActionsSheet(
@@ -849,7 +939,10 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
           isSaved: _isSavedCard(entry.storageKey, model.savedCardIds),
           primaryLabel: entry.primaryLabel,
           secondaryLabel: entry.secondaryLabel,
-          onPrimaryTap: () => _openFeedItem(entry.item!),
+          onPrimaryTap: _primaryActionFor(
+            entry.item!,
+            fallback: () => _openFeedItem(entry.item!),
+          ),
           onSecondaryTap: () => _messageFeedItem(entry.item!),
           onSaveTap: () =>
               _toggleSave(entry, backendSavedIds: model.savedCardIds),
@@ -861,9 +954,11 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
           item: entry.item!,
           reason: entry.reason,
           isSaved: _isSavedCard(entry.storageKey, model.savedCardIds),
-          primaryLabel: entry.primaryLabel,
+          primaryLabel: entry.item!.isClosed ? null : entry.primaryLabel,
           secondaryLabel: entry.secondaryLabel,
-          onPrimaryTap: () => _messageFeedItem(entry.item!),
+          onPrimaryTap: entry.item!.isClosed
+              ? null
+              : () => _messageFeedItem(entry.item!),
           onSecondaryTap: () =>
               _toggleSave(entry, backendSavedIds: model.savedCardIds),
           onSaveTap: () =>
@@ -891,7 +986,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
         return _WelcomeCtaCard(
           title: entry.title,
           message: entry.message,
-          primaryLabel: entry.primaryLabel,
+          primaryLabel: entry.primaryLabel ?? '',
           secondaryLabel: entry.secondaryLabel,
           onPrimaryTap: () {
             if (entry.ctaTarget == _CtaTarget.postNeed) {
@@ -925,6 +1020,52 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     }
 
     context.go(AppRoutes.explore);
+  }
+
+  /// Status-driven primary action for post cards: matched/accepted opens the
+  /// chat thread, open posts fall back to the caller's surface action, and
+  /// closed (cancelled/completed) items expose no primary CTA.
+  VoidCallback? _primaryActionFor(
+    MobileFeedItem item, {
+    required VoidCallback fallback,
+  }) {
+    if (item.isClosed) {
+      return null;
+    }
+    if (item.isAccepted || item.statusKey == 'matched') {
+      return () => _openItemChat(item);
+    }
+    return fallback;
+  }
+
+  void _openItemChat(MobileFeedItem item) {
+    if (item.providerId.trim().isEmpty) {
+      _showSnack('Messaging opens when a visible profile is attached.');
+      return;
+    }
+    context.push(
+      AppRoutes.chatDirect(
+        recipientId: item.providerId,
+        contextTitle: item.title,
+        contextTaskId: item.id,
+        contextStatus: item.statusLabel,
+        source: 'home_feed_card',
+      ),
+    );
+  }
+
+  void _openAllPosts(_WelcomeViewModel model) {
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent('home_feed_view_all', extras: {
+          'surface': _resolvedSurface.analyticsValue,
+        });
+    context.push(
+      Uri(
+        path: AppRoutes.feedAll,
+        queryParameters: {'surface': _resolvedSurface.routeValue},
+      ).toString(),
+    );
   }
 
   void _messageFeedItem(MobileFeedItem item) {
@@ -1007,6 +1148,9 @@ enum _WelcomeSurface {
 
   final String title;
   final String analyticsValue;
+
+  /// Stable URL value for the "View all" route.
+  String get routeValue => analyticsValue;
 }
 
 enum _WelcomeFeedEntryType {
@@ -1033,6 +1177,21 @@ _WelcomeSurface _surfaceFromServer(String value) {
   }
 }
 
+_WelcomeSurface _surfaceFromRouteValue(String value) {
+  switch (value.trim().toLowerCase()) {
+    case 'trusted':
+      return _WelcomeSurface.trusted;
+    case 'nearby':
+      return _WelcomeSurface.nearby;
+    case 'earn':
+      return _WelcomeSurface.earn;
+    case 'for_you':
+      return _WelcomeSurface.forYou;
+    default:
+      return _WelcomeSurface.forYou;
+  }
+}
+
 class _WelcomeFeedEntry {
   const _WelcomeFeedEntry.request({
     required this.item,
@@ -1042,7 +1201,7 @@ class _WelcomeFeedEntry {
        person = null,
        title = '',
        message = '',
-       primaryLabel = 'Open request',
+       primaryLabel = null,
        secondaryLabel = 'Message',
        ctaTarget = null;
 
@@ -1064,7 +1223,7 @@ class _WelcomeFeedEntry {
       title = '',
       message = '',
       fromTrustedNetwork = true,
-      primaryLabel = 'Open request',
+      primaryLabel = null,
       secondaryLabel = 'Message',
       ctaTarget = null;
 
@@ -1104,7 +1263,7 @@ class _WelcomeFeedEntry {
   final MobileFeedItem? item;
   final MobilePersonCard? person;
   final String reason;
-  final String primaryLabel;
+  final String? primaryLabel;
   final String secondaryLabel;
   final bool fromTrustedNetwork;
   final String title;
@@ -1158,6 +1317,10 @@ class _WelcomeViewModel {
     required this.trustedEntries,
     required this.nearbyEntries,
     required this.earnEntries,
+    required this.forYouItems,
+    required this.trustedItems,
+    required this.nearbyItems,
+    required this.earnItems,
     required this.liveStatusLabel,
     required this.hasTrustedNetwork,
     required this.isFirstRun,
@@ -1173,10 +1336,10 @@ class _WelcomeViewModel {
     required Set<String> hiddenProviderIds,
   }) {
     final allItems = allFeed.items
-        .where((item) => !hiddenFeedIds.contains(item.id))
+        .where((item) => !hiddenFeedIds.contains(item.id) && !item.isClosed)
         .toList();
     final trustedItems = trustedFeed.items
-        .where((item) => !hiddenFeedIds.contains(item.id))
+        .where((item) => !hiddenFeedIds.contains(item.id) && !item.isClosed)
         .toList();
     final providers = people.people
         .where((person) => !hiddenProviderIds.contains(person.id))
@@ -1254,6 +1417,10 @@ class _WelcomeViewModel {
         providers: rankedProviders,
         hotCategoryKeys: hotCategoryKeys.toSet(),
       ),
+      forYouItems: _dedupFeedItems(rankedTrusted, rankedNearby),
+      trustedItems: rankedTrusted,
+      nearbyItems: rankedNearby,
+      earnItems: rankedEarn,
       liveStatusLabel: _composeLiveStatus(allItems, providers),
       hasTrustedNetwork: rankedTrusted.isNotEmpty,
       isFirstRun:
@@ -1276,6 +1443,10 @@ class _WelcomeViewModel {
   final List<_WelcomeFeedEntry> trustedEntries;
   final List<_WelcomeFeedEntry> nearbyEntries;
   final List<_WelcomeFeedEntry> earnEntries;
+  final List<MobileFeedItem> forYouItems;
+  final List<MobileFeedItem> trustedItems;
+  final List<MobileFeedItem> nearbyItems;
+  final List<MobileFeedItem> earnItems;
   final String liveStatusLabel;
   final bool hasTrustedNetwork;
   final bool isFirstRun;
@@ -1308,6 +1479,35 @@ class _WelcomeViewModel {
 
     return preferred;
   }
+
+  /// Full (uncapped) post pool for a surface, closed items already excluded.
+  List<MobileFeedItem> feedItemsFor(_WelcomeSurface surface) {
+    switch (surface) {
+      case _WelcomeSurface.forYou:
+        return forYouItems;
+      case _WelcomeSurface.trusted:
+        return trustedItems;
+      case _WelcomeSurface.nearby:
+        return nearbyItems;
+      case _WelcomeSurface.earn:
+        return earnItems;
+    }
+  }
+}
+
+/// Merge two ranked item pools, de-duplicating by id (trusted wins).
+List<MobileFeedItem> _dedupFeedItems(
+  List<MobileFeedItem> primary,
+  List<MobileFeedItem> secondary,
+) {
+  final usedIds = <String>{};
+  final result = <MobileFeedItem>[];
+  for (final item in [...primary, ...secondary]) {
+    if (usedIds.add(item.id)) {
+      result.add(item);
+    }
+  }
+  return result;
 }
 
 List<_WelcomeFeedEntry> _buildForYouEntries({
@@ -1378,7 +1578,7 @@ List<_WelcomeFeedEntry> _buildForYouEntries({
       usedProviderIds.add(person.id);
     }
 
-    if (entries.length >= 6) {
+    if (entries.length >= 5) {
       break;
     }
   }
@@ -1433,7 +1633,7 @@ List<_WelcomeFeedEntry> _buildTrustedEntries({
   }
 
   return trusted
-      .take(6)
+      .take(5)
       .map(
         (item) => _WelcomeFeedEntry.connection(
           item: item,
@@ -1467,7 +1667,7 @@ List<_WelcomeFeedEntry> _buildNearbyEntries({
   var providerIndex = 0;
   var requestCount = 0;
 
-  for (final item in nearby.take(8)) {
+  for (final item in nearby.take(5)) {
     entries.add(
       _WelcomeFeedEntry.request(
         item: item,
@@ -1528,7 +1728,7 @@ List<_WelcomeFeedEntry> _buildEarnEntries({
   }
 
   final entries = opportunities
-      .take(6)
+      .take(5)
       .map(
         (item) => _WelcomeFeedEntry.opportunity(
           item: item,

@@ -5,14 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/design_system/design_system.dart';
+import '../../../core/network/offline_banner.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/marketplace_provider_card.dart';
 import '../../../shared/components/section_header.dart';
 import '../../../shared/widgets/ai_prompt_bar.dart';
+import '../../../shared/widgets/service_category_grid.dart';
 import '../data/marketplace_repository.dart';
 import '../domain/marketplace_provider.dart';
 
@@ -67,7 +68,6 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
   static const int _gridPreviewCount = 8;
 
   final _searchController = TextEditingController();
-  String? _selectedCategory;
 
   String get _locationLabel => 'Your area';
 
@@ -79,7 +79,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
 
   @override
   Widget build(BuildContext context) {
-    final providersAsync = ref.watch(marketplaceProvidersProvider(_selectedCategory));
+    final providersAsync = ref.watch(marketplaceProvidersProvider(null));
     final categoriesAsync = ref.watch(_categoriesProvider(null));
     final zonesAsync = ref.watch(_zonesProvider(null));
 
@@ -97,7 +97,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                 p.services.any((s) => s.toLowerCase().contains(q));
           }).toList();
 
-    final hasActiveFilter = _selectedCategory != null || searchQuery.isNotEmpty;
+    final hasActiveFilter = searchQuery.isNotEmpty;
     final showEmptyState = filteredProviders.isEmpty && hasActiveFilter;
     final showHeroActions = filteredProviders.isEmpty && !hasActiveFilter;
 
@@ -106,16 +106,23 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
 
     return ServiqScaffold(
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            _buildHeader(),
-            _buildHero(showHeroActions, categories),
-            _buildCategoryGrid(categories),
-            if (liveZones.isNotEmpty) _buildZoneSection('Live Now', liveZones, Icons.auto_awesome_rounded),
-            if (comingZones.isNotEmpty) _buildZoneSection('Coming Soon', comingZones, Icons.schedule_rounded),
-            _buildProviderSection(filteredProviders, providersAsync, hasActiveFilter, showEmptyState, searchQuery.isNotEmpty),
-            _buildBusinessCta(),
-            _buildFooter(),
+        child: Column(
+          children: [
+            const OfflineBanner(),
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  _buildHeader(),
+                  _buildHero(showHeroActions, categories),
+                  _buildCategoryGrid(categories),
+                  if (liveZones.isNotEmpty) _buildZoneSection('Live Now', liveZones, Icons.auto_awesome_rounded),
+                  if (comingZones.isNotEmpty) _buildZoneSection('Coming Soon', comingZones, Icons.schedule_rounded),
+                  _buildProviderSection(filteredProviders, providersAsync, hasActiveFilter, showEmptyState, searchQuery.isNotEmpty),
+                  _buildBusinessCta(),
+                  _buildFooter(),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -207,9 +214,8 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
             AiPromptBar(
               placeholder: 'Try "AC repair", "electrician", "plumber nearby"...',
               enableDebounce: true,
-              onResult: (result) {
-                final query = result.response.trim().toLowerCase();
-                setState(() => _searchController.text = query);
+              onResult: (result, query) {
+                setState(() => _searchController.text = query.trim());
               },
             ),
             if (showActions) ...[
@@ -241,9 +247,6 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
   }
 
   Widget _buildCategoryGrid(List<Map<String, dynamic>> categories) {
-    final items = categories.isNotEmpty ? categories : _defaultCategories();
-    if (items.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
-
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(AppSpacing.pageInset, AppSpacing.md, AppSpacing.pageInset, 0),
@@ -258,32 +261,16 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                 onAction: () => context.go(AppRoutes.discovery),
               ),
             ),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1.5,
-                crossAxisSpacing: AppSpacing.sm,
-                mainAxisSpacing: AppSpacing.sm,
-              ),
-              itemCount: items.length > _gridPreviewCount ? _gridPreviewCount : items.length,
-              itemBuilder: (context, index) {
-                final cat = items[index];
-                final name = (cat['name'] as String? ?? '');
-                final icon = (cat['icon'] as String? ?? '');
-                final priceRange = (cat['priceRange'] as String? ?? '');
-                final providerCount = (cat['providerCount'] as int? ?? 0);
-                final selected = _selectedCategory == name;
-                return _CategoryCard(
-                  name: name,
-                  icon: icon,
-                  priceRange: priceRange,
-                  providerCount: providerCount,
-                  selected: selected,
-                  onTap: () {
-                    setState(() => _selectedCategory = selected ? null : name);
-                  },
+            ServiceCategoryGrid(
+              categories: categories,
+              maxItems: _gridPreviewCount,
+              onTapCategory: (name, slug) {
+                if (name.isEmpty) return;
+                context.push(
+                  Uri(
+                    path: AppRoutes.publicBrowse,
+                    queryParameters: {'category': name},
+                  ).toString(),
                 );
               },
             ),
@@ -337,13 +324,13 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pageInset),
         child: ServiqAsyncBody<List<MarketplaceProvider>>(
           value: asyncValue,
-          onRetry: () => ref.invalidate(marketplaceProvidersProvider(_selectedCategory)),
+          onRetry: () => ref.invalidate(marketplaceProvidersProvider(null)),
           loadingBuilder: () => _ProviderListShimmer(),
           errorBuilder: (error, stack) {
             return ErrorStateView(
               title: 'Could not load providers',
               message: error.toString(),
-              onRetry: () => ref.invalidate(marketplaceProvidersProvider(_selectedCategory)),
+              onRetry: () => ref.invalidate(marketplaceProvidersProvider(null)),
             );
           },
           data: (providers) {
@@ -369,11 +356,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
             final previewProviders =
                 isPreview ? filtered.take(_listPreviewCount).toList() : filtered;
 
-            final sectionTitle = _selectedCategory != null
-                ? '$_selectedCategory providers'
-                : hasSearch
-                    ? 'Results'
-                    : 'Featured providers';
+            final sectionTitle = hasSearch ? 'Results' : 'Featured providers';
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -485,19 +468,6 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
     );
   }
 
-  List<Map<String, dynamic>> _defaultCategories() {
-    return [
-      {'name': 'Electrician', 'icon': '⚡', 'priceRange': '₹150-500'},
-      {'name': 'Plumber', 'icon': '🔧', 'priceRange': '₹200-600'},
-      {'name': 'AC Repair', 'icon': '❄️', 'priceRange': '₹300-1500'},
-      {'name': 'RO Repair', 'icon': '💧', 'priceRange': '₹200-800'},
-      {'name': 'Carpenter', 'icon': '🪚', 'priceRange': '₹300-1000'},
-      {'name': 'Appliance Repair', 'icon': '🔌', 'priceRange': '₹250-1200'},
-      {'name': 'Mobile Repair', 'icon': '📱', 'priceRange': '₹200-1500'},
-      {'name': 'Bike Repair', 'icon': '🏍️', 'priceRange': '₹100-800'},
-    ];
-  }
-
   void _openBrowseAll() {
     context.push(AppRoutes.publicBrowse);
   }
@@ -529,96 +499,6 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                   context.push(AppRoutes.signIn);
                 }),
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({
-    required this.name,
-    required this.icon,
-    this.priceRange,
-    this.providerCount = 0,
-    this.selected = false,
-    required this.onTap,
-  });
-
-  final String name;
-  final String icon;
-  final String? priceRange;
-  final int providerCount;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadii.xl),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              gradient: selected
-                  ? LinearGradient(
-                      colors: [
-                        AppColors.primarySoft.withValues(alpha: 0.6),
-                        AppColors.primarySoft.withValues(alpha: 0.3),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : LinearGradient(
-                      colors: [
-                        isDark ? AppColors.darkSurface.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.7),
-                        isDark ? AppColors.darkSurfaceAlt.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.4),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-              borderRadius: BorderRadius.circular(AppRadii.xl),
-              border: Border.all(
-                color: selected
-                    ? AppColors.primary.withValues(alpha: 0.3)
-                    : Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(icon, style: const TextStyle(fontSize: 22)),
-                const SizedBox(height: AppSpacing.xs),
-                Text(name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                if (priceRange != null && priceRange!.isNotEmpty)
-                  Text(priceRange!,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: selected ? AppColors.primaryDeep : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                        fontWeight: FontWeight.w600,
-                      )),
-                if (providerCount > 0)
-                  Container(
-                    margin: const EdgeInsets.only(top: 2),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: AppColors.primarySoft,
-                      borderRadius: BorderRadius.circular(AppRadii.pill),
-                    ),
-                    child: Text('$providerCount providers',
-                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.primaryDeep)),
-                  ),
-              ],
             ),
           ),
         ),
@@ -755,13 +635,10 @@ class _ProviderDetailSheet extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         Row(
           children: [
-            CircleAvatar(
+            AppAvatar(
+              name: provider.name,
+              avatarUrl: provider.avatarUrl,
               radius: 32,
-              backgroundColor: AppColors.primarySoft,
-              child: Text(
-                provider.name.isNotEmpty ? provider.name[0].toUpperCase() : '?',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: AppColors.primaryDeep),
-              ),
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
@@ -778,15 +655,7 @@ class _ProviderDetailSheet extends StatelessWidget {
                       ),
                       if (provider.verified) ...[
                         const SizedBox(width: AppSpacing.xxs),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.verifiedSoft,
-                            borderRadius: BorderRadius.circular(AppRadii.pill),
-                          ),
-                          child: const Text('Verified',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.verified)),
-                        ),
+                        AppPill.verified('Verified', size: AppPillSize.mini),
                       ],
                     ],
                   ),
@@ -803,7 +672,7 @@ class _ProviderDetailSheet extends StatelessWidget {
           runSpacing: AppSpacing.xs,
           children: [
             if (provider.avgRating != null)
-              _DetailStat(icon: Icons.star_rounded, value: provider.avgRating?.toStringAsFixed(1) ?? '—', label: '${provider.reviewCount} reviews'),
+              _DetailStat(icon: Icons.star_rounded, value: provider.avgRating?.toStringAsFixed(1) ?? '—', label: '${provider.reviewCount} review${provider.reviewCount == 1 ? '' : 's'}'),
             if (provider.completedJobs > 0)
               _DetailStat(icon: Icons.check_circle_outline_rounded, value: provider.completedJobs.toString(), label: 'jobs done'),
             if (provider.responseMinutes != null)
@@ -825,15 +694,7 @@ class _ProviderDetailSheet extends StatelessWidget {
           Wrap(
             spacing: AppSpacing.xs,
             runSpacing: AppSpacing.xs,
-            children: provider.services.map((s) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(AppRadii.pill),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-              ),
-              child: Text(s, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryDeep)),
-            )).toList(),
+            children: provider.services.map((s) => AppPill.neutral(s, size: AppPillSize.mini)).toList(),
           ),
         ],
         if (provider.listings.isNotEmpty) ...[

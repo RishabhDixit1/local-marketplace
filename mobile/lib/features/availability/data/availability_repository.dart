@@ -39,7 +39,7 @@ class AvailabilityRepository {
 
   Future<List<AvailabilitySlot>> update(
     List<AvailabilitySlot> slots, {
-    String timezone = 'Asia/Kolkata',
+    String timezone = kDefaultTimezone,
   }) async {
     final body = {
       'slots': slots.map((s) => s.toPayload()).toList(),

@@ -418,7 +418,8 @@ async function fetchProfiles(
     const { data } = await db
       .from("profiles")
       .select("id, display_name, headline, bio, locality_id, latitude, longitude, avatar_url, trust_score, average_rating, review_count, completed_jobs, availability, verification_level, response_time_minutes, on_time_rate, repeat_clients_count")
-      .in("id", chunk);
+      .in("id", chunk)
+      .eq("is_test", false);
 
     if (data) {
       for (const row of data) {

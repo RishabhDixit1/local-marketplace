@@ -53,14 +53,23 @@ jobs:
         run: docker save serviq:latest | gzip > serviq-docker.tar.gz
 
       - name: Copy Docker image to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: serviq-docker.tar.gz
-          target: /home/ec2-user/serviq
-          strip_components: 0
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/ec2_key
+          chmod 600 /tmp/ec2_key
+          export SCP_OPTS="-i /tmp/ec2_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          for i in 1 2 3; do
+            if scp $SCP_OPTS serviq-docker.tar.gz "ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/serviq/serviq-docker.tar.gz"; then
+              SIZE=$(ssh $SCP_OPTS "ec2-user@${{ secrets.EC2_HOST }}" 'stat -c%s /home/ec2-user/serviq/serviq-docker.tar.gz' 2>/dev/null || echo 0)
+              if [ -n "$SIZE" ] && [ "$SIZE" -gt 50000000 ]; then
+                echo "Verified serviq-docker.tar.gz on EC2 ($SIZE bytes)."
+                exit 0
+              fi
+            fi
+            echo "Upload attempt $i failed or was truncated. Retrying in 5s..."
+            sleep 5
+          done
+          echo "ERROR: failed to copy serviq-docker.tar.gz to EC2 after 3 attempts."
+          exit 1
 
   deploy:
     needs: build
@@ -94,6 +103,12 @@ jobs:
             echo "Disk before cleanup:"
             df -h / | tail -1
 
+            if [ ! -f serviq-docker.tar.gz ]; then
+              echo "ERROR: serviq-docker.tar.gz not found on EC2 (upload step should have verified it)."
+              ls -la /home/ec2-user/serviq/ | grep -i 'serviq-docker' || echo "(serviq-docker.tar.gz absent)"
+              exit 1
+            fi
+
             docker stop serviq --time 10 2>/dev/null || true
             docker rm serviq 2>/dev/null || true
             docker rmi serviq:latest 2>/dev/null || true
@@ -108,12 +123,6 @@ jobs:
 
             echo "Disk after cleanup:"
             df -h / | tail -1
-
-            if [ ! -f serviq-docker.tar.gz ]; then
-              echo "ERROR: serviq-docker.tar.gz not found after SCP."
-              ls -la /home/ec2-user/serviq/
-              exit 1
-            fi
 
             gzip -d -f serviq-docker.tar.gz
             docker load -i serviq-docker.tar

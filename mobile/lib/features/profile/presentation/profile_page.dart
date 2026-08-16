@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,12 +11,14 @@ import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/auth/mobile_auth_service.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
-import '../../../core/feature_flags.dart';
 import '../../../core/firebase/app_firebase.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../features/auth/data/onboarding_handoff.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/premium_primitives.dart';
+import '../../../shared/components/section_header.dart';
 import '../../../shared/components/trust_badge.dart';
 import '../data/profile_repository.dart';
 import '../domain/mobile_profile_snapshot.dart';
@@ -400,7 +401,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 }
 
-class _ProfileCommandHub extends StatelessWidget {
+class _ProfileCommandHub extends ConsumerWidget {
   const _ProfileCommandHub({
     required this.snapshot,
     required this.user,
@@ -412,12 +413,8 @@ class _ProfileCommandHub extends StatelessWidget {
   final VoidCallback onSignOut;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isProvider = snapshot.roleFamily == 'provider';
-    final displayName = snapshot.profile.fullName.isEmpty
-        ? snapshot.displayName
-        : snapshot.profile.fullName;
-    final offerCount = snapshot.serviceCount + snapshot.productCount;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -429,9 +426,9 @@ class _ProfileCommandHub extends StatelessWidget {
         _HubSummaryGrid(snapshot: snapshot),
         const SizedBox(height: 16),
         if (isProvider) ...[
-          _HubSectionTitle(
+          SectionHeader(
             title: 'Provider tools',
-            message: 'Manage setup, listings, availability, and business operations.',
+            subtitle: 'Manage setup, listings, availability, and business operations.',
           ),
           const SizedBox(height: 12),
           _HubTileGrid(
@@ -455,7 +452,8 @@ class _ProfileCommandHub extends StatelessWidget {
                 key: 'profile-tile-listings',
                 icon: Icons.inventory_2_outlined,
                 title: 'Listings',
-                subtitle: '$offerCount services and products synced',
+                subtitle:
+                    '${snapshot.serviceCount} ${AppFormatters.pluralize(snapshot.serviceCount, 'service')} and ${snapshot.productCount} ${AppFormatters.pluralize(snapshot.productCount, 'product')} synced',
                 route: AppRoutes.providerListings,
               ),
               _HubTileData(
@@ -472,29 +470,39 @@ class _ProfileCommandHub extends StatelessWidget {
                 subtitle: 'Upcoming and past appointments',
                 route: AppRoutes.bookings,
               ),
-              if (kAnalyticsEnabled)
-                _HubTileData(
-                  key: 'profile-tile-analytics',
-                  icon: Icons.analytics_outlined,
-                  title: 'Analytics',
-                  subtitle: 'Performance, earnings, and trends',
-                  route: AppRoutes.analytics,
-                ),
-              if (kWorkspacesEnabled)
-                _HubTileData(
-                  key: 'profile-tile-workspaces',
-                  icon: Icons.business_outlined,
-                  title: 'Workspaces',
-                  subtitle: 'Manage team workspaces and branches',
-                  route: AppRoutes.workspaces,
-                ),
             ],
           ),
           const SizedBox(height: 16),
         ],
-        _HubSectionTitle(
+        if (!isProvider) ...[
+          SectionHeader(
+            title: 'Earn on ServiQ',
+            subtitle: 'Turn your skills into local work and income.',
+          ),
+          const SizedBox(height: 12),
+          _HubTileGrid(
+            tiles: [
+              _HubTileData(
+                key: 'profile-tile-start-earning',
+                icon: Icons.work_outline_rounded,
+                title: 'Start earning',
+                subtitle: 'Become a provider and take on local work',
+                route: AppRoutes.providerOnboarding,
+                emphasized: true,
+                onTap: () {
+                  ref
+                      .read(onboardingHandoffControllerProvider)
+                      .selectIntent(MobileOnboardingIntent.earnNearby);
+                  context.push(AppRoutes.providerOnboarding);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
+        SectionHeader(
           title: 'Orders and payments',
-          message: 'Track checkout, earnings, and payment history.',
+          subtitle: 'Track checkout, earnings, and payment history.',
         ),
         const SizedBox(height: 12),
         _HubTileGrid(
@@ -506,14 +514,6 @@ class _ProfileCommandHub extends StatelessWidget {
               subtitle: 'Checkout history and fulfillment status',
               route: AppRoutes.orders,
             ),
-            if (kPayoutsEnabled)
-              _HubTileData(
-                key: 'profile-tile-payouts',
-                icon: Icons.account_balance_wallet_outlined,
-                title: 'Payouts',
-                subtitle: 'Earnings, withdrawals, and payout accounts',
-                route: AppRoutes.payouts,
-              ),
             _HubTileData(
               key: 'profile-tile-transactions',
               icon: Icons.receipt_long_outlined,
@@ -524,9 +524,9 @@ class _ProfileCommandHub extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        _HubSectionTitle(
+        SectionHeader(
           title: 'Communication and trust',
-          message: 'Messages, referrals, verification, and saved items.',
+          subtitle: 'Messages, referrals, verification, and saved items.',
         ),
         const SizedBox(height: 12),
         _HubTileGrid(
@@ -538,14 +538,6 @@ class _ProfileCommandHub extends StatelessWidget {
               subtitle: 'Replies, quote follow-up, active threads',
               route: AppRoutes.chat,
             ),
-            if (kReferralsEnabled)
-              _HubTileData(
-                key: 'profile-tile-referrals',
-                icon: Icons.card_giftcard_outlined,
-                title: 'Referrals',
-                subtitle: 'Invite providers and earn rewards',
-                route: AppRoutes.referrals,
-              ),
             _HubTileData(
               key: 'profile-tile-verification',
               icon: Icons.verified_user_outlined,
@@ -553,20 +545,12 @@ class _ProfileCommandHub extends StatelessWidget {
               subtitle: 'Get verified to build trust with customers',
               route: AppRoutes.verification,
             ),
-            if (kSavedEnabled)
-              _HubTileData(
-                key: 'profile-tile-saved',
-                icon: Icons.bookmark_border_rounded,
-                title: 'Saved',
-                subtitle: 'Saved providers, listings, and feed cards',
-                route: AppRoutes.saved,
-              ),
           ],
         ),
         const SizedBox(height: 16),
-        _HubSectionTitle(
+        SectionHeader(
           title: 'Account',
-          message: 'Profile settings, notifications, and preferences.',
+          subtitle: 'Profile settings, notifications, and preferences.',
         ),
         const SizedBox(height: 12),
         _HubTileGrid(
@@ -592,14 +576,6 @@ class _ProfileCommandHub extends StatelessWidget {
               subtitle: 'Notifications, appearance, and account',
               route: AppRoutes.profileSettings,
             ),
-            if (kBlockingEnabled)
-              _HubTileData(
-                key: 'profile-tile-blocked',
-                icon: Icons.shield_outlined,
-                title: 'Blocked Users',
-                subtitle: 'Manage blocked accounts',
-                route: AppRoutes.blockedUsers,
-              ),
           ],
         ),
         const SizedBox(height: 16),
@@ -616,9 +592,7 @@ class _ProfileCommandHub extends StatelessWidget {
               Text('Account', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 8),
               Text(
-                displayName.isEmpty
-                    ? 'Your ServiQ account controls profile, work, messages, and checkout history.'
-                    : '$displayName controls profile, work, messages, and checkout history here.',
+                'Your ServiQ account controls profile, work, messages, and checkout history.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
@@ -662,7 +636,14 @@ class _ProfileTopActions extends StatelessWidget {
             child: _TopActionButton(
               label: actions[index].$1,
               icon: actions[index].$2,
-              onTap: () => context.push(actions[index].$3),
+              onTap: () {
+                final route = actions[index].$3;
+                if (route == AppRoutes.profile) {
+                  context.go(AppRoutes.profile);
+                } else {
+                  context.push(route);
+                }
+              },
             ),
           ),
           if (index != actions.length - 1) const SizedBox(width: 8),
@@ -748,7 +729,7 @@ class _HubSummaryGrid extends StatelessWidget {
           (
             'Trust',
             snapshot.trustScore.toString(),
-            '${snapshot.reviewCount} reviews',
+            '${snapshot.reviewCount} review${snapshot.reviewCount == 1 ? '' : 's'}',
             Icons.verified_outlined,
           ),
           (
@@ -781,25 +762,6 @@ class _HubSummaryGrid extends StatelessWidget {
   }
 }
 
-class _HubSectionTitle extends StatelessWidget {
-  const _HubSectionTitle({required this.title, required this.message});
-
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 6),
-        Text(message, style: Theme.of(context).textTheme.bodyMedium),
-      ],
-    );
-  }
-}
-
 class _HubTileGrid extends StatelessWidget {
   const _HubTileGrid({required this.tiles});
 
@@ -827,6 +789,7 @@ class _HubTileData {
     required this.subtitle,
     required this.route,
     this.emphasized = false,
+    this.onTap,
   });
 
   final String key;
@@ -835,6 +798,7 @@ class _HubTileData {
   final String subtitle;
   final String route;
   final bool emphasized;
+  final VoidCallback? onTap;
 }
 
 class _HubTile extends StatelessWidget {
@@ -881,7 +845,16 @@ class _HubTile extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(AppRadii.lg),
-              onTap: () => context.push(data.route),
+              onTap: () {
+                final customTap = data.onTap;
+                if (customTap != null) {
+                  customTap();
+                } else if (data.route == AppRoutes.profile) {
+                  context.go(AppRoutes.profile);
+                } else {
+                  context.push(data.route);
+                }
+              },
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.sm),
                 child: Row(
@@ -1278,7 +1251,7 @@ class _ListingsSection extends StatelessWidget {
         _CollectionCard<MobileProfileService>(
           title: 'Services',
           subtitle:
-              '${snapshot.serviceCount} live services from the web profile now available on mobile.',
+              '${snapshot.serviceCount} live ${AppFormatters.pluralize(snapshot.serviceCount, 'service')} from the web profile now available on mobile.',
           emptyState:
               'No services added yet. The provider storefront is ready for the next listing.',
           items: snapshot.services.take(4).toList(),
@@ -1292,7 +1265,7 @@ class _ListingsSection extends StatelessWidget {
         _CollectionCard<MobileProfileProduct>(
           title: 'Products',
           subtitle:
-              '${snapshot.productCount} product listings synced into the mobile account view.',
+              '${snapshot.productCount} product ${AppFormatters.pluralize(snapshot.productCount, 'listing')} synced into the mobile account view.',
           emptyState:
               'No products yet. Once the web catalog grows, it will appear here too.',
           items: snapshot.products.take(4).toList(),
@@ -1401,22 +1374,10 @@ class _PublicProfilePreviewCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: CircleAvatar(
+                    child: AppAvatar(
+                      name: displayName,
+                      avatarUrl: profile.avatarUrl,
                       radius: prominent ? 33 : 27,
-                      backgroundColor: AppColors.surface,
-                      backgroundImage: profile.avatarUrl.isEmpty
-                          ? null
-                          : CachedNetworkImageProvider(profile.avatarUrl),
-                      onBackgroundImageError: profile.avatarUrl.isEmpty
-                          ? null
-                          : (_, _) {},
-                      child: Text(
-                        _avatarFallback(displayName),
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
@@ -1779,7 +1740,7 @@ class _ProofAndReviewsCard extends StatelessWidget {
         _CollectionCard<MobileProfileReview>(
           title: 'Reviews',
           subtitle:
-              '${snapshot.reviewCount} reviews and a ${snapshot.averageRating.toStringAsFixed(1)} average now reach the app too.',
+              '${snapshot.reviewCount} review${snapshot.reviewCount == 1 ? '' : 's'} and a ${snapshot.averageRating.toStringAsFixed(1)} average now reach the app too.',
           emptyState:
               'No reviews yet. Completed jobs and follow-through will start building this section.',
           items: snapshot.reviews.take(3).toList(),
@@ -1987,7 +1948,6 @@ class _ProfileHero extends StatelessWidget {
     final displayName = profile.fullName.isEmpty
         ? snapshot.displayName
         : profile.fullName;
-    final initials = _avatarFallback(displayName);
 
     return ServiqSurface(
       variant: ServiqSurfaceVariant.glass,
@@ -2018,22 +1978,10 @@ class _ProfileHero extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: CircleAvatar(
+                child: AppAvatar(
+                  name: displayName,
+                  avatarUrl: profile.avatarUrl,
                   radius: 29,
-                  backgroundColor: AppColors.surface,
-                  foregroundImage: profile.avatarUrl.isEmpty
-                      ? null
-                      : NetworkImage(profile.avatarUrl),
-                  onForegroundImageError: profile.avatarUrl.isEmpty
-                      ? null
-                      : (_, _) {},
-                  child: Text(
-                    initials,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -2052,22 +2000,22 @@ class _ProfileHero extends StatelessWidget {
                         displayName,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w900,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      profile.headline.isEmpty
-                          ? snapshot.roleLabel
-                          : profile.headline,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    if (profile.headline.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        profile.headline,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -2081,14 +2029,6 @@ class _ProfileHero extends StatelessWidget {
               _GlassPill(
                 label: snapshot.roleLabel,
                 color: AppColors.primary,
-              ),
-              _GlassPill(
-                label: '${snapshot.completionPercent}% complete',
-                color: AppColors.accent,
-              ),
-              _GlassPill(
-                label: '${snapshot.trustScore} trust score',
-                color: AppColors.verified,
               ),
               _GlassPill(
                 label: profile.location.isEmpty
@@ -2136,15 +2076,19 @@ class _GlassPill extends StatelessWidget {
   }
 }
 
-class _LaunchReadinessCard extends StatelessWidget {
+class _LaunchReadinessCard extends ConsumerWidget {
   const _LaunchReadinessCard({required this.snapshot});
 
   final MobileProfileSnapshot snapshot;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final profile = snapshot.profile;
     final isProvider = snapshot.roleFamily == 'provider';
+    final handoff = ref.watch(onboardingHandoffControllerProvider);
+    final earnIntent =
+        handoff.selectedIntent == MobileOnboardingIntent.earnNearby ||
+        handoff.selectedIntent == MobileOnboardingIntent.businessSetup;
     final hasIdentity =
         profile.fullName.isNotEmpty && profile.headline.isNotEmpty;
     final hasLocation = profile.location.isNotEmpty;
@@ -2299,6 +2243,18 @@ class _LaunchReadinessCard extends StatelessWidget {
               onTap: () => context.push(AppRoutes.providerListings),
             ),
           ] else ...[
+            if (earnIntent) ...[
+              _ActionRow(
+                icon: Icons.rocket_launch_outlined,
+                label: 'Continue provider setup',
+                onTap: () {
+                  ref
+                      .read(onboardingHandoffControllerProvider)
+                      .selectIntent(MobileOnboardingIntent.earnNearby);
+                  context.push(AppRoutes.providerLaunchpad);
+                },
+              ),
+            ],
             _ActionRow(
               icon: Icons.add_circle_outline_rounded,
               label: 'Post a Need',
@@ -2613,7 +2569,7 @@ class _TrustSummaryCard extends StatelessWidget {
                 foregroundColor: AppColors.primary,
               ),
               TrustBadge(
-                label: '${snapshot.reviewCount} reviews',
+                label: '${snapshot.reviewCount} review${snapshot.reviewCount == 1 ? '' : 's'}',
                 icon: Icons.star_outline_rounded,
                 backgroundColor: AppColors.warningSoft,
                 foregroundColor: AppColors.warning,
@@ -3158,24 +3114,6 @@ String _formatPrice(double value) {
   }
 
   return 'INR ${value.round()}';
-}
-
-String _avatarFallback(String value) {
-  final words = value
-      .split(' ')
-      .map((part) => part.trim())
-      .where((part) => part.isNotEmpty)
-      .toList();
-  if (words.isEmpty) {
-    return 'S';
-  }
-
-  if (words.length == 1) {
-    return words.first.characters.first.toUpperCase();
-  }
-
-  return '${words.first.characters.first}${words[1].characters.first}'
-      .toUpperCase();
 }
 
 String _humanize(String raw) {

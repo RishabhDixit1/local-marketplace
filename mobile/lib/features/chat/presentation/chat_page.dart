@@ -19,6 +19,7 @@ import '../../../core/services/analytics_service.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../shared/components/app_avatar.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
@@ -479,13 +480,17 @@ class _InboxDashboardHeader extends StatelessWidget {
                 foregroundColor: AppColors.primary,
               ),
               TrustBadge(
-                label: '$quoteCount quote threads',
+                label: quoteCount == 1
+                    ? '1 quote thread'
+                    : '$quoteCount quote threads',
                 icon: Icons.request_quote_outlined,
                 backgroundColor: AppColors.warningSoft,
                 foregroundColor: AppColors.warning,
               ),
               TrustBadge(
-                label: '$taskCount task threads',
+                label: taskCount == 1
+                    ? '1 task thread'
+                    : '$taskCount task threads',
                 icon: Icons.assignment_turned_in_outlined,
                 backgroundColor: AppColors.accentSoft,
                 foregroundColor: AppColors.accent,
@@ -973,6 +978,8 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
   final List<ChatMessageItem> _olderMessages = [];
   bool _loadingOlder = false;
   bool _hasMoreOlder = true;
+  int _olderSnapshot = 0;
+  int _lastTotalCount = 0;
 
   Future<void> _loadOlderMessages() async {
     if (_loadingOlder || !_hasMoreOlder) return;
@@ -1073,9 +1080,7 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
                 children: [
                   ProfileAvatarTile(
                     name: conversation.name,
-                    subtitle: conversation.isOnline
-                        ? 'Active now'
-                        : conversation.subtitle,
+                    subtitle: _areaPreview(conversation.subtitle),
                     avatarUrl: conversation.avatarUrl,
                   ),
                   const SizedBox(height: 10),
@@ -1095,12 +1100,8 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
                             ? AppColors.primary
                             : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
-                      TrustBadge(
-                        label: conversation.subtitle,
-                        icon: Icons.place_outlined,
-                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                        foregroundColor: Theme.of(context).colorScheme.onSurface,
-                      ),
+                      if (conversation.subtitle.trim().isNotEmpty)
+                        _HeaderLocationChip(subtitle: conversation.subtitle),
                     ],
                   ),
                 ],
@@ -1139,18 +1140,26 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
 
                 final allMessages = [..._olderMessages.reversed, ...messages];
 
-                // Auto-scroll to bottom when new messages arrive
+                // Auto-scroll only when the conversation grows at the bottom
+                // (new messages / initial load). Never steal scroll position
+                // while loading older history (C-3).
+                final loadedOlder = _olderMessages.length != _olderSnapshot;
+                _olderSnapshot = _olderMessages.length;
+                final grewAtBottom = allMessages.length > _lastTotalCount;
+                _lastTotalCount = allMessages.length;
+
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (widget.messagesScrollController.hasClients) {
-                    widget.messagesScrollController.jumpTo(
-                      widget.messagesScrollController.position.maxScrollExtent,
-                    );
+                  if (!mounted || !widget.messagesScrollController.hasClients) {
+                    return;
+                  }
+                  if (loadedOlder) return;
+                  final position = widget.messagesScrollController.position;
+                  final nearBottom =
+                      position.pixels >= position.maxScrollExtent - 120;
+                  if (grewAtBottom || nearBottom) {
+                    position.jumpTo(position.maxScrollExtent);
                   }
                 });
-
-                final lastMineIndex = allMessages.lastIndexWhere(
-                  (message) => message.senderId == currentUserId,
-                );
 
                 return ListView.builder(
                   controller: widget.messagesScrollController,
@@ -1182,14 +1191,8 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
                           ? Alignment.centerRight
                           : Alignment.centerLeft,
                       child: isMine
-                          ? _MineBubble(
-                              message: message,
-                              isLatestMine: index == lastMineIndex,
-                            )
-                          : _TheirsBubble(
-                              message: message,
-                              isLatestMine: index == lastMineIndex,
-                            ),
+                          ? _MineBubble(message: message)
+                          : _TheirsBubble(message: message),
                     );
                   },
                 );
@@ -1251,6 +1254,8 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
                                             ),
                                             child: ActionChip(
                                               label: Text(reply),
+                                              visualDensity: VisualDensity.standard,
+                                              materialTapTargetSize: MaterialTapTargetSize.padded,
                                               onPressed: widget.sending
                                                   ? null
                                                   : () {
@@ -1357,13 +1362,9 @@ class _ChatThreadState extends ConsumerState<_ChatThread> {
 }
 
 class _MineBubble extends StatelessWidget {
-  const _MineBubble({
-    required this.message,
-    required this.isLatestMine,
-  });
+  const _MineBubble({required this.message});
 
   final ChatMessageItem message;
-  final bool isLatestMine;
 
   @override
   Widget build(BuildContext context) {
@@ -1438,8 +1439,6 @@ class _MineBubble extends StatelessWidget {
             if (message.content.isNotEmpty)
               Text(
                 message.content,
-                maxLines: 20,
-                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Colors.white,
                 ),
@@ -1461,14 +1460,6 @@ class _MineBubble extends StatelessWidget {
                   size: 14,
                   color: Colors.white60,
                 ),
-                const SizedBox(width: AppSpacing.xxs),
-                Text(
-                  _messageStatusLabel(message, isMine: true, isLatestMine: isLatestMine),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.white60,
-                  ),
-                ),
               ],
             ),
           ],
@@ -1479,13 +1470,9 @@ class _MineBubble extends StatelessWidget {
 }
 
 class _TheirsBubble extends StatelessWidget {
-  const _TheirsBubble({
-    required this.message,
-    required this.isLatestMine,
-  });
+  const _TheirsBubble({required this.message});
 
   final ChatMessageItem message;
-  final bool isLatestMine;
 
   @override
   Widget build(BuildContext context) {
@@ -1559,8 +1546,6 @@ class _TheirsBubble extends StatelessWidget {
               if (message.content.isNotEmpty)
                 Text(
                   message.content,
-                  maxLines: 20,
-                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
               const SizedBox(height: 6),
@@ -1571,19 +1556,6 @@ class _TheirsBubble extends StatelessWidget {
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
                 ),
               ),
-              if (isLatestMine || true)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _messageStatusLabel(message, isMine: false, isLatestMine: false),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontSize: 10,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
-                ),
             ],
           ),
         ),
@@ -1653,35 +1625,12 @@ class _ConversationTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  foregroundImage: conversation.avatarUrl.trim().isEmpty
-                      ? null
-                      : NetworkImage(conversation.avatarUrl),
-                  onForegroundImageError: conversation.avatarUrl.trim().isEmpty
-                      ? null
-                      : (_, _) {},
-                  child: Text(_avatarInitial(conversation.name)),
-                ),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: conversation.isOnline
-                          ? AppColors.primary
-                          : Theme.of(context).colorScheme.outline,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
-                    ),
-                  ),
-                ),
-              ],
+            AppAvatar(
+              name: conversation.name,
+              avatarUrl: conversation.avatarUrl,
+              radius: 24,
+              showOnlineStatus: true,
+              isOnline: conversation.isOnline,
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
@@ -1880,21 +1829,74 @@ bool _conversationLooksLikeTask(ChatConversation conversation) {
       haystack.contains('timing');
 }
 
-String _avatarInitial(String value) {
-  final trimmed = value.trim();
-  return trimmed.isEmpty ? 'S' : trimmed.characters.first.toUpperCase();
+class _HeaderLocationChip extends StatelessWidget {  const _HeaderLocationChip({required this.subtitle});
+
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadii.pill),
+      onTap: () => _showFullDetails(context),
+      child: TrustBadge(
+        label: _areaPreview(subtitle),
+        icon: Icons.place_outlined,
+        backgroundColor: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+      ),
+    );
+  }
+
+  void _showFullDetails(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.xs,
+            AppSpacing.lg,
+            AppSpacing.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Location',
+                style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                subtitle.trim(),
+                style: Theme.of(sheetContext).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-String _messageStatusLabel(
-  ChatMessageItem message, {
-  required bool isMine,
-  required bool isLatestMine,
-}) {
-  final time = _relativeTime(message.createdAt);
-  if (isMine) {
-    return isLatestMine ? 'Sent $time' : 'Sent $time';
+String _areaPreview(String value) {
+  final parts = value
+      .split(',')
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList();
+  if (parts.isEmpty) {
+    return value;
   }
-  return 'Received $time';
+  final area = parts.length >= 3
+      ? parts.sublist(parts.length - 2).join(', ')
+      : parts.join(', ');
+  return area.length <= 30 ? area : '${area.substring(0, 27)}...';
 }
 
 String _formatMessageTime(DateTime value) {

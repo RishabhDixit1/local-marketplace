@@ -182,4 +182,86 @@ void main() {
       focusedTaskRoute,
     );
   });
+
+  test('intent is only chosen when the user explicitly selects it', () async {
+    final store = MemoryOnboardingHandoffStore();
+    final controller = OnboardingHandoffController(store);
+
+    expect(controller.hasChosenIntent, isFalse);
+    expect(controller.intentPromptDismissed, isFalse);
+
+    await controller.selectIntent(MobileOnboardingIntent.earnNearby);
+    expect(controller.hasChosenIntent, isTrue);
+    expect(store.readIntentChosen(), isTrue);
+    expect(controller.selectedIntent, MobileOnboardingIntent.earnNearby);
+    expect(controller.postAuthDestination, AppRoutes.providerLaunchpad);
+  });
+
+  test('intent prompt dismissal persists and resets on choice', () async {
+    final store = MemoryOnboardingHandoffStore();
+    final controller = OnboardingHandoffController(store);
+
+    await controller.dismissIntentPrompt();
+    expect(controller.intentPromptDismissed, isTrue);
+    expect(store.readIntentPromptDismissed(), isTrue);
+
+    await controller.selectIntent(MobileOnboardingIntent.findHelp);
+    expect(controller.intentPromptDismissed, isFalse);
+    expect(store.readIntentPromptDismissed(), isFalse);
+    expect(controller.hasChosenIntent, isTrue);
+  });
+
+  test('pre-stored explicit choice surfaces from the store', () {
+    final store = MemoryOnboardingHandoffStore(
+      initialIntent: MobileOnboardingIntent.businessSetup,
+      initialIntentChosen: true,
+    );
+    final controller = OnboardingHandoffController(store);
+
+    expect(controller.hasChosenIntent, isTrue);
+    expect(controller.selectedIntent, MobileOnboardingIntent.businessSetup);
+  });
+
+  test('consumeStoredHandoff clears the persisted landing route', () async {
+    final store = MemoryOnboardingHandoffStore(
+      initialIntent: MobileOnboardingIntent.findHelp,
+    );
+    final controller = OnboardingHandoffController(store);
+    await controller.rememberRoute(AppRoutes.createNeed);
+
+    expect(controller.hasStoredHandoff, isTrue);
+    expect(store.readLastRoute(), AppRoutes.createNeed);
+
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+    await controller.consumeStoredHandoff();
+
+    expect(controller.hasStoredHandoff, isFalse);
+    expect(controller.lastRoute, isNull);
+    expect(store.readLastRoute(), isNull);
+    expect(notifications, 1);
+  });
+
+  test(
+    'stored landing route serves the intent funnel once, not every launch',
+    () {
+      final pending = resolveSignedInLandingRoute(
+        selectedIntent: MobileOnboardingIntent.findHelp,
+        hasPendingHandoff: true,
+        hasStoredHandoff: true,
+        storedHandoffRoute: AppRoutes.createNeed,
+      );
+      expect(pending, AppRoutes.createNeed);
+
+      // After the redirect is consumed, the same signed-in user with no
+      // stored route must fall through to their returning home.
+      final returning = resolveSignedInLandingRoute(
+        selectedIntent: MobileOnboardingIntent.findHelp,
+        hasPendingHandoff: false,
+        hasStoredHandoff: false,
+        storedHandoffRoute: null,
+      );
+      expect(returning, AppRoutes.home);
+    },
+  );
 }

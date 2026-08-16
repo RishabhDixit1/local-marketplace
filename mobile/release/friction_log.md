@@ -26,6 +26,10 @@ release gate, trust/safety risk, observability gap, or reliability issue.
 | ID | Date | Loop | Device | Step | Severity | Status | Issue | Expected | Owner | Link |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | MQ-001 | 2026-05-03 | Example | Android 360dp | Notification tap to Quote Room | P1 | New | Example: tap opened Tasks instead of Quote Room | Quote Room opens with target quote/order | TBD | TBD |
+| MQ-101 | 2026-08-09 | AI search | Emulator API 37 | Web AI stream | P1 | Fixed | `/api/ai/prompt/stream` used bare `google` provider (reads `GOOGLE_GENERATIVE_AI_API_KEY`, never set) so web AI chat always keyword-fallback | Streams real Gemini output | Eng | app/api/ai/prompt/stream/route.ts |
+| MQ-102 | 2026-08-09 | AI search | Emulator API 37 | Local API QA | P1 | New | Gemini free-tier daily quota exhausted (`RESOURCE_EXHAUSTED`, `GenerateRequestsPerDayPerProjectPerModel-FreeTier`) -> mobile AI prompt + web chat degrade to keyword fallback | Paid Gemini key / quota headroom before beta | Founder | lib/ai/provider.ts |
+| MQ-103 | 2026-08-09 | Discovery | Emulator API 37 | AI intent parse | P2 | New | "plumber near me" classified `action=buy_product` (product intent) instead of service | Service intent for service keywords | Eng | lib/ai/intentParser.ts |
+| MQ-104 | 2026-08-09 | Realtime | Emulator API 37 | Live hub subscribe | P1 | New | Realtime websocket 503 on `http://54.253.40.174:8000/realtime/v1/websocket` (dev endpoint); app retries with correct backoff but live chat/notifications won't update | WS upgrade succeeds; verify after 3.8 TLS/Kong fix | Eng | Supabase infra |
 
 ## Daily QA Review Template
 

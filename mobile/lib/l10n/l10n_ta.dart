@@ -38,6 +38,8 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get home => 'முகப்பு';
   @override
+  String get needSomething => 'ஏதாவது தேவை';
+  @override
   String get explore => 'ஆராய்ச்சி';
   @override
   String get people => 'மக்கள்';
@@ -92,6 +94,27 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get later => 'பின்னர்';
   @override
+  String get viewAll => 'அனைத்தையும் காண்க';
+  @override
+  String get myNeeds => 'எனது தேவைகள்';
+  @override
+  String get myWork => 'எனது வேலை';
+  @override
+  String get homeQuickActions => 'விரைவு செயல்கள்';
+  @override
+  String get browseNearby => 'அருகில் உள்ளவற்றை உலாவு';
+  @override
+  String get nothingInMotion => 'இப்போது எதுவும் நடைபெறவில்லை';
+  @override
+  String get nothingInMotionSubtitle =>
+      'ஒரு தேவையைப் பதிவிடுங்கள், நம்பகமான உள்ளூர்வாசிகளின் சலுகைகள் இங்கே தோன்றும்';
+  @override
+  String get postYourFirstNeed => 'உங்கள் முதல் தேவையைப் பதிவிடுங்கள்';
+  @override
+  String get browseMyTasks => 'எனது பணிகளை உலாவவும்';
+  @override
+  String newMessages(int count) => '$count புதிய செய்தி';
+  @override
   String get loading => 'ஏற்றுகிறது...';
   @override
   String get errorOccurred => 'ஏதோ தவறு ஏற்பட்டது.';
@@ -117,6 +140,13 @@ class AppLocalizationsTa extends AppLocalizations {
   String newVersionAvailable(String version) => 'பதிப்பு $version இப்போது கிடைக்கிறது.';
   @override
   String get whatsNew => 'புதியது என்ன:';
+  @override
+  String get routeErrorTitle => 'பக்கம் கிடைக்கவில்லை';
+  @override
+  String get routeErrorMessage =>
+      'அந்தப் பக்கத்தை எங்களால் கண்டுபிடிக்க முடியவில்லை. அது நகர்த்தப்பட்டிருக்கலாம் அல்லது இனி இல்லாமல் போயிருக்கலாம்.';
+  @override
+  String get goHome => 'முகப்புக்கு திரும்பு';
   @override
   String get postNeed => 'தேவையை பதிவிடு';
   @override
@@ -162,6 +192,17 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get discoveryExploreZones => 'மண்டலங்களை ஆராயுங்கள்';
   @override
+  String get discoveryExploreMarkets => 'சந்தைகளை ஆராயுங்கள்';
+  @override
+  String get discoveryLiveNow => 'இப்போது நேரடி';
+  @override
+  String get discoveryLive => 'நேரடி';
+  @override
+  String get discoveryBrowseLocalZones => 'உள்ளூர் மண்டலங்களை உலாவு';
+  @override
+  String discoveryMarketsSummary(int societies, int markets) =>
+      '$societies சொசைட்டிகள் · $markets சந்தைகள்';
+  @override
   String get discoveryZonesSubtitle => 'உங்கள் அருகிலுள்ள சொசைட்டிகள், சந்தைகள் மற்றும் விநியோக பகுதிகள்';
   @override
   String get discoveryAllZones => 'அனைத்து மண்டலங்கள்';
@@ -197,4 +238,55 @@ class AppLocalizationsTa extends AppLocalizations {
   String get zoneComingSoon => 'விரைவில்';
   @override
   String discoveryZoneProviderCount(int count) => '$count வழங்குநர்கள்';
+  @override
+  String get discoveryHowItWorks => 'ServiQ எவ்வாறு செயல்படுகிறது';
+  @override
+  String get discoveryDismiss => 'நிராகரி';
+  @override
+  String get discoveryStep1 => 'அருகிலுள்ள providers-ஐ உலாவுக';
+  @override
+  String get discoveryStep1Desc => 'உங்கள் பகுதியில் உள்ள சேவைகளை உலாவுங்கள்';
+  @override
+  String get discoveryStep2 => 'தொடர்புகொள்ளவும் ஒப்பிடவும்';
+  @override
+  String get discoveryStep2Desc => 'providers-ஐ நேரடியாக தொடர்புகொண்டு ஒப்பிடுங்கள்';
+  @override
+  String get discoveryStep3 => 'வேலையை முடிக்கவும்';
+  @override
+  String get discoveryStep3Desc => 'நம்பிக்கையுடன் தரமான வேலையை முடியுங்கள்';
+  @override
+  String discoveryProvidersNearYou(int count) =>
+      count == 1 ? 'உங்கள் அருகில் 1 provider' : 'உங்கள் அருகில் $count providers';
+  @override
+  String get discoveryLookingForServices => 'சேவைகளைத் தேடுகிறீர்களா?';
+  @override
+  String get discoveryLookingForServicesSubtitle =>
+      'உங்கள் பகுதியில் எந்த சேவைக்கும் நம்பகமான provider-ஐ கண்டறியவும்';
+  @override
+  String get discoveryAreYouProvider => 'நீங்கள் சேவை provider-ஆ?';
+  @override
+  String get discoveryAreYouProviderSubtitle =>
+      'ServiQ-இல் உங்கள் தொழிலை பட்டியலிட்டு உங்கள் பகுதியிலிருந்து கூடுதல் வாடிக்கையாளர்களைப் பெறுங்கள்';
+  @override
+  String get discoveryListYourBusiness => 'உங்கள் தொழிலை பட்டியலிடவும்';
+  @override
+  String get discoveryBrowseMarketplace => 'மார்க்கெட்பிளேஸை உலாவுக';
+  @override
+  String get whoAreYouTitle => 'ServiQ-இல் ஏன் வந்தீர்கள்?';
+  @override
+  String get whoAreYouSubtitle => 'ஒரு பாதையைத் தேர்ந்தெடுங்கள், உங்களுக்காக வீட்டை தயார் செய்வோம்.';
+  @override
+  String get intentFindHelp => 'உதவியைத் தேடுங்கள்';
+  @override
+  String get intentFindHelpSubtitle => 'தேவைகளை இடுகையிடுங்கள், அருகிலுள்ள நிபுணர்களை நியமிக்கவும்';
+  @override
+  String get intentEarnNearby => 'அருகில் சம்பாதியுங்கள்';
+  @override
+  String get intentEarnNearbySubtitle => 'உள்ளூர் வேலை செய்து வருமானத்தை அதிகரிக்கவும்';
+  @override
+  String get intentBusinessSetup => 'என் தொழிலை தொடங்குங்கள்';
+  @override
+  String get intentBusinessSetupSubtitle => 'உங்கள் சேவைகள், குழு மற்றும் கிடைக்கும் தன்மையை பட்டியலிடுங்கள்';
+  @override
+  String get notNow => 'இப்போது இல்லை';
 }

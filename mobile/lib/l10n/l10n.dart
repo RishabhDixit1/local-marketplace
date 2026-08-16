@@ -53,6 +53,7 @@ abstract class AppLocalizations {
 
   // Navigation
   String get home;
+  String get needSomething;
   String get explore;
   String get people;
   String get market;
@@ -82,6 +83,16 @@ abstract class AppLocalizations {
   String get report;
   String get update;
   String get later;
+  String get viewAll;
+  String get myNeeds;
+  String get myWork;
+  String get homeQuickActions;
+  String get browseNearby;
+  String get nothingInMotion;
+  String get nothingInMotionSubtitle;
+  String get postYourFirstNeed;
+  String get browseMyTasks;
+  String newMessages(int count);
 
   // States
   String get loading;
@@ -97,6 +108,9 @@ abstract class AppLocalizations {
   String get updateAvailable;
   String newVersionAvailable(String version);
   String get whatsNew;
+  String get routeErrorTitle;
+  String get routeErrorMessage;
+  String get goHome;
 
   // Marketplace
   String get postNeed;
@@ -113,6 +127,11 @@ abstract class AppLocalizations {
   String get discoveryNearbySubtitle;
   String get discoveryOpenMap;
   String get discoveryExploreZones;
+  String get discoveryExploreMarkets;
+  String get discoveryLiveNow;
+  String get discoveryLive;
+  String get discoveryBrowseLocalZones;
+  String discoveryMarketsSummary(int societies, int markets);
   String get discoveryZonesSubtitle;
   String get discoveryAllZones;
   String get discoveryPopularServices;
@@ -131,6 +150,21 @@ abstract class AppLocalizations {
   String get zoneSupplyArea;
   String get zoneComingSoon;
   String discoveryZoneProviderCount(int count);
+  String get discoveryHowItWorks;
+  String get discoveryDismiss;
+  String get discoveryStep1;
+  String get discoveryStep1Desc;
+  String get discoveryStep2;
+  String get discoveryStep2Desc;
+  String get discoveryStep3;
+  String get discoveryStep3Desc;
+  String discoveryProvidersNearYou(int count);
+  String get discoveryLookingForServices;
+  String get discoveryLookingForServicesSubtitle;
+  String get discoveryAreYouProvider;
+  String get discoveryAreYouProviderSubtitle;
+  String get discoveryListYourBusiness;
+  String get discoveryBrowseMarketplace;
 
   // AI
   String get aiPlaceholder;
@@ -143,6 +177,17 @@ abstract class AppLocalizations {
   String get aiNearbyProviders;
   String get aiFoundProviders;
   String get aiSearchMarket;
+
+  // Role / intent
+  String get whoAreYouTitle;
+  String get whoAreYouSubtitle;
+  String get intentFindHelp;
+  String get intentFindHelpSubtitle;
+  String get intentEarnNearby;
+  String get intentEarnNearbySubtitle;
+  String get intentBusinessSetup;
+  String get intentBusinessSetupSubtitle;
+  String get notNow;
 }
 
 class _AppLocalizationsDelegate

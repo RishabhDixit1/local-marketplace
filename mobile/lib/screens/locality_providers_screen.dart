@@ -9,9 +9,8 @@ import '../core/constants/app_routes.dart';
 import '../core/design_system/design_system.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/design_tokens.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../core/utils/app_formatters.dart';
 
-import '../shared/components/error_state_view.dart';
 import '../shared/widgets/ai_prompt_bar.dart';
 import '../features/cart/application/cart_notifier.dart';
 import '../features/orders/domain/order_models.dart';
@@ -113,7 +112,8 @@ class _LocalityProvidersScreenState extends ConsumerState<LocalityProvidersScree
                     itemBuilder: (context, index) {
                       final p = providers[index];
                       final providerId = p['id'] as String? ?? '';
-                      final name = (p['name'] as String? ?? p['full_name'] as String?) ?? 'Unknown Provider';
+                      final cleanedName = AppFormatters.cleanPersonName(p['name'] as String? ?? p['full_name'] as String?);
+                      final name = cleanedName.isEmpty ? 'Unknown Provider' : cleanedName;
                       final location = (p['location'] as String? ?? p['locality_name'] as String?) ?? '';
                       final avatarUrl = p['avatar_url'] as String?;
                       final bio = p['bio'] as String?;
@@ -248,7 +248,11 @@ class _GlassProviderCard extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildAvatar(theme),
+                        AppAvatar(
+                          name: name,
+                          avatarUrl: avatarUrl ?? '',
+                          radius: 23,
+                        ),
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Column(
@@ -434,43 +438,6 @@ class _GlassProviderCard extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvatar(ThemeData theme) {
-    if (avatarUrl != null && avatarUrl!.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        child: CachedNetworkImage(
-          imageUrl: avatarUrl!,
-          width: 46,
-          height: 46,
-          fit: BoxFit.cover,
-          errorWidget: (context, url, error) => _avatarFallback(theme),
-        ),
-      );
-    }
-    return _avatarFallback(theme);
-  }
-
-  Widget _avatarFallback(ThemeData theme) {
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.primarySoft, AppColors.accentSoft],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-      ),
-      child: Center(
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.primaryDeep),
         ),
       ),
     );

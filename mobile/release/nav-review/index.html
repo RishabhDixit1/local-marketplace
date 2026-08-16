@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ServiQ — 3-Tab Nav Walkthrough Evidence</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:2rem auto;max-width:1200px;padding:0 1rem;background:#f6f7f9;color:#1a1d21}
+h1{font-size:1.6rem}
+h2{margin-top:2.2rem;font-size:1.15rem;border-bottom:1px solid #d4d7db;padding-bottom:.35rem}
+.step{background:#fff;border:1px solid #e2e5e9;border-radius:12px;margin:1.2rem 0;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.step img{width:100%;display:block}
+.cap{padding:.8rem 1rem;font-size:.95rem}
+.cap b{color:#0b5cab}
+.ok{color:#1a7f37}
+.bad{color:#c62828}
+</style>
+</head>
+<body>
+<h1>ServiQ — New Nav Structure Walkthrough (3 tabs: Need Something · Explore · You)</h1>
+<p>Device: emulator-5554 (Android API 37), debug build from the current working tree, dev Supabase <code>54.253.40.174:8000</code>. Test account: <code>navreview@serviqapp.com</code> (seeded with 2 needs + 1 conversation / 2 unread messages).</p>
+
+<h2>Part 1 — On-device walkthrough</h2>
+
+<div class="step"><img src="01-cold-start-landing.png"><div class="cap"><b>1. Cold start / landing (anonymous)</b> — public landing page, no sign-in redirect. Header: search icon + Sign In.</div></div>
+<div class="step"><img src="02-sign-in-page.png"><div class="cap"><b>2. Sign in</b> — Email·Phone·Password tabs. Password tab used for the walkthrough.</div></div>
+<div class="step"><img src="03-sign-in-filled.png"><div class="cap"><b>3. Credentials filled</b> — navreview@serviqapp.com / password flow.</div></div>
+<div class="step"><img src="04-after-signin.png"><div class="cap"><b>4. Post-sign-in</b> — first-run intent handoff lands on the <b>Post a need</b> funnel, not the home. Back returns to home.</div></div>
+<div class="step"><img src="05-need-something-home-top.png"><div class="cap"><b>5. "Need Something" home</b> — greeting, app-bar Search/Notifications/Chat actions, Speak prompt, <b>Inbox</b> and <b>Work</b> sections.</div></div>
+<div class="step"><img src="06-home-inbox-work.png"><div class="cap"><b>6. Home Inbox + Work</b> — Inbox shows <b>2 new messages</b> (ServiQ Test Provider, unread badge 2); Work shows <b>My needs 2 / My work 0</b> with View all.</div></div>
+<div class="step"><img src="07-explore-tab.png"><div class="cap"><b>7. Explore tab</b> — Discover: Popular Services (Electrician, Plumber, RO, AC Repair, Geyser), Nearby providers, Open map, Speak.</div></div>
+<div class="step"><img src="08-you-tab-profile.png"><div class="cap"><b>8. You tab (Profile Hub)</b> — Nav Review, 40% complete, trust 4, grouped sections (Earn on ServiQ / Orders &amp; Payments / Communication &amp; Trust / Account), quick actions Business · Edit Profile · Inbox · Orders, "Start earning" CTA.</div></div>
+<div class="step"><img src="09-inbox-thread-pushed.png"><div class="cap"><b>9. Conversation from Inbox</b> — full pushed thread page <span class="bad">(no bottom nav — outside shell)</span>: Conversation title + back, provider header, both messages, quick replies, composer.</div></div>
+<div class="step"><img src="10-tasks-pushed.png"><div class="cap"><b>10. Work → View all</b> — pushed page with <b>Back button</b>: "Activity", Next up (2 active / 0 in progress), Next-action queue, Filters. No bottom nav (outside shell).</div></div>
+
+<h2>Part 2 — Public /browse vs Explore tab (anonymous)</h2>
+
+<div class="step"><img src="11-anonymous-landing.png"><div class="cap"><b>11. Anonymous landing</b> — Find Help Nearby hero, "Your area" chip, Speak, Browse by category, Live Now zones, Featured providers.</div></div>
+<div class="step"><img src="12-search-icon-public.png"><div class="cap"><b>12. Header search icon → <span class="ok">public /browse?browse=0 ✅</span></b> — "Search nearby" page, category chips, Featured/Online/Rating, Suggestions. Anonymous-safe, no sign-in redirect.</div></div>
+<div class="step"><img src="13-anon-category-signin.png"><div class="cap"><b>13. "Browse by category → View all" → <span class="bad">Sign In</span></b> — auth-gated <code>context.go(/app/discovery)</code>. Anonymous users land on Sign In (by design).</div></div>
+<div class="step"><img src="14-browse-all-public.png"><div class="cap"><b>14. Featured providers → "Browse all" → <span class="ok">public /browse ✅</span></b> — "315 providers found", Featured sort, provider list with distances. Anonymous-safe; also triggers the runtime location-permission prompt.</div></div>
+
+<h2>Notes</h2>
+<p class="ok"><b>Verified on-device:</b> all three tabs (Need Something / Explore / You) render and switch; pushed full pages (conversation thread, tasks) show a working back button and hide the bottom nav; the Work "View all" now lands on an <b>Activity</b> page (Next up / Next-action queue) rather than a plain tasks list.</p>
+<p class="ok"><b>Part 2:</b> the public browse route is reachable from two anonymous entries — header search icon (<code>/browse?browse=0</code>, Suggestions state) and Featured → "Browse all" (<code>/browse</code>, all 315 providers, Featured sort). Auth-gated discovery entries ("Browse by category → View all", Explore, zones) redirect anonymous users to Sign In.</p>
+<p><b>Landing category cards are selection toggles, not navigation</b> (from source, <code>marketplace_landing_page.dart:292-294</code>): tapping a category only toggles a local highlight; it does not navigate. Navigation to discovery goes through the section "View all" actions and hero Explore button. This differs from the Explore tab, where category chips open the category feed.</p>
+<p class="bad"><b>Dev-build cold-start ANR:</b> a true cold start (after <code>pm clear</code>) shows a transient "ServiQ isn't responding" dialog on this emulator before the first frame (Supabase bootstrap to <code>54.253.40.174</code> can exceed the ANR window). Tapping "Wait" recovers to the landing. Worth checking against the release build.</p>
+<p class="bad"><b>Screenshot pipeline fix:</b> earlier 05–10 captures were byte-identical (stale <code>adb pull</code> after <code>screencap -d 0</code> failed against a multi-display device). Re-captured without <code>-d 0</code>; all 14 files now verified distinct by md5 and content-checked via UI dumps.</p>
+<p><b>You tab transient error:</b> one profile load failed earlier with <code>404 HTML for /api/mobile/account</code> (the route exists in <code>app/api/mobile/account</code> and the dev server returns 401/JSON when hit directly). It resolved on retry — appears to have been a dev-server reload race, not a routing bug.</p>
+</body>
+</html>

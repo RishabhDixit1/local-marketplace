@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
@@ -1289,12 +1290,20 @@ class _DeliveryCard extends StatelessWidget {
                 children: delivery.photoUrls.map((url) {
                   return ClipRRect(
                     borderRadius: BorderRadius.circular(AppRadii.lg),
-                    child: Image.network(
-                      url,
+                    child: CachedNetworkImage(
+                      imageUrl: url,
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
+                      placeholder: (_, _) => Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(AppRadii.lg),
+                          color: AppColors.surfaceAlt,
+                        ),
+                      ),
+                      errorWidget: (_, _, _) => Container(
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(

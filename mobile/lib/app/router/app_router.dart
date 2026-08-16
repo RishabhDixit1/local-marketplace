@@ -52,6 +52,7 @@ import '../../features/welcome/presentation/onboarding_walkthrough_page.dart';
 import '../../features/welcome/presentation/welcome_page.dart';
 import '../presentation/app_shell.dart';
 import 'post_auth_route_resolver.dart';
+import 'route_error_page.dart';
 
 final appNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -96,6 +97,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: AppRoutes.root,
     debugLogDiagnostics: false,
     refreshListenable: Listenable.merge([authState, onboardingHandoff]),
+    errorBuilder: (context, state) => RouteErrorPage(
+      error: state.error,
+      location: state.uri.toString(),
+    ),
     redirect: (context, state) {
       final location = state.matchedLocation;
 
@@ -138,6 +143,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
+      if (onboardingHandoff.pendingAuthMethod == null) {
+        scheduleMicrotask(() {
+          unawaited(onboardingHandoff.consumeStoredHandoff().catchError((e, st) => debugPrint('ServiQ app_router.consumeStoredHandoff failed: $e\n$st')));
+        });
+      }
+
       if (redirect.startsWith('/app')) {
         if (initialLandingServed &&
             (location == AppRoutes.root || location == AppRoutes.signIn)) {
@@ -177,6 +188,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.publicBrowse,
         pageBuilder: (context, state) => _smoothPage(SearchPage(
           initialQuery: state.uri.queryParameters['q'],
+          initialCategory: state.uri.queryParameters['category'],
           browseAll: state.uri.queryParameters['browse'] != '0',
         ), state),
       ),
@@ -197,6 +209,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _smoothPage(
             SearchPage(
               initialQuery: state.uri.queryParameters['q'],
+              initialCategory: state.uri.queryParameters['category'],
               browseAll: state.uri.queryParameters['browse'] == '1',
             ),
             state),
@@ -204,6 +217,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.mapDiscovery,
         pageBuilder: (context, state) => _smoothPage(const MapDiscoveryPage(), state),
+      ),
+      GoRoute(
+        path: AppRoutes.feedAll,
+        pageBuilder: (context, state) => _smoothPage(
+          WelcomeFeedAllPage(
+            surface: state.uri.queryParameters['surface'] ?? '',
+          ),
+          state,
+        ),
       ),
       GoRoute(
         path: AppRoutes.marketZones,
@@ -234,10 +256,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _smoothPage(const SettingsPage(), state),
       ),
       GoRoute(
-        path: AppRoutes.blockedUsers,
-        redirect: (context, state) => AppRoutes.profile,
-      ),
-      GoRoute(
         path: AppRoutes.control,
         pageBuilder: (context, state) => _smoothPage(const ControlPage(), state),
       ),
@@ -258,24 +276,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _smoothPage(const ProviderListingsPage(), state),
       ),
       GoRoute(
-        path: AppRoutes.payouts,
-        redirect: (context, state) => AppRoutes.profile,
-      ),
-      GoRoute(
         path: AppRoutes.transactions,
         pageBuilder: (context, state) => _smoothPage(const TransactionsPage(), state),
       ),
       GoRoute(
-        path: AppRoutes.referrals,
-        redirect: (context, state) => AppRoutes.profile,
-      ),
-      GoRoute(
         path: AppRoutes.verification,
         pageBuilder: (context, state) => _smoothPage(const VerificationPage(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.analytics,
-        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.availability,
@@ -284,10 +290,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.bookings,
         pageBuilder: (context, state) => _smoothPage(const BookingsPage(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.workspaces,
-        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.orders,
@@ -326,28 +328,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
-        path: AppRoutes.providerBoosts,
-        redirect: (context, state) => AppRoutes.profile,
-      ),
-      GoRoute(
-        path: AppRoutes.providerSubscriptions,
-        redirect: (context, state) => AppRoutes.profile,
-      ),
-      GoRoute(
-        path: AppRoutes.invoices,
-        redirect: (context, state) => AppRoutes.profile,
-      ),
-      GoRoute(
-        path: '${AppRoutes.invoices}/:invoiceId',
-        redirect: (context, state) => AppRoutes.profile,
-      ),
-      GoRoute(
         path: AppRoutes.connections,
         pageBuilder: (context, state) => _smoothPage(const ConnectionsPage(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.admin,
-        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.checkout,
@@ -355,10 +337,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           item: _checkoutItemFromQuery(state),
           fromCart: state.uri.queryParameters['source'] == 'cart',
         ), state),
-      ),
-      GoRoute(
-        path: AppRoutes.saved,
-        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: '${AppRoutes.listings}/:itemId',
@@ -386,8 +364,47 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ), state),
       ),
       GoRoute(
-        path: AppRoutes.profile,
-        pageBuilder: (context, state) => _smoothPage(const ProfilePage(), state),
+        path: AppRoutes.tasks,
+        pageBuilder: (context, state) => _smoothPage(TasksPage(
+          focusTaskId: state.uri.queryParameters['focus'],
+          focusSource: state.uri.queryParameters['source'],
+        ), state),
+      ),
+      GoRoute(
+        path: AppRoutes.chat,
+        pageBuilder: (context, state) => _smoothPage(ChatPage(
+          recipientId: _queryParam(state, 'recipientId'),
+          initialDraft: _queryParam(state, 'draft'),
+          contextTitle: _firstQueryParam(state, [
+            'title',
+            'contextTitle',
+          ]),
+          contextTaskId: _firstQueryParam(state, [
+            'taskId',
+            'helpRequestId',
+          ]),
+          contextStatus: _queryParam(state, 'status'),
+          contextSource: _queryParam(state, 'source'),
+        ), state),
+        routes: [
+          GoRoute(
+            path: 'thread/:threadId',
+            pageBuilder: (context, state) => _smoothPage(ChatPage(
+              initialConversationId: state.pathParameters['threadId']?.trim(),
+              initialDraft: _queryParam(state, 'draft'),
+              contextTitle: _firstQueryParam(state, [
+                'title',
+                'contextTitle',
+              ]),
+              contextTaskId: _firstQueryParam(state, [
+                'taskId',
+                'helpRequestId',
+              ]),
+              contextStatus: _queryParam(state, 'status'),
+              contextSource: _queryParam(state, 'source'),
+            ), state),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.people,
@@ -457,52 +474,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.tasks,
-                pageBuilder: (context, state) => _smoothPage(TasksPage(
-                  focusTaskId: state.uri.queryParameters['focus'],
-                  focusSource: state.uri.queryParameters['source'],
-                ), state),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.chat,
-                pageBuilder: (context, state) => _smoothPage(ChatPage(
-                  recipientId: _queryParam(state, 'recipientId'),
-                  initialDraft: _queryParam(state, 'draft'),
-                  contextTitle: _firstQueryParam(state, [
-                    'title',
-                    'contextTitle',
-                  ]),
-                  contextTaskId: _firstQueryParam(state, [
-                    'taskId',
-                    'helpRequestId',
-                  ]),
-                  contextStatus: _queryParam(state, 'status'),
-                  contextSource: _queryParam(state, 'source'),
-                ), state),
-                routes: [
-                  GoRoute(
-                    path: 'thread/:threadId',
-                    pageBuilder: (context, state) => _smoothPage(ChatPage(
-                      initialConversationId: state.pathParameters['threadId']
-                          ?.trim(),
-                      initialDraft: _queryParam(state, 'draft'),
-                      contextTitle: _firstQueryParam(state, [
-                        'title',
-                        'contextTitle',
-                      ]),
-                      contextTaskId: _firstQueryParam(state, [
-                        'taskId',
-                        'helpRequestId',
-                      ]),
-                      contextStatus: _queryParam(state, 'status'),
-                      contextSource: _queryParam(state, 'source'),
-                    ), state),
-                  ),
-                ],
+                path: AppRoutes.profile,
+                pageBuilder: (context, state) =>
+                    _smoothPage(const ProfilePage(), state),
               ),
             ],
           ),

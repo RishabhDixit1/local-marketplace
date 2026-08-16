@@ -21,7 +21,6 @@ import '../../../features/people/domain/people_snapshot.dart';
 import '../../../shared/components/feed_card.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/premium_primitives.dart';
-import '../../../shared/components/profile_avatar_tile.dart';
 import '../../../shared/components/section_header.dart';
 import '../../../shared/components/sticky_bottom_cta.dart';
 import '../../../shared/components/trust_badge.dart';
@@ -164,20 +163,12 @@ class ProviderProfilePage extends ConsumerWidget {
     if (bundleAsync.hasError) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                AppErrorMapper.toMessage(bundleAsync.error ?? ''),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: () => ref.invalidate(providerProfileBundleProvider(providerId)),
-                child: const Text('Retry'),
-              ),
-            ],
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: ErrorStateView(
+            title: 'Could not load this profile',
+            message: AppErrorMapper.toMessage(bundleAsync.error ?? ''),
+            onRetry: () =>
+                ref.invalidate(providerProfileBundleProvider(providerId)),
           ),
         ),
       );
@@ -230,32 +221,34 @@ class ProviderProfilePage extends ConsumerWidget {
       color: AppColors.primary,
       backgroundColor: Theme.of(context).colorScheme.surface,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 168),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.xs,
+          AppSpacing.md,
+          168,
+        ),
         children: [
           _StorefrontHero(
             provider: provider,
             primaryOffer: primaryOffer,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.md),
           _StorefrontActionRow(
-            provider: provider,
-            primaryOffer: primaryOffer,
             onMessage: () => _messageProvider(context, provider),
-            onPrimary: () => _openPrimaryOffer(context, primaryOffer),
             onCopy: () => _copyProvider(context, provider, primaryOffer),
             onMore: () => _showMoreOptions(context, ref, provider),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           _StorefrontMetrics(
             provider: provider,
             offerCount: offers.length,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           _AvailabilityDistanceCard(
             provider: provider,
             primaryOffer: primaryOffer,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           _OfferShelf(
             offers: offers,
             providerId: provider.id,
@@ -263,11 +256,11 @@ class ProviderProfilePage extends ConsumerWidget {
             onRequestCustom: () =>
                 context.push(AppRoutes.createRequest),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           _TrustProofCard(provider: provider),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           _ReviewsCard(provider: provider),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: SizedBox(
@@ -598,7 +591,6 @@ class ProviderProfilePage extends ConsumerWidget {
       showDragHandle: true,
       isScrollControlled: true,
       builder: (sheetContext) {
-        bool submitting = false;
         return StatefulBuilder(
           builder: (context, setSheetState) {
             return SafeArea(
@@ -648,49 +640,40 @@ class ProviderProfilePage extends ConsumerWidget {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed: submitting // ignore: dead_code
-                            ? null
-                            : () async {
-                                HapticFeedback.mediumImpact();
-                                setSheetState(() => submitting = true);
-                                Navigator.of(sheetContext).pop();
-                                try {
-                                  await ref
-                                      .read(profileRepositoryProvider)
-                                      .submitReview(
-                                        providerId: providerId,
-                                        rating: rating,
-                                        comment: comment,
-                                      );
-                                  if (!context.mounted) return;
-                                  ServiqToast.show(
-                                    context,
-                                    message: 'Review submitted.',
-                                    tone: ServiqToastTone.success,
-                                  );
-                                } on ApiException catch (error) {
-                                  if (!context.mounted) return;
-                                  ServiqToast.show(
-                                    context,
-                                    message: error.message,
-                                    tone: ServiqToastTone.danger,
-                                  );
-                                } catch (error) {
-                                  if (!context.mounted) return;
-                                  ServiqToast.show(
-                                    context,
-                                    message: error.toString(),
-                                    tone: ServiqToastTone.danger,
-                                  );
-                                }
-                              },
-                        child: submitting
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Text('Submit'),
+                        onPressed: () async {
+                          HapticFeedback.mediumImpact();
+                          Navigator.of(sheetContext).pop();
+                          try {
+                            await ref
+                                .read(profileRepositoryProvider)
+                                .submitReview(
+                                  providerId: providerId,
+                                  rating: rating,
+                                  comment: comment,
+                                );
+                            if (!context.mounted) return;
+                            ServiqToast.show(
+                              context,
+                              message: 'Review submitted.',
+                              tone: ServiqToastTone.success,
+                            );
+                          } on ApiException catch (error) {
+                            if (!context.mounted) return;
+                            ServiqToast.show(
+                              context,
+                              message: error.message,
+                              tone: ServiqToastTone.danger,
+                            );
+                          } catch (error) {
+                            if (!context.mounted) return;
+                            ServiqToast.show(
+                              context,
+                              message: error.toString(),
+                              tone: ServiqToastTone.danger,
+                            );
+                          }
+                        },
+                        child: const Text('Submit'),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -782,23 +765,20 @@ class _StorefrontHero extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+                          spacing: AppSpacing.xs,
+                          runSpacing: AppSpacing.xs,
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(AppRadii.pill),
                               child: BackdropFilter(
                                 filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                                child: PremiumPill(
-                                  label: provider.isOnline
+                                child: AppPill.dark(
+                                  provider.isOnline
                                       ? 'Available now'
                                       : provider.activityLabel,
                                   icon: provider.isOnline
                                       ? Icons.bolt_rounded
                                       : Icons.schedule_rounded,
-                                  backgroundColor: Colors.white.withValues(alpha: 0.25),
-                                  foregroundColor: Colors.white,
-                                  borderColor: Colors.white.withValues(alpha: 0.3),
                                 ),
                               ),
                             ),
@@ -806,18 +786,15 @@ class _StorefrontHero extends StatelessWidget {
                               borderRadius: BorderRadius.circular(AppRadii.pill),
                               child: BackdropFilter(
                                 filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                                child: PremiumPill(
-                                  label: provider.ratingLabel,
+                                child: AppPill.dark(
+                                  provider.ratingLabel,
                                   icon: Icons.star_rounded,
-                                  backgroundColor: Colors.white.withValues(alpha: 0.25),
-                                  foregroundColor: Colors.white,
-                                  borderColor: Colors.white.withValues(alpha: 0.3),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AppSpacing.sm),
                         Text(
                           provider.name,
                           maxLines: 2,
@@ -825,7 +802,7 @@ class _StorefrontHero extends StatelessWidget {
                           style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(color: Colors.white),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppSpacing.xxs),
                         Text(
                           offerTitle.trim().isEmpty
                               ? provider.headline
@@ -843,47 +820,50 @@ class _StorefrontHero extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ProfileAvatarTile(
-                  name: provider.name,
-                  subtitle: provider.headline,
-                  avatarUrl: provider.avatarUrl,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: AppAvatar(
+                    name: provider.name,
+                    avatarUrl: provider.avatarUrl,
+                    radius: 30,
+                    showOnlineStatus: true,
+                    isOnline: provider.isOnline,
+                  ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpacing.md),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
                   children: [
-                    TrustBadge(label: provider.verificationLabel),
-                    TrustBadge(
-                      label: provider.locationLabel,
+                    AppPill.verified(provider.verificationLabel),
+                    AppPill.neutral(
+                      provider.locationLabel,
                       icon: Icons.place_outlined,
-                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                      foregroundColor: Theme.of(context).colorScheme.onSurface,
                     ),
-                    TrustBadge(
-                      label: provider.priceLabel,
+                    AppPill.warning(
+                      provider.priceLabel,
                       icon: Icons.payments_outlined,
-                      backgroundColor: AppColors.warningSoft,
-                      foregroundColor: AppColors.warning,
+                    ),
+                    AppPill.success(
+                      provider.reviewCount == 0
+                          ? 'New to reviews'
+                          : '${provider.completionPercent}% job completion',
+                      icon: Icons.task_alt_rounded,
                     ),
                   ],
                 ),
                 if (provider.primaryTags.isNotEmpty) ...[
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.md),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
                     children: provider.primaryTags
                         .map(
-                          (tag) => PremiumPill(
-                            label: tag,
-                            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                            foregroundColor: Theme.of(context).colorScheme.onSurface,
-                          ),
+                          (tag) => AppPill.neutral(tag),
                         )
                         .toList(),
                   ),
@@ -931,18 +911,12 @@ class _StorefrontHeroFallback extends StatelessWidget {
 
 class _StorefrontActionRow extends StatelessWidget {
   const _StorefrontActionRow({
-    required this.provider,
-    required this.primaryOffer,
     required this.onMessage,
-    required this.onPrimary,
     required this.onCopy,
     required this.onMore,
   });
 
-  final MobilePersonCard provider;
-  final MobileFeedItem? primaryOffer;
   final VoidCallback onMessage;
-  final VoidCallback onPrimary;
   final VoidCallback onCopy;
   final VoidCallback onMore;
 
@@ -951,25 +925,19 @@ class _StorefrontActionRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: PrimaryButton(
-            label: _primaryOfferLabel(primaryOffer),
-            icon: const Icon(Icons.shopping_bag_outlined),
-            onPressed: onPrimary,
+          child: OutlinedButton.icon(
+            onPressed: onMessage,
+            icon: const Icon(Icons.chat_bubble_outline_rounded),
+            label: const Text('Message'),
           ),
         ),
-        const SizedBox(width: 10),
-        _SquareStorefrontButton(
-          tooltip: 'Message',
-          icon: Icons.chat_bubble_outline_rounded,
-          onTap: onMessage,
-        ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
         _SquareStorefrontButton(
           tooltip: 'Copy profile',
           icon: Icons.ios_share_rounded,
           onTap: onCopy,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.xs),
         _SquareStorefrontButton(
           tooltip: 'More',
           icon: Icons.more_vert_rounded,
@@ -1029,7 +997,7 @@ class _StorefrontMetrics extends StatelessWidget {
         provider.reviewCount == 0
             ? 'New'
             : provider.averageRating?.toStringAsFixed(1) ?? '—',
-        '${provider.reviewCount} reviews',
+        '${provider.reviewCount} review${provider.reviewCount == 1 ? '' : 's'}',
         Icons.star_rounded,
       ),
       (
@@ -1045,10 +1013,10 @@ class _StorefrontMetrics extends StatelessWidget {
         Icons.store_mall_directory_outlined,
       ),
       (
-        'Trust',
+        'Profile',
         '${provider.completionPercent}%',
         provider.verificationLabel,
-        Icons.verified_user_outlined,
+        Icons.account_circle_outlined,
       ),
     ];
 
@@ -1439,8 +1407,14 @@ class _ReviewsCard extends ConsumerWidget {
           const SizedBox(height: 14),
           if (asyncReviews.isLoading)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Column(
+                children: [
+                  LoadingShimmer(height: 64),
+                  SizedBox(height: AppSpacing.sm),
+                  LoadingShimmer(height: 64),
+                ],
+              ),
             )
           else if (asyncReviews.hasError)
             Padding(
@@ -1563,7 +1537,7 @@ class _SignalRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1576,13 +1550,13 @@ class _SignalRow extends StatelessWidget {
             ),
             child: Icon(icon, color: AppColors.primary, size: 18),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: 3),
+                const SizedBox(height: AppSpacing.xxxs),
                 Text(detail, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
@@ -1599,7 +1573,12 @@ class _StorefrontLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.xs,
+        AppSpacing.md,
+        AppSpacing.xl,
+      ),
       children: [
         SectionCard(
           padding: EdgeInsets.zero,
@@ -1608,14 +1587,14 @@ class _StorefrontLoading extends StatelessWidget {
             children: const [
               LoadingShimmer(height: 220),
               Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(AppSpacing.md),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     LoadingShimmer(height: 22, width: 220),
-                    SizedBox(height: 10),
+                    SizedBox(height: AppSpacing.sm),
                     LoadingShimmer(height: 14),
-                    SizedBox(height: 14),
+                    SizedBox(height: AppSpacing.md),
                     LoadingShimmer(height: 34, width: 260),
                   ],
                 ),
@@ -1623,19 +1602,19 @@ class _StorefrontLoading extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.md),
         ...List.generate(
           3,
           (_) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
             child: SectionCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
                   LoadingShimmer(height: 18, width: 180),
-                  SizedBox(height: 12),
+                  SizedBox(height: AppSpacing.sm),
                   LoadingShimmer(height: 14),
-                  SizedBox(height: 8),
+                  SizedBox(height: AppSpacing.xs),
                   LoadingShimmer(height: 14, width: 220),
                 ],
               ),

@@ -5,7 +5,6 @@ import 'package:flutter/semantics.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../l10n/l10n.dart';
-import '../../shared/widgets/chips.dart';
 
 const _navigationRailWidthBreakpoint = AppBreakpoints.expanded;
 
@@ -17,24 +16,16 @@ class MainBottomNav extends StatelessWidget {
     super.key,
     required this.currentIndex,
     required this.onTap,
-    this.chatCount = 0,
-    this.taskCount = 0,
   });
 
   final int currentIndex;
   final ValueChanged<int> onTap;
-  final int chatCount;
-  final int taskCount;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final destinations = _mainDestinations(
-      l10n: l10n,
-      chatCount: chatCount,
-      taskCount: taskCount,
-    );
+    final destinations = _mainDestinations(l10n: l10n);
 
     return ClipRRect(
       child: BackdropFilter(
@@ -90,25 +81,17 @@ class MainNavigationRail extends StatelessWidget {
     super.key,
     required this.currentIndex,
     required this.onTap,
-    this.chatCount = 0,
-    this.taskCount = 0,
   });
 
   final int currentIndex;
   final ValueChanged<int> onTap;
-  final int chatCount;
-  final int taskCount;
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final extended = width >= 1040;
     final l10n = AppLocalizations.of(context);
-    final destinations = _mainDestinations(
-      l10n: l10n,
-      chatCount: chatCount,
-      taskCount: taskCount,
-    );
+    final destinations = _mainDestinations(l10n: l10n);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -168,33 +151,22 @@ class MainNavigationRail extends StatelessWidget {
   }
 }
 
-List<_NavDestination> _mainDestinations({
-  required AppLocalizations l10n,
-  required int chatCount,
-  required int taskCount,
-}) {
+List<_NavDestination> _mainDestinations({required AppLocalizations l10n}) {
   return [
     _NavDestination(
-      label: l10n.home,
-      icon: Icons.home_outlined,
-      selectedIcon: Icons.home_rounded,
+      label: l10n.needSomething,
+      icon: Icons.auto_awesome_outlined,
+      selectedIcon: Icons.auto_awesome_rounded,
     ),
     _NavDestination(
-      label: l10n.discovery,
+      label: l10n.explore,
       icon: Icons.explore_outlined,
       selectedIcon: Icons.explore_rounded,
     ),
     _NavDestination(
-      label: l10n.activity,
-      icon: Icons.assignment_outlined,
-      selectedIcon: Icons.assignment_rounded,
-      badgeCount: taskCount,
-    ),
-    _NavDestination(
-      label: l10n.inbox,
-      icon: Icons.chat_outlined,
-      selectedIcon: Icons.chat_rounded,
-      badgeCount: chatCount,
+      label: l10n.youTab,
+      icon: Icons.person_outline_rounded,
+      selectedIcon: Icons.person_rounded,
     ),
   ];
 }
@@ -204,13 +176,11 @@ class _NavDestination {
     required this.label,
     required this.icon,
     required this.selectedIcon,
-    this.badgeCount = 0,
   });
 
   final String label;
   final IconData icon;
   final IconData selectedIcon;
-  final int badgeCount;
 }
 
 class _NavRailIcon extends StatelessWidget {
@@ -230,18 +200,7 @@ class _NavRailIcon extends StatelessWidget {
       message: destination.label,
       child: SizedBox.square(
         dimension: AppTouchTargets.minimum,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.center,
-          children: [
-            Icon(icon, color: foreground),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: CountBadge(count: destination.badgeCount),
-            ),
-          ],
-        ),
+        child: Icon(icon, color: foreground),
       ),
     );
   }
@@ -270,10 +229,7 @@ class _NavDestinationButton extends StatelessWidget {
     final selectedBackground = selected
         ? (isDark ? AppColors.accentDeep.withValues(alpha: 0.3) : AppColors.accentSoft)
         : Colors.transparent;
-    final badgeCount = destination.badgeCount;
-    final semanticLabel = badgeCount > 0
-        ? '${destination.label}, $badgeCount new item${badgeCount == 1 ? '' : 's'}'
-        : destination.label;
+    final semanticLabel = destination.label;
 
     return Semantics(
       selected: selected,
@@ -303,32 +259,17 @@ class _NavDestinationButton extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
-                    width: 34,
-                    height: 26,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.center,
-                      children: [
-                        AnimatedSwitcher(
-                          duration: AppDurations.fast,
-                          transitionBuilder: (child, anim) => ScaleTransition(
-                            scale: anim,
-                            child: child,
-                          ),
-                          child: Icon(
-                            icon,
-                            size: AppIconSize.lg,
-                            color: foreground,
-                            key: ValueKey(selected),
-                          ),
-                        ),
-                        Positioned(
-                          top: -6,
-                          right: -8,
-                          child: CountBadge(count: destination.badgeCount),
-                        ),
-                      ],
+                  AnimatedSwitcher(
+                    duration: AppDurations.fast,
+                    transitionBuilder: (child, anim) => ScaleTransition(
+                      scale: anim,
+                      child: child,
+                    ),
+                    child: Icon(
+                      icon,
+                      size: AppIconSize.lg,
+                      color: foreground,
+                      key: ValueKey(selected),
                     ),
                   ),
                   const SizedBox(height: 2),

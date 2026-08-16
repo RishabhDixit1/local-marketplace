@@ -8,6 +8,7 @@ import '../../../core/api/mobile_api_client.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/supabase/batched_query.dart';
+import '../../../core/utils/app_formatters.dart';
 import '../domain/chat_models.dart';
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
@@ -91,7 +92,7 @@ class ChatRepository {
         client
             .from('messages')
             .batchedSelect(
-              columns: 'id,conversation_id,content,created_at,sender_id',
+              columns: 'id,conversation_id,content,created_at,sender_id,metadata',
               filterColumn: 'conversation_id',
               values: conversationIds,
             ),
@@ -118,7 +119,7 @@ class ChatRepository {
           : await client
               .from('profiles')
               .batchedSelect(
-                columns: 'id,name,avatar_url,bio,location',
+                columns: 'id,name,full_name,avatar_url,bio,location',
                 filterColumn: 'id',
                 values: uniqueUserIds,
               );
@@ -195,11 +196,19 @@ class ChatRepository {
 
             return ChatConversation(
               id: conversationId,
-              name: _readString(profile['name'], fallback: 'Local member'),
+              name: AppFormatters.cleanPersonName(
+                _readString(
+                  profile['full_name'],
+                  fallback: _readString(
+                    profile['name'],
+                    fallback: 'Local member',
+                  ),
+                ),
+              ),
               avatarUrl: _readString(profile['avatar_url']),
               otherUserId: otherUserId.isEmpty ? null : otherUserId,
               lastMessage: _readString(
-                lastMessage?['content'],
+                _lastMessagePreview(lastMessage),
                 fallback: 'Start the conversation',
               ),
               lastMessageAt: _parseDate(lastMessage?['created_at']),
@@ -395,6 +404,24 @@ class ChatRepository {
   static String _readString(Object? value, {String fallback = ''}) {
     final text = value is String ? value.trim() : '';
     return text.isEmpty ? fallback : text;
+  }
+
+  static String? _lastMessagePreview(Map<String, dynamic>? row) {
+    if (row == null) {
+      return null;
+    }
+    final content = _readString(row['content']);
+    if (content.isNotEmpty) {
+      return content;
+    }
+    final metadata = row['metadata'];
+    if (metadata is Map) {
+      final imageUrl = metadata['imageUrl'];
+      if (imageUrl is String && imageUrl.trim().isNotEmpty) {
+        return 'Photo';
+      }
+    }
+    return null;
   }
 
   static DateTime? _parseDate(Object? value) {

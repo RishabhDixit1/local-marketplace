@@ -420,7 +420,7 @@ class MobileFeedItem {
       return '$mutualConnectionsCount mutual${mutualConnectionsCount == 1 ? '' : 's'}';
     }
     if (completedJobs > 0) {
-      return '$completedJobs jobs completed';
+      return '$completedJobs ${completedJobs == 1 ? 'job' : 'jobs'} completed';
     }
     return trustLabel;
   }

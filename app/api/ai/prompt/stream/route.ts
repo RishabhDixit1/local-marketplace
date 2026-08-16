@@ -1,8 +1,8 @@
 import { streamText } from "ai";
-import { google } from "@ai-sdk/google";
 import { createSupabaseAnonServerClientWithAuthTimeout } from "@/lib/server/supabaseClients";
 import { parseIntentBest } from "@/lib/ai/intentParser";
 import { moderatePrompt } from "@/lib/ai/contentModeration";
+import { getModel } from "@/lib/ai/provider";
 import { appName } from "@/lib/branding";
 import { applyRateLimit } from "@/lib/server/rateLimit";
 
@@ -95,7 +95,7 @@ Remember the context from previous messages — if the user refers to something 
 
     try {
       const result = streamText({
-        model: google("gemini-2.0-flash"),
+        model: getModel("gemini-2.0-flash"),
         system: systemPrompt,
         prompt: `${conversationContext}
 

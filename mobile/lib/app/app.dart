@@ -52,7 +52,7 @@ class _ServiQAppState extends ConsumerState<ServiQApp> {
       final firebase = await ref
           .read(appFirebaseProvider.future)
           .timeout(
-            const Duration(seconds: 10),
+            const Duration(seconds: 30),
             onTimeout: () => const AppFirebaseState.disabled(),
           );
       ref

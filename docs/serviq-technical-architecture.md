@@ -876,17 +876,35 @@ export async function withRateLimit(request: Request) {
 
 ## Mobile (Flutter)
 
+Production builds require `APP_ENV=production` plus the full Supabase, API, and
+Firebase dart-defines. `AppConfig.load()` asserts the Supabase/API config and
+throws at startup if any Firebase key is missing (see `app_config.dart`
+`_requireProductionFirebaseConfig`) - without them Crashlytics, Analytics, and
+FCM are silently disabled in release builds.
+
 ```bash
 # Build Android
 flutter build apk --release \
-  --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+  --dart-define=APP_ENV=production \
+  --dart-define=SUPABASE_URL="https://www.serviqapp.com" \
   --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
-  --dart-define=API_BASE_URL="https://www.serviqapp.com"
+  --dart-define=API_BASE_URL="https://www.serviqapp.com" \
+  --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY" \
+  --dart-define=FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
+  --dart-define=FIREBASE_MESSAGING_SENDER_ID="$FIREBASE_MESSAGING_SENDER_ID" \
+  --dart-define=FIREBASE_ANDROID_APP_ID="$FIREBASE_ANDROID_APP_ID" \
+  --dart-define=FIREBASE_IOS_APP_ID="$FIREBASE_IOS_APP_ID"
 
 # Build iOS
 flutter build ios --release \
-  --dart-define=SUPABASE_URL="$SUPABASE_URL" \
-  --dart-define=API_BASE_URL="https://www.serviqapp.com"
+  --dart-define=APP_ENV=production \
+  --dart-define=SUPABASE_URL="https://www.serviqapp.com" \
+  --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+  --dart-define=API_BASE_URL="https://www.serviqapp.com" \
+  --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY" \
+  --dart-define=FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
+  --dart-define=FIREBASE_MESSAGING_SENDER_ID="$FIREBASE_MESSAGING_SENDER_ID" \
+  --dart-define=FIREBASE_IOS_APP_ID="$FIREBASE_IOS_APP_ID"
 ```
 
 ---

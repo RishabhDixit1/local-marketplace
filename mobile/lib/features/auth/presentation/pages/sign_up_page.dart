@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/design_system/design_system.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../data/onboarding_handoff.dart';
 import '../notifiers/auth_notifier.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/social_auth_button.dart';
@@ -25,6 +26,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnimation;
   late final Animation<Offset> _slideAnimation;
+  MobileOnboardingIntent? _selectedIntent;
 
   @override
   void initState() {
@@ -153,6 +155,16 @@ class _SignUpPageState extends ConsumerState<SignUpPage>
     return Form(
       child: Column(
         children: [
+          _IntentSelector(
+            selected: _selectedIntent,
+            onSelect: (intent) {
+              setState(() => _selectedIntent = intent);
+              ref
+                  .read(onboardingHandoffControllerProvider)
+                  .selectIntent(intent);
+            },
+          ),
+          const SizedBox(height: 20),
           AuthTextField(
             controller: notifier.nameController,
             label: 'Full name',
@@ -305,3 +317,159 @@ class _MessageBanner extends StatelessWidget {
     );
   }
 }
+
+class _IntentSelector extends StatelessWidget {
+  const _IntentSelector({required this.selected, required this.onSelect});
+
+  final MobileOnboardingIntent? selected;
+  final ValueChanged<MobileOnboardingIntent> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Who are you using ServiQ for?',
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Pick a path and we will tailor your home. You can switch anytime.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+          ),
+        ),
+        const SizedBox(height: 12),
+        for (final option in _intentOptions) ...[
+          _IntentOptionRow(
+            option: option,
+            isSelected: selected == option.intent,
+            onTap: () => onSelect(option.intent),
+          ),
+          if (option != _intentOptions.last) const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _IntentOptionRow extends StatelessWidget {
+  const _IntentOptionRow({
+    required this.option,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final _IntentOption option;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.lg),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primarySoft.withValues(alpha: 0.55)
+              : Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.55)
+                : Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary
+                    : AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              child: Icon(
+                option.icon,
+                size: 18,
+                color: isSelected ? Colors.white : AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    option.title,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    option.subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.55),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.primary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IntentOption {
+  const _IntentOption({
+    required this.intent,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final MobileOnboardingIntent intent;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+}
+
+const _intentOptions = [
+  _IntentOption(
+    intent: MobileOnboardingIntent.findHelp,
+    icon: Icons.manage_search_rounded,
+    title: 'Find help',
+    subtitle: 'Post needs and hire nearby professionals',
+  ),
+  _IntentOption(
+    intent: MobileOnboardingIntent.earnNearby,
+    icon: Icons.work_outline_rounded,
+    title: 'Earn nearby',
+    subtitle: 'Take on local work and grow your income',
+  ),
+  _IntentOption(
+    intent: MobileOnboardingIntent.businessSetup,
+    icon: Icons.storefront_outlined,
+    title: 'Set up my business',
+    subtitle: 'List your services, team, and availability',
+  ),
+];

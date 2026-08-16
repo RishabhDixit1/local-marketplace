@@ -1,3 +1,5 @@
+const String kDefaultTimezone = 'Asia/Kolkata';
+
 class AvailabilitySlot {
   const AvailabilitySlot({
     this.id,
@@ -5,7 +7,7 @@ class AvailabilitySlot {
     required this.startTime,
     required this.endTime,
     this.isActive = true,
-    this.timezone = 'Asia/Kolkata',
+    this.timezone = kDefaultTimezone,
   });
 
   factory AvailabilitySlot.fromJson(Map<String, dynamic> json) {
@@ -15,7 +17,7 @@ class AvailabilitySlot {
       startTime: _readString(json['start_time']),
       endTime: _readString(json['end_time']),
       isActive: json['is_active'] != false,
-      timezone: _readString(json['timezone'], fallback: 'Asia/Kolkata'),
+      timezone: _readString(json['timezone'], fallback: kDefaultTimezone),
     );
   }
 

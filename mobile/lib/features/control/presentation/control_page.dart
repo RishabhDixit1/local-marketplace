@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
-import '../../../core/feature_flags.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
@@ -183,9 +182,9 @@ class _ControlHero extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.onSurface,
+        color: AppColors.primaryDeep,
         borderRadius: BorderRadius.circular(AppRadii.md),
         boxShadow: AppShadows.card,
       ),
@@ -383,7 +382,7 @@ class _SetupProgressPanel extends StatelessWidget {
       (
         'Proof and trust',
         snapshot.portfolioCount + snapshot.reviewCount > 0,
-        '${snapshot.portfolioCount} proof items / ${snapshot.reviewCount} reviews',
+        '${snapshot.portfolioCount} proof items / ${snapshot.reviewCount} review${snapshot.reviewCount == 1 ? '' : 's'}',
       ),
       (
         'Availability',
@@ -503,35 +502,11 @@ class _ControlActionPanel extends StatelessWidget {
             label: 'Manage leads',
             route: AppRoutes.providerLeads,
           ),
-          if (kPromotionsEnabled)
-            _ControlLinkRow(
-              icon: Icons.trending_up_rounded,
-              label: 'Boosts & promotions',
-              route: AppRoutes.providerBoosts,
-            ),
-          if (kSubscriptionsEnabled)
-            _ControlLinkRow(
-              icon: Icons.card_membership_outlined,
-              label: 'Subscriptions',
-              route: AppRoutes.providerSubscriptions,
-            ),
-          if (kInvoicesEnabled)
-            _ControlLinkRow(
-              icon: Icons.receipt_long_rounded,
-              label: 'Invoices',
-              route: AppRoutes.invoices,
-            ),
           _ControlLinkRow(
             icon: Icons.people_outline_rounded,
             label: 'Connections',
             route: AppRoutes.connections,
           ),
-          if (kAdminEnabled)
-            _ControlLinkRow(
-              icon: Icons.shield_outlined,
-              label: 'Admin',
-              route: AppRoutes.admin,
-            ),
         ],
       ),
     );
@@ -579,7 +554,7 @@ class _TrustRevenuePanel extends StatelessWidget {
             label: 'Reviews',
             done: snapshot.reviewCount > 0,
             detail:
-                '${snapshot.reviewCount} reviews / ${snapshot.averageRating.toStringAsFixed(1)} avg',
+                '${snapshot.reviewCount} review${snapshot.reviewCount == 1 ? '' : 's'} / ${snapshot.averageRating.toStringAsFixed(1)} avg',
           ),
           _ControlChecklistRow(
             label: 'Completed work',
@@ -595,7 +570,7 @@ class _TrustRevenuePanel extends StatelessWidget {
           _ControlLinkRow(
             icon: Icons.verified_user_outlined,
             label: 'Open trust and verification',
-            route: AppRoutes.profileTrust,
+            route: AppRoutes.verification,
           ),
         ],
       ),
@@ -651,7 +626,7 @@ class _AnalyticsPanel extends StatelessWidget {
                     child: MetricTile(
                       label: 'Trust score',
                       value: trustScore.toString(),
-                      caption: '${snapshot.reviewCount} reviews',
+                      caption: '${snapshot.reviewCount} review${snapshot.reviewCount == 1 ? '' : 's'}',
                       icon: Icons.verified_outlined,
                     ),
                   ),
@@ -893,7 +868,7 @@ _ControlNextAction _nextBestAction({
   }
   return const _ControlNextAction(
     label: 'Review profile trust signals',
-    route: AppRoutes.profileTrust,
+    route: AppRoutes.verification,
     icon: Icons.verified_user_outlined,
   );
 }

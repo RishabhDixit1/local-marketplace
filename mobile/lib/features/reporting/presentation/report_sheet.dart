@@ -49,7 +49,18 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
   final _descriptionController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _descriptionController.addListener(_onDescriptionChanged);
+  }
+
+  void _onDescriptionChanged() {
+    if (_selectedReason == ReportReason.other) setState(() {});
+  }
+
+  @override
   void dispose() {
+    _descriptionController.removeListener(_onDescriptionChanged);
     _descriptionController.dispose();
     super.dispose();
   }
@@ -88,7 +99,10 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
     }
 
     final reason = _selectedReason;
-    final canSubmit = reason != null;
+    final canSubmit =
+        reason != null &&
+        (reason != ReportReason.other ||
+            _descriptionController.text.trim().isNotEmpty);
 
     return Padding(
       padding: EdgeInsets.only(

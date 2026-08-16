@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:serviq_mobile/core/config/app_config.dart';
 import 'package:serviq_mobile/core/api/mobile_api_client.dart';
 import 'package:serviq_mobile/core/api/mobile_api_provider.dart';
+import 'package:serviq_mobile/core/constants/app_routes.dart';
 import 'package:serviq_mobile/core/supabase/app_bootstrap.dart';
 import 'package:serviq_mobile/core/theme/app_theme.dart';
 import 'package:serviq_mobile/core/widgets/section_card.dart';
 import 'package:serviq_mobile/core/services/user_location.dart';
+import 'package:serviq_mobile/features/auth/data/onboarding_handoff.dart';
 import 'package:serviq_mobile/features/chat/data/chat_repository.dart';
 import 'package:serviq_mobile/features/chat/domain/chat_models.dart';
 import 'package:serviq_mobile/features/chat/presentation/chat_page.dart';
@@ -87,7 +90,7 @@ void main() {
     expect(find.text('Find Help'), findsOneWidget);
     expect(find.text('Search services, requests, or areas'), findsOneWidget);
     expect(find.text('Find local help nearby.'), findsOneWidget);
-    expect(find.text('Post Need'), findsOneWidget);
+    expect(find.text('Post Need'), findsNothing);
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
@@ -168,6 +171,109 @@ void main() {
     expect(find.text('ServiQ'), findsOneWidget);
     expect(find.text('For you'), findsOneWidget);
     expect(find.text('What do you need today?'), findsOneWidget);
+  });
+
+  testWidgets('welcome intent prompt guides first-run role selection', (
+    WidgetTester tester,
+  ) async {
+    final store = MemoryOnboardingHandoffStore();
+    final router = GoRouter(
+      initialLocation: AppRoutes.home,
+      routes: [
+        GoRoute(
+          path: AppRoutes.home,
+          builder: (context, state) => const WelcomePage(
+            snapshotOverride: AsyncData(_sampleSnapshot),
+            trustedSnapshotOverride: AsyncData(_sampleSnapshot),
+            peopleOverride: AsyncData(_samplePeopleSnapshot),
+          ),
+        ),
+        GoRoute(
+          path: AppRoutes.createNeed,
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('create-need'))),
+        ),
+        GoRoute(
+          path: AppRoutes.providerLaunchpad,
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('launchpad'))),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appBootstrapProvider.overrideWithValue(_bootstrap),
+          onboardingHandoffStoreProvider.overrideWithValue(store),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          routerConfig: router,
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('What brings you to ServiQ?'), findsOneWidget);
+    expect(find.text('Find help'), findsOneWidget);
+    expect(find.text('Earn nearby'), findsOneWidget);
+    expect(find.text('Set up my business'), findsOneWidget);
+
+    await tester.tap(find.text('Earn nearby'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('What brings you to ServiQ?'), findsNothing);
+    expect(find.text('launchpad'), findsOneWidget);
+    expect(store.readIntent(), MobileOnboardingIntent.earnNearby);
+    expect(store.readIntentChosen(), isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('welcome intent prompt dismisses with Not now', (
+    WidgetTester tester,
+  ) async {
+    final store = MemoryOnboardingHandoffStore();
+    final router = GoRouter(
+      initialLocation: AppRoutes.home,
+      routes: [
+        GoRoute(
+          path: AppRoutes.home,
+          builder: (context, state) => const WelcomePage(
+            snapshotOverride: AsyncData(_sampleSnapshot),
+            trustedSnapshotOverride: AsyncData(_sampleSnapshot),
+            peopleOverride: AsyncData(_samplePeopleSnapshot),
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appBootstrapProvider.overrideWithValue(_bootstrap),
+          onboardingHandoffStoreProvider.overrideWithValue(store),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          routerConfig: router,
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('What brings you to ServiQ?'), findsOneWidget);
+
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('What brings you to ServiQ?'), findsNothing);
+    expect(store.readIntentPromptDismissed(), isTrue);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('profile page renders synced storefront data', (
@@ -310,6 +416,130 @@ void main() {
 
     expect(find.text('Search nearby'), findsOneWidget);
     expect(find.text('Priyanka Narayanan'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('search query and category chips stay mutually exclusive', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    _MockSearchRepository.lastQuery = null;
+    _MockSearchRepository.lastCategory = null;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appBootstrapProvider.overrideWithValue(_bootstrap),
+          feedSnapshotProvider(
+            MobileFeedScope.all,
+          ).overrideWith((ref) async => _sampleSnapshot),
+          peopleSnapshotProvider.overrideWith(
+            (ref) async => _samplePeopleSnapshot,
+          ),
+          searchRepositoryProvider.overrideWithValue(_MockSearchRepository()),
+          mobileApiClientProvider.overrideWithValue(_MockApiClient()),
+          userLocationProvider.overrideWith((ref) async => null),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
+          home: const SearchPage(initialQuery: 'electric'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('electric'), findsOneWidget);
+
+    await tester.tap(find.text('Electrician').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('electric'), findsNothing);
+    expect(_MockSearchRepository.lastCategory, 'Electrician');
+    expect(_MockSearchRepository.lastQuery, isNull);
+
+    await tester.enterText(find.byType(TextField), 'plumber');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    expect(_MockSearchRepository.lastQuery, 'plumber');
+    expect(_MockSearchRepository.lastCategory, isNull);
+    expect(find.text('plumber'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('feed all page filters closed posts and shows status labels', (
+    WidgetTester tester,
+  ) async {
+    _setTestSurface(tester, const Size(390, 4000));
+    final base = _sampleSnapshot.items.first;
+    final items = List<MobileFeedItem>.generate(7, (i) {
+      final closed = i == 5;
+      return MobileFeedItem(
+        id: 'feedall-$i',
+        providerId: base.providerId,
+        source: base.source,
+        type: base.type,
+        title: closed ? 'Closed post title' : 'Post number $i',
+        description: base.description,
+        category: base.category,
+        creatorName: base.creatorName,
+        avatarUrl: base.avatarUrl,
+        locationLabel: base.locationLabel,
+        statusLabel: closed ? 'Cancelled' : 'Open',
+        priceLabel: base.priceLabel,
+        price: base.price,
+        timeLabel: base.timeLabel,
+        distanceLabel: base.distanceLabel,
+        publicProfilePath: base.publicProfilePath,
+        verificationStatus: base.verificationStatus,
+        profileCompletion: base.profileCompletion,
+        responseMinutes: base.responseMinutes,
+        averageRating: base.averageRating,
+        reviewCount: base.reviewCount,
+        completedJobs: base.completedJobs,
+        listingCount: base.listingCount,
+        urgent: base.urgent,
+        mediaCount: base.mediaCount,
+        status: closed ? 'cancelled' : 'open',
+      );
+    });
+    final snapshot = MobileFeedSnapshot(
+      currentUserId: 'viewer-1',
+      stats: _sampleSnapshot.stats,
+      items: items,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appBootstrapProvider.overrideWithValue(_bootstrap),
+          feedSnapshotProvider(
+            MobileFeedScope.all,
+          ).overrideWith((ref) async => snapshot),
+          feedSnapshotProvider(
+            MobileFeedScope.connected,
+          ).overrideWith((ref) async => snapshot),
+          peopleSnapshotProvider.overrideWith(
+            (ref) async => _samplePeopleSnapshot,
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          localizationsDelegates: kServiqTestLocalizationsDelegates,
+          supportedLocales: kServiqTestSupportedLocales,
+          home: WelcomeFeedAllPage(surface: 'for_you'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Closed post title'), findsNothing);
+    for (var i = 0; i < 7; i++) {
+      if (i == 5) continue;
+      expect(find.text('Post number $i'), findsOneWidget);
+    }
+    expect(find.text('Open request'), findsNWidgets(6));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('provider cards clamp long profile intros on narrow widths', (
@@ -710,6 +940,9 @@ void main() {
 class _MockSearchRepository implements SearchRepository {
   const _MockSearchRepository();
 
+  static String? lastQuery;
+  static String? lastCategory;
+
   @override
   Future<SearchResponse> search({
     String? category,
@@ -722,6 +955,8 @@ class _MockSearchRepository implements SearchRepository {
     bool onlineOnly = false,
     String sortBy = 'distance',
   }) async {
+    lastQuery = query;
+    lastCategory = category;
     return const SearchResponse(
       total: 1,
       providers: [
@@ -991,6 +1226,17 @@ class _MockApiClient extends MobileApiClient {
   Future<List<Map<String, dynamic>>> getServiceCategories({
     String? localityId,
   }) async {
-    return [];
+    return const [
+      {'name': 'Electrician'},
+      {'name': 'Plumber'},
+    ];
+  }
+
+  @override
+  Future<Map<String, dynamic>> sendPrompt({
+    required String query,
+    Map<String, dynamic>? context,
+  }) async {
+    return {'response': query, 'action': 'find_service', 'suggestions': const <String>[]};
   }
 }

@@ -76,9 +76,10 @@ enum _SortBy {
 }
 
 class SearchPage extends ConsumerStatefulWidget {
-  const SearchPage({super.key, this.initialQuery, this.browseAll = false});
+  const SearchPage({super.key, this.initialQuery, this.initialCategory, this.browseAll = false});
 
   final String? initialQuery;
+  final String? initialCategory;
   final bool browseAll;
 
   @override
@@ -86,6 +87,7 @@ class SearchPage extends ConsumerStatefulWidget {
 }
 
 class _SearchPageState extends ConsumerState<SearchPage> {
+  final _searchBarController = TextEditingController();
   String _query = '';
   String? _selectedCategory;
   _SortBy _sortBy = _SortBy.distance;
@@ -102,12 +104,36 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void initState() {
     super.initState();
     _query = widget.initialQuery?.trim() ?? '';
+    _searchBarController.text = _query;
+    _selectedCategory = widget.initialCategory?.trim().isEmpty ?? true ? null : widget.initialCategory!.trim();
     _sortBy = widget.browseAll && _query.isEmpty ? _SortBy.featured : _SortBy.distance;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       _recent = await _loadRecent();
       if (mounted) setState(() {});
       _initialize();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchBarController.dispose();
+    super.dispose();
+  }
+
+  /// A query and a category chip are mutually exclusive: picking one clears the
+  /// other so the UI, the search, and the result count all describe the same
+  /// filter instead of silently combining two.
+  void _clearQuery() {
+    _searchBarController.clear();
+    _query = '';
+  }
+
+  void _applyQuery(String query) {
+    _searchBarController.text = query;
+    setState(() {
+      _query = query;
+      _selectedCategory = null;
     });
   }
 
@@ -121,7 +147,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     } catch (e) {
       debugPrint('ServiQ search_page._initialize categories failed: $e');
     }
-    if (mounted && (_query.isNotEmpty || widget.browseAll)) _doSearch();
+    if (mounted && (_query.isNotEmpty || widget.browseAll || _selectedCategory != null)) _doSearch();
   }
   Future<void> _doSearch() async {
     if (_query.isEmpty && _selectedCategory == null && !widget.browseAll) {
@@ -238,11 +264,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             children: [
               AiPromptBar(
                 initialQuery: widget.initialQuery,
+                controller: _searchBarController,
                 enableDebounce: true,
-                onResult: (result) {
-                  setState(() => _query = result.response);
+                onResult: (result, query) {
+                  _applyQuery(query);
                   if (result.redirect != null) {
-                    context.push(result.redirect!);
+                    context.push(AppRoutes.resolveAiRedirect(result.redirect!));
                   } else if (_query.isNotEmpty) {
                     _doSearch();
                   }
@@ -261,6 +288,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                           label: '${cat['name'] ?? ''}',
                           selected: _selectedCategory == cat['name'],
                           onSelected: (v) {
+                            _clearQuery();
                             setState(() => _selectedCategory = v ? cat['name'] as String? : null);
                             _doSearch();
                           },
@@ -382,7 +410,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             child: Column(
               children: _recent.map((s) => InkWell(
                 onTap: () {
-                  _query = s;
+                  _applyQuery(s);
                   _doSearch();
                 },
                 borderRadius: BorderRadius.circular(AppRadii.md),
@@ -396,7 +424,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       IconButton(
                         icon: Icon(Icons.north_west_rounded, size: 16, color: AppColors.primary),
                         onPressed: () {
-                          _query = s;
+                          _applyQuery(s);
                           _doSearch();
                         },
                         visualDensity: VisualDensity.compact,
@@ -434,7 +462,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           children: _suggestions.map((s) => _GlassSuggestionChip(
             label: s,
             onTap: () {
-              _query = s;
+              _applyQuery(s);
               _doSearch();
             },
           )).toList(),
@@ -445,7 +473,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   Widget _buildResults() {
       if (_loading && (_results == null || _results!.providers.isEmpty)) {
-        return const Center(child: CircularProgressIndicator());
+        return const _ResultsLoading();
       }
 
     if (_error != null && (_results == null || _results!.providers.isEmpty)) {
@@ -779,15 +807,10 @@ class _ProviderResultCard extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CircleAvatar(
+                      AppAvatar(
+                        name: provider.name,
+                        avatarUrl: provider.avatarUrl,
                         radius: 22,
-                        backgroundImage: provider.avatarUrl.isNotEmpty
-                            ? NetworkImage(provider.avatarUrl)
-                            : null,
-                        child: provider.avatarUrl.isEmpty
-                            ? Text(provider.name.isNotEmpty ? provider.name[0].toUpperCase() : '?',
-                                style: const TextStyle(fontWeight: FontWeight.bold))
-                            : null,
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
@@ -890,6 +913,62 @@ class _ProviderResultCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ResultsLoading extends StatelessWidget {
+  const _ResultsLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      children: [
+        const Center(child: LoadingShimmer(height: 12, width: 120)),
+        const SizedBox(height: AppSpacing.sm),
+        ServiqSurface(
+          variant: ServiqSurfaceVariant.glass,
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          child: Column(
+            children: [
+              for (var i = 0; i < 5; i++) ...[
+                if (i > 0) const SizedBox(height: AppSpacing.sm),
+                const _ProviderResultSkeleton(),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProviderResultSkeleton extends StatelessWidget {
+  const _ProviderResultSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const LoadingShimmer(height: 44, width: 44, borderRadius: 22),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              LoadingShimmer(height: 13, width: 140),
+              SizedBox(height: AppSpacing.xxxs),
+              LoadingShimmer(height: 11, width: 100),
+              SizedBox(height: AppSpacing.xs),
+              LoadingShimmer(height: 20, width: 64, borderRadius: 10),
+            ],
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        const LoadingShimmer(height: 22, width: 22, borderRadius: 11),
+      ],
     );
   }
 }

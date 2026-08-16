@@ -70,7 +70,7 @@ class _ProviderOrdersPageState extends ConsumerState<ProviderOrdersPage> {
               AiPromptBar(
                 placeholder: AppLocalizations.of(context).aiPlaceholder,
                 enableDebounce: true,
-                onResult: (result) {},
+                onResult: (result, query) {},
               ),
               const SizedBox(height: 12),
               ServiqAsyncBody<MobileTaskSnapshot>(

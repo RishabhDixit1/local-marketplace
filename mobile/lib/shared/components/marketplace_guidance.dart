@@ -10,9 +10,9 @@ class MarketplaceLoopHero extends StatelessWidget {
     required this.title,
     required this.message,
     required this.searchLabel,
-    required this.primaryLabel,
+    this.primaryLabel,
     required this.onSearchTap,
-    required this.onPrimaryTap,
+    this.onPrimaryTap,
     this.secondaryLabel,
     this.onSecondaryTap,
     this.tertiaryLabel,
@@ -27,9 +27,9 @@ class MarketplaceLoopHero extends StatelessWidget {
   final String title;
   final String message;
   final String searchLabel;
-  final String primaryLabel;
+  final String? primaryLabel;
   final VoidCallback onSearchTap;
-  final VoidCallback onPrimaryTap;
+  final VoidCallback? onPrimaryTap;
   final String? secondaryLabel;
   final VoidCallback? onSecondaryTap;
   final String? tertiaryLabel;
@@ -92,11 +92,12 @@ class MarketplaceLoopHero extends StatelessWidget {
             ),
           ],
           const SizedBox(height: AppSpacing.md),
-          PrimaryButton(
-            label: primaryLabel,
-            icon: primaryIcon,
-            onPressed: onPrimaryTap,
-          ),
+          if (primaryLabel != null && onPrimaryTap != null)
+            PrimaryButton(
+              label: primaryLabel!,
+              icon: primaryIcon,
+              onPressed: onPrimaryTap,
+            ),
           if (secondaryLabel != null && onSecondaryTap != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Row(

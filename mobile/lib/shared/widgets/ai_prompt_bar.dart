@@ -18,19 +18,24 @@ class AiPromptBar extends ConsumerStatefulWidget {
     this.initialQuery,
     this.onResult,
     this.enableDebounce = false,
+    this.controller,
   });
 
   final String? placeholder;
   final String? initialQuery;
-  final void Function(AiPromptResponse result)? onResult;
+  final void Function(AiPromptResponse result, String query)? onResult;
   final bool enableDebounce;
+
+  /// Optional externally-owned controller so parents can clear or prefill the
+  /// field (e.g. when a category chip takes over the search surface).
+  final TextEditingController? controller;
 
   @override
   ConsumerState<AiPromptBar> createState() => _AiPromptBarState();
 }
 
 class _AiPromptBarState extends ConsumerState<AiPromptBar> {
-  final _controller = TextEditingController();
+  late final TextEditingController _controller;
   final _focusNode = FocusNode();
   bool _loading = false;
   AiPromptResponse? _debounceResult;
@@ -39,14 +44,19 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
   @override
   void initState() {
     super.initState();
+    _controller = widget.controller ?? TextEditingController();
     final initial = widget.initialQuery?.trim() ?? '';
-    _controller.text = initial;
+    if (widget.controller == null && initial.isNotEmpty) {
+      _controller.text = initial;
+    }
   }
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
-    _controller.dispose();
+    if (widget.controller == null) {
+      _controller.dispose();
+    }
     _focusNode.dispose();
     super.dispose();
   }
@@ -94,7 +104,7 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
 
       if (mounted) {
         setState(() => _loading = false);
-        widget.onResult?.call(result);
+        widget.onResult?.call(result, trimmed);
         _showResultSheet(result, trimmed);
       }
     } catch (e) {
@@ -163,7 +173,12 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
           } else if (redirect.startsWith('/app/')) {
             context.push(redirect);
           } else {
-            context.push('${AppRoutes.publicBrowse}?q=${Uri.encodeComponent(query)}');
+            final resolved = AppRoutes.resolveAiRedirect(redirect);
+            if (resolved.startsWith('/app/')) {
+              context.push(resolved);
+            } else {
+              context.push('${AppRoutes.publicBrowse}?q=${Uri.encodeComponent(query)}');
+            }
           }
         },
         onPostRequirement: () {
@@ -351,7 +366,7 @@ class _AiPromptSheetState extends ConsumerState<_AiPromptSheet> {
                 controller: scrollController,
                 padding: EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, bottomInset + AppSpacing.lg),
                 child: AiPromptBar(
-                  onResult: (result) {
+                  onResult: (result, query) {
                     Navigator.pop(ctx);
                   },
                 ),
@@ -508,7 +523,10 @@ class _AiResultSheet extends StatelessWidget {
                             ),
                             if (result.redirect != null) ...[
                               const SizedBox(height: AppSpacing.sm),
-                              Row(
+                              Wrap(
+                                spacing: AppSpacing.xs,
+                                runSpacing: AppSpacing.xs,
+                                crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   FilledButton.icon(
                                     onPressed: () => onNavigate(result.redirect!),
@@ -521,7 +539,6 @@ class _AiResultSheet extends StatelessWidget {
                                     ),
                                   ),
                                   if (result.isRequirementPost || !result.hasProviders) ...[
-                                    const SizedBox(width: 8),
                                     OutlinedButton.icon(
                                       onPressed: onPostRequirement,
                                       icon: const Icon(Icons.post_add_rounded, size: 16),

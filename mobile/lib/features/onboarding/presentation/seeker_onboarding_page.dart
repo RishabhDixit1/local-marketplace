@@ -119,9 +119,7 @@ class _SeekerOnboardingPageState
         snapshot,
         fullName: _nameController.text.trim(),
         location: _locationController.text.trim(),
-        bio: snapshot.profile.bio.isNotEmpty
-            ? snapshot.profile.bio
-            : 'Active on ServiQ — here to find help nearby.',
+        bio: snapshot.profile.bio,
         phone: _phoneController.text.trim(),
         website: snapshot.profile.website,
         avatarUrl: snapshot.profile.avatarUrl,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/design_tokens.dart';
-import '../../core/utils/app_formatters.dart';
+import 'app_avatar.dart';
 
 class ProfileAvatarTile extends StatelessWidget {
   const ProfileAvatarTile({
@@ -26,15 +26,7 @@ class ProfileAvatarTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: AppColors.surfaceTint,
-            foregroundImage: avatarUrl.trim().isEmpty
-                ? null
-                : NetworkImage(avatarUrl),
-            onForegroundImageError: avatarUrl.trim().isEmpty ? null : (_, _) {},
-            child: Text(AppFormatters.initials(name)),
-          ),
+          AppAvatar(name: name, avatarUrl: avatarUrl, radius: 24),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(

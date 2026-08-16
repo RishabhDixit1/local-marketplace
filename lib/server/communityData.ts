@@ -24,6 +24,7 @@ import { buildCommunityFeedView } from "@/lib/server/communityFeedView";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { listAcceptedConnectionPeerIds } from "@/lib/server/chatGuards";
 import { getProfileRoleFamily } from "@/lib/profile/utils";
+import { cleanPersonName } from "@/lib/profile/nameSanitize";
 import { resolveListingImageUrl } from "@/lib/provider/listings";
 
 const IN_FILTER_BATCH_SIZE = 200;
@@ -390,6 +391,18 @@ const selectProfilesByIds = async (
   return toFlexibleRows(data);
 };
 
+const selectTestProfileIds = async (
+  db: SupabaseClient,
+): Promise<Set<string>> => {
+  const rows = await selectRowsWithFallback(db, "profiles", "id", {
+    eqFilters: [{ column: "is_test", value: "true" }],
+    allowMissingRelation: true,
+  });
+  return new Set(
+    rows.map((row) => stringFromRow(row, ["id"], "")).filter(Boolean),
+  );
+};
+
 const normalizeProfile = (row: FlexibleRow): CommunityProfileRecord | null => {
   const id = stringFromRow(row, ["id", "user_id"], "");
   if (!id) return null;
@@ -426,20 +439,22 @@ const normalizeProfile = (row: FlexibleRow): CommunityProfileRecord | null => {
   return {
     id,
     name:
-      stringFromRow(
-        row,
-        [
-          "full_name",
-          "display_name",
-          "preferred_name",
-          "name",
-          "username",
-          "user_name",
-        ],
-        "",
-      ) ||
-      metadataDisplayName ||
-      null,
+      cleanPersonName(
+        stringFromRow(
+          row,
+          [
+            "full_name",
+            "display_name",
+            "preferred_name",
+            "name",
+            "username",
+            "user_name",
+          ],
+          "",
+        ) ||
+        metadataDisplayName ||
+        null,
+      ) || null,
     headline: stringFromRow(row, ["headline", "tagline"], "") || null,
     avatar_url: avatarUrl,
     role: stringFromRow(row, ["role", "account_type"], "") || null,
@@ -944,12 +959,15 @@ export const loadCommunityFeedSnapshot = async (
     scope?: "connected" | "all";
   } = {},
 ): Promise<Extract<CommunityFeedResponse, { ok: true }>> => {
-  const [currentUserProfileRow, acceptedPeers] = await Promise.all([
-    selectProfileById(db, currentUserId),
-    listAcceptedConnectionPeerIds(db, currentUserId),
-  ]);
+  const [currentUserProfileRow, acceptedPeers, testProfileIdSet] =
+    await Promise.all([
+      selectProfileById(db, currentUserId),
+      listAcceptedConnectionPeerIds(db, currentUserId),
+      selectTestProfileIds(db),
+    ]);
 
   const acceptedPeerIds = Array.from(acceptedPeers);
+  testProfileIdSet.delete(currentUserId);
   const currentUserProfile = currentUserProfileRow
     ? normalizeProfile(currentUserProfileRow)
     : null;
@@ -1004,6 +1022,7 @@ export const loadCommunityFeedSnapshot = async (
   const services = serviceRowsRaw
     .map((row, index) => normalizeService(row, index))
     .filter((row): row is CommunityServiceRecord => !!row)
+    .filter((row) => !testProfileIdSet.has(row.provider_id))
     .filter(
       (row) =>
         feedScope === "all" ||
@@ -1013,6 +1032,7 @@ export const loadCommunityFeedSnapshot = async (
   const products = productRowsRaw
     .map((row, index) => normalizeProduct(row, index))
     .filter((row): row is CommunityProductRecord => !!row)
+    .filter((row) => !testProfileIdSet.has(row.provider_id))
     .filter(
       (row) =>
         feedScope === "all" ||
@@ -1022,6 +1042,17 @@ export const loadCommunityFeedSnapshot = async (
   const posts = postRowsRaw
     .map((row, index) => normalizePost(row, index))
     .filter((row): row is CommunityPostRecord => !!row)
+    .filter((post) => {
+      const ownerId =
+        post.user_id ||
+        post.author_id ||
+        post.created_by ||
+        post.requester_id ||
+        post.owner_id ||
+        post.provider_id ||
+        "";
+      return !testProfileIdSet.has(ownerId);
+    })
     .filter((post) => isPostVisibleToViewer(post, currentUserId, acceptedPeers))
     .filter((post) => {
       if (feedScope === "all") return true;
@@ -1038,6 +1069,7 @@ export const loadCommunityFeedSnapshot = async (
   const helpRequests = helpRequestRowsRaw
     .map((row, index) => normalizeHelpRequest(row, index))
     .filter((row): row is CommunityHelpRequestRecord => !!row)
+    .filter((row) => !testProfileIdSet.has(row.requester_id || ""))
     .filter(
       (row) =>
         isVisibleStatus(row.status || "open") ||
@@ -1306,6 +1338,7 @@ export const loadCommunityPeopleSnapshot = async (
       orderBy: { column: "updated_at", ascending: false },
       limit,
       allowMissingRelation: true,
+      eqFilters: [{ column: "is_test", value: "false" }],
     }),
     selectRowsWithFallback(
       db,

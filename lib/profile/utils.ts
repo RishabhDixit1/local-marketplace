@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
+import { cleanPersonName } from "@/lib/profile/nameSanitize";
 import {
   FIRST_TIME_POST_LOGIN_REDIRECT_ROUTE,
   POST_LOGIN_REDIRECT_ROUTE,
@@ -85,17 +86,19 @@ export const normalizeAvailability = (value: string | null | undefined): Profile
 };
 
 export const getProfileDisplayName = (profile: FlexibleProfileShape | null | undefined) =>
-  trim(profile?.full_name) ||
-  trim(profile?.display_name) ||
-  trim(profile?.name) ||
-  trim(profile?.preferred_name) ||
-  trim(profile?.user_name) ||
-  readProfileMetadataName(profile, "full_name") ||
-  readProfileMetadataName(profile, "display_name") ||
-  readProfileMetadataName(profile, "preferred_name") ||
-  readProfileMetadataName(profile, "name") ||
-  readProfileMetadataName(profile, "user_name") ||
-  "";
+  cleanPersonName(
+    trim(profile?.full_name) ||
+    trim(profile?.display_name) ||
+    trim(profile?.name) ||
+    trim(profile?.preferred_name) ||
+    trim(profile?.user_name) ||
+    readProfileMetadataName(profile, "full_name") ||
+    readProfileMetadataName(profile, "display_name") ||
+    readProfileMetadataName(profile, "preferred_name") ||
+    readProfileMetadataName(profile, "name") ||
+    readProfileMetadataName(profile, "user_name") ||
+    "",
+  );
 
 export const toNullableString = (value: string | null | undefined) => {
   const normalized = trim(value);

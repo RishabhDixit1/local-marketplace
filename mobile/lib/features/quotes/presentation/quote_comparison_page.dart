@@ -117,7 +117,7 @@ class _QuoteComparisonPageState extends ConsumerState<QuoteComparisonPage> {
                 const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
                 const SizedBox(width: 8),
                 Text(
-                  'Quote accepted! Redirecting to order...',
+                  'Quote accepted. This request is now in progress.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.success,
                     fontWeight: FontWeight.w600,
@@ -151,14 +151,10 @@ class _QuoteComparisonPageState extends ConsumerState<QuoteComparisonPage> {
           children: [
             Row(
               children: [
-                CircleAvatar(
+                AppAvatar(
+                  name: quote.providerName,
+                  avatarUrl: quote.providerAvatar ?? '',
                   radius: 18,
-                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  backgroundImage: quote.providerAvatar != null ? NetworkImage(quote.providerAvatar!) : null,
-                  child: quote.providerAvatar == null
-                      ? Text(quote.providerName.isNotEmpty ? quote.providerName[0].toUpperCase() : '?',
-                          style: Theme.of(context).textTheme.labelMedium)
-                      : null,
                 ),
                 const SizedBox(width: 10),
                 Expanded(

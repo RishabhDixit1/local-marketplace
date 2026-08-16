@@ -97,9 +97,52 @@ class AppConfig {
       throw ArgumentError(
         'API_BASE_URL resolves to a localhost variant ($url) in a production build.\n'
         'Set API_BASE_URL to your production server URL via --dart-define.\n'
-        'Example: --dart-define=API_BASE_URL=https://www.serviqapp.com',
+        'Example: --dart-define=API_BASE_URL=https://serviqapp.com',
       );
     }
+
+    _requireProductionFirebaseConfig(config);
+  }
+
+  /// Crashlytics, Analytics, and FCM only initialize from `--dart-define`
+  /// values in production builds (no local.json fallback). Fail fast with a
+  /// runtime throw - asserts are stripped in release builds, so a silent
+  /// missing-key state would otherwise ship without any crash monitoring.
+  static void _requireProductionFirebaseConfig(AppConfig config) {
+    final missing = <String>[
+      if (config.firebaseApiKey?.trim().isEmpty ?? true) 'FIREBASE_API_KEY',
+      if (config.firebaseProjectId?.trim().isEmpty ?? true)
+        'FIREBASE_PROJECT_ID',
+      if (config.firebaseMessagingSenderId?.trim().isEmpty ?? true)
+        'FIREBASE_MESSAGING_SENDER_ID',
+      if (defaultTargetPlatform == TargetPlatform.android &&
+          (config.firebaseAndroidAppId?.trim().isEmpty ?? true))
+        'FIREBASE_ANDROID_APP_ID',
+      if (defaultTargetPlatform == TargetPlatform.iOS &&
+          (config.firebaseIosAppId?.trim().isEmpty ?? true))
+        'FIREBASE_IOS_APP_ID',
+    ];
+
+    if (missing.isEmpty) {
+      return;
+    }
+
+    throw ArgumentError(
+      'Production build requires Firebase --dart-define values for: '
+      '${missing.join(', ')}.\n'
+      'Without them Crashlytics, Analytics, and push notifications are '
+      'disabled in release builds.\n'
+      'Run: flutter build apk --release '
+      '--dart-define=APP_ENV=production '
+      '--dart-define=SUPABASE_URL="https://www.serviqapp.com" '
+      '--dart-define=SUPABASE_ANON_KEY="..." '
+      '--dart-define=API_BASE_URL="https://serviqapp.com" '
+      '--dart-define=FIREBASE_API_KEY="..." '
+      '--dart-define=FIREBASE_PROJECT_ID="..." '
+      '--dart-define=FIREBASE_MESSAGING_SENDER_ID="..." '
+      '--dart-define=FIREBASE_ANDROID_APP_ID="..." '
+      '--dart-define=FIREBASE_IOS_APP_ID="..."',
+    );
   }
 
   final String appName;

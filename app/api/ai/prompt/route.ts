@@ -5,6 +5,7 @@ import { moderatePrompt } from "@/lib/ai/contentModeration";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { buildResponse } from "@/lib/ai/intentParser";
 import { applyRateLimit } from "@/lib/server/rateLimit";
+import { cleanPersonName } from "@/lib/profile/nameSanitize";
 
 const PROMPT_RATE_LIMIT = { maxRequests: 30, windowSeconds: 60 };
 
@@ -54,6 +55,7 @@ async function fetchMatchingProviders(categorySlug: string, limit = 6): Promise<
       .select("id, full_name, name, location, bio, avatar_url, services")
       .in("role", ["provider", "business"])
       .not("full_name", "is", null)
+      .eq("is_test", false)
       .order("full_name");
 
     if (error) {
@@ -94,7 +96,7 @@ async function fetchMatchingProviders(categorySlug: string, limit = 6): Promise<
       const avg = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
       return {
         id: p.id,
-        name: p.full_name || p.name || "",
+        name: cleanPersonName(p.full_name || p.name) || "",
         location: p.location || "",
         avatarUrl: resolveProfileAvatarUrl(p.avatar_url) || "",
         bio: p.bio || "",

@@ -201,7 +201,7 @@ void main() {
     expect(find.text('Find Help'), findsOneWidget);
     expect(find.text('Search services, requests, or areas'), findsOneWidget);
     expect(find.text('Find local help nearby.'), findsOneWidget);
-    expect(find.text('Post Need'), findsOneWidget);
+    expect(find.text('Post Need'), findsNothing);
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(

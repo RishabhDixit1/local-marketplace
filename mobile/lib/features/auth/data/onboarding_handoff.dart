@@ -107,8 +107,12 @@ abstract class OnboardingHandoffStore extends ChangeNotifier {
   MobileOnboardingIntent? readIntent();
   MobileAuthMethod? readPendingAuthMethod();
   String? readLastRoute();
+  bool readIntentChosen();
+  bool readIntentPromptDismissed();
 
   Future<void> writeIntent(MobileOnboardingIntent intent);
+  Future<void> writeIntentChosen(bool value);
+  Future<void> writeIntentPromptDismissed(bool value);
   Future<void> writePendingAuthMethod(MobileAuthMethod method);
   Future<void> clearPendingAuthMethod();
   Future<void> writeLastRoute(String route);
@@ -120,15 +124,21 @@ class MemoryOnboardingHandoffStore extends OnboardingHandoffStore {
     MobileOnboardingIntent? initialIntent,
     MobileAuthMethod? initialPendingAuthMethod,
     String? initialLastRoute,
+    bool initialIntentChosen = false,
+    bool initialIntentPromptDismissed = false,
   }) : _intent = initialIntent,
        _pendingAuthMethod = initialPendingAuthMethod,
-       _lastRoute = _sanitizeRoute(initialLastRoute) {
+       _lastRoute = _sanitizeRoute(initialLastRoute),
+       _intentChosen = initialIntentChosen,
+       _intentPromptDismissed = initialIntentPromptDismissed {
     isReady = true;
   }
 
   MobileOnboardingIntent? _intent;
   MobileAuthMethod? _pendingAuthMethod;
   String? _lastRoute;
+  bool _intentChosen;
+  bool _intentPromptDismissed;
 
   @override
   MobileOnboardingIntent? readIntent() => _intent;
@@ -140,8 +150,24 @@ class MemoryOnboardingHandoffStore extends OnboardingHandoffStore {
   String? readLastRoute() => _lastRoute;
 
   @override
+  bool readIntentChosen() => _intentChosen;
+
+  @override
+  bool readIntentPromptDismissed() => _intentPromptDismissed;
+
+  @override
   Future<void> writeIntent(MobileOnboardingIntent intent) async {
     _intent = intent;
+  }
+
+  @override
+  Future<void> writeIntentChosen(bool value) async {
+    _intentChosen = value;
+  }
+
+  @override
+  Future<void> writeIntentPromptDismissed(bool value) async {
+    _intentPromptDismissed = value;
   }
 
   @override
@@ -177,6 +203,9 @@ class SharedPreferencesOnboardingHandoffStore
   }
 
   static const _intentKey = 'serviq.mobile.onboarding.intent';
+  static const _intentChosenKey = 'serviq.mobile.onboarding.intentChosen';
+  static const _intentPromptDismissedKey =
+      'serviq.mobile.onboarding.intentPromptDismissed';
   static const _pendingAuthMethodKey =
       'serviq.mobile.onboarding.pendingAuthMethod';
   static const _lastRouteKey = 'serviq.mobile.onboarding.lastRoute';
@@ -218,9 +247,33 @@ class SharedPreferencesOnboardingHandoffStore
   }
 
   @override
+  bool readIntentChosen() {
+    if (!isReady) return false;
+    return _preferences!.getBool(_intentChosenKey) ?? false;
+  }
+
+  @override
+  bool readIntentPromptDismissed() {
+    if (!isReady) return false;
+    return _preferences!.getBool(_intentPromptDismissedKey) ?? false;
+  }
+
+  @override
   Future<void> writeIntent(MobileOnboardingIntent intent) async {
     await _ensureReady();
     await _preferences!.setString(_intentKey, intent.storageValue);
+  }
+
+  @override
+  Future<void> writeIntentChosen(bool value) async {
+    await _ensureReady();
+    await _preferences!.setBool(_intentChosenKey, value);
+  }
+
+  @override
+  Future<void> writeIntentPromptDismissed(bool value) async {
+    await _ensureReady();
+    await _preferences!.setBool(_intentPromptDismissedKey, value);
   }
 
   @override
@@ -253,7 +306,9 @@ class OnboardingHandoffController extends ChangeNotifier {
   OnboardingHandoffController(this._store)
     : _selectedIntent = MobileOnboardingIntent.findHelp,
       _pendingAuthMethod = null,
-      _lastRoute = null {
+      _lastRoute = null,
+      _intentChosen = false,
+      _intentPromptDismissed = false {
     _initFromStore();
   }
 
@@ -261,24 +316,30 @@ class OnboardingHandoffController extends ChangeNotifier {
   MobileOnboardingIntent _selectedIntent;
   MobileAuthMethod? _pendingAuthMethod;
   String? _lastRoute;
+  bool _intentChosen;
+  bool _intentPromptDismissed;
   bool _disposed = false;
 
   void _initFromStore() {
     if (_store.isReady) {
-      _selectedIntent = _store.readIntent() ?? MobileOnboardingIntent.findHelp;
-      _pendingAuthMethod = _store.readPendingAuthMethod();
-      _lastRoute = _store.readLastRoute();
+      _readFromStore();
     } else {
       _store.addListener(_onStoreReady);
     }
   }
 
-  void _onStoreReady() {
-    if (_disposed || !_store.isReady) return;
-    _store.removeListener(_onStoreReady);
+  void _readFromStore() {
     _selectedIntent = _store.readIntent() ?? MobileOnboardingIntent.findHelp;
     _pendingAuthMethod = _store.readPendingAuthMethod();
     _lastRoute = _store.readLastRoute();
+    _intentChosen = _store.readIntentChosen();
+    _intentPromptDismissed = _store.readIntentPromptDismissed();
+  }
+
+  void _onStoreReady() {
+    if (_disposed || !_store.isReady) return;
+    _store.removeListener(_onStoreReady);
+    _readFromStore();
     notifyListeners();
   }
 
@@ -286,6 +347,14 @@ class OnboardingHandoffController extends ChangeNotifier {
   MobileAuthMethod? get pendingAuthMethod => _pendingAuthMethod;
   String? get lastRoute => _lastRoute;
   bool get hasStoredHandoff => _lastRoute != null || _pendingAuthMethod != null;
+  bool get hasChosenIntent => _intentChosen;
+  bool get intentPromptDismissed => _intentPromptDismissed;
+
+  /// Whether the backing store has finished loading. Before this is true the
+  /// read flags default to "not chosen, not dismissed", so showing the first
+  /// run prompt during this window would flash it to returning users who
+  /// already dismissed or chose an intent.
+  bool get storeReady => _store.isReady;
 
   bool _isAllowedPostAuthRoute(String route) {
     return route.startsWith('/app/');
@@ -305,18 +374,32 @@ class OnboardingHandoffController extends ChangeNotifier {
   Future<void> selectIntent(MobileOnboardingIntent intent) async {
     _selectedIntent = intent;
     _lastRoute = intent.destinationRoute;
+    _intentChosen = true;
+    _intentPromptDismissed = false;
     notifyListeners();
 
     await _store.writeIntent(intent);
+    await _store.writeIntentChosen(true);
+    await _store.writeIntentPromptDismissed(false);
     await _store.writeLastRoute(intent.destinationRoute);
+  }
+
+  Future<void> dismissIntentPrompt() async {
+    _intentPromptDismissed = true;
+    notifyListeners();
+    await _store.writeIntentPromptDismissed(true);
   }
 
   Future<void> prepareForAuth(MobileAuthMethod method) async {
     _pendingAuthMethod = method;
     _lastRoute ??= _selectedIntent.destinationRoute;
+    _intentChosen = true;
+    _intentPromptDismissed = false;
     notifyListeners();
 
     await _store.writeIntent(_selectedIntent);
+    await _store.writeIntentChosen(true);
+    await _store.writeIntentPromptDismissed(false);
     await _store.writeLastRoute(_lastRoute ?? _selectedIntent.destinationRoute);
     await _store.writePendingAuthMethod(method);
   }
@@ -334,6 +417,16 @@ class OnboardingHandoffController extends ChangeNotifier {
     _lastRoute = sanitizedRoute;
     notifyListeners();
     await _store.writeLastRoute(sanitizedRoute);
+  }
+
+  /// Clears the stored landing route once it has been served to a signed-in
+  /// user, so the post-auth landing redirect fires once per funnel instead of
+  /// on every cold start (which would otherwise keep pushing the user back
+  /// into create-need or the provider launchpad).
+  Future<void> consumeStoredHandoff() async {
+    _lastRoute = null;
+    notifyListeners();
+    await _store.clearLastRoute();
   }
 
   Future<void> completeAuthHandoff({

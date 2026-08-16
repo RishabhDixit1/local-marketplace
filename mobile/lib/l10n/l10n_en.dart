@@ -38,6 +38,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get home => 'Home';
   @override
+  String get needSomething => 'Need Something';
+  @override
   String get explore => 'Explore';
   @override
   String get people => 'People';
@@ -92,6 +94,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get later => 'Later';
   @override
+  String get viewAll => 'View all';
+  @override
+  String get myNeeds => 'My needs';
+  @override
+  String get myWork => 'My work';
+  @override
+  String get homeQuickActions => 'Quick actions';
+  @override
+  String get browseNearby => 'Browse nearby';
+  @override
+  String get nothingInMotion => 'Nothing in motion yet';
+  @override
+  String get nothingInMotionSubtitle =>
+      'Post a need and offers from trusted locals will show up here';
+  @override
+  String get postYourFirstNeed => 'Post your first need';
+  @override
+  String get browseMyTasks => 'Browse my tasks';
+  @override
+  String newMessages(int count) => count == 1 ? '1 new message' : '$count new messages';
+  @override
   String get loading => 'Loading...';
   @override
   String get errorOccurred => 'Something went wrong.';
@@ -117,6 +140,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String newVersionAvailable(String version) => 'Version $version is now available.';
   @override
   String get whatsNew => "What's new:";
+  @override
+  String get routeErrorTitle => 'Page not found';
+  @override
+  String get routeErrorMessage =>
+      "We couldn't find that page. It may have moved or no longer exists.";
+  @override
+  String get goHome => 'Back to home';
   @override
   String get postNeed => 'Post Need';
   @override
@@ -162,6 +192,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get discoveryExploreZones => 'Explore zones';
   @override
+  String get discoveryExploreMarkets => 'Explore Markets';
+  @override
+  String get discoveryLiveNow => 'Live Now';
+  @override
+  String get discoveryLive => 'Live';
+  @override
+  String get discoveryBrowseLocalZones => 'Browse Local Zones';
+  @override
+  String discoveryMarketsSummary(int societies, int markets) {
+    final s = societies == 1 ? 'Society' : 'Societies';
+    final m = markets == 1 ? 'Market' : 'Markets';
+    return '$societies $s · $markets $m';
+  }
+  @override
   String get discoveryZonesSubtitle => 'Societies, markets and supply areas near you';
   @override
   String get discoveryAllZones => 'All zones';
@@ -178,7 +222,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get discoveryNoLocation => 'No location data available';
   @override
-  String discoveryViewAllProviders(int count) => 'View all $count providers';
+  String discoveryViewAllProviders(int count) =>
+      count == 1 ? 'View 1 provider' : 'View all $count providers';
   @override
   String get discoveryNoZonesTitle => 'No zones available';
   @override
@@ -197,4 +242,55 @@ class AppLocalizationsEn extends AppLocalizations {
   String get zoneComingSoon => 'Coming soon';
   @override
   String discoveryZoneProviderCount(int count) => '$count providers';
+  @override
+  String get discoveryHowItWorks => 'How ServiQ works';
+  @override
+  String get discoveryDismiss => 'Dismiss';
+  @override
+  String get discoveryStep1 => 'Browse nearby providers';
+  @override
+  String get discoveryStep1Desc => 'Browse services in your neighborhood';
+  @override
+  String get discoveryStep2 => 'Contact & compare';
+  @override
+  String get discoveryStep2Desc => 'Compare and contact providers directly';
+  @override
+  String get discoveryStep3 => 'Get work done';
+  @override
+  String get discoveryStep3Desc => 'Get quality work done with confidence';
+  @override
+  String discoveryProvidersNearYou(int count) =>
+      count == 1 ? '1 provider near you' : '$count providers near you';
+  @override
+  String get discoveryLookingForServices => 'Looking for services?';
+  @override
+  String get discoveryLookingForServicesSubtitle =>
+      'Find trusted providers for any service in your neighborhood';
+  @override
+  String get discoveryAreYouProvider => 'Are you a service provider?';
+  @override
+  String get discoveryAreYouProviderSubtitle =>
+      'List your business on ServiQ and get more customers from your neighborhood';
+  @override
+  String get discoveryListYourBusiness => 'List Your Business';
+  @override
+  String get discoveryBrowseMarketplace => 'Browse Marketplace';
+  @override
+  String get whoAreYouTitle => 'What brings you to ServiQ?';
+  @override
+  String get whoAreYouSubtitle => 'Pick a path and we will tailor your home to you.';
+  @override
+  String get intentFindHelp => 'Find help';
+  @override
+  String get intentFindHelpSubtitle => 'Post needs and hire nearby professionals';
+  @override
+  String get intentEarnNearby => 'Earn nearby';
+  @override
+  String get intentEarnNearbySubtitle => 'Take on local work and grow your income';
+  @override
+  String get intentBusinessSetup => 'Set up my business';
+  @override
+  String get intentBusinessSetupSubtitle => 'List your services, team, and availability';
+  @override
+  String get notNow => 'Not now';
 }
