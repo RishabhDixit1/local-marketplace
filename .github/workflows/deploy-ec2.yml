@@ -53,23 +53,29 @@ jobs:
         run: docker save serviq:latest | gzip > serviq-docker.tar.gz
 
       - name: Copy Docker image to EC2
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/ec2_key
-          chmod 600 /tmp/ec2_key
-          export SCP_OPTS="-i /tmp/ec2_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-          for i in 1 2 3; do
-            if scp $SCP_OPTS serviq-docker.tar.gz "ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/serviq/serviq-docker.tar.gz"; then
-              SIZE=$(ssh $SCP_OPTS "ec2-user@${{ secrets.EC2_HOST }}" 'stat -c%s /home/ec2-user/serviq/serviq-docker.tar.gz' 2>/dev/null || echo 0)
-              if [ -n "$SIZE" ] && [ "$SIZE" -gt 50000000 ]; then
-                echo "Verified serviq-docker.tar.gz on EC2 ($SIZE bytes)."
-                exit 0
-              fi
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: serviq-docker.tar.gz
+          target: /home/ec2-user/serviq
+          strip_components: 0
+
+      - name: Verify Docker image on EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            SIZE=$(stat -c%s /home/ec2-user/serviq/serviq-docker.tar.gz 2>/dev/null || echo 0)
+            if [ -z "$SIZE" ] || [ "$SIZE" -le 50000000 ]; then
+              echo "ERROR: serviq-docker.tar.gz on EC2 is missing or undersized ($SIZE bytes)."
+              exit 1
             fi
-            echo "Upload attempt $i failed or was truncated. Retrying in 5s..."
-            sleep 5
-          done
-          echo "ERROR: failed to copy serviq-docker.tar.gz to EC2 after 3 attempts."
-          exit 1
+            echo "Verified serviq-docker.tar.gz on EC2 ($SIZE bytes)."
 
   deploy:
     needs: build
