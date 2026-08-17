@@ -170,7 +170,7 @@ void main() {
 
     expect(find.text('ServiQ'), findsOneWidget);
     expect(find.text('For you'), findsOneWidget);
-    expect(find.text('What do you need today?'), findsOneWidget);
+    expect(find.text('Need a plumber?'), findsOneWidget);
   });
 
   testWidgets('welcome intent prompt guides first-run role selection', (
@@ -538,7 +538,7 @@ void main() {
       if (i == 5) continue;
       expect(find.text('Post number $i'), findsOneWidget);
     }
-    expect(find.text('Open request'), findsNWidgets(6));
+    expect(find.text('Send Request'), findsNWidgets(6));
     expect(tester.takeException(), isNull);
   });
 

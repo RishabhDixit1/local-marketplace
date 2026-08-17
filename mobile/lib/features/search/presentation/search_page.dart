@@ -268,9 +268,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 enableDebounce: true,
                 onResult: (result, query) {
                   _applyQuery(query);
-                  if (result.redirect != null) {
-                    context.push(AppRoutes.resolveAiRedirect(result.redirect!));
-                  } else if (_query.isNotEmpty) {
+                  if (_query.isNotEmpty) {
                     _doSearch();
                   }
                 },

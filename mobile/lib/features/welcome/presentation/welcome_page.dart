@@ -25,6 +25,7 @@ import '../../../features/auth/data/onboarding_handoff.dart';
 import '../../../features/feed/data/feed_interactions_repository.dart';
 import '../../../features/reporting/domain/report_models.dart';
 import '../../../features/reporting/presentation/report_sheet.dart';
+import '../../../core/api/mobile_api_client.dart';
 import '../../../features/feed/data/feed_repository.dart';
 import '../../../features/feed/domain/feed_snapshot.dart';
 import '../../../features/notifications/data/notification_repository.dart';
@@ -66,6 +67,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
   final Set<String> _savedRemovedIds = <String>{};
   final Set<String> _hiddenFeedIds = <String>{};
   final Set<String> _hiddenProviderIds = <String>{};
+  String? _busyFeedActionId;
 
   // --- Memoization cache for _WelcomeViewModel ---
   // Keyed on identity of feed/people AsyncValues + value-equality of hidden-id sets.
@@ -168,6 +170,54 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     }
 
     ServiqToast.show(context, message: message);
+  }
+
+  Future<void> _sendInterest(MobileFeedItem item) async {
+    final helpRequestId = item.helpRequestId;
+    if (helpRequestId == null || _busyFeedActionId != null) {
+      return;
+    }
+
+    HapticFeedback.lightImpact();
+    setState(() => _busyFeedActionId = item.id);
+    try {
+      if (item.viewerHasExpressedInterest) {
+        await ref.read(feedRepositoryProvider).withdrawInterest(helpRequestId);
+      } else {
+        await ref.read(feedRepositoryProvider).expressInterest(helpRequestId);
+      }
+
+      ref.invalidate(feedSnapshotProvider(MobileFeedScope.all));
+      ref.invalidate(feedSnapshotProvider(MobileFeedScope.connected));
+      await Future.wait([
+        ref.read(feedSnapshotProvider(MobileFeedScope.all).future),
+        ref.read(feedSnapshotProvider(MobileFeedScope.connected).future),
+      ]);
+      if (!mounted) {
+        return;
+      }
+
+      ServiqToast.show(
+        context,
+        message: item.viewerHasExpressedInterest
+            ? 'Interest withdrawn.'
+            : 'Interest sent. The requester will review it shortly.',
+        tone: ServiqToastTone.success,
+      );
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ServiqToast.show(
+        context,
+        message: error.message,
+        tone: ServiqToastTone.danger,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _busyFeedActionId = null);
+      }
+    }
   }
 
   Future<void> _selectIntent(MobileOnboardingIntent intent) async {
@@ -784,7 +834,16 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
           bottom: 4,
         ),
         child: AiPromptBar(
-          placeholder: 'What do you need today?',
+          rotatingPlaceholders: const [
+            'Need a plumber?',
+            'Need an electrician?',
+            'Need a mover?',
+            'Need a tutor?',
+            'Need a cleaner?',
+            'Need a carpenter?',
+            'Need an AC repair?',
+          ],
+          placeholderInterval: const Duration(seconds: 3),
           enableDebounce: true,
         ),
       ),
@@ -844,10 +903,14 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
             : null,
       ),
       const SizedBox(height: AppSpacing.sm),
-      for (final entry in model.entriesFor(_resolvedSurface))
+      for (final entry in model.entriesFor(_resolvedSurface).take(8).toList().asMap().entries)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: _buildEntryCard(entry, model),
+          child: AppAnimated.fadeSlideIn(
+            index: entry.key,
+            total: math.min(model.entriesFor(_resolvedSurface).length, 8),
+            child: _buildEntryCard(entry.value, model),
+          ),
         ),
       if (model.quickCategories.isNotEmpty) ...[
         const SizedBox(height: AppSpacing.lg),
@@ -926,8 +989,12 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
           item: entry.item!,
           reason: entry.reason,
           isSaved: _isSavedCard(entry.storageKey, model.savedCardIds),
+          primaryLabel: _primaryLabelFor(entry.item!),
           onSave: () => _toggleSave(entry, backendSavedIds: model.savedCardIds),
-          onOpen: () => _openFeedItem(entry.item!),
+          onOpen: _primaryActionFor(
+            entry.item!,
+            fallback: () => _openFeedItem(entry.item!),
+          ),
           onMessage: () => _messageFeedItem(entry.item!),
           onMore: () =>
               _showItemActionsSheet(entry, backendSavedIds: model.savedCardIds),
@@ -937,7 +1004,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
           item: entry.item!,
           reason: entry.reason,
           isSaved: _isSavedCard(entry.storageKey, model.savedCardIds),
-          primaryLabel: entry.primaryLabel,
+          primaryLabel: _primaryLabelFor(entry.item!),
           secondaryLabel: entry.secondaryLabel,
           onPrimaryTap: _primaryActionFor(
             entry.item!,
@@ -1023,8 +1090,9 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
   }
 
   /// Status-driven primary action for post cards: matched/accepted opens the
-  /// chat thread, open posts fall back to the caller's surface action, and
-  /// closed (cancelled/completed) items expose no primary CTA.
+  /// chat thread, open help requests support express-interest, open posts fall
+  /// back to the caller's surface action, and closed (cancelled/completed) items
+  /// expose no primary CTA.
   VoidCallback? _primaryActionFor(
     MobileFeedItem item, {
     required VoidCallback fallback,
@@ -1035,7 +1103,27 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     if (item.isAccepted || item.statusKey == 'matched') {
       return () => _openItemChat(item);
     }
+    if (item.helpRequestId != null) {
+      return () => _sendInterest(item);
+    }
     return fallback;
+  }
+
+  /// Single source of truth for the primary CTA label on welcome feed cards.
+  /// Label varies by relationship state, not by post category.
+  String? _primaryLabelFor(MobileFeedItem item) {
+    if (item.isClosed) {
+      return null;
+    }
+    if (item.isAccepted || item.statusKey == 'matched') {
+      return 'View chat';
+    }
+    if (item.helpRequestId != null) {
+      return item.viewerHasExpressedInterest
+          ? 'Withdraw interest'
+          : 'Express interest';
+    }
+    return 'Send Request';
   }
 
   void _openItemChat(MobileFeedItem item) {
@@ -1163,19 +1251,6 @@ enum _WelcomeFeedEntryType {
 }
 
 enum _CtaTarget { postNeed, people, earn }
-
-_WelcomeSurface _surfaceFromServer(String value) {
-  switch (value.trim().toLowerCase()) {
-    case 'trusted':
-      return _WelcomeSurface.trusted;
-    case 'nearby':
-      return _WelcomeSurface.nearby;
-    case 'earn':
-      return _WelcomeSurface.earn;
-    default:
-      return _WelcomeSurface.forYou;
-  }
-}
 
 _WelcomeSurface _surfaceFromRouteValue(String value) {
   switch (value.trim().toLowerCase()) {
@@ -1335,11 +1410,20 @@ class _WelcomeViewModel {
     required Set<String> hiddenFeedIds,
     required Set<String> hiddenProviderIds,
   }) {
+    final currentUserId = allFeed.currentUserId.isNotEmpty
+        ? allFeed.currentUserId
+        : trustedFeed.currentUserId;
     final allItems = allFeed.items
-        .where((item) => !hiddenFeedIds.contains(item.id) && !item.isClosed)
+        .where((item) =>
+            !hiddenFeedIds.contains(item.id) &&
+            !item.isClosed &&
+            item.providerId != currentUserId)
         .toList();
     final trustedItems = trustedFeed.items
-        .where((item) => !hiddenFeedIds.contains(item.id) && !item.isClosed)
+        .where((item) =>
+            !hiddenFeedIds.contains(item.id) &&
+            !item.isClosed &&
+            item.providerId != currentUserId)
         .toList();
     final providers = people.people
         .where((person) => !hiddenProviderIds.contains(person.id))
@@ -1428,11 +1512,10 @@ class _WelcomeViewModel {
           rankedNearby.isEmpty &&
           rankedProviders.isEmpty,
       savedCardIds: savedCardIds,
-      defaultSurface: _surfaceFromServer(
-        allFeed.defaultHomeSurface.isNotEmpty
-            ? allFeed.defaultHomeSurface
-            : trustedFeed.defaultHomeSurface,
-      ),
+      // Always default to "for_you" which mixes trusted + nearby (all) posts,
+      // rather than trusting the server's "trusted" suggestion which only shows
+      // posts from accepted connections and defeats discovery for new users.
+      defaultSurface: _WelcomeSurface.forYou,
     );
   }
 
@@ -2055,7 +2138,7 @@ int _extractRelativeMinutes(String value) {
 
 IconData _categoryIcon(String category) {
   final value = category.toLowerCase();
-  if (value.contains('clean')) {
+  if (value.contains('clean') || value.contains('housekeep')) {
     return Icons.cleaning_services_rounded;
   }
   if (value.contains('electric')) {
@@ -2069,6 +2152,57 @@ IconData _categoryIcon(String category) {
   }
   if (value.contains('paint')) {
     return Icons.format_paint_rounded;
+  }
+  if (value.contains('carpent') || value.contains('wood') || value.contains('furniture')) {
+    return Icons.carpenter_rounded;
+  }
+  if (value.contains('ac') || value.contains('cool') || value.contains('air')) {
+    return Icons.ac_unit_rounded;
+  }
+  if (value.contains('ro') || value.contains('water')) {
+    return Icons.water_drop_rounded;
+  }
+  if (value.contains('mobile') || value.contains('phone')) {
+    return Icons.smartphone_rounded;
+  }
+  if (value.contains('computer') || value.contains('laptop')) {
+    return Icons.computer_rounded;
+  }
+  if (value.contains('tutor') || value.contains('teach') || value.contains('educat')) {
+    return Icons.school_rounded;
+  }
+  if (value.contains('deliver')) {
+    return Icons.local_shipping_rounded;
+  }
+  if (value.contains('tailor') || value.contains('sew')) {
+    return Icons.checkroom_rounded;
+  }
+  if (value.contains('beaut') || value.contains('salon') || value.contains('hair')) {
+    return Icons.content_cut_rounded;
+  }
+  if (value.contains('photo') || value.contains('camera')) {
+    return Icons.photo_camera_rounded;
+  }
+  if (value.contains('cctv') || value.contains('security')) {
+    return Icons.videocam_rounded;
+  }
+  if (value.contains('internet') || value.contains('wifi')) {
+    return Icons.wifi_rounded;
+  }
+  if (value.contains('mechanic') || value.contains('auto') || value.contains('vehicle') || value.contains('bike')) {
+    return Icons.two_wheeler_rounded;
+  }
+  if (value.contains('food') || value.contains('cook') || value.contains('cater')) {
+    return Icons.restaurant_rounded;
+  }
+  if (value.contains('garden') || value.contains('landscap')) {
+    return Icons.yard_rounded;
+  }
+  if (value.contains('real estate') || value.contains('property') || value.contains('rent')) {
+    return Icons.apartment_rounded;
+  }
+  if (value.contains('product') || value.contains('perfume')) {
+    return Icons.inventory_2_rounded;
   }
   return Icons.home_repair_service_rounded;
 }

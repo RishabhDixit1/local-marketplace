@@ -31,7 +31,7 @@ Color appAvatarColorFor(String name) {
 
 /// Single avatar system for the app: a photo when available, otherwise a
 /// deterministic color-coded initials circle. Never a flat grey circle with
-/// a lone letter. Optionally renders an online-status dot.
+/// a lone letter. Optionally renders an online-status dot or a verified badge.
 class AppAvatar extends StatelessWidget {
   const AppAvatar({
     super.key,
@@ -42,6 +42,7 @@ class AppAvatar extends StatelessWidget {
     this.isOnline = false,
     this.onlineStatusColor,
     this.semanticLabel,
+    this.showVerifiedBadge = false,
   });
 
   final String name;
@@ -51,6 +52,7 @@ class AppAvatar extends StatelessWidget {
   final bool isOnline;
   final Color? onlineStatusColor;
   final String? semanticLabel;
+  final bool showVerifiedBadge;
 
   Color get _backgroundColor => appAvatarColorFor(name);
   bool get _hasImage => avatarUrl.trim().isNotEmpty;
@@ -59,6 +61,8 @@ class AppAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = semanticLabel ?? name.trim();
     final dotSize = (radius * 0.42).clamp(6.0, 11.0);
+    final badgeSize = (radius * 0.5).clamp(8.0, 14.0);
+    final ringWidth = (radius * 0.1).clamp(2.0, 3.0);
 
     Widget avatar = CircleAvatar(
       radius: radius,
@@ -81,6 +85,21 @@ class AppAvatar extends StatelessWidget {
       ),
     );
 
+    if (showVerifiedBadge) {
+      avatar = Container(
+        padding: EdgeInsets.all(ringWidth),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF2563EB), Color(0xFF60A5FA)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: avatar,
+      );
+    }
+
     if (showOnlineStatus) {
       avatar = Stack(
         children: [
@@ -100,6 +119,37 @@ class AppAvatar extends StatelessWidget {
                   color: Theme.of(context).colorScheme.surface,
                   width: 2,
                 ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (showVerifiedBadge) {
+      // Overlay checkmark badge on top-right
+      avatar = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          avatar,
+          Positioned(
+            right: 0,
+            top: 0,
+            child: Container(
+              width: badgeSize,
+              height: badgeSize,
+              decoration: BoxDecoration(
+                color: const Color(0xFF2563EB),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.surface,
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(
+                Icons.check_rounded,
+                size: badgeSize * 0.65,
+                color: Colors.white,
               ),
             ),
           ),

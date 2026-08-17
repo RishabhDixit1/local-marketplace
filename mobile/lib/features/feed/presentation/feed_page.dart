@@ -579,23 +579,20 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     return () => _openChat(item);
   }
 
+  /// Label varies by relationship state, not by post category.
   String? _primaryLabelFor(MobileFeedItem item) {
     if (item.isClosed) {
       return null;
     }
-    if (item.helpRequestId == null) {
-      if (item.type == MobileFeedItemType.product) {
-        return 'View details';
-      }
-      if (item.type == MobileFeedItemType.service) {
-        return 'View details';
-      }
-      return 'Open profile';
+    if (item.isAccepted || item.statusKey == 'matched') {
+      return 'View chat';
     }
-    if (item.viewerHasExpressedInterest) {
-      return 'Withdraw interest';
+    if (item.helpRequestId != null) {
+      return item.viewerHasExpressedInterest
+          ? 'Withdraw interest'
+          : 'Express interest';
     }
-    return 'Express interest';
+    return 'Send Request';
   }
 
   String _checkoutLabelFor(MobileFeedItem item) {

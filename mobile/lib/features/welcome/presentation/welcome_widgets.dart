@@ -26,6 +26,7 @@ class _WelcomeFeedAllPageState extends ConsumerState<WelcomeFeedAllPage> {
   );
 
   int _visibleCount = _pageSize;
+  String? _busyFeedActionId;
 
   @override
   void didUpdateWidget(covariant WelcomeFeedAllPage oldWidget) {
@@ -100,8 +101,57 @@ class _WelcomeFeedAllPageState extends ConsumerState<WelcomeFeedAllPage> {
     );
   }
 
+  Future<void> _sendInterest(MobileFeedItem item) async {
+    final helpRequestId = item.helpRequestId;
+    if (helpRequestId == null || _busyFeedActionId != null) {
+      return;
+    }
+
+    HapticFeedback.lightImpact();
+    setState(() => _busyFeedActionId = item.id);
+    try {
+      if (item.viewerHasExpressedInterest) {
+        await ref.read(feedRepositoryProvider).withdrawInterest(helpRequestId);
+      } else {
+        await ref.read(feedRepositoryProvider).expressInterest(helpRequestId);
+      }
+
+      ref.invalidate(feedSnapshotProvider(MobileFeedScope.all));
+      ref.invalidate(feedSnapshotProvider(MobileFeedScope.connected));
+      await Future.wait([
+        ref.read(feedSnapshotProvider(MobileFeedScope.all).future),
+        ref.read(feedSnapshotProvider(MobileFeedScope.connected).future),
+      ]);
+      if (!mounted) {
+        return;
+      }
+
+      ServiqToast.show(
+        context,
+        message: item.viewerHasExpressedInterest
+            ? 'Interest withdrawn.'
+            : 'Interest sent. The requester will review it shortly.',
+        tone: ServiqToastTone.success,
+      );
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ServiqToast.show(
+        context,
+        message: error.message,
+        tone: ServiqToastTone.danger,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _busyFeedActionId = null);
+      }
+    }
+  }
+
   /// Matches the home feed's status rules: closed items get no primary CTA,
-  /// matched/accepted items open the chat thread, open items open the detail.
+  /// matched/accepted items open the chat thread, open help requests support
+  /// express-interest, and other open items send a request.
   VoidCallback? _primaryActionFor(MobileFeedItem item) {
     if (item.isClosed) {
       return null;
@@ -109,7 +159,26 @@ class _WelcomeFeedAllPageState extends ConsumerState<WelcomeFeedAllPage> {
     if (item.isAccepted || item.statusKey == 'matched') {
       return () => _openChat(item);
     }
+    if (item.helpRequestId != null) {
+      return () => _sendInterest(item);
+    }
     return () => _openItem(item);
+  }
+
+  /// Label varies by relationship state, not by post category.
+  String? _primaryLabelFor(MobileFeedItem item) {
+    if (item.isClosed) {
+      return null;
+    }
+    if (item.isAccepted || item.statusKey == 'matched') {
+      return 'View chat';
+    }
+    if (item.helpRequestId != null) {
+      return item.viewerHasExpressedInterest
+          ? 'Withdraw interest'
+          : 'Express interest';
+    }
+    return 'Send Request';
   }
 
   _WelcomeViewModel _buildModel({
@@ -248,6 +317,7 @@ class _WelcomeFeedAllPageState extends ConsumerState<WelcomeFeedAllPage> {
                       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                       child: FeedCard(
                         item: item,
+                        primaryLabel: _primaryLabelFor(item),
                         onPrimaryTap: _primaryActionFor(item),
                         onSecondaryTap: () => _messageItem(item),
                       ),
@@ -520,18 +590,21 @@ class _TrustedRail extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = math.min(300.0, constraints.maxWidth * 0.82);
+        final cardWidth = math.min(280.0, constraints.maxWidth * 0.78);
+        final gap = AppSpacing.sm.toDouble();
         return SizedBox(
           height: 280,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
+          child: PageView.builder(
+            controller: PageController(viewportFraction: (cardWidth + gap) / constraints.maxWidth),
             itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(width: AppSpacing.sm),
-            padding: const EdgeInsets.only(right: AppSpacing.md),
+            padEnds: false,
             itemBuilder: (context, index) {
               final item = items[index];
-              return SizedBox(
-                width: width,
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: index == 0 ? AppSpacing.md : gap / 2,
+                  right: index == items.length - 1 ? AppSpacing.md : gap / 2,
+                ),
                 child: _TrustedConnectionRailCard(
                   item: item,
                   onOpen: () => onOpen(item),
@@ -645,11 +718,24 @@ class _TrustedConnectionRailCard extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: AppSpacing.xxs),
-          Text(
-            '${item.creatorName} • ${item.distanceLabel} • ${item.timeLabel}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall,
+          Row(
+            children: [
+              AppAvatar(
+                name: item.creatorName,
+                avatarUrl: item.avatarUrl,
+                radius: 10,
+                showVerifiedBadge: item.isVerified,
+              ),
+              const SizedBox(width: AppSpacing.xxs),
+              Expanded(
+                child: Text(
+                  '${item.creatorName} • ${item.distanceLabel}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
@@ -684,8 +770,11 @@ class _TrustedConnectionRailCard extends StatelessWidget {
 
   String _railPrimaryLabel(MobileFeedItem item) {
     final label = statusDrivenPrimaryLabel(item);
-    if (label == 'Open request') {
-      return 'Open';
+    if (label == 'Send Request') {
+      if (item.helpRequestId != null) {
+        return item.viewerHasExpressedInterest ? 'Withdraw' : 'Express';
+      }
+      return 'Send';
     }
     return label ?? 'Open';
   }
@@ -807,6 +896,7 @@ class _TrustedConnectionCard extends StatelessWidget {
     required this.onOpen,
     required this.onMessage,
     required this.onMore,
+    this.primaryLabel,
   });
 
   final MobileFeedItem item;
@@ -816,6 +906,7 @@ class _TrustedConnectionCard extends StatelessWidget {
   final VoidCallback onMessage;
   final VoidCallback onSave;
   final VoidCallback onMore;
+  final String? primaryLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -823,7 +914,7 @@ class _TrustedConnectionCard extends StatelessWidget {
       item: item,
       reason: reason,
       isSaved: isSaved,
-      primaryLabel: null,
+      primaryLabel: primaryLabel,
       secondaryLabel: 'Message',
       onPrimaryTap: onOpen,
       onSecondaryTap: onMessage,
@@ -1258,99 +1349,150 @@ class _WelcomeLoadingState extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 120),
       children: [
-        ServiqSurface(
-          padding: EdgeInsets.zero,
-          variant: ServiqSurfaceVariant.raised,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: Theme.of(context).extension<ServiqThemeTokens>()?.heroGradient ?? ServiqThemeTokens.light.heroGradient,
-            ),
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                LoadingShimmer(height: 18, width: 104),
-                SizedBox(height: AppSpacing.md),
-                LoadingShimmer(height: 28, width: 260),
-                SizedBox(height: AppSpacing.xs),
-                LoadingShimmer(height: 14),
-                SizedBox(height: 6),
-                LoadingShimmer(height: 14, width: 220),
-                SizedBox(height: 18),
-                LoadingShimmer(height: 48),
-                SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(child: LoadingShimmer(height: 78)),
-                    SizedBox(width: AppSpacing.xs),
-                    Expanded(child: LoadingShimmer(height: 78)),
-                  ],
-                ),
-                SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(child: LoadingShimmer(height: 78)),
-                    SizedBox(width: AppSpacing.xs),
-                    Expanded(child: LoadingShimmer(height: 78)),
-                  ],
-                ),
+        // AI prompt bar skeleton
+        Container(
+          height: 52,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.surface,
+                AppColors.primarySoft.withValues(alpha: 0.3),
               ],
             ),
-          ),
-        ),
-        const SizedBox(height: 18),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: List.generate(
-            4,
-            (index) => SizedBox(
-              width: 164,
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(AppRadii.xl),
-                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4)),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    LoadingShimmer(height: 34, width: 34),
-                    SizedBox(height: AppSpacing.sm),
-                    LoadingShimmer(height: 18, width: 80),
-                    SizedBox(height: AppSpacing.xs),
-                    LoadingShimmer(height: 12),
-                  ],
-                ),
-              ),
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
             ),
           ),
+          child: const Row(
+            children: [
+              SizedBox(width: AppSpacing.md),
+              LoadingShimmer(height: 18, width: 18, borderRadius: 9),
+              SizedBox(width: AppSpacing.sm),
+              LoadingShimmer(height: 16, width: 180),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        // Greeting skeleton
+        const LoadingShimmer(height: 28, width: 220),
+        const SizedBox(height: AppSpacing.sm),
+        // Quick actions skeleton
+        Row(
+          children: [
+            Expanded(
+              child: _QuickActionSkeleton(),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _QuickActionSkeleton(),
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.lg),
+        // Feed section header skeleton
+        const LoadingShimmer(height: 18, width: 140),
+        const SizedBox(height: AppSpacing.sm),
+        // Feed card skeletons with image placeholders
         ...List.generate(
           3,
           (index) => Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: ServiqSurface(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  LoadingShimmer(height: 18, width: 180),
-                  SizedBox(height: AppSpacing.sm),
-                  LoadingShimmer(height: 22, width: 260),
-                  SizedBox(height: AppSpacing.xs),
-                  LoadingShimmer(height: 14),
-                  SizedBox(height: 6),
-                  LoadingShimmer(height: 14, width: 220),
-                  SizedBox(height: AppSpacing.md),
-                  LoadingShimmer(height: 42),
-                ],
-              ),
-            ),
+            child: _FeedCardSkeleton(),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _QuickActionSkeleton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 88),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+        ),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LoadingShimmer(height: 34, width: 34, borderRadius: 8),
+          SizedBox(height: AppSpacing.sm),
+          LoadingShimmer(height: 22, width: 36),
+          SizedBox(height: AppSpacing.xs),
+          LoadingShimmer(height: 12, width: 64),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeedCardSkeleton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(
+            color: AppColors.warm.withValues(alpha: 0.3),
+            width: 3,
+          ),
+        ),
+      ),
+      child: ServiqSurface(
+        variant: ServiqSurfaceVariant.glass,
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image placeholder with category gradient feel
+            LoadingShimmer(height: 96, borderRadius: 12),
+            const SizedBox(height: AppSpacing.sm),
+            // Pills row
+            const Row(
+              children: [
+                LoadingShimmer(height: 22, width: 72, borderRadius: 11),
+                SizedBox(width: AppSpacing.xs),
+                LoadingShimmer(height: 22, width: 56, borderRadius: 11),
+                SizedBox(width: AppSpacing.xs),
+                LoadingShimmer(height: 22, width: 64, borderRadius: 11),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            // Title
+            const LoadingShimmer(height: 18, width: 240),
+            const SizedBox(height: AppSpacing.xxs),
+            // Description
+            const LoadingShimmer(height: 14, width: 180),
+            const SizedBox(height: AppSpacing.sm),
+            // Avatar + name row
+            const Row(
+              children: [
+                LoadingShimmer(height: 28, width: 28, borderRadius: 14),
+                SizedBox(width: AppSpacing.xs),
+                LoadingShimmer(height: 14, width: 100),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            // Trust row
+            const Row(
+              children: [
+                LoadingShimmer(height: 14, width: 60),
+                SizedBox(width: AppSpacing.sm),
+                LoadingShimmer(height: 14, width: 80),
+                SizedBox(width: AppSpacing.sm),
+                LoadingShimmer(height: 14, width: 70),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1519,61 +1661,90 @@ class _WorkHomeTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isActive = count > 0;
     final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadii.lg),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 88),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: Theme.of(
-            context,
-          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(AppRadii.lg),
-          border: Border.all(color: Theme.of(context).colorScheme.outline),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: isActive
-                    ? AppColors.primary.withValues(alpha: 0.1)
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(AppRadii.md),
-              ),
-              child: Icon(
-                icon,
-                size: 16,
-                color: isActive ? AppColors.primary : muted,
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          constraints: const BoxConstraints(minHeight: 88),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: isActive
+                ? LinearGradient(
+                    colors: [
+                      AppColors.accentSoft.withValues(alpha: 0.6),
+                      AppColors.primarySoft.withValues(alpha: 0.4),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: isActive
+                ? null
+                : Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: isActive
+                  ? AppColors.accent.withValues(alpha: 0.2)
+                  : Theme.of(context).colorScheme.outline,
             ),
-            const SizedBox(height: 10),
-            Text(
-              '$count',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w900,
-                height: 1,
-                color: isActive
-                    ? AppColors.primary
-                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  gradient: isActive
+                      ? const LinearGradient(
+                          colors: [AppColors.accent, AppColors.accentDeep],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  color: isActive
+                      ? null
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                child: Icon(
+                  icon,
+                  size: 17,
+                  color: isActive ? Colors.white : muted,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              const SizedBox(height: 10),
+              Text(
+                '$count',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                  color: isActive
+                      ? AppColors.accent
+                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

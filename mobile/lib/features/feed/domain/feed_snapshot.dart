@@ -364,6 +364,10 @@ class MobileFeedItem {
 
   bool get isVerified => verificationStatus.toLowerCase() == 'verified';
 
+  /// True when the creator has multiple active listings, indicating an
+  /// established local business rather than a one-off personal post.
+  bool get isEstablishedProvider => listingCount >= 2;
+
   String get cardKey => cardId.trim().isNotEmpty
       ? cardId
       : 'dashboard:${source.apiValue}:${type.name}:$id';
@@ -484,9 +488,13 @@ class MobileFeedItem {
 
   bool get isDemand => type == MobileFeedItemType.demand;
 
-  bool get isOpen => _normalizeStatus(status) == 'open';
+  /// The effective status: viewer match status takes precedence over the
+  /// raw post status (mirrors the display logic in fromJson).
+  String get _effectiveStatus => viewerMatchStatus ?? status;
 
-  bool get isAccepted => _normalizeStatus(status) == 'accepted';
+  bool get isOpen => _normalizeStatus(_effectiveStatus) == 'open';
+
+  bool get isAccepted => _normalizeStatus(_effectiveStatus) == 'accepted';
 
   bool get isClosed => const {
     'completed',
@@ -494,7 +502,7 @@ class MobileFeedItem {
     'canceled',
     'closed',
     'archived',
-  }.contains(_normalizeStatus(status));
+  }.contains(_normalizeStatus(_effectiveStatus));
 
   /// `direct_booking` for service/product listings, `requirement_post` for help requests/posts.
   String get loopType {

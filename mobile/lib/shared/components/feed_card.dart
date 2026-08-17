@@ -7,9 +7,10 @@ import 'package:flutter/services.dart';
 import '../../core/design_system/design_system.dart';
 import '../../core/theme/app_theme.dart';
 import '../../features/feed/domain/feed_snapshot.dart';
+import 'category_illustration.dart';
 
 /// Single source of truth for the status-driven primary CTA on post cards.
-/// - open / urgent        -> "Open request"
+/// - open / urgent        -> "Send Request"
 /// - matched / accepted   -> "View chat"
 /// - cancelled / completed (closed) -> null, so the card renders no primary
 ///   CTA and keeps only the muted status pill plus its secondary action.
@@ -20,7 +21,7 @@ String? statusDrivenPrimaryLabel(MobileFeedItem item) {
   if (item.isAccepted || item.statusKey == 'matched') {
     return 'View chat';
   }
-  return 'Open request';
+  return 'Send Request';
 }
 
 class FeedCard extends StatelessWidget {
@@ -66,7 +67,6 @@ class FeedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusLabel = item.urgent ? 'Urgent' : item.statusLabel;
-    final meta = _compactMetaFor(item);
     final isDirectBooking = item.loopType == 'direct_booking';
 
     return Container(
@@ -84,10 +84,11 @@ class FeedCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (item.hasPreviewImage) ...[
-              _FeedPreview(item: item),
-              const SizedBox(height: AppSpacing.sm),
-            ],
+            if (item.hasPreviewImage)
+              _FeedPreview(item: item)
+            else
+              CategoryIllustration(category: item.category),
+            const SizedBox(height: AppSpacing.sm),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -105,6 +106,16 @@ class FeedCard extends StatelessWidget {
                         label: statusLabel,
                         statusKey: item.statusKey,
                       ),
+                      if (item.isEstablishedProvider)
+                        _InlinePill(
+                          icon: Icons.storefront_rounded,
+                          label: 'Business',
+                        ),
+                      if (_hasRealMoney(item))
+                        _InlinePill(
+                          icon: Icons.payments_outlined,
+                          label: item.priceLabel,
+                        ),
                       if (item.mediaCount > 0 && !item.hasPreviewImage)
                         _InlinePill(
                           icon: Icons.photo_library_outlined,
@@ -146,7 +157,12 @@ class FeedCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
-                AppAvatar(name: item.creatorName, radius: 12),
+                AppAvatar(
+                  name: item.creatorName,
+                  avatarUrl: item.avatarUrl,
+                  radius: 14,
+                  showVerifiedBadge: item.isVerified,
+                ),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
@@ -158,24 +174,22 @@ class FeedCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (item.distanceLabel.trim().isNotEmpty)
+                  Flexible(
+                    child: Text(
+                      item.distanceLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
               ],
             ),
-            if (meta.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Wrap(
-                spacing: AppSpacing.xs,
-                runSpacing: AppSpacing.xs,
-                children: meta
-                    .map(
-                      (signal) =>
-                          _InlinePill(icon: signal.icon, label: signal.label),
-                    )
-                    .toList(),
-              ),
-            ],
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.xs),
             _TrustStrip(item: item),
-            if (onPrimaryTap != null || onSecondaryTap != null) ...[
+            if (!item.isClosed && (onPrimaryTap != null || onSecondaryTap != null)) ...[
               const SizedBox(height: AppSpacing.sm),
               ServiqActionBar(
                 primaryLabel: _effectivePrimaryLabel,
@@ -197,21 +211,8 @@ class FeedCard extends StatelessWidget {
   }
 }
 
-List<({IconData icon, String label})> _compactMetaFor(MobileFeedItem item) {
-  final signals = <({IconData icon, String label})>[];
-  if (_hasRealMoneySignal(item)) {
-    signals.add((icon: Icons.payments_outlined, label: item.priceLabel));
-  }
-  if (item.distanceLabel.trim().isNotEmpty) {
-    signals.add((icon: Icons.place_outlined, label: item.distanceLabel));
-  }
-  return signals.take(2).toList();
-}
-
-bool _hasRealMoneySignal(MobileFeedItem item) {
-  if (item.price > 0) {
-    return true;
-  }
+bool _hasRealMoney(MobileFeedItem item) {
+  if (item.price > 0) return true;
   final label = item.priceLabel.trim().toLowerCase();
   return label.startsWith('inr ') || label.startsWith('₹');
 }
@@ -341,7 +342,23 @@ class _PreviewFallback extends StatelessWidget {
     return Container(
       color: tint.background,
       alignment: Alignment.center,
-      child: Icon(_iconForType(item.type), size: 28, color: tint.foreground),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(_iconForType(item.type), size: 28, color: tint.foreground),
+          const SizedBox(height: AppSpacing.xxs),
+          Text(
+            item.category,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: tint.foreground.withValues(alpha: 0.8),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -395,7 +412,6 @@ class _TrustStrip extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final hasRating = item.averageRating != null && item.reviewCount > 0;
     final neutral = scheme.onSurface.withValues(alpha: 0.6);
-    final muted = scheme.onSurface.withValues(alpha: 0.45);
 
     return Wrap(
       spacing: AppSpacing.md,
@@ -403,22 +419,26 @@ class _TrustStrip extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         _TrustChip(
-          icon: Icons.verified_outlined,
-          value: item.trustLabel,
+          icon: item.isVerified
+              ? Icons.verified_rounded
+              : Icons.new_releases_outlined,
+          value: item.isVerified ? 'Verified' : 'New to reviews',
           color: item.isVerified ? AppColors.verified : neutral,
         ),
-        _TrustChip(
-          icon: Icons.star_outline_rounded,
-          value: item.ratingLabel,
-          color: hasRating && item.averageRating! >= 4
-              ? AppColors.success
-              : muted,
-        ),
-        _TrustChip(
-          icon: Icons.schedule_rounded,
-          value: item.responseLabel,
-          color: neutral,
-        ),
+        if (hasRating) ...[
+          _TrustChip(
+            icon: Icons.star_rounded,
+            value:
+                '${item.averageRating!.toStringAsFixed(1)} (${item.reviewCount})',
+            color: AppColors.marigoldDeep,
+          ),
+        ],
+        if (item.responseMinutes > 0)
+          _TrustChip(
+            icon: Icons.schedule_rounded,
+            value: item.responseLabel,
+            color: neutral,
+          ),
       ],
     );
   }
@@ -448,8 +468,9 @@ class _TrustChip extends StatelessWidget {
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: foreground,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -585,19 +606,19 @@ class _CardActions extends StatelessWidget {
   }
 }
 
+/// Icon for the primary action button, driven by relationship state only.
+/// - matched / accepted  -> chat
+/// - interest expressed  -> undo (withdraw)
+/// - open                -> send (express interest / engage)
+/// - closed              -> never reached (card suppresses the bar)
 IconData _primaryIconFor(MobileFeedItem item) {
-  if (item.helpRequestId != null) {
-    return item.viewerHasExpressedInterest
-        ? Icons.undo_rounded
-        : Icons.handshake_outlined;
+  if (item.isAccepted || item.statusKey == 'matched') {
+    return Icons.chat_bubble_outline_rounded;
   }
-  if (item.type == MobileFeedItemType.product) {
-    return Icons.shopping_bag_outlined;
+  if (item.viewerHasExpressedInterest) {
+    return Icons.undo_rounded;
   }
-  if (item.type == MobileFeedItemType.service) {
-    return Icons.event_available_outlined;
-  }
-  return Icons.person_outline_rounded;
+  return Icons.send_rounded;
 }
 
 IconData _iconForType(MobileFeedItemType type) {

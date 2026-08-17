@@ -45,7 +45,7 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
       case 'dark':
         return ThemeMode.dark;
       default:
-        return ThemeMode.system;
+    return ThemeMode.light;
     }
   }
 }

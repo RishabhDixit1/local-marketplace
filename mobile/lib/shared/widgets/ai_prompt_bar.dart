@@ -15,6 +15,8 @@ class AiPromptBar extends ConsumerStatefulWidget {
   const AiPromptBar({
     super.key,
     this.placeholder,
+    this.rotatingPlaceholders,
+    this.placeholderInterval = const Duration(seconds: 3),
     this.initialQuery,
     this.onResult,
     this.enableDebounce = false,
@@ -22,6 +24,8 @@ class AiPromptBar extends ConsumerStatefulWidget {
   });
 
   final String? placeholder;
+  final List<String>? rotatingPlaceholders;
+  final Duration placeholderInterval;
   final String? initialQuery;
   final void Function(AiPromptResponse result, String query)? onResult;
   final bool enableDebounce;
@@ -34,12 +38,17 @@ class AiPromptBar extends ConsumerStatefulWidget {
   ConsumerState<AiPromptBar> createState() => _AiPromptBarState();
 }
 
-class _AiPromptBarState extends ConsumerState<AiPromptBar> {
+class _AiPromptBarState extends ConsumerState<AiPromptBar>
+    with SingleTickerProviderStateMixin {
   late final TextEditingController _controller;
   final _focusNode = FocusNode();
   bool _loading = false;
   AiPromptResponse? _debounceResult;
   Timer? _debounceTimer;
+  late final AnimationController _sparkleController;
+  Timer? _sparkleDelay;
+  int _placeholderIndex = 0;
+  Timer? _placeholderTimer;
 
   @override
   void initState() {
@@ -49,11 +58,55 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
     if (widget.controller == null && initial.isNotEmpty) {
       _controller.text = initial;
     }
+    _sparkleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    );
+    _startSparkle();
+    _focusNode.addListener(_onFocusChanged);
+    _startPlaceholderRotation();
+  }
+
+  void _startPlaceholderRotation() {
+    if (widget.rotatingPlaceholders == null ||
+        widget.rotatingPlaceholders!.length <= 1) {
+      return;
+    }
+    _placeholderTimer = Timer.periodic(widget.placeholderInterval, (_) {
+      if (!mounted || _focusNode.hasFocus || _controller.text.isNotEmpty) {
+        return;
+      }
+      setState(() {
+        _placeholderIndex =
+            (_placeholderIndex + 1) % widget.rotatingPlaceholders!.length;
+      });
+    });
+  }
+
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus) {
+      _placeholderTimer?.cancel();
+    } else if (widget.rotatingPlaceholders != null &&
+        widget.rotatingPlaceholders!.length > 1) {
+      _startPlaceholderRotation();
+    }
+  }
+
+  void _startSparkle() {
+    _sparkleController.forward(from: 0).then((_) {
+      if (!mounted) return;
+      _sparkleDelay = Timer(const Duration(milliseconds: 800), () {
+        if (mounted) _startSparkle();
+      });
+    });
   }
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _sparkleDelay?.cancel();
+    _placeholderTimer?.cancel();
+    _sparkleController.dispose();
     if (widget.controller == null) {
       _controller.dispose();
     }
@@ -104,8 +157,11 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
 
       if (mounted) {
         setState(() => _loading = false);
-        widget.onResult?.call(result, trimmed);
-        _showResultSheet(result, trimmed);
+        if (widget.onResult != null) {
+          widget.onResult!.call(result, trimmed);
+        } else {
+          _showResultSheet(result, trimmed);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -201,25 +257,50 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final placeholder = widget.placeholder ?? l10n.aiPlaceholder;
+    final hasRotatingPlaceholders = widget.rotatingPlaceholders != null &&
+        widget.rotatingPlaceholders!.isNotEmpty;
+    final placeholder = hasRotatingPlaceholders
+        ? widget.rotatingPlaceholders![_placeholderIndex %
+            widget.rotatingPlaceholders!.length]
+        : (widget.placeholder ?? l10n.aiPlaceholder);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.surface,
+                AppColors.primarySoft,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.circular(AppRadii.xl),
-            border: Border.all(color: Theme.of(context).colorScheme.outline),
-            boxShadow: AppShadows.soft,
+            border: Border.all(
+              color: AppColors.accent.withValues(alpha: 0.25),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.accent.withValues(alpha: 0.08),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+              ...AppShadows.soft,
+            ],
           ),
           child: TextField(
             controller: _controller,
             focusNode: _focusNode,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
             decoration: InputDecoration(
               hintText: placeholder,
               hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+                fontWeight: FontWeight.w400,
               ),
               prefixIcon: _loading
                   ? Padding(
@@ -229,14 +310,30 @@ class _AiPromptBarState extends ConsumerState<AiPromptBar> {
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppColors.primary,
+                          color: AppColors.accent,
                         ),
                       ),
                     )
                   : Padding(
                       padding: const EdgeInsets.all(AppSpacing.sm),
-                      child: Icon(Icons.auto_awesome_rounded,
-                          size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: hasRotatingPlaceholders
+                            ? Icon(
+                                _categoryIconForPlaceholder(placeholder),
+                                key: ValueKey(placeholder),
+                                size: 18,
+                                color: AppColors.accent,
+                              )
+                            : RotationTransition(
+                                turns: _sparkleController,
+                                child: Icon(
+                                  Icons.auto_awesome_rounded,
+                                  size: 18,
+                                  color: AppColors.accent,
+                                ),
+                              ),
+                      ),
                     ),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -589,4 +686,19 @@ class _AiResultSheet extends StatelessWidget {
       ),
     );
   }
+}
+
+IconData _categoryIconForPlaceholder(String placeholder) {
+  final lower = placeholder.toLowerCase();
+  if (lower.contains('plumb')) return Icons.plumbing_rounded;
+  if (lower.contains('electric')) return Icons.electrical_services_rounded;
+  if (lower.contains('clean')) return Icons.cleaning_services_rounded;
+  if (lower.contains('mover') || lower.contains('moving')) return Icons.local_shipping_outlined;
+  if (lower.contains('tutor') || lower.contains('teach')) return Icons.school_outlined;
+  if (lower.contains('carpent') || lower.contains('wood')) return Icons.carpenter_rounded;
+  if (lower.contains('paint')) return Icons.format_paint_rounded;
+  if (lower.contains('repair')) return Icons.build_circle_outlined;
+  if (lower.contains('appliance')) return Icons.kitchen_outlined;
+  if (lower.contains('ac') || lower.contains('hvac')) return Icons.ac_unit_rounded;
+  return Icons.auto_awesome_rounded;
 }

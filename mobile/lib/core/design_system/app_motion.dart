@@ -105,4 +105,31 @@ class AppAnimated {
       child: child,
     );
   }
+
+  /// Staggered fade+slide entrance. Pass [index] and [total] to compute
+  /// the delay so cards appear sequentially rather than all at once.
+  static Widget fadeSlideIn({
+    required int index,
+    required int total,
+    required Widget child,
+    Duration duration = AppMotion.standard,
+    Offset begin = const Offset(0.02, 0),
+  }) {
+    final delay = (index * 60).clamp(0, 300);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: duration.inMilliseconds + delay),
+      curve: AppEasing.standard,
+      builder: (context, value, _) {
+        final offset = Offset.lerp(begin, Offset.zero, value)!;
+        return FadeTransition(
+          opacity: AlwaysStoppedAnimation(value.clamp(0.0, 1.0)),
+          child: SlideTransition(
+            position: AlwaysStoppedAnimation(offset),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
 }
