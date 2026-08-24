@@ -2,7 +2,6 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -27,6 +26,9 @@ final _mapProvidersProvider = FutureProvider.autoDispose<SearchResponse>((
         sortBy: 'distance',
         lat: location?.latitude,
         lng: location?.longitude,
+        // Keep the map scoped to the pilot area instead of pulling providers
+        // whose coordinates are hundreds of kilometres away.
+        radiusKm: location != null ? 25 : null,
       );
 });
 
@@ -49,8 +51,7 @@ class MapDiscoveryPage extends ConsumerWidget {
         ],
       ),
       body: async.when(
-        loading: () =>
-            const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        loading: () => const _MapLoadingState(),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -96,10 +97,12 @@ class _MapWithList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final located = <SearchResult>[];
+    final locatedCoords = <LatLng>[];
     for (final provider in providers) {
       final coord = sanitizeLatLng(provider.lat, provider.lng);
       if (coord != null) {
         located.add(provider);
+        locatedCoords.add(coord);
       } else {
         warnDroppedCoordinate(
           'map discovery',
@@ -111,6 +114,24 @@ class _MapWithList extends StatelessWidget {
     }
     final safeUser = sanitizeLatLngPoint(userLocation);
     final canRenderMap = located.isNotEmpty || safeUser != null;
+
+    // Camera priority: user location, then the centroid of the providers.
+    // Never `located.first` - one far-away or out-of-area provider could
+    // otherwise drag the whole map off the cluster.
+    LatLng mapCenter = safeUser ?? kServiQDefaultCenter;
+    if (safeUser == null && locatedCoords.isNotEmpty) {
+      var sumLat = 0.0;
+      var sumLng = 0.0;
+      for (final c in locatedCoords) {
+        sumLat += c.latitude;
+        sumLng += c.longitude;
+      }
+      final centroid = sanitizeLatLng(
+        sumLat / locatedCoords.length,
+        sumLng / locatedCoords.length,
+      );
+      if (centroid != null) mapCenter = centroid;
+    }
 
     return Column(
       children: [
@@ -152,58 +173,18 @@ class _MapWithList extends StatelessWidget {
                     : Stack(
                         children: [
                           SafeFlutterMap(
-                            center:
-                                safeUser ??
-                                (located.isNotEmpty
-                                    ? sanitizeLatLng(
-                                        located.first.lat,
-                                        located.first.lng,
-                                      )
-                                    : null),
+                            center: mapCenter,
                             zoom: 11,
                             minZoom: 8,
                             maxZoom: 16,
                             markers: [
                               for (final p in located)
-                                Marker(
+                                providerMapMarker(
                                   point: sanitizeLatLng(p.lat, p.lng)!,
-                                  width: 36,
-                                  height: 36,
-                                  child: GestureDetector(
-                                    onTap: () =>
-                                        context.push(AppRoutes.provider(p.id)),
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        gradient: AppGradients.premiumAccent,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 2,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(
-                                              alpha: 0.25,
-                                            ),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          p.name.isNotEmpty
-                                              ? p.name[0].toUpperCase()
-                                              : '?',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                  name: p.name,
+                                  avatarUrl: p.avatarUrl,
+                                  onTap: () =>
+                                      context.push(AppRoutes.provider(p.id)),
                                 ),
                             ],
                           ),
@@ -290,7 +271,10 @@ class _MapContent extends StatelessWidget {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Container(
-              padding: const EdgeInsets.all(AppSpacing.sm),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -306,22 +290,35 @@ class _MapContent extends StatelessWidget {
                 ),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _StatsMini(
-                    icon: Icons.people_rounded,
-                    value: '${providers.length}',
-                    label: 'providers',
+                  Icon(
+                    Icons.location_on_rounded,
+                    size: 18,
+                    color: AppColors.primary,
                   ),
-                  _StatsMini(
-                    icon: Icons.map_rounded,
-                    value: '${withLocation.length}',
-                    label: 'on map',
-                  ),
-                  _StatsMini(
-                    icon: Icons.explore_rounded,
-                    value: '${withoutLocation.length}',
-                    label: 'unmapped',
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${providers.length} providers nearby',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          withLocation.length == providers.length
+                              ? 'All mapped and visible'
+                              : '${withLocation.length} on map${withoutLocation.isNotEmpty ? ' · ${withoutLocation.length} without location' : ''}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface
+                                .withValues(alpha: 0.55),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -367,37 +364,57 @@ class _MapContent extends StatelessWidget {
   }
 }
 
-class _StatsMini extends StatelessWidget {
-  const _StatsMini({
-    required this.icon,
-    required this.value,
-    required this.label,
-  });
-
-  final IconData icon;
-  final String value;
-  final String label;
+class _MapLoadingState extends StatelessWidget {
+  const _MapLoadingState();
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: AppColors.primaryDeep),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+        Container(
+          height: 280,
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                LoadingShimmer(height: 48, width: 48, borderRadius: 24),
+                SizedBox(height: AppSpacing.sm),
+                LoadingShimmer(height: 14, width: 140),
+              ],
+            ),
+          ),
         ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.5),
+        const SizedBox(height: AppSpacing.md),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: List.generate(
+              4,
+              (i) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: Row(
+                  children: [
+                    const LoadingShimmer(height: 36, width: 36, borderRadius: 18),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          LoadingShimmer(height: 14, width: 120),
+                          SizedBox(height: 4),
+                          LoadingShimmer(height: 11, width: 80),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ],

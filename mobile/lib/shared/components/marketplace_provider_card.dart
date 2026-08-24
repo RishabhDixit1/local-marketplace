@@ -175,7 +175,7 @@ class MarketplaceProviderCard extends StatelessWidget {
                   iconColor: AppColors.marigold,
                   label: '${avgRating!.toStringAsFixed(1)} ($reviewCount)',
                 ),
-              if (responseMinutes != null)
+              if (responseMinutes != null && responseMinutes! > 0)
                 _SignalChip(
                   icon: Icons.bolt_rounded,
                   iconColor: AppColors.primary,

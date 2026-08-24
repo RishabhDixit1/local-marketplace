@@ -392,7 +392,14 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
     List<String> categories,
   ) {
     return asyncState.when(
-      loading: () => const _PeopleLoading(),
+      loading: () => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 140),
+        children: [
+          _buildSearchCard(categories),
+          const SizedBox(height: 16),
+          const _PeopleLoading(),
+        ],
+      ),
       error: (err, _) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 140),
         children: [
@@ -1112,14 +1119,43 @@ class _PeopleLoading extends StatelessWidget {
           child: SectionCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                LoadingShimmer(height: 20, width: 180),
-                SizedBox(height: 10),
-                LoadingShimmer(height: 14, width: 240),
-                SizedBox(height: 16),
-                LoadingShimmer(height: 14),
-                SizedBox(height: 8),
-                LoadingShimmer(height: 14, width: 220),
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const LoadingShimmer(height: 44, width: 44, borderRadius: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          LoadingShimmer(height: 14, width: 140),
+                          SizedBox(height: 8),
+                          LoadingShimmer(height: 11, width: 200),
+                        ],
+                      ),
+                    ),
+                    const LoadingShimmer(height: 16, width: 48),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: const [
+                    Expanded(child: LoadingShimmer(height: 22, borderRadius: 11)),
+                    SizedBox(width: 8),
+                    Expanded(child: LoadingShimmer(height: 22, borderRadius: 11)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: LoadingShimmer(height: 44, borderRadius: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                LoadingShimmer(height: 40, borderRadius: 12),
               ],
             ),
           ),

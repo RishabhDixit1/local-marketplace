@@ -953,6 +953,7 @@ class _MockSearchRepository implements SearchRepository {
     int offset = 0,
     double? minRating,
     bool onlineOnly = false,
+    double? radiusKm,
     String sortBy = 'distance',
   }) async {
     lastQuery = query;

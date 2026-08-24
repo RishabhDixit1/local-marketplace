@@ -109,8 +109,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Next-action queue'), findsOneWidget);
-    expect(find.text('1 task ready for a one-tap update.'), findsOneWidget);
+    expect(find.text('Next up'), findsOneWidget);
+    expect(find.text('Confirm accepted: Repair kitchen sink leak'), findsOneWidget);
     expect(find.text('Back to next actions'), findsNothing);
 
     await tester.tap(find.text('Filters'));
@@ -130,7 +130,7 @@ void main() {
     await tester.tap(find.text('Back to next actions'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Next-action queue'), findsOneWidget);
+    expect(find.text('Next up'), findsOneWidget);
   });
 
   testWidgets('work tab shows partial-load recovery warnings', (tester) async {

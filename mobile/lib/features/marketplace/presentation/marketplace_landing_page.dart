@@ -675,7 +675,7 @@ class _ProviderDetailSheet extends StatelessWidget {
               _DetailStat(icon: Icons.star_rounded, value: provider.avgRating?.toStringAsFixed(1) ?? '—', label: '${provider.reviewCount} review${provider.reviewCount == 1 ? '' : 's'}'),
             if (provider.completedJobs > 0)
               _DetailStat(icon: Icons.check_circle_outline_rounded, value: provider.completedJobs.toString(), label: 'jobs done'),
-            if (provider.responseMinutes != null)
+            if (provider.responseMinutes != null && provider.responseMinutes! > 0)
               _DetailStat(icon: Icons.bolt_rounded, value: '${provider.responseMinutes} min', label: 'response'),
           ],
         ),

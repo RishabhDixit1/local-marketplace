@@ -1063,15 +1063,25 @@ class _PreviewFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Category-themed fallback so cards without photos stay visually distinct
+    // instead of rendering as identical grey placeholder blocks.
+    final theme = resolveCategoryTheme(title, title);
     return Container(
-      color: AppColors.surfaceAlt,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: theme.colors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
       alignment: Alignment.center,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.photo_library_outlined,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            theme.icon,
+            size: 32,
+            color: Colors.white.withValues(alpha: 0.9),
           ),
           const SizedBox(height: AppSpacing.xs),
           Padding(
@@ -1081,7 +1091,10 @@ class _PreviewFallback extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.95),
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ),
         ],

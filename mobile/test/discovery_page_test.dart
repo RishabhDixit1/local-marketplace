@@ -12,6 +12,8 @@ import 'package:serviq_mobile/core/theme/app_theme.dart';
 import 'package:serviq_mobile/features/discovery/presentation/discovery_page.dart';
 import 'package:serviq_mobile/features/search/data/search_repository.dart';
 import 'package:serviq_mobile/features/search/domain/search_models.dart';
+import 'package:serviq_mobile/features/storefront/data/storefront_repository.dart';
+import 'package:serviq_mobile/features/storefront/domain/storefront_models.dart';
 import 'package:serviq_mobile/shared/widgets/ai_prompt_bar.dart';
 
 import 'helpers/serviq_test_app.dart';
@@ -32,6 +34,55 @@ const _bootstrap = AppBootstrap(
   initializationError: null,
 );
 
+class _MockStorefrontRepository implements StorefrontRepository {
+  const _MockStorefrontRepository();
+
+  @override
+  Future<StorefrontListResponse> fetchStorefronts({
+    int limit = 20,
+    int offset = 0,
+    String? category,
+    String? search,
+    String? localityId,
+  }) async {
+    return const StorefrontListResponse(
+      storefronts: [],
+      total: 0,
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<Storefront?> fetchStorefrontDetail(String id) async => null;
+
+  @override
+  Future<StorefrontProductListResponse> fetchStorefrontProducts(
+    String storefrontId, {
+    int limit = 30,
+    int offset = 0,
+  }) async {
+    return const StorefrontProductListResponse(
+      products: [],
+      total: 0,
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<StorefrontProductListResponse> fetchAllProducts({
+    int limit = 30,
+    int offset = 0,
+    String? category,
+    String? search,
+  }) async {
+    return const StorefrontProductListResponse(
+      products: [],
+      total: 0,
+      hasMore: false,
+    );
+  }
+}
+
 class _MockSearchRepository implements SearchRepository {
   const _MockSearchRepository();
 
@@ -45,6 +96,7 @@ class _MockSearchRepository implements SearchRepository {
     int offset = 0,
     double? minRating,
     bool onlineOnly = false,
+    double? radiusKm,
     String sortBy = 'distance',
   }) async {
     return const SearchResponse(
@@ -118,6 +170,9 @@ Future<void> _pumpDiscovery(WidgetTester tester) async {
         ),
         mobileApiClientProvider.overrideWithValue(_MockApiClient()),
         userLocationProvider.overrideWith((ref) async => null),
+        storefrontRepositoryProvider.overrideWithValue(
+          const _MockStorefrontRepository(),
+        ),
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
@@ -167,6 +222,9 @@ void main() {
           ),
           mobileApiClientProvider.overrideWithValue(_ZonesApiClient()),
           userLocationProvider.overrideWith((ref) async => null),
+          storefrontRepositoryProvider.overrideWithValue(
+            const _MockStorefrontRepository(),
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -199,6 +257,9 @@ void main() {
           ),
           mobileApiClientProvider.overrideWithValue(_MockApiClient()),
           userLocationProvider.overrideWith((ref) async => null),
+          storefrontRepositoryProvider.overrideWithValue(
+            const _MockStorefrontRepository(),
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -227,6 +288,9 @@ void main() {
             ),
             mobileApiClientProvider.overrideWithValue(_MockApiClient()),
             userLocationProvider.overrideWith((ref) async => null),
+            storefrontRepositoryProvider.overrideWithValue(
+              const _MockStorefrontRepository(),
+            ),
           ],
           child: MaterialApp(
             theme: AppTheme.light(),
@@ -311,6 +375,7 @@ class _SingleProviderSearchRepository implements SearchRepository {
     int offset = 0,
     double? minRating,
     bool onlineOnly = false,
+    double? radiusKm,
     String sortBy = 'distance',
   }) async {
     return const SearchResponse(
@@ -339,6 +404,7 @@ class _MixedLocationSearchRepository implements SearchRepository {
     int offset = 0,
     double? minRating,
     bool onlineOnly = false,
+    double? radiusKm,
     String sortBy = 'distance',
   }) async {
     return SearchResponse(

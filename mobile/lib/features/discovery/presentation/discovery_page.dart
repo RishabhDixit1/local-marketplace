@@ -1,8 +1,9 @@
 import 'dart:ui';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_provider.dart';
@@ -19,6 +20,8 @@ import '../../../shared/components/section_header.dart';
 import '../../../shared/widgets/ai_prompt_bar.dart';
 import '../../search/data/search_repository.dart';
 import '../../search/domain/search_models.dart';
+import '../../storefront/data/storefront_repository.dart';
+import '../../storefront/domain/storefront_models.dart';
 
 final _discoveryProvidersProvider = FutureProvider.autoDispose<SearchResponse>((
   ref,
@@ -31,6 +34,10 @@ final _discoveryProvidersProvider = FutureProvider.autoDispose<SearchResponse>((
         lat: location?.latitude,
         lng: location?.longitude,
         sortBy: 'distance',
+        // Keep the "N providers near you" count honest: drop providers whose
+        // coordinates place them far outside the pilot area instead of
+        // counting a shop 600km away as "near you".
+        radiusKm: location != null ? 25 : null,
       );
 });
 
@@ -48,6 +55,20 @@ final _discoveryCategoriesProvider =
       return client.getServiceCategories();
     });
 
+final _discoveryStorefrontsProvider =
+    FutureProvider.autoDispose<StorefrontListResponse>((ref) async {
+  return ref
+      .read(storefrontRepositoryProvider)
+      .fetchStorefronts(limit: 10);
+});
+
+final _discoveryProductsProvider =
+    FutureProvider.autoDispose<StorefrontProductListResponse>((ref) async {
+  return ref
+      .read(storefrontRepositoryProvider)
+      .fetchAllProducts(limit: 10);
+});
+
 class DiscoveryPage extends ConsumerStatefulWidget {
   const DiscoveryPage({super.key});
 
@@ -61,6 +82,8 @@ class _DiscoveryPageState extends ConsumerState<DiscoveryPage> {
     final providersAsync = ref.watch(_discoveryProvidersProvider);
     final localitiesAsync = ref.watch(_discoveryLocalitiesProvider);
     final categoriesAsync = ref.watch(_discoveryCategoriesProvider);
+    final storefrontsAsync = ref.watch(_discoveryStorefrontsProvider);
+    final productsAsync = ref.watch(_discoveryProductsProvider);
     final l10n = AppLocalizations.of(context);
 
     return ServiqScaffold(
@@ -70,6 +93,8 @@ class _DiscoveryPageState extends ConsumerState<DiscoveryPage> {
             ref.invalidate(_discoveryProvidersProvider);
             ref.invalidate(_discoveryLocalitiesProvider);
             ref.invalidate(_discoveryCategoriesProvider);
+            ref.invalidate(_discoveryStorefrontsProvider);
+            ref.invalidate(_discoveryProductsProvider);
             await ref.read(_discoveryProvidersProvider.future);
           },
           child: ListView(
@@ -102,6 +127,15 @@ class _DiscoveryPageState extends ConsumerState<DiscoveryPage> {
               const SizedBox(height: AppSpacing.lg),
               _buildCategories(context, categoriesAsync),
               const SizedBox(height: AppSpacing.lg),
+
+              // Storefronts section
+              _buildStorefrontsSection(context, storefrontsAsync),
+              const SizedBox(height: AppSpacing.lg),
+
+              // Products section
+              _buildProductsSection(context, productsAsync),
+              const SizedBox(height: AppSpacing.lg),
+
               SectionHeader(
                 title: l10n.discoveryNearbyProviders,
                 subtitle: l10n.discoveryNearbySubtitle,
@@ -250,6 +284,430 @@ class _DiscoveryPageState extends ConsumerState<DiscoveryPage> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildStorefrontsSection(
+    BuildContext context,
+    AsyncValue<StorefrontListResponse> storefrontsAsync,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: l10n.storefrontsSectionTitle,
+          subtitle: l10n.storefrontsSectionSubtitle,
+          actionLabel: l10n.viewAllStorefronts,
+          onAction: () => context.push(AppRoutes.storefronts),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          height: 130,
+          child: storefrontsAsync.when(
+            loading: () => ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: 3,
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+              itemBuilder: (_, _) => const _StorefrontCardSkeleton(),
+            ),
+            error: (_, _) => const SizedBox.shrink(),
+            data: (response) {
+              if (response.storefronts.isEmpty) {
+                return Center(
+                  child: Text(
+                    l10n.noStorefrontsMessage,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.5),
+                    ),
+                  ),
+                );
+              }
+              return ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: response.storefronts.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(width: AppSpacing.sm),
+                itemBuilder: (ctx, i) => _StorefrontCard(
+                  storefront: response.storefronts[i],
+                  onTap: () => context.push(
+                      AppRoutes.storefront(response.storefronts[i].id)),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProductsSection(
+    BuildContext context,
+    AsyncValue<StorefrontProductListResponse> productsAsync,
+  ) {
+    final l10n = AppLocalizations.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: l10n.productsSectionTitle,
+          subtitle: l10n.productsSectionSubtitle,
+          actionLabel: l10n.viewAllProducts,
+          onAction: () => context.push(AppRoutes.products),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          height: 130,
+          child: productsAsync.when(
+            loading: () => ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: 3,
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+              itemBuilder: (_, _) => const _ProductCardSkeleton(),
+            ),
+            error: (_, _) => const SizedBox.shrink(),
+            data: (response) {
+              if (response.products.isEmpty) {
+                return Center(
+                  child: Text(
+                    l10n.noProductsMessage,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.5),
+                    ),
+                  ),
+                );
+              }
+              return ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: response.products.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(width: AppSpacing.sm),
+                itemBuilder: (ctx, i) => _ProductCardMini(
+                  product: response.products[i],
+                  onTap: () => context.push(AppRoutes.productDetail(
+                    response.products[i].id,
+                    storefrontId: response.products[i].storefrontId,
+                  )),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StorefrontCardSkeleton extends StatelessWidget {
+  const _StorefrontCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 160,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LoadingShimmer(height: 60, borderRadius: 0),
+          Padding(
+            padding: EdgeInsets.all(AppSpacing.xs),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LoadingShimmer(height: 12, width: 100),
+                SizedBox(height: AppSpacing.xxs),
+                LoadingShimmer(height: 10, width: 70),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StorefrontCard extends StatelessWidget {
+  const _StorefrontCard({required this.storefront, required this.onTap});
+
+  final Storefront storefront;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 160,
+        decoration: BoxDecoration(
+          color: Theme.of(context)
+              .colorScheme
+              .onSurface
+              .withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          border: Border.all(
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.06),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: storefront.coverUrl != null
+                  ? ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(AppRadii.lg)),
+                      child: CachedNetworkImage(
+                        imageUrl: storefront.coverUrl!,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (_, _) => Container(
+                          color: AppColors.surface,
+                          child: const Center(
+                              child: CircularProgressIndicator()),
+                        ),
+                        errorWidget: (_, _, _) =>
+                            _storefrontPlaceholder(),
+                      ),
+                    )
+                  : _storefrontPlaceholder(),
+            ),
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xs),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            storefront.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        if (storefront.isVerified) ...[
+                          const SizedBox(width: 2),
+                          Icon(Icons.verified_rounded,
+                              size: 12, color: AppColors.accent),
+                        ],
+                      ],
+                    ),
+                    const Spacer(),
+                    if (storefront.category != null)
+                      Text(
+                        storefront.category!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.55),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _storefrontPlaceholder() {
+    final theme = resolveCategoryTheme(
+      storefront.category ?? '',
+      storefront.name,
+    );
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: theme.colors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppRadii.lg)),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned(
+            right: -12,
+            bottom: -12,
+            child: Icon(
+              theme.icon,
+              size: 64,
+              color: Colors.white.withValues(alpha: 0.16),
+            ),
+          ),
+          Center(
+            child: Icon(theme.icon, size: 28, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductCardSkeleton extends StatelessWidget {
+  const _ProductCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 140,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LoadingShimmer(height: 60, borderRadius: 0),
+          Padding(
+            padding: EdgeInsets.all(AppSpacing.xs),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LoadingShimmer(height: 12, width: 90),
+                SizedBox(height: AppSpacing.xxs),
+                LoadingShimmer(height: 10, width: 50),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductCardMini extends StatelessWidget {
+  const _ProductCardMini({required this.product, required this.onTap});
+
+  final StorefrontProduct product;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 140,
+        decoration: BoxDecoration(
+          color: Theme.of(context)
+              .colorScheme
+              .onSurface
+              .withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          border: Border.all(
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.06),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: product.imageUrl != null
+                  ? ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(AppRadii.lg)),
+                      child: CachedNetworkImage(
+                        imageUrl: product.imageUrl!,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (_, _) => Container(
+                          color: AppColors.surface,
+                          child: const Center(
+                              child: CircularProgressIndicator()),
+                        ),
+                        errorWidget: (_, _, _) =>
+                            _productPlaceholder(),
+                      ),
+                    )
+                  : _productPlaceholder(),
+            ),
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xs),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (product.priceLabel.isNotEmpty)
+                      Text(
+                        product.priceLabel,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _productPlaceholder() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.warmSoft.withValues(alpha: 0.4),
+            AppColors.surface,
+          ],
+        ),
+        borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppRadii.lg)),
+      ),
+      child: Center(
+        child: Icon(Icons.inventory_2_outlined,
+            size: 28, color: AppColors.warm.withValues(alpha: 0.4)),
+      ),
     );
   }
 }
@@ -441,10 +899,12 @@ class _NearbySection extends StatelessWidget {
     }
 
     final located = <SearchResult>[];
+    final locatedCoords = <LatLng>[];
     for (final provider in providers) {
       final coord = sanitizeLatLng(provider.lat, provider.lng);
       if (coord != null) {
         located.add(provider);
+        locatedCoords.add(coord);
       } else {
         warnDroppedCoordinate(
           'discovery map',
@@ -455,6 +915,25 @@ class _NearbySection extends StatelessWidget {
       }
     }
     final shown = providers.take(10).toList();
+
+    // Center on the user when known; otherwise the centroid of the visible
+    // providers. Never `located.first` - the newest provider is not
+    // necessarily near the others and can drag the camera out of area.
+    LatLng mapCenter =
+        locatedCoords.isNotEmpty ? locatedCoords.first : kServiQDefaultCenter;
+    if (locatedCoords.length > 1) {
+      var sumLat = 0.0;
+      var sumLng = 0.0;
+      for (final c in locatedCoords) {
+        sumLat += c.latitude;
+        sumLng += c.longitude;
+      }
+      final centroid = sanitizeLatLng(
+        sumLat / locatedCoords.length,
+        sumLng / locatedCoords.length,
+      );
+      if (centroid != null) mapCenter = centroid;
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -489,51 +968,17 @@ class _NearbySection extends StatelessWidget {
                     ),
                   )
                 : SafeFlutterMap(
-                    center: sanitizeLatLng(
-                      located.first.lat,
-                      located.first.lng,
-                    ),
+                    center: mapCenter,
                     zoom: 11,
                     minZoom: 8,
                     maxZoom: 16,
                     markers: [
-                      for (final p in located.take(30))
-                        Marker(
+                      for (final p in located)
+                        providerMapMarker(
                           point: sanitizeLatLng(p.lat, p.lng)!,
-                          width: 36,
-                          height: 36,
-                          child: GestureDetector(
-                            onTap: () => context.push(AppRoutes.provider(p.id)),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: AppGradients.premiumAccent,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 2,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.25),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  p.name.isNotEmpty
-                                      ? p.name[0].toUpperCase()
-                                      : '?',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
+                          name: p.name,
+                          avatarUrl: p.avatarUrl,
+                          onTap: () => context.push(AppRoutes.provider(p.id)),
                         ),
                     ],
                   ),
@@ -577,6 +1022,11 @@ class _NearbyProviderTile extends StatelessWidget {
 
   final SearchResult provider;
 
+  bool get _isBusiness =>
+      provider.role.toLowerCase().contains('business') ||
+      provider.role.toLowerCase().contains('shop') ||
+      provider.serviceCount > 1;
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
@@ -592,7 +1042,8 @@ class _NearbyProviderTile extends StatelessWidget {
             AppAvatar(
               name: provider.name,
               avatarUrl: provider.avatarUrl,
-              radius: 18,
+              radius: 20,
+              showVerifiedBadge: provider.verified,
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
@@ -612,12 +1063,25 @@ class _NearbyProviderTile extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (provider.verified) ...[
+                      if (_isBusiness) ...[
                         const SizedBox(width: 4),
-                        Icon(
-                          Icons.verified_rounded,
-                          size: 13,
-                          color: AppColors.primary,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentSoft,
+                            borderRadius: BorderRadius.circular(AppRadii.xs),
+                          ),
+                          child: const Text(
+                            'Shop',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.accent,
+                            ),
+                          ),
                         ),
                       ],
                     ],
@@ -768,13 +1232,15 @@ class _ZonesSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        _groupLabel(context, l10n.discoveryLiveNow),
-        const SizedBox(height: AppSpacing.xs),
-        for (final locality in live)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: _DiscoveryZoneCard(locality: locality),
-          ),
+        if (live.isNotEmpty) ...[
+          _groupLabel(context, l10n.discoveryLiveNow),
+          const SizedBox(height: AppSpacing.xs),
+          for (final locality in live)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _DiscoveryZoneCard(locality: locality),
+            ),
+        ],
         if (upcoming.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.sm),
           _groupLabel(context, l10n.discoveryBrowseLocalZones),

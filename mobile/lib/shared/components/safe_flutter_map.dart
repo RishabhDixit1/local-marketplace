@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../core/theme/design_tokens.dart';
 import '../../core/utils/lat_lng_sanitizer.dart';
+import '../../l10n/l10n.dart';
 
 /// A [FlutterMap] wrapper that guarantees a finite camera center and finite
 /// marker points before flutter_map ever projects them.
@@ -46,6 +50,41 @@ class SafeFlutterMap extends StatefulWidget {
 class _SafeFlutterMapState extends State<SafeFlutterMap> {
   final _controller = MapController();
 
+  /// Tile-load failure tracking. OSM tiles fail silently as grey squares,
+  /// which reads as a broken app; when failures keep accumulating we surface
+  /// a compact "map unavailable" banner instead. Transient failures (a few
+  /// cancelled tiles during a fast pan/zoom) must NOT trigger it, so the
+  /// counter needs [kTileErrorThreshold] hits AND fresh failures within the
+  /// decay window - quiet periods reset it and auto-dismiss the banner.
+  static const int kTileErrorThreshold = 6;
+  static const Duration kTileErrorDecay = Duration(seconds: 6);
+  int _tileErrors = 0;
+  bool _showTileBanner = false;
+  Timer? _decayTimer;
+
+  void _onTileError() {
+    _tileErrors += 1;
+    if (_tileErrors >= kTileErrorThreshold &&
+        !_showTileBanner &&
+        mounted) {
+      setState(() => _showTileBanner = true);
+    }
+    // Any new error pushes the recovery deadline out; a quiet window means
+    // tiles are loading again, so clear the state.
+    _decayTimer?.cancel();
+    _decayTimer = Timer(kTileErrorDecay, () {
+      if (!mounted) return;
+      _tileErrors = 0;
+      if (_showTileBanner) setState(() => _showTileBanner = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _decayTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final safeCenter =
@@ -79,7 +118,68 @@ class _SafeFlutterMapState extends State<SafeFlutterMap> {
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.serviq.app',
           tileProvider: widget.tileProvider,
+          errorTileCallback: (_, _, _) => _onTileError(),
         ),
+        if (_showTileBanner)
+          Positioned(
+            top: AppSpacing.xs,
+            left: AppSpacing.sm,
+            right: AppSpacing.sm,
+            child: IgnorePointer(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surface
+                        .withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                    border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.12),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.wifi_off_rounded,
+                        size: 14,
+                        color:
+                            AppColors.primary.withValues(alpha: 0.7),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        AppLocalizations.of(context).mapTilesUnavailable,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.65),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         if (safeMarkers.isNotEmpty) MarkerLayer(markers: safeMarkers),
       ],
     );

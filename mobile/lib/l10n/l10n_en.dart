@@ -222,6 +222,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get discoveryNoLocation => 'No location data available';
   @override
+  String get mapTilesUnavailable => 'Map unavailable right now';
+  @override
   String discoveryViewAllProviders(int count) =>
       count == 1 ? 'View 1 provider' : 'View all $count providers';
   @override
@@ -293,4 +295,67 @@ class AppLocalizationsEn extends AppLocalizations {
   String get intentBusinessSetupSubtitle => 'List your services, team, and availability';
   @override
   String get notNow => 'Not now';
+
+  // Storefronts & Products
+  @override
+  String get storefrontsSectionTitle => 'Storefronts';
+  @override
+  String get storefrontsSectionSubtitle => 'Shops and businesses near you';
+  @override
+  String get viewAllStorefronts => 'View all storefronts';
+  @override
+  String get productsSectionTitle => 'Products';
+  @override
+  String get productsSectionSubtitle => 'Items available nearby';
+  @override
+  String get viewAllProducts => 'View all products';
+  @override
+  String get noStorefrontsTitle => 'No storefronts yet';
+  @override
+  String get noStorefrontsMessage => 'Storefronts will appear here once providers set up their shops.';
+  @override
+  String get noProductsTitle => 'No products yet';
+  @override
+  String get noProductsMessage => 'Products will appear here once providers list items.';
+  @override
+  String storefrontProductCount(int count) =>
+      count == 1 ? '1 product' : '$count products';
+  @override
+  String get storefrontDetailTitle => 'Storefront';
+  @override
+  String get storefrontOwnerLabel => 'Owned by';
+  @override
+  String get storefrontHoursLabel => 'Operating hours';
+  @override
+  String get storefrontDescriptionLabel => 'About';
+  @override
+  String get storefrontProductsLabel => 'Products';
+  @override
+  String get storefrontVisitProvider => 'Visit provider';
+  @override
+  String get storefrontChatWithOwner => 'Chat with owner';
+  @override
+  String get productDetailTitle => 'Product';
+  @override
+  String get productPriceLabel => 'Price';
+  @override
+  String get productAvailabilityLabel => 'Availability';
+  @override
+  String get productInStock => 'In stock';
+  @override
+  String get productOutOfStock => 'Out of stock';
+  @override
+  String get productDeliveryInfo => 'Delivery available';
+  @override
+  String get productContactInquiry => 'Contact for inquiry';
+  @override
+  String get productFromStorefront => 'From';
+  @override
+  String get browseStorefrontsTitle => 'All Storefronts';
+  @override
+  String get browseProductsTitle => 'All Products';
+  @override
+  String get allStorefronts => 'All Storefronts';
+  @override
+  String get allProducts => 'All Products';
 }

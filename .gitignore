@@ -63,3 +63,6 @@ ecosystem.config.js
 # Technical handoff docs (local only)
 SERVIQ_TECHNICAL_HANDOFF/
 SERVIQ_TECHNICAL_HANDOFF.zip
+
+# Screen recordings (large binaries)
+mobile/release/recordings/

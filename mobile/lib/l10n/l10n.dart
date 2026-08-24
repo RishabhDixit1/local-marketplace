@@ -140,6 +140,7 @@ abstract class AppLocalizations {
   String get discoveryNoProvidersTitle;
   String get discoveryNoProvidersMessage;
   String get discoveryNoLocation;
+  String get mapTilesUnavailable;
   String discoveryViewAllProviders(int count);
   String get discoveryNoZonesTitle;
   String get discoveryNoZonesMessage;
@@ -188,6 +189,38 @@ abstract class AppLocalizations {
   String get intentBusinessSetup;
   String get intentBusinessSetupSubtitle;
   String get notNow;
+
+  // Storefronts & Products (Explore tab)
+  String get storefrontsSectionTitle;
+  String get storefrontsSectionSubtitle;
+  String get viewAllStorefronts;
+  String get productsSectionTitle;
+  String get productsSectionSubtitle;
+  String get viewAllProducts;
+  String get noStorefrontsTitle;
+  String get noStorefrontsMessage;
+  String get noProductsTitle;
+  String get noProductsMessage;
+  String storefrontProductCount(int count);
+  String get storefrontDetailTitle;
+  String get storefrontOwnerLabel;
+  String get storefrontHoursLabel;
+  String get storefrontDescriptionLabel;
+  String get storefrontProductsLabel;
+  String get storefrontVisitProvider;
+  String get storefrontChatWithOwner;
+  String get productDetailTitle;
+  String get productPriceLabel;
+  String get productAvailabilityLabel;
+  String get productInStock;
+  String get productOutOfStock;
+  String get productDeliveryInfo;
+  String get productContactInquiry;
+  String get productFromStorefront;
+  String get browseStorefrontsTitle;
+  String get browseProductsTitle;
+  String get allStorefronts;
+  String get allProducts;
 }
 
 class _AppLocalizationsDelegate

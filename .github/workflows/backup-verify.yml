@@ -52,8 +52,11 @@ jobs:
             echo "ERROR: Latest backup is ${AGE_H} hours old (older than 27h). Backup job may be failing."
             exit 1
           fi
-          if [ "$SIZE" -lt 1000000 ]; then
-            echo "ERROR: Latest backup is suspiciously small (${SIZE} bytes)."
+          # Observed dumps run 524KB-612KB (Jul-Aug 2026). A schema-only or
+          # truncated dump lands far below that; floor at 300KB.
+          MIN_SIZE=300000
+          if [ "$SIZE" -lt "$MIN_SIZE" ]; then
+            echo "ERROR: Latest backup is suspiciously small (${SIZE} bytes, expected >= ${MIN_SIZE})."
             exit 1
           fi
           echo "Backup freshness check PASSED."

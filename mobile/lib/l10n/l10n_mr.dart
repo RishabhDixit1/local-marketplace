@@ -219,6 +219,8 @@ class AppLocalizationsMr extends AppLocalizations {
   @override
   String get discoveryNoLocation => 'स्थान डेटा उपलब्ध नाही';
   @override
+  String get mapTilesUnavailable => 'नकाशा सध्या उपलब्ध नाही';
+  @override
   String discoveryViewAllProviders(int count) => 'सर्व $count प्रदाते पहा';
   @override
   String get discoveryNoZonesTitle => 'कोणतेही क्षेत्र उपलब्ध नाही';
@@ -289,4 +291,66 @@ class AppLocalizationsMr extends AppLocalizations {
   String get intentBusinessSetupSubtitle => 'तुमच्या सेवा, टीम आणि उपलब्धता सूचीबद्ध करा';
   @override
   String get notNow => 'आत्ता नाही';
+
+  @override
+  String get storefrontsSectionTitle => 'दुकाने';
+  @override
+  String get storefrontsSectionSubtitle => 'तुमच्या जवळील दुकाने आणि व्यवसाय';
+  @override
+  String get viewAllStorefronts => 'सर्व दुकाने पहा';
+  @override
+  String get productsSectionTitle => 'उत्पादने';
+  @override
+  String get productsSectionSubtitle => 'जवळ उपलब्ध वस्तू';
+  @override
+  String get viewAllProducts => 'सर्व उत्पादने पहा';
+  @override
+  String get noStorefrontsTitle => 'अजून दुकाने नाहीत';
+  @override
+  String get noStorefrontsMessage => 'प्रदात्यांनी त्यांची दुकाने स्थापित केल्यावर दुकाने येथे दिसतील.';
+  @override
+  String get noProductsTitle => 'अजून उत्पादने नाहीत';
+  @override
+  String get noProductsMessage => 'प्रदात्यांनी वस्तू सूचीबद्ध केल्यावर उत्पादने येथे दिसतील.';
+  @override
+  String storefrontProductCount(int count) =>
+      count == 1 ? '१ उत्पादन' : '$count उत्पादने';
+  @override
+  String get storefrontDetailTitle => 'दुकान';
+  @override
+  String get storefrontOwnerLabel => 'मालक';
+  @override
+  String get storefrontHoursLabel => 'वेळापत्रक';
+  @override
+  String get storefrontDescriptionLabel => 'वर्णन';
+  @override
+  String get storefrontProductsLabel => 'उत्पादने';
+  @override
+  String get storefrontVisitProvider => 'प्रदाता पहा';
+  @override
+  String get storefrontChatWithOwner => 'मालकाशी चॅट करा';
+  @override
+  String get productDetailTitle => 'उत्पादन';
+  @override
+  String get productPriceLabel => 'किंमत';
+  @override
+  String get productAvailabilityLabel => 'उपलब्धता';
+  @override
+  String get productInStock => 'स्टॉकमध्ये';
+  @override
+  String get productOutOfStock => 'स्टॉक नाही';
+  @override
+  String get productDeliveryInfo => 'डिलिव्हरी उपलब्ध';
+  @override
+  String get productContactInquiry => 'चौकशीसाठी संपर्क करा';
+  @override
+  String get productFromStorefront => 'पासून';
+  @override
+  String get browseStorefrontsTitle => 'सर्व दुकाने';
+  @override
+  String get browseProductsTitle => 'सर्व उत्पादने';
+  @override
+  String get allStorefronts => 'सर्व दुकाने';
+  @override
+  String get allProducts => 'सर्व उत्पादने';
 }

@@ -20,7 +20,8 @@ automated monitoring that guards them.
 2. `aws s3 ls s3://<bucket>/serviq/db/ | tail -3` - confirm a file dated today.
 3. Freshness is also guarded automatically by `.github/workflows/backup-verify.yml`
    (02:30 UTC daily): it fails if the newest backup is older than 27h or smaller
-   than 1 MB, and pings Slack.
+   than 300 KB (observed dumps run 524-612 KB; re-baseline if the DB grows
+   materially), and pings Slack.
 
 ## Restore (manual, DR drill)
 
@@ -50,7 +51,7 @@ point Supabase/Kong back at it.
 
 ### Restore drill checklist (quarterly, or before beta)
 
-- [ ] Confirm newest S3 backup object exists and is > 1 MB (backup-verify passes).
+- [ ] Confirm newest S3 backup object exists and is >= 300 KB (backup-verify passes).
 - [ ] Provision a scratch Postgres (or second Supabase container) on a non-prod host.
 - [ ] Restore via Path A/B and confirm row counts match `backup-db.sh` log
       (compare `profiles`, `orders`, `messages`).

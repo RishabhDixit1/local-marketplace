@@ -10,7 +10,6 @@ import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/trust_badge.dart';
 import '../data/task_repository.dart';
 import '../domain/task_snapshot.dart';
 import 'task_board_components.dart';
@@ -510,6 +509,15 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                 onOpenNextAction: nextActionTask == null
                     ? null
                     : () => _showTaskDetailSheet(nextActionTask),
+                onOpenFilters: data == null ? null : () => _showFiltersSheet(data),
+                selectedLane: _selectedLane,
+                countFor: data == null ? (lane) => 0 : (lane) => _countFor(data, lane),
+                roleCountFor: data == null ? (role) => 0 : (role) => _roleCount(data, role),
+                onShowNextActions: _selectedLane == _TaskBoardLane.needsAction
+                    ? null
+                    : () => setState(
+                        () => _selectedLane = _TaskBoardLane.needsAction,
+                      ),
               ),
               if (data?.hasPartialFailure == true) ...[
                 const SizedBox(height: 12),
@@ -520,22 +528,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                 ),
               ],
               const SizedBox(height: 16),
-              if (data != null) ...[
-                _WorkBoardSummary(
-                  snapshot: data,
-                  selectedLane: _selectedLane,
-                  selectedRole: _selectedRole,
-                  countFor: (lane) => _countFor(data, lane),
-                  roleCountFor: (role) => _roleCount(data, role),
-                  onShowNextActions: _selectedLane == _TaskBoardLane.needsAction
-                      ? null
-                      : () => setState(
-                          () => _selectedLane = _TaskBoardLane.needsAction,
-                        ),
-                  onOpenFilters: () => _showFiltersSheet(data),
-                ),
-                const SizedBox(height: 16),
-              ],
+              const SizedBox(height: 16),
               ServiqAsyncBody<MobileTaskSnapshot>(
                 value: snapshot,
                 errorTitle: 'Tasks unavailable',
@@ -546,10 +539,44 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                   final laneItems = _itemsForLane(loaded, _selectedLane);
 
                   if (loaded.items.isEmpty) {
-                    return const SectionCard(
-                      child: EmptyStateView(
-                        title: 'No tasks yet',
-                        message: 'Post or accept work to start tracking.',
+                    return SectionCard(
+                      child: Column(
+                        children: [
+                          const SizedBox(height: AppSpacing.md),
+                          Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              color: AppColors.primarySoft,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.task_alt_rounded,
+                              color: AppColors.primary,
+                              size: 32,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            'No tasks yet',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            'Post a need or accept a request to start tracking work here.',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface
+                                  .withValues(alpha: 0.6),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          FilledButton.tonal(
+                            onPressed: () => context.push(AppRoutes.createNeed),
+                            child: const Text('Post a Need'),
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                        ],
                       ),
                     );
                   }
@@ -720,6 +747,11 @@ class _TasksHero extends StatelessWidget {
     required this.roleCount,
     required this.nextActionTask,
     required this.onOpenNextAction,
+    this.onOpenFilters,
+    this.selectedLane,
+    this.countFor,
+    this.roleCountFor,
+    this.onShowNextActions,
   });
 
   final MobileTaskSnapshot? snapshot;
@@ -727,13 +759,28 @@ class _TasksHero extends StatelessWidget {
   final int roleCount;
   final MobileTaskItem? nextActionTask;
   final VoidCallback? onOpenNextAction;
+  final VoidCallback? onOpenFilters;
+  final _TaskBoardLane? selectedLane;
+  final int Function(_TaskBoardLane lane)? countFor;
+  final int Function(_TaskRoleFilter role)? roleCountFor;
+  final VoidCallback? onShowNextActions;
 
   @override
   Widget build(BuildContext context) {
-    final activeCount = snapshot?.countFor(MobileTaskStatus.active) ?? 0;
+    // Stat pills must share the same role-filter scope as the header line and
+    // the task list below, otherwise they contradict them when a role filter
+    // other than "All" is applied.
+    final activeCount =
+        countFor?.call(_TaskBoardLane.active) ??
+        snapshot?.countFor(MobileTaskStatus.active) ??
+        0;
     final inProgressCount =
-        snapshot?.countFor(MobileTaskStatus.inProgress) ?? 0;
+        countFor?.call(_TaskBoardLane.inProgress) ??
+        snapshot?.countFor(MobileTaskStatus.inProgress) ??
+        0;
     final nextTask = nextActionTask;
+    final lane = selectedLane ?? _TaskBoardLane.needsAction;
+    final isNeedsAction = lane == _TaskBoardLane.needsAction;
 
     return SectionCard(
       padding: const EdgeInsets.all(16),
@@ -751,7 +798,9 @@ class _TasksHero extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
-                  Icons.fact_check_outlined,
+                  isNeedsAction
+                      ? Icons.fact_check_outlined
+                      : Icons.dashboard_outlined,
                   color: AppColors.primary,
                 ),
               ),
@@ -761,16 +810,18 @@ class _TasksHero extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Next up',
+                      isNeedsAction ? 'Next up' : '${lane.label} work',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      nextTask == null
-                          ? selectedRole == _TaskRoleFilter.all
-                                ? 'No task needs action right now.'
-                                : 'No ${selectedRole.label.toLowerCase()} task needs action across $roleCount visible tasks.'
-                          : '${nextTask.primaryAction?.label ?? _nextStepShortLabel(nextTask)}: ${nextTask.title}',
+                      isNeedsAction
+                          ? (nextTask == null
+                              ? selectedRole == _TaskRoleFilter.all
+                                    ? 'No task needs action right now.'
+                                    : 'No ${selectedRole.label.toLowerCase()} task needs action across $roleCount visible tasks.'
+                              : '${nextTask.primaryAction?.label ?? _nextStepShortLabel(nextTask)}: ${nextTask.title}')
+                          : '${countFor?.call(lane) ?? 0} ${lane.label.toLowerCase()} task${(countFor?.call(lane) ?? 0) == 1 ? '' : 's'}',
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium,
@@ -778,6 +829,16 @@ class _TasksHero extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onOpenFilters != null)
+                OutlinedButton.icon(
+                  onPressed: onOpenFilters,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                  ),
+                  icon: const Icon(Icons.tune_rounded, size: 16),
+                  label: const Text('Filters'),
+                ),
             ],
           ),
           if (nextTask != null && onOpenNextAction != null) ...[
@@ -791,7 +852,18 @@ class _TasksHero extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 18),
+          if (onShowNextActions != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: onShowNextActions,
+                icon: const Icon(Icons.flash_on_rounded),
+                label: const Text('Back to next actions'),
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
           Wrap(
             spacing: 10,
             runSpacing: 10,
@@ -800,118 +872,29 @@ class _TasksHero extends StatelessWidget {
                 icon: Icons.flash_on_rounded,
                 label: '$activeCount active',
                 backgroundColor: AppColors.surfaceMuted,
-                foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                border: BorderSide(color: Theme.of(context).colorScheme.outline),
+                foregroundColor: Theme.of(context).colorScheme.onSurface
+                    .withValues(alpha: 0.6),
+                border: BorderSide(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
               ),
               AppPill(
                 icon: Icons.route_rounded,
                 label: '$inProgressCount in progress',
                 backgroundColor: AppColors.surfaceMuted,
-                foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                border: BorderSide(color: Theme.of(context).colorScheme.outline),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WorkBoardSummary extends StatelessWidget {
-  const _WorkBoardSummary({
-    required this.snapshot,
-    required this.selectedLane,
-    required this.selectedRole,
-    required this.countFor,
-    required this.roleCountFor,
-    required this.onShowNextActions,
-    required this.onOpenFilters,
-  });
-
-  final MobileTaskSnapshot snapshot;
-  final _TaskBoardLane selectedLane;
-  final _TaskRoleFilter selectedRole;
-  final int Function(_TaskBoardLane lane) countFor;
-  final int Function(_TaskRoleFilter role) roleCountFor;
-  final VoidCallback? onShowNextActions;
-  final VoidCallback onOpenFilters;
-
-  @override
-  Widget build(BuildContext context) {
-    final visibleCount = countFor(selectedLane);
-    final nextActionCount = countFor(_TaskBoardLane.needsAction);
-    final title = selectedLane == _TaskBoardLane.needsAction
-        ? 'Next-action queue'
-        : '${selectedLane.label} work';
-    final message = selectedLane == _TaskBoardLane.needsAction
-        ? '$visibleCount task${visibleCount == 1 ? '' : 's'} ready for a one-tap update.'
-        : '$visibleCount ${selectedLane.label.toLowerCase()} task${visibleCount == 1 ? '' : 's'} in ${selectedRole.label.toLowerCase()} view.';
-
-    return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 5),
-                    Text(message, style: Theme.of(context).textTheme.bodySmall),
-                  ],
+                foregroundColor: Theme.of(context).colorScheme.onSurface
+                    .withValues(alpha: 0.6),
+                border: BorderSide(
+                  color: Theme.of(context).colorScheme.outline,
                 ),
               ),
-              OutlinedButton.icon(
-                onPressed: onOpenFilters,
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(0, 44),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+              if (snapshot != null)
+                AppPill(
+                  icon: Icons.dashboard_outlined,
+                  label: '$roleCount total',
+                  backgroundColor: AppColors.accentSoft,
+                  foregroundColor: AppColors.accent,
                 ),
-                icon: Icon(Icons.tune_rounded),
-                label: const Text('Filters'),
-              ),
-            ],
-          ),
-          if (onShowNextActions != null) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton.icon(
-                onPressed: onShowNextActions,
-                icon: Icon(Icons.flash_on_rounded),
-                label: const Text('Back to next actions'),
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              TrustBadge(
-                label: '${snapshot.items.length} total',
-                icon: Icons.dashboard_outlined,
-                backgroundColor: AppColors.surfaceMuted,
-                foregroundColor: Theme.of(context).colorScheme.onSurface,
-              ),
-              TrustBadge(
-                label: '$nextActionCount next',
-                icon: Icons.flash_on_rounded,
-                backgroundColor: AppColors.primarySoft,
-                foregroundColor: AppColors.primary,
-              ),
-              TrustBadge(
-                label:
-                    '${roleCountFor(selectedRole)} ${selectedRole.label.toLowerCase()}',
-                icon: selectedRole == _TaskRoleFilter.provider
-                    ? Icons.handshake_outlined
-                    : Icons.person_outline_rounded,
-                backgroundColor: AppColors.accentSoft,
-                foregroundColor: AppColors.accent,
-              ),
             ],
           ),
         ],

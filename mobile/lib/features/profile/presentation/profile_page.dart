@@ -11,7 +11,6 @@ import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/auth/mobile_auth_service.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
-import '../../../core/firebase/app_firebase.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_formatters.dart';
 import '../../../core/widgets/section_card.dart';
@@ -580,16 +579,12 @@ class _ProfileCommandHub extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         _LaunchReadinessCard(snapshot: snapshot),
-        if (enableTestCrashButton) ...[
-          const SizedBox(height: 16),
-          const _TestCrashCard(),
-        ],
         const SizedBox(height: 16),
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Account', style: Theme.of(context).textTheme.titleLarge),
+              Text('Session', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 8),
               Text(
                 'Your ServiQ account controls profile, work, messages, and checkout history.',
@@ -666,32 +661,54 @@ class _TopActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: InkWell(
+    return Container(
+      constraints: const BoxConstraints(minHeight: 76),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: onTap,
-        child: Container(
-          constraints: BoxConstraints(minHeight: 72),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(color: Theme.of(context).colorScheme.outline),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: AppColors.primary, size: 20),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-            ],
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                  ),
+                  child: Icon(icon, color: AppColors.primary, size: 18),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -719,24 +736,32 @@ class _HubSummaryGrid extends StatelessWidget {
             '${snapshot.completionPercent}%',
             'Completion',
             Icons.person_outline_rounded,
+            snapshot.completionPercent / 100.0,
+            AppColors.accent,
           ),
           (
             'Live offers',
             offerCount.toString(),
             'Services and products',
             Icons.storefront_outlined,
+            null,
+            null,
           ),
           (
             'Trust',
-            snapshot.trustScore.toString(),
+            '${snapshot.trustScore}/100',
             '${snapshot.reviewCount} review${snapshot.reviewCount == 1 ? '' : 's'}',
             Icons.verified_outlined,
+            snapshot.trustScore / 100.0,
+            AppColors.primary,
           ),
           (
             'Availability',
             _humanize(snapshot.profile.availability),
             'Current mode',
             Icons.event_available_outlined,
+            null,
+            null,
           ),
         ];
 
@@ -753,6 +778,8 @@ class _HubSummaryGrid extends StatelessWidget {
                   caption: tile.$3,
                   icon: tile.$4,
                   gradient: true,
+                  progress: tile.$5,
+                  progressColor: tile.$6,
                 ),
               ),
           ],
@@ -2036,6 +2063,13 @@ class _ProfileHero extends StatelessWidget {
                     : profile.location,
                 color: AppColors.warm,
               ),
+              if (snapshot.trustScore > 0 ||
+                  snapshot.reviewCount > 0)
+                _GlassPill(
+                  label:
+                      '${snapshot.trustScore}/100 trust · ${snapshot.reviewCount} review${snapshot.reviewCount == 1 ? '' : 's'}',
+                  color: AppColors.accent,
+                ),
             ],
           ),
         ],
@@ -2148,7 +2182,7 @@ class _LaunchReadinessCard extends ConsumerWidget {
         'Trusted sign-in',
         hasTrust,
         hasTrust
-            ? '${snapshot.trustScore} trust score'
+            ? '${snapshot.trustScore}/100 trust score'
             : 'Link a sign-in method',
       ),
       (
@@ -2272,60 +2306,7 @@ class _LaunchReadinessCard extends ConsumerWidget {
   }
 }
 
-class _TestCrashCard extends StatelessWidget {
-  const _TestCrashCard();
 
-  Future<void> _confirmAndCrash(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Trigger test crash?'),
-        content: const Text(
-          'This deliberately crashes the app to verify Crashlytics '
-          'uploads the report on next launch. You will need to reopen the app.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Crash now'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) {
-      return;
-    }
-    await AppFirebase.triggerTestCrash();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Debug', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          const Text(
-            'Only visible in debug builds (or release builds compiled with '
-            '--dart-define=ENABLE_TEST_CRASH=true). Never ships in production.',
-            style: TextStyle(fontSize: 12),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => _confirmAndCrash(context),
-            icon: const Icon(Icons.bug_report_outlined),
-            label: const Text('Test Crashlytics'),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _MetricsGrid extends StatelessWidget {
   const _MetricsGrid({required this.snapshot});
@@ -2337,7 +2318,7 @@ class _MetricsGrid extends StatelessWidget {
     final items = [
       (
         'Trust score',
-        snapshot.trustScore.toString(),
+        '${snapshot.trustScore}/100',
         'Reputation built across requests and follow-through',
         Icons.verified_outlined,
       ),
@@ -2563,7 +2544,7 @@ class _TrustSummaryCard extends StatelessWidget {
             runSpacing: 8,
             children: [
               TrustBadge(
-                label: '${snapshot.trustScore} trust score',
+                label: '${snapshot.trustScore}/100 trust score',
                 icon: Icons.shield_outlined,
                 backgroundColor: AppColors.primarySoft,
                 foregroundColor: AppColors.primary,

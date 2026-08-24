@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import '../../core/design_system/design_system.dart';
 import '../../core/theme/app_theme.dart';
 import '../../features/feed/domain/feed_snapshot.dart';
-import 'category_illustration.dart';
 
 /// Single source of truth for the status-driven primary CTA on post cards.
 /// - open / urgent        -> "Send Request"
@@ -87,7 +86,11 @@ class FeedCard extends StatelessWidget {
             if (item.hasPreviewImage)
               _FeedPreview(item: item)
             else
-              CategoryIllustration(category: item.category),
+              CategoryIllustration(
+                category: item.category,
+                title: item.title,
+                showLabel: true,
+              ),
             const SizedBox(height: AppSpacing.sm),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,

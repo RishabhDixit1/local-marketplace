@@ -15,7 +15,10 @@ set -euo pipefail
 DEPLOY_HOST="${DEPLOY_HOST:-ec2-user@54.253.40.174}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/serviq-ec2-key.pem}"
 MIGRATION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../supabase/migrations" && pwd)"
-DB="docker exec supabase-db psql -U postgres -d postgres"
+# -i is required: --apply pipes migration SQL to psql over stdin. Without it
+# docker exec drops stdin, psql receives nothing, and the script records the
+# migration as applied while changing nothing on the database.
+DB="docker exec -i supabase-db psql -U postgres -d postgres"
 
 ssh_run() {
   ssh -i "$SSH_KEY" -o ConnectTimeout=15 -o BatchMode=yes "$DEPLOY_HOST" "$@"

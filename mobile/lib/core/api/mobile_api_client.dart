@@ -218,6 +218,7 @@ class MobileApiClient {
     double? minRating,
     bool onlineOnly = false,
     String sortBy = 'distance',
+    double? radiusKm,
   }) async {
     final params = <String, String>{
       'limit': limit.toString(),
@@ -229,6 +230,7 @@ class MobileApiClient {
     if (lng != null) params['lng'] = lng.toString();
     if (minRating != null) params['minRating'] = minRating.toString();
     if (onlineOnly) params['onlineOnly'] = 'true';
+    if (radiusKm != null) params['radiusKm'] = radiusKm.toString();
     if (['distance', 'rating', 'jobs', 'response', 'featured'].contains(sortBy)) {
       params['sortBy'] = sortBy;
     }

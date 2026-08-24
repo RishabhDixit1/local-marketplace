@@ -426,13 +426,15 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
   String get _deliveryModeLabel => _delivery.label;
 
   String get _publishDetails {
-    final title = _titleController.text.trim();
+    // Publish only what the user wrote; an empty details field is fine (the
+    // API accepts it and downstream task cards fall back to their own copy).
+    // Fabricating 'Request: <title>' duplicated the title into the
+    // description shown on every card.
     final details = _detailsController.text.trim();
-    final base = details.isEmpty ? 'Request: $title' : details;
     if (_delivery == _ServiceDelivery.remote) {
-      return '$base\n\nMode: Remote.';
+      return details.isEmpty ? 'Mode: Remote.' : '$details\n\nMode: Remote.';
     }
-    return base;
+    return details;
   }
 
   Future<void> _openMediaOptions() async {
@@ -965,14 +967,12 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     switch (_step) {
       case 1:
         return StickyBottomCTA(
-          title: 'What do you need?',
           subtitle: 'Draft saved automatically.',
           primaryLabel: 'Next',
           onPrimary: _submitting ? null : _continueToStepTwo,
         );
       case 2:
         return StickyBottomCTA(
-          title: 'When and where?',
           subtitle: 'Set timing and area.',
           primaryLabel: 'Next',
           onPrimary: _submitting ? null : _continueToStepThree,
@@ -986,7 +986,6 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
         );
       case 3:
         return StickyBottomCTA(
-          title: 'Budget and proof',
           subtitle: _hasUploadingMedia
               ? 'Uploading attachments.'
               : _hasFailedMedia
@@ -1004,7 +1003,6 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
         );
       case 4:
         return StickyBottomCTA(
-          title: 'Review',
           subtitle: _hasUploadingMedia
               ? 'Uploading attachments.'
               : _hasFailedMedia

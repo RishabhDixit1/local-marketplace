@@ -9,6 +9,8 @@ export 'app_type.dart';
 export '../../shared/components/app_text_field.dart';
 export '../../shared/widgets/chips.dart';
 export '../../shared/components/app_avatar.dart';
+export '../../shared/components/category_illustration.dart';
+export '../../shared/components/provider_map_marker.dart';
 export '../../shared/components/app_buttons.dart';
 export '../../shared/components/empty_state_view.dart';
 export '../../shared/components/error_state_view.dart';

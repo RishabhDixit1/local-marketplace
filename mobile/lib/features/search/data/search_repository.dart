@@ -23,6 +23,7 @@ class SearchRepository {
     double? minRating,
     bool onlineOnly = false,
     String sortBy = 'distance',
+    double? radiusKm,
   }) async {
     final payload = await _apiClient.searchProviders(
       category: category,
@@ -34,6 +35,7 @@ class SearchRepository {
       minRating: minRating,
       onlineOnly: onlineOnly,
       sortBy: sortBy,
+      radiusKm: radiusKm,
     );
 
     return SearchResponse.fromJson(payload);

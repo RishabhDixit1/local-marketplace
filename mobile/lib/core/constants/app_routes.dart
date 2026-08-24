@@ -51,8 +51,16 @@ class AppRoutes {
   static const availability = '/app/availability';
   static const bookings = '/app/bookings';
   static const connections = '/app/connections';
+  static const storefronts = '/app/storefronts';
+  static const products = '/app/products';
 
   static String get checkoutFromCart => '$checkout?source=cart';
+
+  static String storefront(String storefrontId) =>
+      '/app/storefronts/$storefrontId';
+  static String productDetail(String productId, {String? storefrontId}) {
+    return _withQuery('$products/$productId', {'storefrontId': storefrontId});
+  }
 
   static String provider(String providerId) => '/app/provider/$providerId';
   static String listingDetail(String itemId, {String? source}) {

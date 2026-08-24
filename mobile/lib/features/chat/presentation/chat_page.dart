@@ -343,6 +343,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                                   'Pricing, scope, and payment follow-up in one place.',
                               conversations: grouped.quotes,
                               onTapConversation: _openConversation,
+                              tint: AppColors.warning,
                             ),
                           ],
                           if (grouped.activeTasks.isNotEmpty) ...[
@@ -355,6 +356,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                                   'Timing, arrival, start, and completion threads.',
                               conversations: grouped.activeTasks,
                               onTapConversation: _openConversation,
+                              tint: AppColors.accent,
                             ),
                           ],
                           if (grouped.archived.isNotEmpty) ...[
@@ -368,6 +370,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                                   'Quiet conversations without an immediate next step.',
                               conversations: grouped.archived,
                               onTapConversation: _openConversation,
+                              tint: AppColors.surfaceMuted,
                             ),
                           ],
                         ],
@@ -652,32 +655,76 @@ class _ConversationSection extends StatelessWidget {
     required this.subtitle,
     required this.conversations,
     required this.onTapConversation,
+    this.tint,
   });
 
   final String title;
   final String subtitle;
   final List<ChatConversation> conversations;
   final Future<void> Function(ChatConversation conversation) onTapConversation;
+  final Color? tint;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 6),
-        Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(height: AppSpacing.sm),
-        ...conversations.map(
-          (conversation) => Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: _ConversationTile(
+    final theme = Theme.of(context);
+    return Container(
+      decoration: tint != null
+          ? BoxDecoration(
+              color: tint!.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              border: Border.all(
+                color: tint!.withValues(alpha: 0.15),
+              ),
+            )
+          : null,
+      padding: tint != null ? const EdgeInsets.all(AppSpacing.sm) : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (tint != null) ...[
+                Container(
+                  width: 4,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: tint,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ...conversations.map(
+            (conversation) => _ConversationTile(
               conversation: conversation,
               onTap: () => onTapConversation(conversation),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1618,88 +1665,133 @@ class _ConversationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      onTap: onTap,
-      child: SectionCard(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AppAvatar(
-              name: conversation.name,
-              avatarUrl: conversation.avatarUrl,
-              radius: 24,
-              showOnlineStatus: true,
-              isOnline: conversation.isOnline,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+    final isUnread = conversation.unreadCount > 0;
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            color: isUnread
+                ? AppColors.primarySoft.withValues(alpha: 0.35)
+                : null,
+            border: isUnread
+                ? Border(
+                    left: BorderSide(
+                      color: AppColors.primary,
+                      width: 3,
+                    ),
+                  )
+                : null,
+          ),
+          child: SectionCard(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppAvatar(
+                  name: conversation.name,
+                  avatarUrl: conversation.avatarUrl,
+                  radius: 24,
+                  showOnlineStatus: true,
+                  isOnline: conversation.isOnline,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          conversation.name,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                      if (conversation.lastMessageAt != null)
-                        Text(
-                          _relativeTime(conversation.lastMessageAt!),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xxs),
-                  Text(
-                    conversation.subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          conversation.lastMessage,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontWeight: conversation.unreadCount > 0
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              conversation.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: isUnread
                                     ? FontWeight.w700
-                                    : FontWeight.w500,
+                                    : FontWeight.w600,
                               ),
-                        ),
+                            ),
+                          ),
+                          if (conversation.lastMessageAt != null) ...[
+                            const SizedBox(width: AppSpacing.xs),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isUnread
+                                    ? AppColors.primary.withValues(alpha: 0.1)
+                                    : theme.colorScheme.surfaceContainerHighest
+                                        .withValues(alpha: 0.4),
+                                borderRadius: BorderRadius.circular(AppRadii.xs),
+                              ),
+                              child: Text(
+                                _relativeTime(conversation.lastMessageAt!),
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: isUnread
+                                      ? AppColors.primary
+                                      : theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.5),
+                                  fontWeight: isUnread
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      if (conversation.unreadCount > 0) ...[
-                        const SizedBox(width: AppSpacing.xs),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 6,
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        conversation.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              conversation.lastMessage,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: isUnread ? 0.9 : 0.6),
+                                fontWeight: isUnread
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
+                            ),
                           ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primarySoft,
-                            borderRadius: BorderRadius.circular(AppRadii.md),
-                          ),
-                          child: Text(
-                            conversation.unreadCount.toString(),
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(color: AppColors.primary),
-                          ),
-                        ),
-                      ],
+                          if (isUnread) ...[
+                            const SizedBox(width: AppSpacing.xs),
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

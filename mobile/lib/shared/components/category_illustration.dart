@@ -2,6 +2,30 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/design_tokens.dart';
 
+/// Resolved visual theme for a category/title pair, exposed for surfaces
+/// that need the raw colors or icon (cover fallbacks, product tiles)
+/// instead of the full illustration widget.
+class CategoryThemeData {
+  const CategoryThemeData({
+    required this.colors,
+    required this.icon,
+    required this.label,
+  });
+
+  final List<Color> colors;
+  final IconData icon;
+  final String label;
+}
+
+CategoryThemeData resolveCategoryTheme(String category, String? titleHint) {
+  final theme = _categoryTheme(category, titleHint);
+  return CategoryThemeData(
+    colors: theme.colors,
+    icon: theme.icon,
+    label: theme.label,
+  );
+}
+
 /// Maps category keywords to a gradient + icon pair for visual card anchors.
 /// Used when a feed card has no uploaded photo to show a category-themed
 /// illustration instead of a blank grey box.
@@ -9,76 +33,92 @@ class CategoryIllustration extends StatelessWidget {
   const CategoryIllustration({
     super.key,
     required this.category,
+    this.title,
     this.height = 72,
     this.borderRadius,
     this.showLabel = false,
   });
 
   final String category;
-  final double height;
+
+  /// Post/listing title used as a secondary keyword hint when the category
+  /// itself does not match any known theme ("Other" + "Need sofa repair"
+  /// still illustrates as Repair instead of the generic fallback).
+  final String? title;
+
+  /// Fixed illustration height. When null the illustration expands to fill
+  /// its parent (used inside grid tiles and card image slots).
+  final double? height;
   final BorderRadiusGeometry? borderRadius;
   final bool showLabel;
 
   @override
   Widget build(BuildContext context) {
-    final theme = _categoryTheme(category);
+    final theme = _categoryTheme(category, title);
+    final watermarkSize = (height ?? 96) * 0.7;
 
     return ClipRRect(
       borderRadius: borderRadius ?? BorderRadius.circular(AppRadii.lg),
-      child: SizedBox(
-        height: height,
-        width: double.infinity,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: theme.colors,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
+      child: height == null
+          ? _buildStack(theme, watermarkSize)
+          : SizedBox(
+              height: height,
+              width: double.infinity,
+              child: _buildStack(theme, watermarkSize),
             ),
-            Positioned(
-              right: -12,
-              bottom: -12,
-              child: Icon(
-                theme.icon,
-                size: height * 0.7,
-                color: Colors.white.withValues(alpha: 0.12),
-              ),
+    );
+  }
+
+  Widget _buildStack(_CategoryTheme theme, double watermarkSize) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: theme.colors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            Positioned(
-              left: AppSpacing.sm,
-              bottom: AppSpacing.sm,
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(AppRadii.sm),
-                    ),
-                    child: Icon(theme.icon, size: 18, color: Colors.white),
-                  ),
-                  if (showLabel) ...[
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      theme.label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+        Positioned(
+          right: -12,
+          bottom: -12,
+          child: Icon(
+            theme.icon,
+            size: watermarkSize,
+            color: Colors.white.withValues(alpha: 0.12),
+          ),
+        ),
+        Positioned(
+          left: AppSpacing.sm,
+          bottom: AppSpacing.sm,
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                child: Icon(theme.icon, size: 18, color: Colors.white),
+              ),
+              if (showLabel) ...[
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  theme.label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -88,15 +128,17 @@ class CategoryBadge extends StatelessWidget {
   const CategoryBadge({
     super.key,
     required this.category,
+    this.title,
     this.size = 36,
   });
 
   final String category;
+  final String? title;
   final double size;
 
   @override
   Widget build(BuildContext context) {
-    final theme = _categoryTheme(category);
+    final theme = _categoryTheme(category, title);
     return Container(
       width: size,
       height: size,
@@ -126,10 +168,22 @@ class _CategoryTheme {
 }
 
 /// Maps a category string to a visual theme. Uses keyword matching so any
-/// category text resolves to a sensible gradient + icon. Falls back to a
-/// soft branded gradient with a general service icon.
-_CategoryTheme _categoryTheme(String category) {
-  final value = category.toLowerCase();
+/// category text resolves to a sensible gradient + icon. When the category
+/// matches nothing, [titleHint] keywords are tried before falling back to a
+/// stable per-string pick from several branded gradients, so feeds never
+/// render as a wall of identical teal briefcase cards.
+_CategoryTheme _categoryTheme(String category, String? titleHint) {
+  final matched = _matchCategoryTheme(category);
+  if (matched != null) return matched;
+  if (titleHint != null && titleHint.trim().isNotEmpty) {
+    final fromTitle = _matchCategoryTheme(titleHint);
+    if (fromTitle != null) return fromTitle;
+  }
+  return _fallbackTheme(category, titleHint);
+}
+
+_CategoryTheme? _matchCategoryTheme(String input) {
+  final value = input.toLowerCase();
 
   // --- Trades & home services ---
 
@@ -320,10 +374,84 @@ _CategoryTheme _categoryTheme(String category) {
     );
   }
 
-  // --- Catch-all: any uncategorized post gets a polished branded gradient ---
-  return const _CategoryTheme(
-    colors: [Color(0xFF0F766E), Color(0xFF14B8A6)],
-    icon: Icons.home_repair_service_rounded,
-    label: 'Service',
-  );
+  // --- Extra coverage for common hyperlocal categories ---
+
+  if (value.contains('interior') || value.contains('decor') || value.contains('ceiling')) {
+    return const _CategoryTheme(
+      colors: [Color(0xFF7C2D12), Color(0xFFEA580C)],
+      icon: Icons.chair_rounded,
+      label: 'Interior',
+    );
+  }
+  if (value.contains('pest')) {
+    return const _CategoryTheme(
+      colors: [Color(0xFF3F6212), Color(0xFF84CC16)],
+      icon: Icons.pest_control_rounded,
+      label: 'Pest Control',
+    );
+  }
+  if (value.contains('packers') || value.contains('movers')) {
+    return const _CategoryTheme(
+      colors: [Color(0xFF0F766E), Color(0xFF14B8A6)],
+      icon: Icons.local_shipping_rounded,
+      label: 'Packers & Movers',
+    );
+  }
+  if (value.contains('watch')) {
+    return const _CategoryTheme(
+      colors: [Color(0xFF1E293B), Color(0xFF64748B)],
+      icon: Icons.watch_rounded,
+      label: 'Watch',
+    );
+  }
+  if (value.contains('cycle') || value.contains('bicycle')) {
+    return const _CategoryTheme(
+      colors: [Color(0xFF065F46), Color(0xFF10B981)],
+      icon: Icons.pedal_bike_rounded,
+      label: 'Cycle',
+    );
+  }
+  if (value.contains('sofa') || value.contains('upholster')) {
+    return const _CategoryTheme(
+      colors: [Color(0xFF92400E), Color(0xFFD97706)],
+      icon: Icons.weekend_rounded,
+      label: 'Sofa & Upholstery',
+    );
+  }
+
+  return null;
+}
+
+/// Stable per-string fallback so two posts with the same unmatched category
+/// look consistent, but different categories diversify the feed instead of
+/// all rendering as the same teal briefcase card.
+_CategoryTheme _fallbackTheme(String category, String? titleHint) {
+  const themes = [
+    _CategoryTheme(
+      colors: [Color(0xFF312E81), Color(0xFF6366F1)],
+      icon: Icons.handyman_rounded,
+      label: 'Service',
+    ),
+    _CategoryTheme(
+      colors: [Color(0xFF134E4A), Color(0xFF2DD4BF)],
+      icon: Icons.home_repair_service_rounded,
+      label: 'Service',
+    ),
+    _CategoryTheme(
+      colors: [Color(0xFF7C2D12), Color(0xFFF59E0B)],
+      icon: Icons.storefront_rounded,
+      label: 'Local Shop',
+    ),
+    _CategoryTheme(
+      colors: [Color(0xFF831843), Color(0xFFEC4899)],
+      icon: Icons.category_rounded,
+      label: 'Service',
+    ),
+  ];
+  final key = '${category.trim().toLowerCase()}|${(titleHint ?? '').trim().toLowerCase()}';
+  var hash = 0;
+  for (final unit in key.codeUnits) {
+    hash = (hash * 31 + unit) & 0x7fffffff;
+  }
+  return themes[hash % themes.length];
 }

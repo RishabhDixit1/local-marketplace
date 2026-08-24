@@ -219,6 +219,8 @@ class AppLocalizationsTe extends AppLocalizations {
   @override
   String get discoveryNoLocation => 'లొకేషన్ డేటా అందుబాటులో లేదు';
   @override
+  String get mapTilesUnavailable => 'మ్యాప్ ఇప్పుడు అందుబాటులో లేదు';
+  @override
   String discoveryViewAllProviders(int count) => 'మొత్తం $count ప్రొవైడర్లను చూడండి';
   @override
   String get discoveryNoZonesTitle => 'జోన్లు అందుబాటులో లేవు';
@@ -289,4 +291,66 @@ class AppLocalizationsTe extends AppLocalizations {
   String get intentBusinessSetupSubtitle => 'మీ సేవలు, బృందం మరియు లభ్యతను జాబితా చేయండి';
   @override
   String get notNow => 'ఇప్పుడు కాదు';
+
+  @override
+  String get storefrontsSectionTitle => 'దుకాణాలు';
+  @override
+  String get storefrontsSectionSubtitle => 'మీ దగ్గరలోని దుకాణాలు మరియు వ్యాపారాలు';
+  @override
+  String get viewAllStorefronts => 'అన్ని దుకాణాలు చూడండి';
+  @override
+  String get productsSectionTitle => 'ఉత్పత్తులు';
+  @override
+  String get productsSectionSubtitle => 'దగ్గరలో అందుబాటులో ఉన్న వస్తువులు';
+  @override
+  String get viewAllProducts => 'అన్ని ఉత్పత్తులు చూడండి';
+  @override
+  String get noStorefrontsTitle => 'ఇంకా దుకాణాలు లేవు';
+  @override
+  String get noStorefrontsMessage => 'ప్రొవైడర్లు తమ దుకాణాలను ఏర్పాటు చేసిన తర్వాత దుకాణాలు ఇక్కడ కనిపిస్తాయి.';
+  @override
+  String get noProductsTitle => 'ఇంకా ఉత్పత్తులు లేవు';
+  @override
+  String get noProductsMessage => 'ప్రొవైడర్లు వస్తువులను జాబితా చేసిన తర్వాత ఉత్పత్తులు ఇక్కడ కనిపిస్తాయి.';
+  @override
+  String storefrontProductCount(int count) =>
+      count == 1 ? '1 ఉత్పత్తి' : '$count ఉత్పత్తులు';
+  @override
+  String get storefrontDetailTitle => 'దుకాణం';
+  @override
+  String get storefrontOwnerLabel => 'యజమాని';
+  @override
+  String get storefrontHoursLabel => 'పని గంటలు';
+  @override
+  String get storefrontDescriptionLabel => 'వివరణ';
+  @override
+  String get storefrontProductsLabel => 'ఉత్పత్తులు';
+  @override
+  String get storefrontVisitProvider => 'ప్రొవైడర్‌ను సందర్శించండి';
+  @override
+  String get storefrontChatWithOwner => 'యజమానితో చాట్ చేయండి';
+  @override
+  String get productDetailTitle => 'ఉత్పత్తి';
+  @override
+  String get productPriceLabel => 'ధర';
+  @override
+  String get productAvailabilityLabel => 'లభ్యత';
+  @override
+  String get productInStock => 'స్టాక్‌లో ఉంది';
+  @override
+  String get productOutOfStock => 'స్టాక్ లేదు';
+  @override
+  String get productDeliveryInfo => 'డెలివరీ అందుబాటులో ఉంది';
+  @override
+  String get productContactInquiry => 'విచారణ కోసం సంప్రదించండి';
+  @override
+  String get productFromStorefront => 'నుండి';
+  @override
+  String get browseStorefrontsTitle => 'అన్ని దుకాణాలు';
+  @override
+  String get browseProductsTitle => 'అన్ని ఉత్పత్తులు';
+  @override
+  String get allStorefronts => 'అన్ని దుకాణాలు';
+  @override
+  String get allProducts => 'అన్ని ఉత్పత్తులు';
 }

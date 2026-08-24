@@ -47,6 +47,10 @@ import '../../features/quotes/presentation/quote_room_page.dart';
 import '../../features/quotes/presentation/quote_comparison_page.dart';
 import '../../features/search/presentation/search_page.dart';
 import '../../features/search/presentation/map_discovery_page.dart';
+import '../../features/storefront/presentation/storefront_detail_page.dart';
+import '../../features/storefront/presentation/storefront_browse_page.dart';
+import '../../features/storefront/presentation/product_detail_page.dart';
+import '../../features/storefront/presentation/product_browse_page.dart';
 import '../../features/tasks/presentation/tasks_page.dart';
 import '../../features/welcome/presentation/onboarding_walkthrough_page.dart';
 import '../../features/welcome/presentation/welcome_page.dart';
@@ -344,6 +348,39 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           itemId: state.pathParameters['itemId']?.trim() ?? '',
           source: _queryParam(state, 'source'),
         ), state),
+      ),
+      GoRoute(
+        path: AppRoutes.storefronts,
+        pageBuilder: (context, state) => _smoothPage(
+          const StorefrontBrowsePage(),
+          state,
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.storefronts}/:storefrontId',
+        pageBuilder: (context, state) => _smoothPage(
+          StorefrontDetailPage(
+            storefrontId: state.pathParameters['storefrontId']?.trim() ?? '',
+          ),
+          state,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.products,
+        pageBuilder: (context, state) => _smoothPage(
+          const ProductBrowsePage(),
+          state,
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.products}/:productId',
+        pageBuilder: (context, state) => _smoothPage(
+          ProductDetailPage(
+            productId: state.pathParameters['productId']?.trim() ?? '',
+            storefrontId: _queryParam(state, 'storefrontId'),
+          ),
+          state,
+        ),
       ),
       GoRoute(
         path: AppRoutes.providerLaunchpadReview,

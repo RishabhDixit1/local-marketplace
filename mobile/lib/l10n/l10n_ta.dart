@@ -219,6 +219,8 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get discoveryNoLocation => 'இருப்பிடத் தரவு கிடைக்கவில்லை';
   @override
+  String get mapTilesUnavailable => 'வரைபடம் இப்போது கிடைக்கவில்லை';
+  @override
   String discoveryViewAllProviders(int count) => 'அனைத்து $count வழங்குநர்களையும் பார்க்கவும்';
   @override
   String get discoveryNoZonesTitle => 'மண்டலங்கள் எதுவும் கிடைக்கவில்லை';
@@ -289,4 +291,66 @@ class AppLocalizationsTa extends AppLocalizations {
   String get intentBusinessSetupSubtitle => 'உங்கள் சேவைகள், குழு மற்றும் கிடைக்கும் தன்மையை பட்டியலிடுங்கள்';
   @override
   String get notNow => 'இப்போது இல்லை';
+
+  @override
+  String get storefrontsSectionTitle => 'கடைகள்';
+  @override
+  String get storefrontsSectionSubtitle => 'உங்கள் அருகிலுள்ள கடைகள் மற்றும் வணிகங்கள்';
+  @override
+  String get viewAllStorefronts => 'அனைத்து கடைகளையும் காண்க';
+  @override
+  String get productsSectionTitle => 'பொருள்கள்';
+  @override
+  String get productsSectionSubtitle => 'அருகில் கிடைக்கும் பொருள்கள்';
+  @override
+  String get viewAllProducts => 'அனைத்து பொருள்களையும் காண்க';
+  @override
+  String get noStorefrontsTitle => 'இன்னும் கடைகள் இல்லை';
+  @override
+  String get noStorefrontsMessage => 'வழங்குநர்கள் தங்கள் கடைகளை அமைத்தவுடன் கடைகள் இங்கே தோன்றும்.';
+  @override
+  String get noProductsTitle => 'இன்னும் பொருள்கள் இல்லை';
+  @override
+  String get noProductsMessage => 'வழங்குநர்கள் பொருள்களை பட்டியலிட்டவுடன் பொருள்கள் இங்கே தோன்றும்.';
+  @override
+  String storefrontProductCount(int count) =>
+      count == 1 ? '1 பொருள்' : '$count பொருள்கள்';
+  @override
+  String get storefrontDetailTitle => 'கடை';
+  @override
+  String get storefrontOwnerLabel => 'உரிமையாளர்';
+  @override
+  String get storefrontHoursLabel => 'நேர அட்டவணை';
+  @override
+  String get storefrontDescriptionLabel => 'விளக்கம்';
+  @override
+  String get storefrontProductsLabel => 'பொருள்கள்';
+  @override
+  String get storefrontVisitProvider => 'வழங்குநரைப் பார்வையிடுங்கள்';
+  @override
+  String get storefrontChatWithOwner => 'உரிமையாளருடன் உரையாடுங்கள்';
+  @override
+  String get productDetailTitle => 'பொருள்';
+  @override
+  String get productPriceLabel => 'விலை';
+  @override
+  String get productAvailabilityLabel => 'கிடைக்கும் தன்மை';
+  @override
+  String get productInStock => 'சரக்கில் உள்ளது';
+  @override
+  String get productOutOfStock => 'சரக்கு இல்லை';
+  @override
+  String get productDeliveryInfo => 'டெலிவரி கிடைக்கும்';
+  @override
+  String get productContactInquiry => 'விசாரணைக்கு தொடர்பு கொள்ளுங்கள்';
+  @override
+  String get productFromStorefront => 'இருந்து';
+  @override
+  String get browseStorefrontsTitle => 'அனைத்து கடைகள்';
+  @override
+  String get browseProductsTitle => 'அனைத்து பொருள்கள்';
+  @override
+  String get allStorefronts => 'அனைத்து கடைகள்';
+  @override
+  String get allProducts => 'அனைத்து பொருள்கள்';
 }

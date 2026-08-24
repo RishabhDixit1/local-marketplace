@@ -6,7 +6,7 @@ import 'app_buttons.dart';
 class StickyBottomCTA extends StatelessWidget {
   const StickyBottomCTA({
     super.key,
-    required this.title,
+    this.title,
     required this.primaryLabel,
     required this.onPrimary,
     this.subtitle,
@@ -14,7 +14,9 @@ class StickyBottomCTA extends StatelessWidget {
     this.onSecondary,
   });
 
-  final String title;
+  /// Optional heading. Omit when the surrounding step already shows the same
+  /// title, otherwise it reads twice on screen.
+  final String? title;
   final String? subtitle;
   final String primaryLabel;
   final VoidCallback? onPrimary;
@@ -24,6 +26,8 @@ class StickyBottomCTA extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final heading = title?.trim();
+    final subheading = subtitle?.trim();
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
@@ -37,12 +41,14 @@ class StickyBottomCTA extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.xxs),
-              Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
+            if (heading != null && heading.isNotEmpty) ...[
+              Text(heading, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: AppSpacing.sm),
             ],
-            const SizedBox(height: AppSpacing.sm),
+            if (subheading != null && subheading.isNotEmpty) ...[
+              Text(subheading, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: AppSpacing.sm),
+            ],
             Row(
               children: [
                 if (secondaryLabel != null && onSecondary != null) ...[

@@ -32,6 +32,7 @@ type ProvidersFilter = {
   onlineOnly: boolean;
   sortBy: "distance" | "rating" | "jobs" | "response" | "featured";
   search: string;
+  radiusKm: number | null;
 };
 
 type ProvidersQueryResult = {
@@ -45,7 +46,7 @@ type ProvidersQueryResult = {
 async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQueryResult> {
   const {
     category, lat: userLat, lng: userLng, limit, offset,
-    minRating, onlineOnly, sortBy, search,
+    minRating, onlineOnly, sortBy, search, radiusKm,
   } = filter;
 
   const safeLimit = Math.min(Math.max(limit, 1), 200);
@@ -57,6 +58,9 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
   }
 
   try {
+    const radiusActive =
+      radiusKm != null && radiusKm > 0 && userLat != null && userLng != null;
+
     // Step 1: Get total count (fast with proper indexes)
     let countQuery = admin
       .from("profiles")
@@ -76,33 +80,78 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
     }
 
     const countResult = await countQuery;
-    const totalCount = countResult.count ?? null;
+    let totalCount = countResult.count ?? null;
     if (countResult.error) console.error("[providers-by-category] count error:", countResult.error.message);
 
     // Step 2: Fetch only the page we need (with generous overfetch for in-memory sort stability)
-    const fetchLimit = Math.min(safeLimit * 3 + safeOffset, 200);
-    let query = admin
-      .from("profiles")
-      .select("id, full_name, name, location, latitude, longitude, avatar_url, bio, role, services, created_at, verification_status")
-      .in("role", ["provider", "business"])
-      .not("full_name", "is", null)
-      .eq("is_test", false)
-      .order("created_at", { ascending: false })
-      .limit(fetchLimit);
+    type ProfileRow = {
+      id: string;
+      full_name: string | null;
+      name: string | null;
+      location: string | null;
+      latitude: number | null;
+      longitude: number | null;
+      avatar_url: string | null;
+      bio: string | null;
+      role: string | null;
+      services: string[] | null;
+      created_at: string;
+      verification_status?: string | null;
+    };
 
-    if (category) {
-      query = query.contains("services", [category]);
-    }
+    const baseColumns =
+      "id, full_name, name, location, latitude, longitude, avatar_url, bio, role, services, created_at, verification_status";
 
-    if (search) {
-      query = query.or(
-        `full_name.ilike.%${search}%,name.ilike.%${search}%,location.ilike.%${search}%,bio.ilike.%${search}%`
-      );
-    }
+    const buildProfileQuery = () => {
+      let q = admin
+        .from("profiles")
+        .select(baseColumns)
+        .in("role", ["provider", "business"])
+        .not("full_name", "is", null)
+        .eq("is_test", false)
+        .order("created_at", { ascending: false });
+      if (category) q = q.contains("services", [category]);
+      if (search) {
+        q = q.or(
+          `full_name.ilike.%${search}%,name.ilike.%${search}%,location.ilike.%${search}%,bio.ilike.%${search}%`
+        );
+      }
+      return q;
+    };
 
-    const { data: profiles, error } = await query;
-    if (error) {
-      return { ok: false, error: error.message, providers: [], facets: null, pagination: { total: 0, offset: 0, limit: safeLimit, hasMore: false } };
+    let profiles: ProfileRow[] = [];
+
+    if (radiusActive) {
+      // A radius filter must see the FULL matching pool: both so the reported
+      // total is the true in-radius count and so distance sorting cannot miss
+      // an in-radius provider that happens to be old (the default path only
+      // considers the newest ~200 rows). Rows are light; pages of 500.
+      const PAGE = 500;
+      const MAX_ROWS = 2000;
+      for (let from = 0; from < MAX_ROWS; from += PAGE) {
+        const { data, error } = await buildProfileQuery().range(from, from + PAGE - 1);
+        if (error) {
+          console.error("[providers-by-category] radius page error:", error.message);
+          break;
+        }
+        if (!data || data.length === 0) break;
+        profiles.push(...(data as ProfileRow[]));
+        if (data.length < PAGE) break;
+      }
+      totalCount = profiles.filter((p) => {
+        if (p.latitude == null || p.longitude == null) return false;
+        return (
+          distanceKm(userLat!, userLng!, Number(p.latitude), Number(p.longitude)) <=
+          radiusKm!
+        );
+      }).length;
+    } else {
+      const fetchLimit = Math.min(safeLimit * 3 + safeOffset, 200);
+      const { data, error } = await buildProfileQuery().limit(fetchLimit);
+      if (error) {
+        return { ok: false, error: error.message, providers: [], facets: null, pagination: { total: 0, offset: 0, limit: safeLimit, hasMore: false } };
+      }
+      profiles = (data as ProfileRow[]) || [];
     }
 
     const profileIds = (profiles || []).map((p) => p.id).filter(Boolean);
@@ -255,6 +304,12 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
 
     let filteredProviders = [...rawProviders];
 
+    if (radiusActive) {
+      filteredProviders = filteredProviders.filter(
+        (p) => p.distanceKm != null && p.distanceKm <= radiusKm!
+      );
+    }
+
     if (minRating != null) {
       filteredProviders = filteredProviders.filter((p) => (p.avgRating || 0) >= minRating);
     }
@@ -357,6 +412,7 @@ async function executeProvidersQuery(filter: ProvidersFilter): Promise<NextRespo
     lng != null ? String(lng) : "-",
     minRating != null ? String(minRating) : "-",
     onlineOnly ? "online" : "all",
+    filter.radiusKm != null ? String(filter.radiusKm) : "-",
   );
   const result = await withCache(
     () => loadProvidersData(filter),
@@ -376,6 +432,7 @@ async function getHandler(request: Request) {
   const onlineOnlyParam = requestUrl.searchParams.get("onlineOnly");
   const sortByParam = requestUrl.searchParams.get("sortBy") || "distance";
   const searchParam = requestUrl.searchParams.get("search") || "";
+  const radiusParam = requestUrl.searchParams.get("radiusKm");
 
   const userLat = latParam ? parseFloat(latParam) : null;
   const userLng = lngParam ? parseFloat(lngParam) : null;
@@ -383,6 +440,7 @@ async function getHandler(request: Request) {
   const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
   const minRating = minRatingParam ? parseFloat(minRatingParam) : null;
   const onlineOnly = onlineOnlyParam === "true" || onlineOnlyParam === "1";
+  const radiusKm = radiusParam ? parseFloat(radiusParam) : null;
   const sortBy = ["distance", "rating", "jobs", "response", "featured"].includes(sortByParam)
     ? (sortByParam as "distance" | "rating" | "jobs" | "response" | "featured")
     : "distance";
@@ -391,6 +449,7 @@ async function getHandler(request: Request) {
   return executeProvidersQuery({
     category, lat: userLat, lng: userLng, limit, offset,
     minRating, onlineOnly, sortBy, search,
+    radiusKm: radiusKm != null && Number.isFinite(radiusKm) && radiusKm > 0 ? Math.min(radiusKm, 500) : null,
   });
 }
 
@@ -412,12 +471,14 @@ async function postHandler(request: Request) {
     onlineOnly = false,
     sortBy: rawSortBy,
     search: rawSearch = "",
+    radiusKm: rawRadiusKm = null,
   } = body;
 
   const userLat = lat != null ? Number(lat) : null;
   const userLng = lng != null ? Number(lng) : null;
   const limit = typeof rawLimit === "number" ? rawLimit : 100;
   const offset = typeof rawOffset === "number" ? rawOffset : 0;
+  const parsedRadiusKm = rawRadiusKm != null ? Number(rawRadiusKm) : null;
   const parsedSortBy = String(rawSortBy || "distance");
   const sortBy = (["distance", "rating", "jobs", "response", "featured"] as const).includes(
     parsedSortBy as "distance" | "rating" | "jobs" | "response" | "featured"
@@ -435,6 +496,10 @@ async function postHandler(request: Request) {
     onlineOnly: onlineOnly === true || onlineOnly === "true",
     sortBy,
     search: String(rawSearch || "").trim().toLowerCase(),
+    radiusKm:
+      parsedRadiusKm != null && Number.isFinite(parsedRadiusKm) && parsedRadiusKm > 0
+        ? Math.min(parsedRadiusKm, 500)
+        : null,
   });
 }
 

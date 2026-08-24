@@ -12,6 +12,8 @@ class MetricTile extends StatelessWidget {
     this.caption,
     this.icon,
     this.gradient = false,
+    this.progress,
+    this.progressColor,
   });
 
   final String label;
@@ -19,6 +21,8 @@ class MetricTile extends StatelessWidget {
   final String? caption;
   final IconData? icon;
   final bool gradient;
+  final double? progress;
+  final Color? progressColor;
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +73,54 @@ class MetricTile extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                if (gradient)
+                if (progress != null)
+                  SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 56,
+                          height: 56,
+                          child: CircularProgressIndicator(
+                            value: progress!.clamp(0.0, 1.0),
+                            strokeWidth: 5,
+                            backgroundColor: AppColors.surfaceAlt,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              progressColor ?? AppColors.primary,
+                            ),
+                            strokeCap: StrokeCap.round,
+                          ),
+                        ),
+                        gradient
+                            ? ShaderMask(
+                                shaderCallback: (bounds) => LinearGradient(
+                                  colors: [
+                                    AppColors.accent,
+                                    AppColors.verified,
+                                  ],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ).createShader(bounds),
+                                blendMode: BlendMode.srcIn,
+                                child: Text(
+                                  value,
+                                  style: textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                value,
+                                style: textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                      ],
+                    ),
+                  )
+                else if (gradient)
                   ShaderMask(
                     shaderCallback: (bounds) => LinearGradient(
                       colors: [AppColors.accent, AppColors.verified],

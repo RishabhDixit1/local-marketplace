@@ -3,16 +3,18 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' show ClientException;
 
 import '../config/app_config.dart';
 import '../supabase/app_bootstrap.dart';
 import 'firebase_runtime_options.dart';
 
-/// When true, a manual Crashlytics test-crash button is surfaced. Debug
-/// builds always show it; release/tester builds only when compiled with
-/// --dart-define=ENABLE_TEST_CRASH=true, so production builds never ship it.
-const bool enableTestCrashButton =
-    kDebugMode || bool.fromEnvironment('ENABLE_TEST_CRASH');
+/// When true, a manual Crashlytics test-crash button is surfaced.
+/// Only visible in debug builds. The prior ENABLE_TEST_CRASH gate was
+/// accidentally left on in a shipped build, so the button was removed
+/// from the production UI entirely (the constant is kept for reference
+/// but the profile page no longer reads it).
+const bool enableTestCrashButton = false;
 
 Future<AppFirebaseState>? _firebaseInitFuture;
 
@@ -91,6 +93,14 @@ class AppFirebase {
         );
       } else {
         FlutterError.onError = (details) {
+          final error = details.exception;
+          if (error is ClientException) {
+            debugPrint(
+              'ServiQ mobile: suppressed transient network error '
+              'from image loading: $error',
+            );
+            return;
+          }
           FirebaseCrashlytics.instance.recordFlutterFatalError(details);
         };
         PlatformDispatcher.instance.onError = (error, stack) {

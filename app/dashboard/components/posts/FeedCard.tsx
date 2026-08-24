@@ -341,9 +341,9 @@ export default function FeedCard({
             className="overflow-hidden rounded-[1.15rem] border border-slate-200 dark:border-slate-700 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#1e293b_0%,#0f172a_62%,#0c2427_100%)] p-3 pb-3.5 sm:rounded-[1.35rem] sm:p-3.5"
           >
             <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold sm:gap-2 sm:text-[11px]">
-              {heroPills.map((pill) => (
+              {heroPills.map((pill, pillIdx) => (
                 <span
-                  key={`${item.id}:hero:${pill.label}`}
+                  key={`${item.id}:hero:${pillIdx}`}
                   className={`inline-flex items-center rounded-full border px-2.5 py-1 ${pill.className}`}
                 >
                   {pill.label}
@@ -384,9 +384,9 @@ export default function FeedCard({
 
           {visibleMetaPills.length > 0 ? (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {visibleMetaPills.map((pill) => (
+              {visibleMetaPills.map((pill, pillIdx) => (
                 <span
-                  key={`${item.id}:${pill.label}`}
+                  key={`${item.id}:${pillIdx}`}
                   className={`inline-flex max-w-full items-center overflow-hidden rounded-full border px-2.5 py-1 text-[10px] font-semibold sm:text-[11px] ${pill.className}`}
                   title={pill.label}
                 >
