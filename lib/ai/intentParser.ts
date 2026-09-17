@@ -244,7 +244,11 @@ function matchKeywords(query: string): ParsedIntent {
   }
 
   const isSellIntent = /\b(sell|selling|list|offer for sale)\b/.test(lower);
-  const isBuyIntent = /\b(buy|purchase|need|want)\b/.test(lower) || tokens.some((t) => ["buy", "purchase"].includes(t));
+  // Bare "need"/"want" are ambiguous (most often a service request, e.g.
+  // "I need a plumber"), so only explicit product language flips to
+  // buy_product. This prevents service queries from being misrouted to the
+  // product/buy flow.
+  const isBuyIntent = /\b(buy|purchase|want to buy|need to buy|looking to buy|to order)\b/.test(lower);
   const isPostIntent = /\b(post|create|list|offer|need help)\b/.test(lower) && !isSellIntent;
   const isOrderCheck = /\b(my orders|order status|my purchases|track order)\b/.test(lower);
   const isInventory = /\b(inventory|stock|add.*stock|update.*stock|my products|my catalog)\b/.test(lower);

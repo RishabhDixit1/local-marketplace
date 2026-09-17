@@ -95,7 +95,7 @@ Remember the context from previous messages — if the user refers to something 
 
     try {
       const result = streamText({
-        model: getModel("gemini-2.0-flash"),
+        model: getModel(),
         system: systemPrompt,
         prompt: `${conversationContext}
 

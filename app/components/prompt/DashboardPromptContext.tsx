@@ -268,17 +268,25 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
           setAiStream(textStream);
         }
 
-        // Navigate after a brief delay to let stream start
-        setTimeout(() => {
-          router.push(redirect || `/dashboard?${params.toString()}`);
-        }, 500);
+        // Only navigate when the query resolves to a concrete destination
+        // (search/booking/orders). For conversational/help queries, keep the
+        // streamed answer on screen instead of bouncing away after 500ms.
+        const NAVIGATING_ACTIONS = new Set([
+          "find_service", "find_provider", "buy_product",
+          "check_orders", "manage_inventory", "manage_business",
+        ]);
+        const shouldNavigate = Boolean(redirect) || (typeof action === "string" && NAVIGATING_ACTIONS.has(action));
+
+        if (shouldNavigate) {
+          // Navigate after a brief delay to let stream start
+          setTimeout(() => {
+            router.push(redirect || `/dashboard?${params.toString()}`);
+          }, 500);
+        }
       } catch {
         // Stream unavailable — keyword parse result is sufficient
         conversationRef.current.push({ role: "assistant", content: parsed.response });
         setSubmitting(false);
-        setTimeout(() => {
-          router.push(`/dashboard?${params.toString()}`);
-        }, 300);
       }
     } finally {
       // Don't set submitting false here — it's set in the stream completion

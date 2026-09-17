@@ -103,6 +103,7 @@ function SearchPageContent() {
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "distance");
   const [showFilters, setShowFilters] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationReady, setLocationReady] = useState(false);
 
   const [facets, setFacets] = useState<Facets | null>(null);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -112,12 +113,29 @@ function SearchPageContent() {
   const [allProviders, setAllProviders] = useState<ProviderData[]>([]);
 
   useEffect(() => {
+    // Resolve geolocation BEFORE the first search so we avoid issuing two
+    // identical searches on mount (one without coords, one with). Falls back
+    // to a no-coords search after 3.5s if the user is slow or denies.
+    let settled = false;
+    const finish = (loc: { lat: number; lng: number } | null) => {
+      if (settled) return;
+      settled = true;
+      setUserLocation(loc);
+      setLocationReady(true);
+    };
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {}
+        (pos) => finish({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => finish(null),
       );
+    } else {
+      finish(null);
     }
+    const timer = setTimeout(() => finish(null), 3500);
+    return () => {
+      settled = true;
+      clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -192,8 +210,10 @@ function SearchPageContent() {
   }, [query, category, minRating, onlineOnly, sortBy, userLocation]);
 
   useEffect(() => {
-    doSearch();
-  }, [doSearch]);
+    if (locationReady) {
+      doSearch();
+    }
+  }, [doSearch, locationReady]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

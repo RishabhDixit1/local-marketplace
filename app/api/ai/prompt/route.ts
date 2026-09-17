@@ -49,6 +49,13 @@ async function fetchMatchingProviders(categorySlug: string, limit = 6): Promise<
   try {
     const label = toSearchLabel(categorySlug);
     const variants = serviceMatchVariants(label);
+    // Match against services in SQL so we never pull the whole profiles table
+    // into memory on every debounced keystroke. services::text.ilike is the
+    // supported pattern for the text[] services column.
+    const safeVariants = variants
+      .map((v) => v.replace(/[^\p{L}\p{N}\s]/gu, ""))
+      .filter((v) => v.length > 0);
+    if (safeVariants.length === 0) return [];
 
     const { data: profiles, error } = await admin
       .from("profiles")
@@ -56,7 +63,9 @@ async function fetchMatchingProviders(categorySlug: string, limit = 6): Promise<
       .in("role", ["provider", "business"])
       .not("full_name", "is", null)
       .eq("is_test", false)
-      .order("full_name");
+      .or(safeVariants.map((v) => `services::text.ilike.%${v}%`).join(","))
+      .order("created_at", { ascending: false })
+      .limit(50);
 
     if (error) {
       console.error("[prompt] Failed to query profiles:", error.message);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
+import { withCache, queryCacheKey } from "@/lib/cache/withCache";
 
 export const runtime = "nodejs";
 
@@ -33,46 +34,50 @@ export async function GET() {
   }
 
   try {
-    const { data: zones, error } = await supabase
-      .from("market_zones")
-      .select("id, slug, name, city, state, phase, is_active")
-      .eq("is_active", true)
-      .order("phase", { ascending: true })
-      .order("name", { ascending: true });
+    const payload = await withCache(async () => {
+      const { data: zones, error } = await supabase
+        .from("market_zones")
+        .select("id, slug, name, city, state, phase, is_active")
+        .eq("is_active", true)
+        .order("phase", { ascending: true })
+        .order("name", { ascending: true });
 
-    if (error) throw new Error(error.message);
+      if (error) throw new Error(error.message);
 
-    const zoneIds = (zones ?? []).map((z) => z.id);
+      const zoneIds = (zones ?? []).map((z) => z.id);
 
-    const countMap: Record<string, { societies: number; markets: number }> = {};
-    if (zoneIds.length > 0) {
-      const { data: localities } = await supabase
-        .from("localities")
-        .select("zone_id, zone_type")
-        .in("zone_id", zoneIds);
+      const countMap: Record<string, { societies: number; markets: number }> = {};
+      if (zoneIds.length > 0) {
+        const { data: localities } = await supabase
+          .from("localities")
+          .select("zone_id, zone_type")
+          .in("zone_id", zoneIds);
 
-      for (const loc of localities ?? []) {
-        if (!countMap[loc.zone_id]) {
-          countMap[loc.zone_id] = { societies: 0, markets: 0 };
+        for (const loc of localities ?? []) {
+          if (!countMap[loc.zone_id]) {
+            countMap[loc.zone_id] = { societies: 0, markets: 0 };
+          }
+          if (loc.zone_type === "society") countMap[loc.zone_id].societies++;
+          if (loc.zone_type === "market") countMap[loc.zone_id].markets++;
         }
-        if (loc.zone_type === "society") countMap[loc.zone_id].societies++;
-        if (loc.zone_type === "market") countMap[loc.zone_id].markets++;
       }
-    }
 
-    const result: MarketZoneSummary[] = (zones ?? []).map((z) => ({
-      id: z.id,
-      slug: z.slug,
-      name: z.name,
-      city: z.city,
-      state: z.state,
-      phase: z.phase,
-      is_active: z.is_active,
-      societies: countMap[z.id]?.societies ?? 0,
-      markets: countMap[z.id]?.markets ?? 0,
-    }));
+      const result: MarketZoneSummary[] = (zones ?? []).map((z) => ({
+        id: z.id,
+        slug: z.slug,
+        name: z.name,
+        city: z.city,
+        state: z.state,
+        phase: z.phase,
+        is_active: z.is_active,
+        societies: countMap[z.id]?.societies ?? 0,
+        markets: countMap[z.id]?.markets ?? 0,
+      }));
 
-    return NextResponse.json({ ok: true, zones: result } satisfies MarketZonesResponse);
+      return { ok: true, zones: result } satisfies MarketZonesResponse;
+    }, { key: queryCacheKey("market-zones"), ttlSeconds: 300 });
+
+    return NextResponse.json(payload);
   } catch (error) {
     return NextResponse.json(
       {

@@ -194,6 +194,7 @@ export function LandingPageClient({
   const [contactProvider, setContactProvider] = useState<ProviderCardData | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<ProviderCardData | null>(null);
   const [realProviders, setRealProviders] = useState<ProviderCardData[]>([]);
+  const [realProvidersTotal, setRealProvidersTotal] = useState(0);
   const [realProvidersLoading, setRealProvidersLoading] = useState(true);
   const [realProvidersError, setRealProvidersError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -209,11 +210,19 @@ export function LandingPageClient({
     setRealProvidersError(null);
     const params = new URLSearchParams();
     if (selectedCategory) params.set("category", selectedCategory);
+    // Only pull what the landing grid can render; the true total comes from
+    // facets.totalProviders, so the "N providers near you" copy stays correct
+    // without fetching hundreds of rows we slice down to 6 cards.
+    params.set("limit", "12");
     fetch(`/api/community/providers-by-category${params.toString() ? `?${params.toString()}` : ""}`)
       .then((r) => { if (!r.ok) throw new Error(`Request failed (${r.status})`); return r.json(); })
       .then((data) => {
         if (!active) return;
-        setRealProviders((data.providers || []) as ProviderCardData[]);
+        const providers = (data.providers || []) as ProviderCardData[];
+        setRealProviders(providers);
+        const trueCount =
+          Number(data.facets?.totalProviders ?? data.pagination?.total ?? providers.length);
+        setRealProvidersTotal(Number.isFinite(trueCount) ? trueCount : providers.length);
       })
       .catch((err) => {
         if (!active) return;
@@ -375,9 +384,9 @@ export function LandingPageClient({
         {/* ── Results count ── */}
         <div className="mt-8 flex items-center justify-between">
           <p className="text-sm text-[var(--ink-500)]">
-            {!selectedCategory && realProviders.length > LANDING_PAGE_PROVIDER_LIMIT
-              ? t("landing.showingProviders", { count: LANDING_PAGE_PROVIDER_LIMIT, total: realProviders.length })
-              : t("landing.providersNearYou", { count: realProviders.length })}
+            {!selectedCategory && realProvidersTotal > LANDING_PAGE_PROVIDER_LIMIT
+              ? t("landing.showingProviders", { count: LANDING_PAGE_PROVIDER_LIMIT, total: realProvidersTotal })
+              : t("landing.providersNearYou", { count: realProvidersTotal || realProviders.length })}
           </p>
           {selectedCategory && (
             <button
