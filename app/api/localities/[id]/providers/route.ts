@@ -7,13 +7,16 @@ export const runtime = "nodejs";
 export type LocalityProvider = {
   id: string;
   full_name: string;
+  name: string;
   avatar_url: string;
-  locality_id: string;
+  locality_id: string | null;
   locality_name: string;
+  location: string;
   service_category_ids: string[];
   trust_score: number;
   completed_jobs: number;
-  response_time_minutes: number;
+  response_time_minutes: number | null;
+  response_minutes: number | null;
 };
 
 export type LocalityProvidersResponse = {
@@ -60,15 +63,21 @@ export async function GET(
 
     const mapped = (data || []).map((row: Record<string, unknown>) => ({
       id: row.id,
+      full_name: row.full_name || "",
       name: row.full_name || "",
-      location: row.locality_name || "",
       avatar_url: resolveProfileAvatarUrl(row.avatar_url as string) || "",
+      locality_id: row.locality_id ?? null,
+      locality_name: row.locality_name || "",
+      location: row.locality_name || "",
+      service_category_ids: Array.isArray(row.service_category_ids) ? row.service_category_ids : [],
+      trust_score: row.trust_score ?? 0,
+      completed_jobs: row.completed_jobs ?? 0,
+      response_time_minutes: row.response_time_minutes ?? null,
+      response_minutes: row.response_time_minutes ?? null,
       bio: "",
       services: [],
       avg_rating: null as number | null,
       review_count: 0,
-      completed_jobs: row.completed_jobs ?? 0,
-      response_minutes: row.response_time_minutes ?? null,
       price_min: null as number | null,
       price_max: null as number | null,
       verified: false,

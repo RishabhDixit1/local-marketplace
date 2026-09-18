@@ -223,7 +223,7 @@ export default function PeoplePage() {
                         {profile.completed_jobs} jobs
                       </span>
                     )}
-                    {profile.service_category_ids.length > 0 && (
+                    {Array.isArray(profile.service_category_ids) && profile.service_category_ids.length > 0 && (
                       <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-700">
                         {profile.service_category_ids.length} services
                       </span>
