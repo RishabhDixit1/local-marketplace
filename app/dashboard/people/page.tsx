@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, Building2, Loader2, MapPin, SearchX, ShieldCheck, Star, Store, Users,
+  ArrowLeft, Building2, Loader2, MapPin, MessageCircle, SearchX, ShieldCheck, Star, Users,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import { buildPublicProfilePath } from "@/lib/profile/utils";
 
 type Locality = {
   id: string;
@@ -182,7 +183,10 @@ export default function PeoplePage() {
             animate="visible"
             variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04 } } }}
           >
-            {people.map((profile) => (
+            {people.map((profile) => {
+              const publicPath = buildPublicProfilePath(profile);
+              const messageHref = `/dashboard/chat?recipientId=${encodeURIComponent(profile.id)}`;
+              return (
               <motion.div
                 key={profile.id}
                 variants={{
@@ -190,50 +194,61 @@ export default function PeoplePage() {
                   visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.35, ease: [0.2, 0.8, 0.2, 1] as [number, number, number, number] } },
                 }}
               >
-              <Link
-                href={`/dashboard/chat?recipientId=${profile.id}`}
-                className="flex items-start gap-3 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
-              >
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--brand-100)] to-[var(--brand-200)] text-lg font-bold text-[var(--brand-700)]">
-                  {profile.full_name?.charAt(0)?.toUpperCase() || "?"}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="truncate text-sm font-bold text-[var(--ink-950)]">
-                    {profile.full_name || "Unknown"}
-                  </h3>
-                  {profile.locality_name && (
-                    <p className="flex items-center gap-1 text-xs text-[var(--ink-500)]">
-                      <MapPin className="h-3 w-3" />
-                      {profile.locality_name}
-                    </p>
-                  )}
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] text-[var(--ink-500)]">
-                    {profile.trust_score > 0 && (
-                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">
-                        <Star className="mr-0.5 inline h-3 w-3 text-amber-500 fill-amber-500" /> {profile.trust_score.toFixed(1)}
-                      </span>
-                    )}
-                    {profile.trust_score >= 70 && (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
-                        <ShieldCheck className="mr-0.5 inline h-3 w-3" />Trusted
-                      </span>
-                    )}
-                    {profile.completed_jobs > 0 && (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
-                        {profile.completed_jobs} jobs
-                      </span>
-                    )}
-                    {Array.isArray(profile.service_category_ids) && profile.service_category_ids.length > 0 && (
-                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-700">
-                        {profile.service_category_ids.length} services
-                      </span>
-                    )}
+              <div className="flex items-start gap-3 overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-3 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md">
+                <Link
+                  href={publicPath}
+                  aria-label={`View profile of ${profile.full_name || "this person"}`}
+                  className="flex min-w-0 flex-1 items-start gap-3"
+                >
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--brand-100)] to-[var(--brand-200)] text-lg font-bold text-[var(--brand-700)]">
+                    {profile.full_name?.charAt(0)?.toUpperCase() || "?"}
                   </div>
-                </div>
-                <Store className="mt-1 h-4 w-4 shrink-0 text-[var(--ink-500)]" />
-              </Link>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-bold text-[var(--ink-950)]">
+                      {profile.full_name || "Unknown"}
+                    </h3>
+                    {profile.locality_name && (
+                      <p className="flex items-center gap-1 text-xs text-[var(--ink-500)]">
+                        <MapPin className="h-3 w-3" />
+                        {profile.locality_name}
+                      </p>
+                    )}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] text-[var(--ink-500)]">
+                      {profile.trust_score > 0 && (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">
+                          <Star className="mr-0.5 inline h-3 w-3 text-amber-500 fill-amber-500" /> {profile.trust_score.toFixed(1)}
+                        </span>
+                      )}
+                      {profile.trust_score >= 70 && (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
+                          <ShieldCheck className="mr-0.5 inline h-3 w-3" />Trusted
+                        </span>
+                      )}
+                      {profile.completed_jobs > 0 && (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
+                          {profile.completed_jobs} jobs
+                        </span>
+                      )}
+                      {Array.isArray(profile.service_category_ids) && profile.service_category_ids.length > 0 && (
+                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-700">
+                          {profile.service_category_ids.length} services
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+                <Link
+                  href={messageHref}
+                  aria-label={`Message ${profile.full_name || "this person"}`}
+                  title="Message"
+                  className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--surface-border)] bg-[var(--surface-soft)] text-[var(--ink-700)] transition hover:border-[var(--brand-300)] hover:text-[var(--brand-700)]"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                </Link>
+              </div>
               </motion.div>
-            ))}
+              );
+            })}
           </motion.div>
         </div>
       )}

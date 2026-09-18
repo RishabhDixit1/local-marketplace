@@ -36,7 +36,11 @@ const supabasePublicUrl = (() => {
 })();
 
 const supabaseApiOrigin = supabaseUrl ? `${supabaseUrl.protocol}//${supabaseUrl.host}` : null;
-const supabaseStorageOrigin = process.env.SUPABASE_STORAGE_URL?.trim() || supabaseApiOrigin;
+const supabaseStorageOrigin = (() => {
+  const configured = process.env.SUPABASE_STORAGE_URL?.trim();
+  if (!configured) return supabaseApiOrigin;
+  return configured.replace(/\/+$/, "").replace(/\/storage\/v1$/i, "");
+})();
 const supabaseWsOrigin = supabaseApiOrigin ? supabaseApiOrigin.replace(/^http/, "ws") : null;
 const supabaseHostname = supabaseUrl?.hostname || "";
 const supabaseProtocol = (supabaseUrl?.protocol?.replace(":", "") || "https") as "http" | "https";
